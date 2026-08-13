@@ -1,0 +1,42 @@
+{
+  "name": "Classes",
+  "description": "Character classes and archetypes",
+  "entries": [
+    {
+      "uid": 3001,
+      "key": ["warrior", "knight", "ranger", "archer", "monk", "barbarian"],
+      "secondary_key": [],
+      "content": "The Warrior archetype relies on physical might. They favor Strength and Endurance. They gain advantage regarding physical attack rolls. They eschew magical studies.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 3002,
+      "key": ["mage", "healer", "battlemage", "spellsword", "nightblade"],
+      "secondary_key": [],
+      "content": "The Mage archetype wields arcane forces. They favor Intelligence and Willpower. They receive advantage on spell casting rolls. Their playstyle requires managing spell points.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 3003,
+      "key": ["sorcerer"],
+      "secondary_key": [],
+      "content": "Sorcerers possess a unique magical curse. They cannot regenerate spell points through rest. They rely entirely upon Spell Absorption to regain power. They are formidable anti mages.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 3004,
+      "key": ["thief", "burglar", "assassin", "rogue", "acrobat", "bard"],
+      "secondary_key": [],
+      "content": "The Thief archetype excels in stealth. They favor Agility and Speed. They gain advantage on attack rolls when striking from surprise. They utilize finesse over brute force.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

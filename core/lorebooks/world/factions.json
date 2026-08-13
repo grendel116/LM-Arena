@@ -1,0 +1,78 @@
+{
+  "name": "Factions",
+  "description": "Major factions of Tamriel",
+  "entries": [
+    {
+      "uid": 7001,
+      "key": ["mages guild", "guild of mages", "vanus galerion"],
+      "secondary_key": [],
+      "content": "Vanus Galerion founded the Mages Guild. Branches operate in every major city. They offer magical supplies and the Spellmaker service.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7002,
+      "key": ["nine divines", "divines", "eight divines", "talos", "akatosh", "mara", "dibella", "arkay", "zenithar", "stendarr", "julianos", "kynareth"],
+      "secondary_key": [],
+      "content": "The Nine Divines oversee the Empire spiritually. The pantheon includes Akatosh Arkay Dibella Julianos Kynareth Mara Stendarr Zenithar and Talos. Worshippers pray for guidance daily.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7003,
+      "key": ["temple", "chapel", "healer", "blessing"],
+      "secondary_key": [],
+      "content": "Temple chapels stand in every city. Priests offer potent healing magic. They cure diseases and bestow divine blessings.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7004,
+      "key": ["noble court", "court", "lord", "ruler", "palace"],
+      "secondary_key": [],
+      "content": "Noble Courts rule local provincial territories. Local lords govern from grand palaces. They offer lucrative bounties regarding dangerous monsters.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7005,
+      "key": ["city guard", "guard", "guards", "law"],
+      "secondary_key": [],
+      "content": "City Guards enforce local law strictly. They patrol the streets tirelessly. You can negotiate with them or avoid them entirely.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7006,
+      "key": ["imperial legion", "legion", "soldiers"],
+      "secondary_key": [],
+      "content": "The Imperial Legion functions as the primary military. They enforce the puppet regime of Jagar Tharn. Their soldiers wear heavy armor.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7007,
+      "key": ["thieves guild", "fence", "lockpick", "thief guild"],
+      "secondary_key": [],
+      "content": "The Thieves Guild operates in deep shadow. They maintain a presence in most cities. They fence stolen goods and provide lockpicking assistance.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7008,
+      "key": ["daedric prince", "daedra", "shrine", "prince"],
+      "secondary_key": [],
+      "content": "Seventeen Daedric Princes rule Oblivion realms. Cultists worship them at hidden shrines. They offer powerful artifacts in exchange for dangerous pacts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

@@ -1,0 +1,380 @@
+[
+  {
+    "stage": 10,
+    "label": "Escape the Imperial Dungeon",
+    "objectives": [
+      "Listen to Ria Silmane's message.",
+      "Navigate to the southwest corner.",
+      "Answer the riddle to activate the Shift Gate."
+    ],
+    "conditions": {
+      "shift_gate_answered": true
+    },
+    "on_complete": [
+      {
+        "action": "unlock_province_travel",
+        "params": {}
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 20
+        }
+      }
+    ],
+    "context_injection": "The player is trapped in the Imperial Dungeon beneath the Imperial City, imprisoned by the usurper Jagar Tharn. Ria Silmane's spirit has provided a crucial key and directions to the Shift Gate. Escaping this dark facility is the absolute priority to begin the quest to save the Emperor."
+  },
+  {
+    "stage": 20,
+    "label": "Travel to Hammerfell",
+    "objectives": [
+      "Receive the second vision from Ria Silmane.",
+      "Travel to the province of Hammerfell.",
+      "Speak to the Ruler of Rihad.",
+      "Obtain the parchment revealing the location of Fang Lair."
+    ],
+    "conditions": {
+      "fang_lair_unlocked": true
+    },
+    "on_complete": [
+      {
+        "action": "unlock_location",
+        "params": {
+          "location_id": "fang-lair"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 30
+        }
+      }
+    ],
+    "context_injection": "Having escaped the dungeon, the player receives visions from Ria guiding them to Hammerfell. They must seek out the Ruler of Rihad to find the lost dwarven ruins of Fang Lair. This marks the beginning of the hunt for the eight fragments of the Staff of Chaos."
+  },
+  {
+    "stage": 30,
+    "label": "Retrieve Fragment from Fang Lair",
+    "objectives": [
+      "Travel to Fang Lair in Hammerfell.",
+      "Retrieve the first fragment of the Staff of Chaos."
+    ],
+    "conditions": {
+      "fragment_1_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 1
+        }
+      },
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_3"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 40
+        }
+      }
+    ],
+    "context_injection": "The player has entered Fang Lair, a dangerous subterranean dwarven ruin in Hammerfell. They must brave its ancient traps and guardians to claim the first fragment of the Staff of Chaos. Finding this piece proves the Staff can be reassembled."
+  },
+  {
+    "stage": 40,
+    "label": "Retrieve Fragment from Labyrinthian",
+    "objectives": [
+      "Receive vision regarding Labyrinthian.",
+      "Travel to Skyrim.",
+      "Retrieve the fragment from Labyrinthian."
+    ],
+    "conditions": {
+      "fragment_2_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 2
+        }
+      },
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_4"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 50
+        }
+      }
+    ],
+    "context_injection": "Guided by another vision, the player travels to the frozen ruins of Labyrinthian in Skyrim. The ancient nordic maze holds the second piece of the Staff. They must defeat powerful undead entities to secure the fragment."
+  },
+  {
+    "stage": 50,
+    "label": "Retrieve Fragment from Elden Grove",
+    "objectives": [
+      "Receive vision regarding Elden Grove.",
+      "Travel to Valenwood.",
+      "Retrieve the fragment from Elden Grove."
+    ],
+    "conditions": {
+      "fragment_3_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 3
+        }
+      },
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_5"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 60
+        }
+      }
+    ],
+    "context_injection": "The quest continues into the magical heart of Valenwood, Elden Grove. The dense jungle environment is hostile and ancient. The player must retrieve the third fragment hidden within the sacred grove."
+  },
+  {
+    "stage": 60,
+    "label": "Retrieve Fragment from Halls of Colossus",
+    "objectives": [
+      "Receive vision regarding Halls of Colossus.",
+      "Travel to Elsweyr.",
+      "Retrieve the fragment from Halls of Colossus."
+    ],
+    "conditions": {
+      "fragment_4_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 4
+        }
+      },
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_6"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 70
+        }
+      }
+    ],
+    "context_injection": "The player explores the massive desert temple known as the Halls of Colossus in Elsweyr. These monumental ruins hide the fourth fragment of the Staff. Overcoming the structural and magical challenges is crucial to progress."
+  },
+  {
+    "stage": 70,
+    "label": "Retrieve Fragment from Crystal Tower",
+    "objectives": [
+      "Receive vision regarding Crystal Tower.",
+      "Travel to Summerset Isle.",
+      "Retrieve the fragment from Crystal Tower."
+    ],
+    "conditions": {
+      "fragment_5_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 5
+        }
+      },
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_7"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 80
+        }
+      }
+    ],
+    "context_injection": "The pristine Crystal Tower of Summerset Isle holds the fifth fragment. The player must ascend the heavily guarded magical structure, facing formidable wards and guardians placed by the Altmer."
+  },
+  {
+    "stage": 80,
+    "label": "Retrieve Fragment from Crypt of Hearts",
+    "objectives": [
+      "Receive vision regarding Crypt of Hearts.",
+      "Travel to High Rock.",
+      "Retrieve the fragment from Crypt of Hearts."
+    ],
+    "conditions": {
+      "fragment_6_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 6
+        }
+      },
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_8"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 90
+        }
+      }
+    ],
+    "context_injection": "A dark path leads to the Crypt of Hearts in High Rock. The player searches for the sixth fragment among the accursed subterranean tombs. Powerful undead lords seek to halt the player's advance."
+  },
+  {
+    "stage": 90,
+    "label": "Retrieve Fragment from Murkwood",
+    "objectives": [
+      "Receive vision regarding Murkwood.",
+      "Travel to Black Marsh.",
+      "Retrieve the fragment from Murkwood."
+    ],
+    "conditions": {
+      "fragment_7_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 7
+        }
+      },
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_9"
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 100
+        }
+      }
+    ],
+    "context_injection": "Deep within the shifting swamps of Black Marsh lies Murkwood. The seventh fragment is secured within this hostile, ever-changing environment. Surviving the elemental hazards is essential to claim the piece."
+  },
+  {
+    "stage": 100,
+    "label": "Retrieve Fragment from Dagoth Ur",
+    "objectives": [
+      "Receive vision regarding Dagoth Ur.",
+      "Travel to Morrowind.",
+      "Retrieve the final fragment from Dagoth Ur."
+    ],
+    "conditions": {
+      "fragment_8_collected": true
+    },
+    "on_complete": [
+      {
+        "action": "add_fragment",
+        "params": {
+          "fragment_id": 8
+        }
+      },
+      {
+        "action": "set_flag",
+        "params": {
+          "flag_name": "staff_assembled",
+          "value": true
+        }
+      },
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 110
+        }
+      }
+    ],
+    "context_injection": "The final piece of the Staff is located in the perilous volcanic crater of Dagoth Ur in Morrowind. The player must brave extreme heat and heavy defenses to secure the eighth fragment and complete the Staff."
+  },
+  {
+    "stage": 110,
+    "label": "Return to Cyrodiil",
+    "objectives": [
+      "Assemble the Staff of Chaos.",
+      "Return to Cyrodiil to confront Jagar Tharn."
+    ],
+    "conditions": {
+      "returned_to_cyrodiil": true
+    },
+    "on_complete": [
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 120
+        }
+      }
+    ],
+    "context_injection": "With all eight fragments collected, the Staff of Chaos is assembled. The player travels back to the heartland of Cyrodiil to face Jagar Tharn in the Imperial Palace."
+  },
+  {
+    "stage": 120,
+    "label": "Enter the Imperial Palace",
+    "objectives": [
+      "Enter the Imperial Palace.",
+      "Navigate to the throne room."
+    ],
+    "conditions": {
+      "throne_room_reached": true
+    },
+    "on_complete": [
+      {
+        "action": "advance_stage",
+        "params": {
+          "next_stage": 130
+        }
+      }
+    ],
+    "context_injection": "The player has breached the Imperial Palace. They must fight their way through elite guards and powerful magic wards to reach the throne room where Jagar Tharn awaits."
+  },
+  {
+    "stage": 130,
+    "label": "Confront Jagar Tharn",
+    "objectives": [
+      "Confront the usurper Jagar Tharn.",
+      "Use the Staff of Chaos to defeat him.",
+      "Restore the true Emperor."
+    ],
+    "conditions": {
+      "jagar_tharn_defeated": true
+    },
+    "on_complete": [
+      {
+        "action": "trigger_npc_event",
+        "params": {
+          "event_id": "emperor_restored"
+        }
+      }
+    ],
+    "context_injection": "The final battle against Jagar Tharn has begun. The player must utilize the assembled Staff of Chaos to break his power and free the true Emperor from Oblivion, securing the realm."
+  }
+]

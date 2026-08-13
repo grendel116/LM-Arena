@@ -1,0 +1,87 @@
+{
+  "name": "Magic",
+  "description": "Magic system and spells",
+  "entries": [
+    {
+      "uid": 5001,
+      "key": ["school", "schools", "destruction", "restoration", "illusion", "alteration", "thaumaturgy", "mysticism", "conjuration", "sorcery"],
+      "secondary_key": [],
+      "content": "Magic divides into eight recognized schools. These define the nature of the spell effect. Mages study these paths to control arcane forces.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5002,
+      "key": ["tier", "minor", "apprentice", "journeyman", "expert", "master", "spell"],
+      "secondary_key": [],
+      "content": "Spells exist across five power tiers. Minor spells require DC eight. Apprentice needs eleven. Journeyman needs fourteen. Expert demands seventeen. Master requires twenty.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5003,
+      "key": ["cast", "casting", "intelligence"],
+      "secondary_key": [],
+      "content": "Casting requires an Intelligence check. You roll a d20 plus your Intelligence modifier against the spell DC. Success manifests the magic safely.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5004,
+      "key": ["spell absorption", "absorb", "sorcerer"],
+      "secondary_key": [],
+      "content": "Spell Absorption nullifies incoming magic. The chance equals Intelligence plus Willpower divided by two. The maximum chance caps at seventy five percent.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5005,
+      "key": ["spellmaker", "custom spell", "design"],
+      "secondary_key": [],
+      "content": "The Spellmaker allows custom magical creation. You describe your desired effect explicitly. The system automatically assigns the appropriate school and tier.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5006,
+      "key": ["fatigue", "backfire", "fumble"],
+      "secondary_key": [],
+      "content": "Magical fumbles cause dangerous backfires. A natural one on casting twists the spell wildly. You suffer minor unintended effects or localized damage.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5007,
+      "key": ["mage advantage", "mage"],
+      "secondary_key": [],
+      "content": "The Mage class receives natural casting advantages. They roll with advantage regarding all spell casting checks. They command magic effortlessly.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5008,
+      "key": ["destruction", "fireball", "shock"],
+      "secondary_key": [],
+      "content": "Destruction magic harms enemies directly. It manifests as fire or frost or lightning. The effects are violent and spectacular.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5009,
+      "key": ["restoration", "heal", "cure"],
+      "secondary_key": [],
+      "content": "Restoration magic mends physical wounds. It cures lingering diseases. It glows with a soothing golden light.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

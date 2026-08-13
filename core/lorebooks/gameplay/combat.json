@@ -1,0 +1,105 @@
+{
+  "name": "Combat",
+  "description": "Combat rules and mechanics",
+  "entries": [
+    {
+      "uid": 4001,
+      "key": ["d20", "roll", "check", "modifier"],
+      "secondary_key": [],
+      "content": "All action checks utilize a d20 system. You add your attribute modifier to the roll. The modifier equals your attribute minus fifty, divided by ten, rounded.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4002,
+      "key": ["dc", "difficulty", "trivial", "easy", "standard", "hard", "legendary"],
+      "secondary_key": [],
+      "content": "Tasks follow a set difficulty scale. Trivial is five. Easy is ten. Standard is fifteen. Hard is twenty. Legendary is twenty five.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4003,
+      "key": ["attack", "melee", "ranged", "strike"],
+      "secondary_key": [],
+      "content": "Attack rolls use specific attributes. Melee attacks add your Strength modifier. Ranged attacks use your Agility modifier. You roll against the target Defense DC.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4004,
+      "key": ["defense", "armor", "dodge"],
+      "secondary_key": [],
+      "content": "Your Defense DC represents your evasion. It equals ten plus your Agility modifier. Armor provides damage reduction rather than increasing defense.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4005,
+      "key": ["hit", "graze", "solid", "devastating"],
+      "secondary_key": [],
+      "content": "Hit outcomes scale by the success margin. A graze causes partial damage. A solid hit deals regular damage. A devastating blow inflicts massive harm.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4006,
+      "key": ["critical", "fumble", "natural"],
+      "secondary_key": [],
+      "content": "A natural twenty always constitutes a critical success. A natural one represents a critical fumble. Fumbles introduce catastrophic narrative complications.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4007,
+      "key": ["initiative", "speed", "turn"],
+      "secondary_key": [],
+      "content": "Initiative determines action order. You roll a d20 and add your Speed modifier. The highest total acts first during combat.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4008,
+      "key": ["poisoned", "poison"],
+      "secondary_key": [],
+      "content": "Poison inflicts ongoing narrative damage. The victim suffers debilitating pain each turn. They must seek a cure immediately.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4009,
+      "key": ["paralysed", "paralysis"],
+      "secondary_key": [],
+      "content": "Paralysis freezes the victim completely. They must skip their turn entirely. They become highly vulnerable regarding incoming attacks.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4010,
+      "key": ["diseased", "disease"],
+      "secondary_key": [],
+      "content": "Diseases apply lingering penalties. The victim suffers reduced attribute scores. Temple healers can remove these afflictions.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4011,
+      "key": ["death", "defeat", "unconscious", "captured"],
+      "secondary_key": [],
+      "content": "Reaching zero health does not cause instant death. You fall unconscious or become captured. This provides narrative flexibility regarding failure.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

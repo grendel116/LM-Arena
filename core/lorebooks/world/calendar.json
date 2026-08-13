@@ -1,0 +1,141 @@
+{
+  "name": "Calendar",
+  "description": "Tamrielic calendar system",
+  "entries": [
+    {
+      "uid": 6001,
+      "key": ["morning star", "january"],
+      "secondary_key": [],
+      "content": "Morning Star marks the first month. It brings bitter cold across Tamriel. Citizens celebrate the New Life Festival.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6002,
+      "key": ["sun's dawn", "february"],
+      "secondary_key": [],
+      "content": "Sun's Dawn constitutes the second month. Winter storms persist heavily. People endure the biting frost.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6003,
+      "key": ["first seed", "march"],
+      "secondary_key": [],
+      "content": "First Seed heralds early spring. Farmers prepare their barren fields. A gentle warmth returns slowly.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6004,
+      "key": ["rain's hand", "april"],
+      "secondary_key": [],
+      "content": "Rain's Hand brings constant spring showers. The roads transform into muddy bogs. Flora blooms vividly across the provinces.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6005,
+      "key": ["second seed", "may"],
+      "secondary_key": [],
+      "content": "Second Seed marks late spring. The weather stabilizes beautifully. Travelers begin their long journeys.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6006,
+      "key": ["midyear", "june"],
+      "secondary_key": [],
+      "content": "Midyear introduces the summer heat. The days stretch long and bright. Merchants crowd the bustling marketplaces.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6007,
+      "key": ["sun's height", "july"],
+      "secondary_key": [],
+      "content": "Sun's Height represents peak summer. Scorching temperatures dominate the landscape. Citizens seek cool shade constantly.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6008,
+      "key": ["last seed", "august"],
+      "secondary_key": [],
+      "content": "Last Seed concludes the summer season. Farmers harvest their abundant crops. A subtle chill touches the evening air.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6009,
+      "key": ["hearthfire", "september"],
+      "secondary_key": [],
+      "content": "Hearthfire initiates the autumn transition. Leaves turn brilliant orange and red. People prepare their winter stores.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6010,
+      "key": ["frostfall", "october"],
+      "secondary_key": [],
+      "content": "Frostfall brings significant cold. Crisp winds sweep through the towns. The first snows begin falling.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6011,
+      "key": ["sun's dusk", "november"],
+      "secondary_key": [],
+      "content": "Sun's Dusk darkens the skies early. The world prepares for winter slumber. Taverns overflow with travelers seeking warmth.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6012,
+      "key": ["evening star", "december"],
+      "secondary_key": [],
+      "content": "Evening Star concludes the year. Deep winter locks the land in ice. The Old Life Festival brings brief merriment.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6013,
+      "key": ["week", "morndas", "tirdas", "middas", "turdas", "fredas", "loredas", "sundas"],
+      "secondary_key": [],
+      "content": "The Tamrielic week spans seven days. The days are Morndas Tirdas Middas Turdas Fredas Loredas and Sundas. Citizens organize their labor around this cycle.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6014,
+      "key": ["third era", "3e", "389", "era"],
+      "secondary_key": [],
+      "content": "The current era is the Third Era. The year is 389. The Simulacrum defines this dark period.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 6015,
+      "key": ["season", "travel", "weather"],
+      "secondary_key": [],
+      "content": "Seasons drastically affect overland travel. Harsh winters block northern passes. Heavy rains flood southern roads.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

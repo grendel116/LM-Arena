@@ -1,0 +1,78 @@
+{
+  "name": "Races",
+  "description": "Playable races of Tamriel",
+  "entries": [
+    {
+      "uid": 2001,
+      "key": ["nord", "nordic", "nords"],
+      "secondary_key": [],
+      "content": "Nords are tall and hardy humans. They possess natural resistance against cold. Their culture venerates martial prowess and Talos. They hail from Skyrim.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 2002,
+      "key": ["breton", "bretons", "high rock"],
+      "secondary_key": [],
+      "content": "Bretons exhibit strong magical resistance. They boast Elven ancestry. Their society values scholarly pursuits and knightly traditions. They originate from High Rock.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 2003,
+      "key": ["redguard", "redguards", "yokudan", "hammerfell"],
+      "secondary_key": [],
+      "content": "Redguards are unmatched warriors. They trace their lineage to ancient Yokuda. They possess remarkable physical endurance. They claim Hammerfell as their homeland.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 2004,
+      "key": ["high elf", "altmer", "high elves", "summerset"],
+      "secondary_key": [],
+      "content": "High Elves command potent magics. They live exceptionally long lives. Their culture enforces a strict hierarchy and worships Auri El. They dwell in the Summerset Isles.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 2005,
+      "key": ["wood elf", "bosmer", "wood elves", "valenwood"],
+      "secondary_key": [],
+      "content": "Wood Elves excel in archery. They follow the Green Pact regarding strict dietary laws. They commune deeply with nature. They inhabit the forests of Valenwood.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 2006,
+      "key": ["dark elf", "dunmer", "dark elves", "morrowind"],
+      "secondary_key": [],
+      "content": "Dark Elves are versatile combatants. Their society navigates complex Great House politics. They revere the Tribunal and their ancestors. They rule the ashlands of Morrowind.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 2007,
+      "key": ["khajiit", "elsweyr", "ohmes"],
+      "secondary_key": [],
+      "content": "Khajiit display incredible agility. The Ohmes furstock appears largely humanoid. Their culture revolves around moonsugar consumption. They wander the deserts of Elsweyr.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 2008,
+      "key": ["argonian", "argonians", "black marsh", "hist"],
+      "secondary_key": [],
+      "content": "Argonians possess total immunity regarding diseases. They can breathe underwater indefinitely. They share a spiritual connection with the Hist trees. They thrive in Black Marsh.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

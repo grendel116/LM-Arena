@@ -36,8 +36,8 @@ _cached_active_user = None
 
 def init_runner():
     global runner
-    runner = OpenSourceRunner(app_name="Sanctuary")
-    print(">>> Starting Sanctuary using decoupled OPEN-SOURCE Runner backend!")
+    runner = OpenSourceRunner(app_name="LM-Arena")
+    print(">>> Starting LM-Arena using decoupled OPEN-SOURCE Runner backend!")
 
 _prewarm_started = False
 _prewarm_lock = threading.Lock()
@@ -277,9 +277,9 @@ def serve_manifest():
     try:
         with open('manifest.json', 'r', encoding='utf-8') as f:
             manifest_data = json.load(f)
-        manifest_data['name'] = f"{program_name} Sanctuary"
-        manifest_data['short_name'] = program_name
-        manifest_data['description'] = f"Enter the Sanctuary and converse with {program_name}"
+        manifest_data['name'] = f"LM-Arena"
+        manifest_data['short_name'] = f"LM-Arena"
+        manifest_data['description'] = f"The Elder Scrolls: Arena — LLM Text Adventure"
         return jsonify(manifest_data)
     except Exception:
         return send_file('manifest.json', mimetype='application/json')
@@ -2739,7 +2739,7 @@ def list_user_profiles():
         # If there are no profiles at all, ensure at least "builder" is present
         if not profiles:
             builder_path = os.path.join(USER_PROFILES_DIR, "builder.md")
-            default_content = "# USER CONTEXT: BUILDER\n- A software developer and code builder.\n- Hobby: Collects cute AI program programs in the Sanctuary.\n"
+            default_content = "# CHARACTER: Adventurer\n- Race: Nord\n- Class: Warrior\n- Strength: 60 | Intelligence: 40 | Willpower: 50\n- Agility: 50 | Endurance: 60 | Personality: 45 | Speed: 55 | Luck: 50\n- HP: 30/30\n- Gold: 100\n- Active Spells: none\n- Inventory: Iron Longsword, Leather Armor\n- Quest Stage: 10\n- Location: Imperial Dungeon\n"
             with open(builder_path, "w", encoding="utf-8") as f:
                 f.write(default_content)
             profiles.append({
