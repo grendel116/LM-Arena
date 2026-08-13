@@ -1,0 +1,29 @@
+# LM Sanctuary: Local Windows Startup Script (PowerShell)
+
+# 1. Check for Python
+if (!(Get-Command python -ErrorAction SilentlyContinue)) {
+    Write-Host "Error: Python is not installed. Please install it from python.org" -ForegroundColor Red
+    exit
+}
+
+# 2. Create Virtual Environment
+if (!(Test-Path .venv)) {
+    Write-Host "--- Creating Virtual Environment ---"
+    py -3.12 -m venv .venv
+}
+
+# 3. Install Dependencies
+Write-Host "--- Installing Dependencies ---"
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# 4. Environment Variables
+# Copy .env.example to .env if missing
+if (!(Test-Path .env)) {
+    Write-Host "--- Creating .env from .env.example ---"
+    Copy-Item .env.example .env
+}
+
+# 5. Start LM Sanctuary
+Write-Host "--- Starting LM Sanctuary ---"
+$env:OPEN_BROWSER="true"
+.\.venv\Scripts\python app.py

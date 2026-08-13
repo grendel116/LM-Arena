@@ -1,0 +1,18 @@
+{
+  "name": "LM-Arena",
+  "short_name": "LM-Arena",
+  "description": "The Elder Scrolls: Arena — an LLM text adventure set across all of Tamriel during the Imperial Simulacrum",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1510",
+  "theme_color": "#1a1510",
+  "icons": [
+    {
+      "src": "/images/app_icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

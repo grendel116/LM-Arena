@@ -1,0 +1,66 @@
+# Python env and cache
+.venv*
+ComfyUI/
+ComfyUI_windows_portable*/
+__pycache__/
+*.pyc
+
+# Local Config (contains credentials and settings)
+.env
+variables/project_settings.json
+
+# Temporary files
+backups/
+scratch/
+reports/
+certs/
+
+# Ignore all runtime and user variables except code dependencies, template examples, and default builder profile
+variables/*
+!variables/__init__.py
+!variables/user.md.example
+!variables/user_profiles/
+!variables/banned_words.json
+variables/user_profiles/*
+!variables/user_profiles/builder.md
+
+# Ignore all companion profiles under core/programs except the default Sebile program template
+core/programs/*
+!core/programs/sebile/
+!core/programs/sparkle.mp3
+
+# Ignore user-generated dynamic program sessions, databases, custom generated portraits, and memories
+core/programs/*/sessions/
+core/programs/*/portraits/*
+!core/programs/sebile/portraits/profile.png
+core/programs/*/media/
+core/programs/*/uploads/
+core/programs/*/databank.db
+core/programs/*/databank.json
+core/programs/*/journals.json
+core/programs/*/memories.json
+core/programs/*/quest_log.json
+core/programs/*/lorebooks/
+!core/programs/sebile/lorebooks/
+core/embeddings.pkl
+temp_uploads/
+
+
+# Local model weights
+models/
+
+# TTS Speech Model weights and synthesized audio cache
+core/skills/speech_generation/speech_model/*.onnx
+core/skills/speech_generation/speech_model/*.bin
+core/skills/speech_generation/speech_cache/
+
+# Runtime logs
+*.log
+comfy_server.log
+
+# Workflow Configs
+ImageWorkflow.json
+VideoWorkflow.json
+
+# Local Binaries
+utils/llama-bin/
