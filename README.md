@@ -1,4 +1,4 @@
-# ⚔️ LM-ARENA: THE ELDER SCROLLS TEXT ADVENTURE
+# LM-ARENA: THE ELDER SCROLLS TEXT ADVENTURE
 
 An interactive, LLM-driven roleplaying text adventure recreating **The Elder Scrolls: Chapter I — Arena** (3E 389, The Imperial Simulacrum).
 
@@ -6,36 +6,36 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 
 ---
 
-## 🌟 CORE FEATURES
+## CORE FEATURES
 
-### 🎲 D20 Narrative Mechanics
+### D20 Narrative Mechanics
 * **Transparent Roll System**: Character attributes (0–100 scale, centered at 50) determine standard d20 ability modifiers: `(Attribute - 50) / 10`.
 * **Collapsible Action Log**: Combat attacks, stealth checks, lockpicking attempts, and spellcasting rolls are handled via background tool executions. Numerical mechanics remain neatly tucked inside collapsible tool dropdowns, keeping chat narrative fluid and immersive.
 * **Dynamic Vitals**: Track **Health (HP)**, **Magicka (MP)**, and **Stamina** with real-time exhaustion penalties for reckless exertion.
 
-### 🗺️ Vast World of Tamriel
+### Vast World of Tamriel
 * **Nine Provinces**: Explore Cyrodiil, Skyrim, Morrowind, High Rock, Hammerfell, Summerset Isle, Valenwood, Elsweyr, and Black Marsh.
 * **Main Quest Dungeons**: Infiltrate all 8 legendary fragment locations: Fang Lair, Labyrinthian, Elden Grove, Halls of Colossus, Crystal Tower, Crypt of Hearts, Murkwood, and Dagoth Ur, before storming the Imperial Palace.
 * **Tamrielic Calendar**: Realistic day, month, and season progression across all twelve Tamrielic months.
 
-### 🛡️ Character & Inventory System
+### Character & Inventory System
 * **Playable Races & Classes**: Full support for all 8 original races and 18 classic Arena classes (Warrior, Mage, Thief archetypes).
 * **Backpack & Grimoire**: Equip and manage weapons, armor, shields, torches, and enchanted jewelry, or drop items from your pack.
 * **Arena Spellmaker**: Design custom spells with dynamic school and tier calculations (Destruction, Restoration, Alteration, Illusion, Mysticism, Conjuration, Thaumaturgy, Sorcery).
 * **Passive Traits**: Race traits (Nord Cold Resistance, Breton Magic Resistance, Dark Elf Fire Resistance) and class abilities (Sorcerer passive Spell Absorption).
 
-### 👥 Companions & Guides
+### Companions & Guides
 * **Ria Silmane**: The spectral former apprentice to Jagar Tharn, communicating through mystical dream visions to guide your quest.
 * **Procedural Companions**: Meet, hire, and adventure with local sellswords, spellcasters, and rogues encountered across Tamriel's taverns and cities.
 
-### 📚 Comprehensive Lorebook Engine
+### Comprehensive Lorebook Engine
 * **Bestiary**: Complete statistics and lore grounding for 22 iconic Arena monsters, beasts, and Daedric entities.
 * **Artifacts**: 16 legendary Tamrielic relics including Chrysamere, the Staff of Magnus, Auriel's Bow & Shield, and the Oghma Infinium.
 * **World Info**: Factions, Nine Divines, Daedric Princes, city services, taverns, temples, and blacksmiths.
 
 ---
 
-## 🛠️ INTERFACE CONTROLS
+## INTERFACE CONTROLS
 
 * **Vitality Pulse (Top-Left)**: Click the heart vitality bar to inspect your Character Status sheet, Vitals, Attributes, and Active Effects.
 * **Backpack (Pouch Icon)**: Inspect inventory items, equip gear, view your grimoire, and manage gold.
@@ -46,7 +46,7 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 
 ---
 
-## 🚀 GETTING STARTED
+## GETTING STARTED
 
 ### Windows (Quick Start):
 Double-click `run_local.bat` (or run `./run_local.ps1` in PowerShell).
@@ -72,7 +72,7 @@ Open your browser at **`http://localhost:5000`**
 
 ---
 
-## 📂 PROJECT STRUCTURE
+## PROJECT STRUCTURE
 
 * **`app.py`**: Main Flask backend server and REST API endpoints.
 * **`engine/`**: Core game logic:
