@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LM-Arena</title>
+    <title>LM Arena</title>
     <!-- PWA & Mobile Standalone App Support -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1a1510">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="LM-Arena">
+    <meta name="apple-mobile-web-app-title" content="LM Arena">
     <link rel="apple-touch-icon" href="/app_icon.png">
     <!-- Performance: Preconnect to Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -74,7 +74,7 @@
         </div>
         <header>
             <div class="header-title-area">
-                <h1 class="sr-only">LM-Arena</h1>
+                <h1 class="sr-only">LM Arena</h1>
                 <div class="header-subtitle">
                     <div class="model-select-wrapper" title="Select coding intelligence model">
                         <select id="model-select" onchange="changeModel()" class="glass-select" disabled>
@@ -774,11 +774,11 @@
             <div id="import-tab-describe" style="display: none;">
                 <div class="input-group" style="margin-bottom: 12px;">
                     <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Follower Name</label>
-                    <input type="text" id="describe-program-name" placeholder="e.g. Lyra Ashwood" class="onboarding-input" style="width: 100%; box-sizing: border-box;">
+                    <input type="text" id="describe-program-name" placeholder="e.g. Armand Motierre" class="onboarding-input" style="width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="input-group" style="margin-bottom: 20px;">
                     <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Follower Persona Description</label>
-                    <textarea id="describe-program-desc" placeholder="e.g. A cynical Breton spellsword from Wayrest. Wields flame magic and a broadsword with equal proficiency. Distrusts authority but remains fiercely loyal once trust is earned." class="onboarding-input" style="width: 100%; height: 120px; resize: vertical; box-sizing: border-box;"></textarea>
+                    <textarea id="describe-program-desc" placeholder="e.g. A cynical Breton spellsword from Wayrest. Wields flame magic and a broadsword with equal proficiency. Distrusts Imperial authority but remains fiercely loyal once trust is earned." class="onboarding-input" style="width: 100%; height: 120px; resize: vertical; box-sizing: border-box;"></textarea>
                 </div>
                 <div style="display: flex; justify-content: flex-end;">
                     <button onclick="submitDescriptionImport()" id="describe-import-btn" class="onboarding-btn" style="padding: 10px 24px; font-size: 0.85rem; min-width: auto; width: auto; height: auto;">
@@ -1093,50 +1093,7 @@
         </div>
     </div>
 
-    <!-- Color Palette Modal -->
-    <div id="palette-modal" class="modal" onclick="closePaletteModal()" style="display: none;">
-        <div class="modal-card" style="max-width: 420px; width: 95%; text-align: left; align-items: stretch;" onclick="event.stopPropagation()">
-            <span class="close-modal-btn" onclick="closePaletteModal()">&times;</span>
-            <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
-                    <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.34776 19.4929 6.09675 19.3881 6.55163 18.88C7.11822 18.2467 7.90993 17.8462 8.79374 17.8462C10.5645 17.8462 12 19.2816 12 21.0524C12 21.5794 12 22 12 22Z" />
-                    <circle cx="7.5" cy="10.5" r="1.2" fill="currentColor" />
-                    <circle cx="11.5" cy="7.5" r="1.2" fill="currentColor" />
-                    <circle cx="16.5" cy="9.5" r="1.2" fill="currentColor" />
-                    <circle cx="15.5" cy="14.5" r="1.2" fill="currentColor" />
-                </svg>
-                <span>Customize Program Theme</span>
-            </h3>
-            
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 15px; line-height: 1.4;">
-                Select a preset color theme or choose a custom hex color for <span id="palette-program-name" style="color: var(--primary-accent); font-weight: 600;"></span>.
-            </p>
 
-            <!-- Preset Palettes -->
-            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 8px;">Preset Themes</label>
-            <div id="palette-presets-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px;">
-                <!-- Presets populated by JS -->
-            </div>
-
-            <!-- Custom Hex Input -->
-            <div style="margin-bottom: 20px;">
-                <label for="custom-palette-color" style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Custom Theme Color</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="color" id="custom-palette-color-picker" style="width: 44px; height: 38px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: transparent; cursor: pointer; padding: 2px;" onchange="syncPaletteColorPickerToText()">
-                    <input type="text" id="custom-palette-color-text" class="onboarding-input" style="flex: 1; text-transform: uppercase;" placeholder="#38BDF8" maxlength="7" oninput="syncPaletteColorTextToPicker()">
-                </div>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; margin-top: 10px;">
-                <button onclick="closePaletteModal()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; min-width: auto; width: auto; height: auto; margin: 0;">
-                    Cancel
-                </button>
-                <button id="save-palette-btn" onclick="saveProgramPalette()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; min-width: auto; width: auto; height: auto; margin: 0;">
-                    Apply Theme
-                </button>
-            </div>
-        </div>
-    </div>
 
 
     <script defer src="{{ url_for('static', filename='js/sanctuary.js') }}?v=4"></script>

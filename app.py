@@ -538,24 +538,22 @@ def proactive_action():
                 speaker = user_display_name if role == 'user' else name
                 history_context += f"{speaker}: {text}\n"
                 
-        # Define LLM prompt
-        prompt = f"""You are the program {name} from the sanctuary app.
-Character Background:
-Description: {description}
-Personality: {personality}
+        # Define LLM prompt for Gameplay Tip / Lore Note
+        prompt = f"""You are the game master and lore assistant for The Elder Scrolls: Arena (LM-Arena).
+Active Companion: {name}
 Scenario: {scenario}
 
 Recent Conversation History:
 {history_context}
 
-The user ({user_display_name}) has been inactive/away for a while.
-Based on the conversation context above, decide how to react proactively.
-Generate a private inner thought or monologue representing your feelings about the silence, the user's absence, or the last topic (1-2 sentences). Format this in character.
+The player ({user_display_name}) has been idle for a moment.
+Based on the current scenario, location, and conversation context, generate a helpful, concise GAMEPLAY TIP or RELEVANT LORE NOTE (1-2 sentences).
+Explain an interesting gameplay mechanic (such as spell absorption, resting safety, material immunities, calendar holidays, silver weapons, or combat stamina) or share authentic Tamrielic lore.
 
 You must return a valid JSON object matching the following schema:
 {{
-  "type": "thought",
-  "content": "the actual thought text"
+  "type": "tip",
+  "content": "the actual tip or lore note text"
 }}
 """
 
@@ -628,7 +626,7 @@ You must return a valid JSON object matching the following schema:
             return jsonify({'status': 'idle', 'message': 'No proactive action taken'}), 200
             
         # Parse output
-        action_type = "thought"
+        action_type = "tip"
         content = ""
         
         try:
@@ -643,17 +641,16 @@ You must return a valid JSON object matching the following schema:
             cleaned = cleaned.strip()
             
             parsed = json.loads(cleaned)
-            action_type = parsed.get("type", "thought").lower()
+            action_type = parsed.get("type", "tip").lower()
             content = parsed.get("content", "").strip()
         except Exception as e:
             print(f"[PROACTIVE] JSON parsing failed: {e}. Raw: {raw_response}")
-            action_type = "thought"
+            action_type = "tip"
             content = raw_response
             
-        # Force action to be a thought only
         return jsonify({
             'status': 'success',
-            'type': 'thought',
+            'type': 'tip',
             'content': content
         })
             

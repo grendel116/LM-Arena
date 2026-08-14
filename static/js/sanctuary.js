@@ -333,7 +333,7 @@ async function softReloadApp() {
         }
         if (data.character_name) {
             activeProgramName = data.character_name;
-            const programTitle = "Sanctuary";
+            const programTitle = "LM Arena";
             document.title = programTitle;
             
             const headerTitle = document.querySelector('.header-title-area h1');
@@ -1725,7 +1725,9 @@ let _lastTrackedVitals = {
     hp: null,
     mp: null,
     stamina: null,
-    gold: null
+    gold: null,
+    itemCount: null,
+    itemNames: []
 };
 
 function spawnHeartDelta(text, color, delayMs = 0) {
@@ -1743,8 +1745,38 @@ function spawnHeartDelta(text, color, delayMs = 0) {
             if (pop.parentNode) {
                 pop.parentNode.removeChild(pop);
             }
-        }, 1300);
+        }, 600);
     }, delayMs);
+}
+
+function spawnBagDelta(text, color, delayMs = 0) {
+    const bagElement = document.querySelector('.inventory-btn');
+    if (!bagElement) return;
+
+    setTimeout(() => {
+        const pop = document.createElement('div');
+        pop.className = 'bag-delta-pop';
+        pop.textContent = text;
+        pop.style.color = color;
+        bagElement.appendChild(pop);
+
+        setTimeout(() => {
+            if (pop.parentNode) {
+                pop.parentNode.removeChild(pop);
+            }
+        }, 600);
+    }, delayMs);
+}
+
+function triggerBagPulse() {
+    const bagBtn = document.querySelector('.inventory-btn');
+    if (!bagBtn) return;
+    bagBtn.classList.remove('bag-pulse');
+    void bagBtn.offsetWidth;
+    bagBtn.classList.add('bag-pulse');
+    setTimeout(() => {
+        bagBtn.classList.remove('bag-pulse');
+    }, 900);
 }
 
 function updatePlayerHeartState(char, world) {
@@ -1757,6 +1789,8 @@ function updatePlayerHeartState(char, world) {
     const mpCurrent = d.mp_current !== undefined ? d.mp_current : (d.sp_current !== undefined ? d.sp_current : 42);
     const staminaCurrent = d.stamina_current !== undefined ? d.stamina_current : 50;
     const goldCurrent = char.gold !== undefined ? char.gold : 0;
+    const inventory = char.inventory || [];
+    const currentItemCount = inventory.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
     // Detect and trigger floating delta indicators on resource changes
     if (_lastTrackedVitals.hp !== null) {
@@ -1764,6 +1798,7 @@ function updatePlayerHeartState(char, world) {
         const dMp = mpCurrent - _lastTrackedVitals.mp;
         const dStamina = staminaCurrent - _lastTrackedVitals.stamina;
         const dGold = (_lastTrackedVitals.gold !== null && goldCurrent !== undefined) ? (goldCurrent - _lastTrackedVitals.gold) : 0;
+        const dItems = (_lastTrackedVitals.itemCount !== null) ? (currentItemCount - _lastTrackedVitals.itemCount) : 0;
 
         let stagger = 0;
         if (dHp !== 0) {
@@ -1790,12 +1825,28 @@ function updatePlayerHeartState(char, world) {
             spawnHeartDelta(txt, clr, stagger);
             stagger += 150;
         }
+        if (dItems !== 0) {
+            triggerBagPulse();
+            if (dItems > 0) {
+                let itemLabel = "Item";
+                if (_lastTrackedVitals.itemNames) {
+                    const added = inventory.filter(it => !_lastTrackedVitals.itemNames.includes(it.name));
+                    if (added.length > 0) {
+                        itemLabel = added[0].name;
+                    }
+                }
+                const txt = `+${dItems > 1 ? dItems + ' ' : ''}${itemLabel}`;
+                spawnBagDelta(txt, "#fbbf24", 0);
+            }
+        }
     }
 
     _lastTrackedVitals.hp = hpCurrent;
     _lastTrackedVitals.mp = mpCurrent;
     _lastTrackedVitals.stamina = staminaCurrent;
     _lastTrackedVitals.gold = goldCurrent;
+    _lastTrackedVitals.itemCount = currentItemCount;
+    _lastTrackedVitals.itemNames = inventory.map(it => it.name);
 
     const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
     const conditions = (char.conditions || []).map(c => c.toLowerCase());
@@ -2010,15 +2061,17 @@ function renderCharacterStatusModal(data) {
                 dropBtn.title = `Drop ${item.name}`;
                 dropBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
                 dropBtn.innerHTML = `
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
+                        <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"></path>
+                        <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
+                        <path d="M18 8a2 2 0 0 1 2 2v4a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
                     </svg>
                 `;
                 dropBtn.onmouseover = () => {
-                    dropBtn.style.color = '#ef4444';
-                    dropBtn.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                    dropBtn.style.background = 'rgba(239, 68, 68, 0.12)';
+                    dropBtn.style.color = 'var(--primary-accent)';
+                    dropBtn.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+                    dropBtn.style.background = 'rgba(245, 158, 11, 0.12)';
                 };
                 dropBtn.onmouseout = () => {
                     dropBtn.style.color = 'var(--text-muted)';
@@ -3546,29 +3599,7 @@ function renderProgramsList(assistants, activeId) {
         leftArea.appendChild(info);
         div.appendChild(leftArea);
 
-        // Palette settings button
-        const paletteBtn = document.createElement('button');
-        paletteBtn.className = 'action-icon-btn';
-        paletteBtn.innerHTML = `
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.34776 19.4929 6.09675 19.3881 6.55163 18.88C7.11822 18.2467 7.90993 17.8462 8.79374 17.8462C10.5645 17.8462 12 19.2816 12 21.0524C12 21.5794 12 22 12 22Z" />
-                <circle cx="7.5" cy="10.5" r="1.2" fill="currentColor" />
-                <circle cx="11.5" cy="7.5" r="1.2" fill="currentColor" />
-                <circle cx="16.5" cy="9.5" r="1.2" fill="currentColor" />
-                <circle cx="15.5" cy="14.5" r="1.2" fill="currentColor" />
-            </svg>
-        `;
-        paletteBtn.title = 'Change Theme Color';
-        paletteBtn.style.width = '26px';
-        paletteBtn.style.height = '26px';
-        paletteBtn.style.borderRadius = '6px';
-        paletteBtn.style.marginLeft = 'auto';
-        paletteBtn.style.flexShrink = '0';
-        paletteBtn.onclick = (e) => {
-            e.stopPropagation();
-            openPaletteModal(assistant.id, assistant.name);
-        };
-        div.appendChild(paletteBtn);
+
 
         // Edit button
         const editBtn = document.createElement('button');
@@ -3646,10 +3677,10 @@ async function selectAssistant(assistantId) {
             chatContainer.innerHTML = '';
             
             // Dynamically update UI text properties
-            document.title = "Sanctuary";
+            document.title = "LM Arena";
             const h1Element = document.querySelector('header h1');
             if (h1Element) {
-                h1Element.innerText = "Sanctuary";
+                h1Element.innerText = "LM Arena";
             }
             const textarea = document.getElementById('user-input');
             if (textarea) {
@@ -3766,179 +3797,6 @@ function closeProgramProfileModal() {
     openAssistantModal();
 }
 
-let paletteTargetProgramId = null;
-const palettePresets = [
-    { name: 'Sky Blue', hex: '#38bdf8' },
-    { name: 'Amethyst', hex: '#a855f7' },
-    { name: 'Rose Pink', hex: '#f43f5e' },
-    { name: 'Emerald', hex: '#10b981' },
-    { name: 'Amber', hex: '#f97316' },
-    { name: 'Crimson', hex: '#ef4444' },
-    { name: 'Yellow', hex: '#eab308' },
-    { name: 'Pure White', hex: '#ffffff' }
-];
-
-async function openPaletteModal(programId, programName) {
-    paletteTargetProgramId = programId;
-    document.getElementById('palette-program-name').innerText = programName;
-    
-    // Set up presets swatches
-    const presetsContainer = document.getElementById('palette-presets-container');
-    presetsContainer.innerHTML = '';
-    
-    palettePresets.forEach(preset => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 8px 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        `;
-        
-        const swatch = document.createElement('div');
-        swatch.style.cssText = `
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background-color: ${preset.hex};
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        `;
-        
-        const label = document.createElement('span');
-        label.innerText = preset.name;
-        label.style.cssText = `
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
-        `;
-        
-        btn.appendChild(swatch);
-        btn.appendChild(label);
-        
-        btn.onclick = () => {
-            selectPalettePreset(preset.hex);
-            // visually select
-            Array.from(presetsContainer.children).forEach(c => {
-                c.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                c.style.background = 'rgba(255, 255, 255, 0.03)';
-            });
-            btn.style.borderColor = 'var(--primary-accent)';
-            btn.style.background = 'rgba(255, 255, 255, 0.07)';
-        };
-        
-        presetsContainer.appendChild(btn);
-    });
-    
-    // Try to load the current theme color first if theme.json exists
-    let currentColor = '#38bdf8';
-    try {
-        if (activeProgramName && programId === activeProgramName.toLowerCase()) {
-            currentColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-accent').trim();
-        } else {
-            const response = await fetch(`/api/programs/profile?program_id=${programId}`);
-            if (response.ok) {
-                const prof = await response.json();
-                // Extract color if available
-            }
-        }
-    } catch(e) {}
-    
-    // Set input values
-    selectPalettePreset(currentColor || '#38bdf8');
-    
-    // Hide selection modal, show palette modal
-    document.getElementById('assistant-modal').style.display = 'none';
-    document.getElementById('palette-modal').style.display = 'flex';
-}
-
-function closePaletteModal() {
-    document.getElementById('palette-modal').style.display = 'none';
-    openAssistantModal();
-}
-
-function selectPalettePreset(hex) {
-    document.getElementById('custom-palette-color-picker').value = hex;
-    document.getElementById('custom-palette-color-text').value = hex.toUpperCase();
-}
-
-function syncPaletteColorPickerToText() {
-    const hex = document.getElementById('custom-palette-color-picker').value;
-    document.getElementById('custom-palette-color-text').value = hex.toUpperCase();
-    
-    // Unhighlight presets
-    const presetsContainer = document.getElementById('palette-presets-container');
-    if (presetsContainer) {
-        Array.from(presetsContainer.children).forEach(c => {
-            c.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-            c.style.background = 'rgba(255, 255, 255, 0.03)';
-        });
-    }
-}
-
-function syncPaletteColorTextToPicker() {
-    let hex = document.getElementById('custom-palette-color-text').value.trim();
-    if (!hex.startsWith('#')) {
-        hex = '#' + hex;
-    }
-    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-        document.getElementById('custom-palette-color-picker').value = hex;
-    }
-}
-
-async function saveProgramPalette() {
-    const color = document.getElementById('custom-palette-color-text').value.trim();
-    if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
-        showCustomAlert("Error", "Please enter a valid hex color code (e.g. #38BDF8)");
-        return;
-    }
-    
-    const btn = document.getElementById('save-palette-btn');
-    btn.disabled = true;
-    btn.innerText = "Applying...";
-    
-    try {
-        const response = await fetch('/api/programs/palette', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                program_id: paletteTargetProgramId,
-                color: color
-            })
-        });
-        
-        const data = await response.json();
-        if (response.ok && data.status === 'success') {
-            if (activeProgramName && paletteTargetProgramId === activeProgramName.toLowerCase()) {
-                applyTheme(paletteTargetProgramId, data.theme);
-            }
-            
-            document.getElementById('palette-modal').style.display = 'none';
-            openAssistantModal();
-        } else {
-            showCustomAlert("Error", data.error || "Failed to save color palette.");
-        }
-    } catch (e) {
-        console.error(e);
-        showCustomAlert("Error", "Failed to communicate with server: " + e.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Apply Theme";
-    }
-}
 
 function switchProgramProfileTab(tab) {
     const tabs = ['core', 'phys'];
@@ -4394,7 +4252,7 @@ async function loadHistory() {
         }
         if (data.character_name) {
             activeProgramName = data.character_name;
-            const programTitle = "Sanctuary";
+            const programTitle = "LM Arena";
             document.title = programTitle;
             
             const headerTitle = document.querySelector('.header-title-area h1');
@@ -5285,8 +5143,13 @@ function renderMessage(msg, isLive = false) {
 
     bubblesToCreate.forEach((item, idx) => {
         const isMediaItem = item.type === 'media';
+        const rawContent = (typeof item.content === 'string' ? item.content : '').trim();
+        const isMarkdownImgOnly = rawContent.startsWith('![') && rawContent.endsWith(')');
+        const isHtmlImgOnly = rawContent.startsWith('<img') && rawContent.endsWith('>');
+        const isImageOnly = isMediaItem || isMarkdownImgOnly || isHtmlImgOnly;
+
         const bubble = document.createElement('div');
-        bubble.className = `message ${role}` + (isMediaItem ? ' image-message' : '');
+        bubble.className = `message ${role}` + (isImageOnly ? ' image-message' : '');
         bubble.dataset.rawText = text;
         bubble.dataset.msgId = msgId;
         if (isMsgTransient) {
@@ -9027,7 +8890,7 @@ async function triggerProactiveAction() {
         const data = await response.json();
         if (signal.aborted) return;
         if (data.status === 'success') {
-            if (data.type === 'thought') {
+            if (data.type === 'tip' || data.type === 'thought') {
                 showThoughtBubbleOverlay(data.content);
             } else if (data.type === 'message' || data.type === 'portrait') {
                 loadHistory();
@@ -9053,14 +8916,14 @@ function showThoughtBubbleOverlay(text) {
     
     row.innerHTML = `
         <div class="avatar-container" style="opacity: 0.5;">
-            <img class="avatar program-avatar thinking-glow" src="${profileUrl}" alt="Program">
+            <img class="avatar program-avatar thinking-glow" src="${profileUrl}" alt="Companion">
         </div>
         <div class="message program thought-bubble">
             <div class="thought-badge">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px; display: inline-block; vertical-align: -1px;">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px; display: inline-block; vertical-align: -1px;">
+                    <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26C17.81 13.47 19 11.38 19 9a7 7 0 0 0-7-7z"></path>
                 </svg>
-                <span>Thought</span>
+                <span>Gameplay Tip & Lore</span>
             </div>
             <div class="message-text" style="font-style: italic; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
                 ${text}

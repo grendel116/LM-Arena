@@ -1,0 +1,19 @@
+{
+  "name": "Atmosphere",
+  "description": "Top-level world atmosphere directives for Tamriel under Jagar Tharn",
+  "entries": [
+    {
+      "uid": 7101,
+      "key": [
+        "tamriel", "empire", "city", "guard", "guards", "night", "street", "streets",
+        "jagar tharn", "tharn", "curfew", "decay", "world", "arena", "town", "province",
+        "imperial city", "simulacrum", "autocracy", "police state"
+      ],
+      "secondary_key": [],
+      "content": "Tamriel during the Imperial Simulacrum (3E 389 – 3E 399) is a dark, oppressive autocracy in decay. Imperial Battlemages and corrupted city guards enforce Jagar Tharn's puppet regime through extortion, aggressive curfews, and violent suppression. At 6 PM nightly, city gates lock shut and citizens flee indoors. After dark, urban streets and town alleys are overrun by roaming undead, ghouls, and criminal syndicates. Infrastructure is crumbling, sewer vaults harbor monsters, and provincial border wars rage uncontrolled across Tamriel.",
+      "enabled": true,
+      "priority": 100,
+      "probability": 100
+    }
+  ]
+}

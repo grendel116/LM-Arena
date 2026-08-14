@@ -339,12 +339,24 @@ _ARENA_DIRECTIVE_PROMPT = (
     "16. `[arena_advance_stage(character_name=\"{{user}}\")]` - Advance Main Quest stage upon milestone completion.\n"
     "17. `[arena_travel(character_name=\"{{user}}\", destination_province=\"...\", destination_city=\"...\")]` - Travel between Tamriel provinces/cities.\n"
     "18. `[generate_local_image(prompt=\"...\")]` - Generate a character portrait/scene via ComfyUI (comma-separated tags).\n"
-    "19. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate environment/creature visual art.\n\n"
+    "19. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate environment/creature visual art.\n"
+    "20. `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` - Recruit an NPC into your party as an active follower when they agree to join or follow you narratively.\n\n"
     "Mandatory Gameplay Rules:\n"
     "- SPELLCASTING: Whenever the player casts or channels any spell, incantation, or magical power from their grimoire or imagination, YOU MUST CALL `[arena_spend_magicka(character_name=\"{{user}}\", amount=...)]` with the spell's MP cost in the same turn.\n"
     "- EXERTION: Whenever the player performs heavy exertion (sprinting, leaping chasms, dodging, power attacks), call `[arena_spend_stamina(character_name=\"{{user}}\", amount=...)]`.\n"
     "- COMBAT & DAMAGE: Call `[arena_roll_combat]` on attacks, and call `[arena_take_damage]` when enemies hit the player.\n"
     "- LOOT & INVENTORY: Call `[arena_add_item]` or `[arena_add_gold]` whenever items or coins are discovered or awarded.\n"
+    "- FOLLOWER RECRUITMENT VS ESCORTS: Reserve `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` ONLY for main character companions who possess high affinity, deep trust, or hired combat readiness to fight alongside the player long term. For civilian escorts, VIPs, or temporary quest targets, describe them traveling alongside the player in narrative text WITHOUT calling `[arena_recruit_follower]`.\n"
+    "- NPC NAMING CONVENTIONS: When introducing new NPCs, merchants, guards, outlaws, rulers, or quest givers, YOU MUST USE authentic Elder Scrolls names by race (referencing Oblivion, Morrowind, Skyrim, and Arena lore):\n"
+    "  * Imperials: Latinate names (e.g. Caius Cosades, Lex, Amantius Allectus, Valeria Motierre, Decimus Caro).\n"
+    "  * Nords: Scandinavian names with clan titles/patronymics (e.g. Jauffre, Thoronir, Ysolda, Iron-Hand, Battle-Born).\n"
+    "  * Dark Elves (Dunmer): Resdayn names with house surnames (e.g. Jiub, Athyn Sarano, Divayth Fyr, Karliah Indoril, Barenziah).\n"
+    "  * High Elves (Altmer): Ornate Elven names with formal honorifics (e.g. Ocato, Carahil, Mankar Camoran, Raminus Polus).\n"
+    "  * Bretons: Anglo-Norman / French feudal names (e.g. Francois Motierre, Armand Christophe, Bernadette Beauchamp).\n"
+    "  * Redguards: Arabic / North African honorific names (e.g. Cyrus, Trayvond, Azani Radhad, Baurus, al-Skaven).\n"
+    "  * Orcs: Guttural names with gro-/gra- clan prefixes (e.g. Agronak gro-Malog, Mazoga gra-Abrak).\n"
+    "  * Argonians: Jel names or translated titles (e.g. Dar-Ma, Ocheeva, Runs-With-Swamps, City-Swimmer).\n"
+    "  * Khajiit: Ta'agra names with honorific prefixes (e.g. M'aiq the Liar, S'drassa, J'skar, Ri'Zakar).\n"
     "- NARRATIVE: Output tool tags alongside your narrative text. Describe the visceral sensory outcome without quoting raw formulas.\n"
     "\n# FOLLOWER KNOWLEDGE & LORE\n"
     "When <recalled_journals>, <knowledge_base>, or [WORLD INFO] context appears, incorporate the lore seamlessly into the world narration.\n"
@@ -368,6 +380,16 @@ def is_real_user_msg(msg: dict) -> bool:
 
 
 
+def _sanitize_tool_arg(val):
+    if val is Ellipsis:
+        return None
+    if isinstance(val, dict):
+        return {k: _sanitize_tool_arg(v) for k, v in val.items()}
+    if isinstance(val, list):
+        return [_sanitize_tool_arg(v) for v in val]
+    return val
+
+
 def _parse_emulated_tool_call(tool_name: str, args_str: str) -> dict:
     """Parses arguments from an emulated tool call string.
     Supports both key=value style and simple positional string style.
@@ -379,9 +401,9 @@ def _parse_emulated_tool_call(tool_name: str, args_str: str) -> dict:
         kwargs = {}
         args = []
         for kw in call_node.keywords:
-            kwargs[kw.arg] = ast.literal_eval(kw.value)
+            kwargs[kw.arg] = _sanitize_tool_arg(ast.literal_eval(kw.value))
         for arg in call_node.args:
-            args.append(ast.literal_eval(arg))
+            args.append(_sanitize_tool_arg(ast.literal_eval(arg)))
         return {"args": args, "kwargs": kwargs}
     except Exception:
         kwargs = {}
@@ -394,7 +416,7 @@ def _parse_emulated_tool_call(tool_name: str, args_str: str) -> dict:
         val = args_str.strip()
         if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
             val = val[1:-1]
-        return {"args": [val], "kwargs": {}}
+        return {"args": [_sanitize_tool_arg(val)], "kwargs": {}}
 
 
 def _convert_json_tool_calls_to_tags(text: str) -> str:
@@ -1379,7 +1401,8 @@ class BaseProgramRunner:
                         "arena_spend_stamina", "arena_restore_stamina", "arena_rest",
                         "arena_add_gold", "arena_spend_gold", "arena_add_item",
                         "arena_remove_item", "arena_drop_item", "arena_learn_spell", "arena_add_effect",
-                        "arena_remove_effect", "arena_add_experience", "arena_get_character_context"
+                        "arena_remove_effect", "arena_add_experience", "arena_get_character_context",
+                        "arena_recruit_follower"
                     }
                     disallowed = [m for m in matches if m.group(1) not in arena_allowed]
                     for m in disallowed:
@@ -1961,7 +1984,7 @@ class OpenSourceRunner(BaseProgramRunner):
                     "inversion_state": inversion_state
                 }
                 with open(self._get_session_path(session_id), "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
+                    json.dump(data, f, indent=2, ensure_ascii=False, default=lambda o: None if o is Ellipsis else str(o))
             except Exception as e:
                 print(f"Error saving OS session {session_id} to disk: {e}")
 

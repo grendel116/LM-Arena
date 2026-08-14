@@ -78,6 +78,51 @@
       "enabled": true,
       "priority": 10,
       "probability": 100
+    },
+    {
+      "uid": 7009,
+      "key": ["fighters guild", "warriors guild", "mercenaries", "fighter hall"],
+      "secondary_key": [],
+      "content": "The Fighters Guild offers mercenary contracts, beast extermination, escort security, and combat training throughout Tamriel. They maintain warrior halls in major provincial cities.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7010,
+      "key": ["dark brotherhood", "wrath of sithis", "sithis", "assassins guild"],
+      "secondary_key": [],
+      "content": "The Dark Brotherhood is a secretive syndicate of professional assassins worshipping Sithis and the Night Mother. They fulfill illegal contract killings across Tamriel.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7011,
+      "key": ["morag tong", "writ of execution", "mephala guild"],
+      "secondary_key": [],
+      "content": "The Morag Tong is the ancient guild of assassins legally sanctioned under Morrowind law. Operating under the sacred writs of Mephala and Dunmer Great House jurisdiction, they execute sanctioned blood feuds.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7012,
+      "key": ["the blades", "blades", "emperor bodyguard"],
+      "secondary_key": [],
+      "content": "The Blades serve as the secret intelligence agency and bodyguards of the true Septim Emperors. Under Jagar Tharn's usurpation during the Imperial Simulacrum, the Blades have been hunted, infiltrated, or driven underground.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 7013,
+      "key": ["tribunal", "almsivi", "almalexia", "sotha sil", "vivec", "three tribunes", "ghostfence"],
+      "secondary_key": [],
+      "content": "The Tribunal — Almalexia, Sotha Sil, and Vivec (ALMSIVI) — are the living gods ruling Morrowind during the Third Era from Mournhold, Clockwork City, and Vivec. Though actively worshipped by the Dunmer, their divine power is secretly waning as Dagoth Ur strengthens beneath Red Mountain.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
     }
   ]
 }

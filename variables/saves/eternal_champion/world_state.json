@@ -1,0 +1,47 @@
+{
+    "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "era": "Third Era"
+    },
+    "current_province": "Cyrodiil",
+    "current_location": "Imperial Dungeon",
+    "quest_stage": 10,
+    "fragments_collected": [],
+    "provinces_visited": [
+        "Cyrodiil"
+    ],
+    "cities_discovered": [],
+    "dungeons_cleared": [],
+    "followers": [],
+    "world_flags": {
+        "shift_gate_answered": false,
+        "ria_vision_1_seen": false,
+        "province_travel_unlocked": false,
+        "staff_assembled": false
+    },
+    "weather": {
+        "Cyrodiil": "clear",
+        "Skyrim": "blizzard",
+        "Morrowind": "ashstorm",
+        "Black Marsh": "monsoon",
+        "Elsweyr": "clear",
+        "Valenwood": "overcast",
+        "Summerset Isle": "clear",
+        "Hammerfell": "clear",
+        "High Rock": "overcast"
+    },
+    "faction_reputation": {
+        "mages_guild": 0,
+        "imperial_cult": 0,
+        "temple_of_kynareth": 0,
+        "temple_of_arkay": 0,
+        "temple_of_zenithar": 0,
+        "temple_of_talos": 0,
+        "temple_of_mara": 0,
+        "temple_of_dibella": 0,
+        "temple_of_stendarr": 0,
+        "noble_courts": 0
+    }
+}

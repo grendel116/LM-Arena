@@ -768,6 +768,37 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                 if item_name:
                     add_item(sheet, {"name": item_name, "type": item_type, "quantity": qty})
                     modified = True
+            elif t_name in ("arena_add_experience", "arena_add_xp"):
+                amount = int(args.get("amount", 0)) if args.get("amount") is not None else 0
+                if amount > 0:
+                    sheet["experience"] = max(0, sheet.get("experience", 0) - amount)
+                    modified = True
+            elif t_name == "arena_learn_spell":
+                spell_name = args.get("spell_name")
+                if spell_name and "spells" in sheet:
+                    sheet["spells"] = [s for s in sheet["spells"] if s.get("name", "").lower() != spell_name.lower()]
+                    modified = True
+            elif t_name == "arena_add_effect":
+                effect_name = args.get("effect_name")
+                if effect_name:
+                    sheet = remove_effect(sheet, effect_name)
+                    modified = True
+            elif t_name == "arena_remove_effect":
+                effect_name = args.get("effect_name")
+                if effect_name:
+                    dur = int(args.get("duration_turns", 3))
+                    src = args.get("source", "restored")
+                    sheet = add_effect(sheet, effect_name, dur, src)
+                    modified = True
+            elif t_name == "arena_advance_stage":
+                try:
+                    from engine.quest import load_world_state, save_world_state
+                    ws = load_world_state(character_name)
+                    if ws.get("stage", 0) > 0:
+                        ws["stage"] -= 1
+                        save_world_state(character_name, ws)
+                except Exception as q_err:
+                    print(f"[rollback_tool_effects] Error rolling back quest stage: {q_err}", flush=True)
                     
         if modified:
             save_character(character_name, sheet)

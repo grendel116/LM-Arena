@@ -23,6 +23,8 @@ variables/*
 !variables/banned_words.json
 !variables/saves/
 variables/saves/*
+!variables/saves/eternal_champion/
+!variables/saves/eternal_champion/**
 variables/user_profiles/*
 !variables/user_profiles/champion.md
 

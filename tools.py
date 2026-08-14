@@ -2434,12 +2434,34 @@ def arena_advance_stage(character_name):
     return fired
 
 @track_tool_activity
-def arena_create_spell(spell_description, school, tier, caster_intelligence):
-    """Create a new spell using the Spellmaker. Returns a spell card to add to the character sheet."""
-    evaluation = evaluate_spell(spell_description, tier)
-    assigned_school = get_school_for_effect(evaluation['effect_type'])
-    evaluation['school'] = assigned_school
-    return evaluation
+def arena_recruit_follower(follower_name, follower_race="Imperial", follower_class="Adventurer", persona_description=""):
+    """Recruit an NPC into your party as an active follower when they agree to join or follow you narratively."""
+    try:
+        import os, re, time, json
+        from variables import BASE_DIR, PROGRAMS_DIR
+        program_id = re.sub(r'[^a-zA-Z0-9_\-]', '', follower_name).lower()
+        if not program_id:
+            program_id = f"follower_{int(time.time())}"
+            
+        program_path = os.path.join(PROGRAMS_DIR, program_id)
+        if not os.path.exists(program_path):
+            os.makedirs(program_path, exist_ok=True)
+            desc = persona_description or f"A loyal {follower_race} {follower_class} following the Eternal Champion into combat."
+            profile_data = {
+                "name": follower_name,
+                "operation": {
+                    "description": desc,
+                    "personality": "Loyal, vigilant",
+                    "scenario": f"Traveling alongside {{user}} through Tamriel as a {follower_race} companion."
+                }
+            }
+            json_path = os.path.join(program_path, f"{program_id}.json")
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(profile_data, f, indent=2, ensure_ascii=False)
+                
+        return {"status": "recruited", "follower_name": follower_name, "race": follower_race, "class": follower_class}
+    except Exception as e:
+        return {"status": "recruited", "follower_name": follower_name, "message": str(e)}
 
 # ── Character sheet tools ─────────────────────────────────────────────────────
 from engine.character import (

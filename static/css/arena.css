@@ -75,7 +75,8 @@ blockquote {
 .modal .edit-cancel-btn,
 .modal-card .edit-cancel-btn,
 .modal .edit-save-btn,
-.modal-card .edit-save-btn {
+.modal-card .edit-save-btn,
+.onboarding-btn {
     transform: none !important;
     box-shadow: none !important;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
@@ -84,7 +85,8 @@ blockquote {
 .modal .edit-btn:hover,
 .modal-card .edit-btn:hover,
 .modal .edit-cancel-btn:hover,
-.modal-card .edit-cancel-btn:hover {
+.modal-card .edit-cancel-btn:hover,
+.onboarding-btn:hover {
     transform: none !important;
     background: rgba(255, 255, 255, 0.08) !important;
     color: var(--text-main) !important;
@@ -102,6 +104,27 @@ blockquote {
     background: var(--user-bubble) !important;
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Image messages sit 100% transparent on background with no gray bubble frame */
+.message.image-message,
+.message.program.image-message,
+.message.user.image-message,
+.message.program:has(.message-image-container),
+.message.program:has(img),
+.message-text:has(.message-image-container),
+.message-text:has(img) {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.message img,
+.message-image-container img {
+    max-height: 420px;
+    border-radius: 12px;
 }
 
 body, #app-container, #chat-container, .chat-container {
@@ -540,28 +563,21 @@ body, #app-container, #chat-container, .chat-container {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 6px color-mix(in srgb, currentColor 40%, transparent);
     white-space: nowrap;
     z-index: 9999;
-    animation: heartDeltaFloat 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: heartDeltaFloat 0.55s ease-out forwards;
 }
 
 @keyframes heartDeltaFloat {
     0% {
         opacity: 0;
-        transform: translate(-50%, 0) scale(0.75);
+        transform: translate(-50%, 4px) scale(0.85);
     }
-    18% {
+    20% {
         opacity: 1;
-        transform: translate(-50%, -14px) scale(1.05);
-    }
-    35% {
-        transform: translate(-50%, -18px) scale(1.0);
-    }
-    70% {
-        opacity: 0.95;
-        transform: translate(-50%, -26px) scale(0.95);
+        transform: translate(-50%, -10px) scale(1);
     }
     100% {
         opacity: 0;
-        transform: translate(-50%, -34px) scale(0.85);
+        transform: translate(-50%, -36px) scale(0.9);
     }
 }
 
@@ -601,4 +617,49 @@ body, #app-container, #chat-container, .chat-container {
 .avatar-fallback {
     background-color: hsl(35, 30%, 22%) !important;
     color: hsl(42, 40%, 70%) !important;
+}
+
+/* Loading Overlay Styling */
+.loading-logo {
+    background: linear-gradient(135deg, #d4b46a, var(--arena-dull-gold, #c5a359), #8a6e34) !important;
+    box-shadow: 0 8px 32px rgba(197, 163, 89, 0.25) !important;
+}
+
+.loading-spinner-bar::after {
+    background: linear-gradient(90deg, transparent, var(--arena-dull-gold, #c5a359), transparent) !important;
+}
+
+/* Inventory Bag Pulse & Floating Item Delta */
+.inventory-btn {
+    position: relative;
+}
+
+.bag-delta-pop {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    pointer-events: none;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: var(--arena-font-ui, system-ui, sans-serif);
+    letter-spacing: 0.02em;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: rgba(12, 12, 16, 0.9);
+    border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 6px color-mix(in srgb, currentColor 40%, transparent);
+    white-space: nowrap;
+    z-index: 9999;
+    animation: heartDeltaFloat 0.55s ease-out forwards;
+}
+
+.inventory-btn.bag-pulse {
+    animation: bagPulse 0.8s ease-in-out !important;
+}
+
+@keyframes bagPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    50% { transform: scale(1.25); box-shadow: 0 0 14px 4px rgba(245, 158, 11, 0.6); color: #fbbf24 !important; border-color: rgba(245, 158, 11, 0.6) !important; }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
 }
