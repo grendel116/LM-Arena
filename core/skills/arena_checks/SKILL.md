@@ -3,7 +3,7 @@ name: arena_checks
 description: "Resolves D20 attribute checks, specialized skill tests (lockpicking, stealth, persuasion, climbing), Sorcerer spell absorption, and custom spellmaking."
 summary: "Roll raw attribute tests with [arena_roll_check], specialized skill checks with [arena_roll_skill], Sorcerer spell absorption with [arena_sorcerer_absorb], and design spells with [arena_create_spell]."
 retrieval: vector
-triggers: roll, check, d20, lock, pick, lockpick, picklock, door, chest, stealth, sneak, hide, persuade, bribe, climb, jump, swim, strength, agility, endurance, intelligence, willpower, personality, speed, luck, absorb, spellmaker, create spell, craft spell
+triggers: roll, check, d20, lock, pick, lockpick, picklock, door, chest, stealth, sneak, hide, persuade, bribe, climb, jump, swim, strength, agility, endurance, intelligence, willpower, personality, speed, luck, absorb, spellmaker, create spell, craft spell, magic, spell, cast, spark, fireball, lightning, frost, mend wounds, cast spell
 ---
 
 # ATTRIBUTE & SKILL CHECK PROTOCOLS
