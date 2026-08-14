@@ -681,15 +681,24 @@ def update_character_identity(sheet: dict, name: str = None, race: str = None, g
     d = sheet.setdefault("derived", {})
     hp_base = 20 + int(endurance * 0.2) + tmpl.get("hp_bonus", 4)
     d["hp_max"] = hp_base
-    d["hp_current"] = hp_base
+    if "hp_current" not in d:
+        d["hp_current"] = hp_base
+    else:
+        d["hp_current"] = min(hp_base, max(0, d["hp_current"]))
     
     mp_base = max(10, int(intelligence * tmpl.get("mp_mult", 1.0)))
     d["mp_max"] = mp_base
-    d["mp_current"] = mp_base
+    if "mp_current" not in d:
+        d["mp_current"] = mp_base
+    else:
+        d["mp_current"] = min(mp_base, max(0, d["mp_current"]))
     
     stamina_base = int((endurance + strength) * 0.6)
     d["stamina_max"] = stamina_base
-    d["stamina_current"] = stamina_base
+    if "stamina_current" not in d:
+        d["stamina_current"] = stamina_base
+    else:
+        d["stamina_current"] = min(stamina_base, max(0, d["stamina_current"]))
     
     # Configure starting spells if empty
     if "spells" not in sheet or not sheet["spells"]:
@@ -701,3 +710,66 @@ def update_character_identity(sheet: dict, name: str = None, race: str = None, g
             sheet["spells"] = []
             
     return sheet
+
+
+def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
+    """Reverts character mutations from deleted or rolled-back turns."""
+    if not tool_calls:
+        return
+    try:
+        sheet = load_character(character_name)
+        modified = False
+        for tc in tool_calls:
+            if not isinstance(tc, dict):
+                continue
+            if tc.get("type") != "call":
+                continue
+            t_name = tc.get("name", "")
+            args = tc.get("args", {})
+            if not isinstance(args, dict):
+                continue
+                
+            amount = int(args.get("amount", 0)) if args.get("amount") is not None else 0
+            
+            if t_name in ("arena_spend_magicka", "arena_spend_spell_points"):
+                restore_magicka(sheet, amount)
+                modified = True
+            elif t_name in ("arena_restore_magicka", "arena_restore_spell_points"):
+                spend_magicka(sheet, amount)
+                modified = True
+            elif t_name == "arena_spend_stamina":
+                restore_stamina(sheet, amount)
+                modified = True
+            elif t_name == "arena_restore_stamina":
+                spend_stamina(sheet, amount)
+                modified = True
+            elif t_name == "arena_take_damage":
+                heal(sheet, amount)
+                modified = True
+            elif t_name == "arena_heal":
+                take_damage(sheet, amount)
+                modified = True
+            elif t_name == "arena_spend_gold":
+                add_gold(sheet, amount)
+                modified = True
+            elif t_name == "arena_add_gold":
+                spend_gold(sheet, amount)
+                modified = True
+            elif t_name == "arena_add_item":
+                item_name = args.get("item_name")
+                qty = int(args.get("quantity", 1))
+                if item_name:
+                    remove_item(sheet, item_name, qty)
+                    modified = True
+            elif t_name in ("arena_remove_item", "arena_drop_item"):
+                item_name = args.get("item_name")
+                qty = int(args.get("quantity", 1))
+                item_type = args.get("item_type", "misc")
+                if item_name:
+                    add_item(sheet, {"name": item_name, "type": item_type, "quantity": qty})
+                    modified = True
+                    
+        if modified:
+            save_character(character_name, sheet)
+    except Exception as e:
+        print(f"[rollback_tool_effects] Error reverting tool effects: {e}", flush=True)

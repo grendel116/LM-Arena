@@ -197,24 +197,41 @@
 
         <!-- Character Status Modal -->
         <div id="status-modal" class="modal" onclick="closeStatusModal()">
-            <div class="modal-panel" onclick="event.stopPropagation()" style="max-width: 540px; width: 92%; max-height: 88vh; overflow-y: auto; background: var(--arena-surface); border: 1px solid var(--arena-border); border-radius: 16px; padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <h2 id="modal-char-name" style="margin: 0; font-size: 1.35rem; color: var(--arena-gold); font-weight: 700;">Eternal Champion</h2>
-                            <button onclick="closeStatusModal(); openAssistantModal('user');" title="Edit Character Sheet, Class & Narrative Background in Player Profile" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; padding: 3px 8px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                                Edit Profile
-                            </button>
-                        </div>
-                        <div id="modal-char-subtitle" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Nord Male Mage • Level 1</div>
+            <div class="modal-card" style="max-width: 580px; width: 95%; text-align: left; align-items: stretch; max-height: 88vh; overflow-y: auto;" onclick="event.stopPropagation()">
+                <span class="close-modal-btn" onclick="closeStatusModal()">&times;</span>
+                <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Arena — Character Status</span>
+                </h3>
+
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
+                    Live attributes, vitals, location, and condition effects for your active hero in Tamriel.
+                </p>
+
+                <!-- Active Character Hero Card -->
+                <div style="background: rgba(22, 25, 32, 0.8); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--primary-accent); display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); color: var(--primary-accent); flex-shrink: 0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
                     </div>
-                    <span class="close-modal-btn" onclick="closeStatusModal()" style="font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-muted);">&times;</span>
+                    <div>
+                        <div id="modal-char-name" style="font-weight: 700; font-size: 1.05rem; color: #fff;">Eternal Champion</div>
+                        <div id="modal-char-subtitle" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Nord Male Mage • Level 1</div>
+                    </div>
                 </div>
 
                 <!-- Location & Date Bar -->
-                <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--arena-narration);">
-                    <span id="modal-char-location">Imperial Dungeon, Cyrodiil</span>
-                    <span id="modal-char-date">1 Morning Star, 3E 389</span>
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--text-main);">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <span id="modal-char-location">Imperial Dungeon, Cyrodiil</span>
+                    </span>
+                    <span id="modal-char-date" style="color: var(--primary-accent); font-weight: 500;">1 Morning Star, 3E 389</span>
                 </div>
 
                 <!-- Vitals Bars -->
@@ -223,9 +240,9 @@
                     <div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600;">
                             <span style="color: #f87171;">HEALTH (HP)</span>
-                            <span id="modal-char-hp-text" style="color: var(--text-main);">28 / 28</span>
+                            <span id="modal-char-hp-text" style="color: var(--text-main);">38 / 38</span>
                         </div>
-                        <div style="height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
                             <div id="modal-char-hp-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #ef4444, #f87171); transition: width 0.3s ease;"></div>
                         </div>
                     </div>
@@ -233,9 +250,9 @@
                     <div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600;">
                             <span style="color: #60a5fa;">MAGICKA (MP)</span>
-                            <span id="modal-char-mp-text" style="color: var(--text-main);">42 / 42</span>
+                            <span id="modal-char-mp-text" style="color: var(--text-main);">117 / 117</span>
                         </div>
-                        <div style="height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
                             <div id="modal-char-mp-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s ease;"></div>
                         </div>
                     </div>
@@ -243,9 +260,9 @@
                     <div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600;">
                             <span style="color: #34d399;">STAMINA</span>
-                            <span id="modal-char-stamina-text" style="color: var(--text-main);">50 / 50</span>
+                            <span id="modal-char-stamina-text" style="color: var(--text-main);">81 / 81</span>
                         </div>
-                        <div style="height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+                        <div style="height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
                             <div id="modal-char-stamina-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #059669, #34d399); transition: width 0.3s ease;"></div>
                         </div>
                     </div>
@@ -253,77 +270,87 @@
 
                 <!-- Combat & Wealth Stats -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 18px;">
-                    <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; text-align: center;">
-                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Armor</div>
-                        <div id="modal-char-armor" style="font-size: 1.1rem; font-weight: 700; color: var(--arena-gold);">4</div>
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 8px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Armor</div>
+                        <div id="modal-char-armor" style="font-size: 1.1rem; font-weight: 700; color: var(--primary-accent); margin-top: 2px;">4</div>
                     </div>
-                    <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; text-align: center;">
-                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Gold</div>
-                        <div id="modal-char-gold" style="font-size: 1.1rem; font-weight: 700; color: #fbbf24;">75</div>
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 8px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Gold</div>
+                        <div id="modal-char-gold" style="font-size: 1.1rem; font-weight: 700; color: var(--primary-accent); margin-top: 2px;">75</div>
                     </div>
-                    <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; text-align: center;">
-                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">XP</div>
-                        <div id="modal-char-xp" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">0</div>
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 8px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">XP</div>
+                        <div id="modal-char-xp" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">0</div>
                     </div>
                 </div>
 
                 <!-- Attributes Grid -->
-                <h4 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">Attributes</h4>
-                <div id="modal-char-attributes" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px;">
-                    <!-- Rendered dynamically -->
+                <div style="margin-bottom: 18px;">
+                    <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-accent); margin-bottom: 8px; font-weight: 600;">Attributes</div>
+                    <div id="modal-char-attributes" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                        <!-- Rendered dynamically -->
+                    </div>
                 </div>
 
                 <!-- Active Effects & Conditions -->
-                <h4 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">Conditions & Effects</h4>
-                <div id="modal-char-effects" style="font-size: 0.82rem; color: var(--text-muted);">
-                    None active
+                <div>
+                    <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-accent); margin-bottom: 6px; font-weight: 600;">Conditions & Effects</div>
+                    <div id="modal-char-effects" style="font-size: 0.82rem; color: var(--text-muted); background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 12px;">
+                        None active
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Dedicated Inventory & Spells Modal (Backpack) -->
         <div id="inventory-modal" class="modal" onclick="closeInventoryModal()">
-            <div class="modal-panel" onclick="event.stopPropagation()" style="max-width: 560px; width: 92%; max-height: 88vh; overflow-y: auto; background: var(--arena-surface); border: 1px solid var(--arena-border); border-radius: 16px; padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+            <div class="modal-card" style="max-width: 580px; width: 95%; text-align: left; align-items: stretch; max-height: 88vh; overflow-y: auto;" onclick="event.stopPropagation()">
+                <span class="close-modal-btn" onclick="closeInventoryModal()">&times;</span>
+                <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <path d="M16 10a4 4 0 0 1-8 0"></path>
+                    </svg>
+                    <span>Arena — Inventory & Spells</span>
+                </h3>
+
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
+                    Manage carried equipment, active items, gold pouch, and learned spells in your grimoire.
+                </p>
+
+                <!-- Gold & Counts Card -->
+                <div style="background: rgba(22, 25, 32, 0.8); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); display: flex; align-items: center; justify-content: center; color: #4ade80;">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--primary-accent); display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); color: var(--primary-accent);">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M8 8a4 4 0 0 1 8 0c0 4 3 6 3 10a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3c0-4 3-6 3-10z"></path>
-                                <line x1="8" y1="8" x2="16" y2="8"></line>
-                                <path d="M10 5l2 3 2-3"></path>
+                                <circle cx="12" cy="12" r="8"></circle>
+                                <line x1="12" y1="2" x2="12" y2="4"></line>
+                                <line x1="12" y1="20" x2="12" y2="22"></line>
                             </svg>
                         </div>
                         <div>
-                            <h2 style="margin: 0; font-size: 1.25rem; color: var(--arena-gold); font-weight: 700;">Inventory & Spells</h2>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">Equipped items, carried gear, and learned spells</div>
+                            <strong id="inventory-gold-display" style="font-size: 1.05rem; color: var(--primary-accent);">0 Gold</strong>
                         </div>
                     </div>
-                    <span class="close-modal-btn" onclick="closeInventoryModal()" style="font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-muted);">&times;</span>
-                </div>
-
-                <!-- Gold Display -->
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: baseline; gap: 8px;">
-                    <strong id="inventory-gold-display" style="font-size: 1.1rem; color: #fbbf24;">0 Gold</strong>
+                    <div style="display: flex; gap: 8px;">
+                        <span id="inventory-item-count" style="font-size: 0.75rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 8px; color: var(--text-muted);">0 items</span>
+                        <span id="inventory-spell-count" style="font-size: 0.75rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 8px; color: var(--text-muted);">0 spells</span>
+                    </div>
                 </div>
 
                 <!-- Equipment & Inventory -->
-                <div style="margin-bottom: 22px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <h3 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0;">Inventory</h3>
-                        <span id="inventory-item-count" style="font-size: 0.75rem; color: var(--text-muted);">0 items</span>
-                    </div>
-                    <div id="modal-char-inventory" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px;">
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-accent); margin-bottom: 8px; font-weight: 600;">Carried Equipment</div>
+                    <div id="modal-char-inventory" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 52px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;">
                         <!-- Rendered dynamically -->
                     </div>
                 </div>
 
                 <!-- Spells Known -->
                 <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <h3 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0;">Spells Known</h3>
-                        <span id="inventory-spell-count" style="font-size: 0.75rem; color: var(--text-muted);">0 spells</span>
-                    </div>
-                    <div id="modal-char-spells" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px;">
+                    <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-accent); margin-bottom: 8px; font-weight: 600;">Grimoire & Spells</div>
+                    <div id="modal-char-spells" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 52px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;">
                         <!-- Rendered dynamically -->
                     </div>
                 </div>
@@ -416,10 +443,10 @@
             </p>
             
             <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
-            <div style="display: flex; gap: 6px; margin-bottom: 15px; align-items: stretch;">
-                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1 1 0%; min-width: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; box-sizing: border-box; background: rgba(255, 255, 255, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 4px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Add Document</button>
-                <button onclick="switchDataBankTab('memories')" id="tab-btn-memories" class="edit-btn edit-cancel-btn" style="flex: 1 1 0%; min-width: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; box-sizing: border-box; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 4px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Journals & Memories</button>
-                <button onclick="switchDataBankTab('lorebooks')" id="tab-btn-lorebooks" class="edit-btn edit-cancel-btn" style="flex: 1 1 0%; min-width: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; box-sizing: border-box; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 4px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Lorebooks</button>
+            <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Add Document</button>
+                <button onclick="switchDataBankTab('memories')" id="tab-btn-memories" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Journals & Memories</button>
+                <button onclick="switchDataBankTab('lorebooks')" id="tab-btn-lorebooks" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Lorebooks</button>
             </div>
             
             <!-- Upload & Scrape Tab -->
@@ -799,16 +826,16 @@
             <span class="close-modal-btn" onclick="closeImportProgramModal()">&times;</span>
             <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                <span>Create / Import Program</span>
+                <span>Arena — Recruit Follower</span>
             </h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.4;">
-                Procedurally import a new program from a character card (PNG) or describe a new character persona using text.
+                Import a companion card (PNG) or describe a new follower persona to recruit into your party in Tamriel.
             </p>
 
             <!-- Tabs -->
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
                 <button onclick="switchImportTab('tavern')" id="import-tab-btn-tavern" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255, 255, 255, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    Character Card
+                    Follower Card
                 </button>
                 <button onclick="switchImportTab('describe')" id="import-tab-btn-describe" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Text Description
@@ -823,7 +850,7 @@
                 </button>
                 <div style="display: flex; justify-content: flex-end;">
                     <button onclick="submitTavernCardImport()" id="tavern-import-btn" class="onboarding-btn" style="padding: 10px 24px; font-size: 0.85rem; min-width: auto; width: auto; height: auto;">
-                        Import Program
+                        Recruit Follower
                     </button>
                 </div>
             </div>
@@ -831,16 +858,16 @@
             <!-- Text Description Tab -->
             <div id="import-tab-describe" style="display: none;">
                 <div class="input-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Program Name</label>
-                    <input type="text" id="describe-program-name" placeholder="e.g. Marie the Librarian" class="onboarding-input" style="width: 100%; box-sizing: border-box;">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Follower Name</label>
+                    <input type="text" id="describe-program-name" placeholder="e.g. Lyra Ashwood" class="onboarding-input" style="width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="input-group" style="margin-bottom: 20px;">
-                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Character Persona Description</label>
-                    <textarea id="describe-program-desc" placeholder="e.g. A hyper-logical robotic archivist. Speaks in a calm, analytical tone, using technical metaphors and subtle dry humor. Enthusiastic about cataloging data." class="onboarding-input" style="width: 100%; height: 120px; resize: vertical; box-sizing: border-box;"></textarea>
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Follower Persona Description</label>
+                    <textarea id="describe-program-desc" placeholder="e.g. A cynical Breton spellsword from Wayrest. Wields flame magic and a broadsword with equal proficiency. Distrusts authority but remains fiercely loyal once trust is earned." class="onboarding-input" style="width: 100%; height: 120px; resize: vertical; box-sizing: border-box;"></textarea>
                 </div>
                 <div style="display: flex; justify-content: flex-end;">
                     <button onclick="submitDescriptionImport()" id="describe-import-btn" class="onboarding-btn" style="padding: 10px 24px; font-size: 0.85rem; min-width: auto; width: auto; height: auto;">
-                        Generate Program
+                        Create Follower
                     </button>
                 </div>
             </div>

@@ -1721,6 +1721,32 @@ async function fetchCharacterStatus() {
     }
 }
 
+let _lastTrackedVitals = {
+    hp: null,
+    mp: null,
+    stamina: null,
+    gold: null
+};
+
+function spawnHeartDelta(text, color, delayMs = 0) {
+    const heartElement = document.getElementById('header-heart-pulse') || document.querySelector('.heart-pulse');
+    if (!heartElement) return;
+
+    setTimeout(() => {
+        const pop = document.createElement('div');
+        pop.className = 'heart-delta-pop';
+        pop.textContent = text;
+        pop.style.color = color;
+        heartElement.appendChild(pop);
+
+        setTimeout(() => {
+            if (pop.parentNode) {
+                pop.parentNode.removeChild(pop);
+            }
+        }, 1300);
+    }, delayMs);
+}
+
 function updatePlayerHeartState(char, world) {
     const heartElement = document.getElementById('header-heart-pulse') || document.querySelector('.heart-pulse');
     if (!heartElement || !char || !char.derived) return;
@@ -1728,13 +1754,55 @@ function updatePlayerHeartState(char, world) {
     const d = char.derived;
     const hpCurrent = d.hp_current !== undefined ? d.hp_current : 28;
     const hpMax = d.hp_max || 28;
-    const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
+    const mpCurrent = d.mp_current !== undefined ? d.mp_current : (d.sp_current !== undefined ? d.sp_current : 42);
+    const staminaCurrent = d.stamina_current !== undefined ? d.stamina_current : 50;
+    const goldCurrent = char.gold !== undefined ? char.gold : 0;
 
+    // Detect and trigger floating delta indicators on resource changes
+    if (_lastTrackedVitals.hp !== null) {
+        const dHp = hpCurrent - _lastTrackedVitals.hp;
+        const dMp = mpCurrent - _lastTrackedVitals.mp;
+        const dStamina = staminaCurrent - _lastTrackedVitals.stamina;
+        const dGold = (_lastTrackedVitals.gold !== null && goldCurrent !== undefined) ? (goldCurrent - _lastTrackedVitals.gold) : 0;
+
+        let stagger = 0;
+        if (dHp !== 0) {
+            const txt = (dHp > 0 ? `+${dHp}` : `${dHp}`) + " HP";
+            const clr = dHp > 0 ? "#22c55e" : "#ef4444";
+            spawnHeartDelta(txt, clr, stagger);
+            stagger += 150;
+        }
+        if (dMp !== 0) {
+            const txt = (dMp > 0 ? `+${dMp}` : `${dMp}`) + " MP";
+            const clr = dMp > 0 ? "#38bdf8" : "#818cf8";
+            spawnHeartDelta(txt, clr, stagger);
+            stagger += 150;
+        }
+        if (dStamina !== 0) {
+            const txt = (dStamina > 0 ? `+${dStamina}` : `${dStamina}`) + " SP";
+            const clr = dStamina > 0 ? "#fbbf24" : "#fb923c";
+            spawnHeartDelta(txt, clr, stagger);
+            stagger += 150;
+        }
+        if (dGold !== 0) {
+            const txt = (dGold > 0 ? `+${dGold}` : `${dGold}`) + " Gold";
+            const clr = dGold > 0 ? "#e2b047" : "#a1a1aa";
+            spawnHeartDelta(txt, clr, stagger);
+            stagger += 150;
+        }
+    }
+
+    _lastTrackedVitals.hp = hpCurrent;
+    _lastTrackedVitals.mp = mpCurrent;
+    _lastTrackedVitals.stamina = staminaCurrent;
+    _lastTrackedVitals.gold = goldCurrent;
+
+    const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
     const conditions = (char.conditions || []).map(c => c.toLowerCase());
     const isAfflicted = conditions.some(c => c.includes('poison') || c.includes('disease'));
 
-    let color = '#e2b047'; // Gold
-    let glow = 'rgba(226, 176, 71, 0.6)';
+    let color = '#ef4444'; // Crimson Red
+    let glow = 'rgba(239, 68, 68, 0.6)';
     let speed = '2.0s';
     let statusText = `Vitality: ${hpCurrent}/${hpMax} HP (Healthy)`;
 
@@ -1745,26 +1813,26 @@ function updatePlayerHeartState(char, world) {
         statusText = 'Player Status: Incapacitated';
         heartElement.classList.remove('jiggling');
     } else if (isAfflicted) {
-        color = '#22c55e'; // Sickly green
+        color = '#22c55e'; // Sickly green (poison/disease)
         glow = 'rgba(34, 197, 94, 0.7)';
         speed = '0.9s';
         statusText = `Player Status: Afflicted (${char.conditions.join(', ')}) - ${hpCurrent}/${hpMax} HP`;
         heartElement.classList.remove('jiggling');
     } else if (hpPct <= 25) {
-        color = '#ef4444'; // Red
-        glow = 'rgba(239, 68, 68, 0.85)';
+        color = '#dc2626'; // Deep pulsing red (critical)
+        glow = 'rgba(220, 38, 38, 0.9)';
         speed = '0.5s';
         statusText = `Player Status: Critical Health! (${hpCurrent}/${hpMax} HP)`;
         heartElement.classList.add('jiggling');
     } else if (hpPct <= 60) {
-        color = '#f59e0b'; // Amber
-        glow = 'rgba(245, 158, 11, 0.7)';
-        speed = '1.0s';
+        color = '#f87171'; // Soft wounded red
+        glow = 'rgba(248, 113, 113, 0.7)';
+        speed = '1.2s';
         statusText = `Player Status: Wounded (${hpCurrent}/${hpMax} HP)`;
         heartElement.classList.remove('jiggling');
     } else {
-        color = '#e2b047';
-        glow = 'rgba(226, 176, 71, 0.6)';
+        color = '#ef4444'; // Classic Vibrant Crimson Red
+        glow = 'rgba(239, 68, 68, 0.6)';
         speed = '2.0s';
         statusText = `Player Status: Healthy (${hpCurrent}/${hpMax} HP)`;
         heartElement.classList.remove('jiggling');
@@ -1880,12 +1948,12 @@ function renderCharacterStatusModal(data) {
         attrContainer.innerHTML = '';
         for (const [attr, val] of Object.entries(char.attributes)) {
             const card = document.createElement('div');
-            card.style.cssText = 'background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 4px; text-align: center;';
+            card.style.cssText = 'background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 4px; text-align: center;';
             const mod = mods[attr] || '+0';
             card.innerHTML = `
-                <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">${attr.slice(0, 3)}</div>
-                <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">${val}</div>
-                <div style="font-size: 0.7rem; color: var(--arena-gold);">${mod}</div>
+                <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">${attr.slice(0, 3)}</div>
+                <div style="font-size: 1rem; font-weight: 700; color: #fff; margin-top: 2px;">${val}</div>
+                <div style="font-size: 0.72rem; color: var(--primary-accent); margin-top: 2px;">${mod}</div>
             `;
             attrContainer.appendChild(card);
         }
@@ -1910,15 +1978,15 @@ function renderCharacterStatusModal(data) {
                 const isJewelry = nameLower.includes('ring') || nameLower.includes('amulet') || nameLower.includes('necklace') || typeLower === 'ring' || typeLower === 'neck';
                 const canEquip = isTorch || isJewelry || ['weapon', '2h_weapon', 'armor', 'robes', 'shield', 'head', 'helmet', 'hood', 'hands', 'feet', 'boots', 'apparel'].includes(typeLower) || nameLower.includes('dagger') || nameLower.includes('sword') || nameLower.includes('staff') || nameLower.includes('bow') || nameLower.includes('robe') || nameLower.includes('cuirass');
                 
-                itemRow.style.cssText = `display: inline-flex; align-items: center; gap: 4px; background: ${isEq ? 'rgba(226, 176, 71, 0.15)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${isEq ? 'var(--arena-gold)' : 'var(--border-color)'}; border-radius: 6px; padding: 2px 4px 2px 8px; transition: all 0.15s ease;`;
+                itemRow.style.cssText = `display: inline-flex; align-items: center; gap: 6px; background: ${isEq ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255,255,255,0.04)'}; border: 1px solid ${isEq ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 4px 6px 4px 10px; transition: all 0.15s ease;`;
                 
                 const qtyStr = item.quantity && item.quantity > 1 ? ` x${item.quantity}` : '';
                 const slotLabel = item.equipped_slot ? item.equipped_slot.replace('_', ' ').toUpperCase() : 'EQUIPPED';
-                const tag = isEq ? `<span style="font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; background: var(--arena-gold); color: #000; font-weight: 700;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
+                const tag = isEq ? `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: var(--primary-accent); color: #000; font-weight: 700;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
                 
                 const equipBtn = document.createElement('button');
                 equipBtn.className = 'edit-btn';
-                equipBtn.style.cssText = `background: transparent; border: none; padding: 2px 4px; font-size: 0.78rem; color: ${isEq ? 'var(--arena-gold)' : 'var(--text-main)'}; display: inline-flex; align-items: center; gap: 6px; cursor: ${canEquip ? 'pointer' : 'default'};`;
+                equipBtn.style.cssText = `background: transparent; border: none; padding: 0; font-size: 0.82rem; color: ${isEq ? 'var(--primary-accent)' : '#fff'}; display: inline-flex; align-items: center; gap: 6px; cursor: ${canEquip ? 'pointer' : 'default'};`;
                 equipBtn.innerHTML = `<span>${item.name}${qtyStr}</span> ${tag}`;
                 if (canEquip) {
                     equipBtn.title = isEq ? `Click to unequip ${item.name} (${slotLabel})` : `Click to equip ${item.name}`;
@@ -1932,21 +2000,21 @@ function renderCharacterStatusModal(data) {
                 const dropBtn = document.createElement('button');
                 dropBtn.className = 'action-icon-btn';
                 dropBtn.title = `Drop ${item.name}`;
-                dropBtn.style.cssText = `width: 20px; height: 20px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
+                dropBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
                 dropBtn.innerHTML = `
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
                 `;
                 dropBtn.onmouseover = () => {
-                    dropBtn.style.color = 'var(--text-main)';
-                    dropBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                    dropBtn.style.background = 'rgba(255, 255, 255, 0.12)';
+                    dropBtn.style.color = '#ef4444';
+                    dropBtn.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                    dropBtn.style.background = 'rgba(239, 68, 68, 0.12)';
                 };
                 dropBtn.onmouseout = () => {
                     dropBtn.style.color = 'var(--text-muted)';
-                    dropBtn.style.borderColor = 'var(--border-color)';
+                    dropBtn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
                     dropBtn.style.background = 'rgba(255, 255, 255, 0.05)';
                 };
                 dropBtn.onclick = (e) => {
@@ -1972,8 +2040,8 @@ function renderCharacterStatusModal(data) {
         } else {
             spells.forEach(spell => {
                 const badge = document.createElement('span');
-                badge.style.cssText = 'font-size: 0.78rem; padding: 3px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);';
-                badge.textContent = `${spell.name} (${spell.school || 'Magic'}) [${spell.sp_cost || 4} SP]`;
+                badge.style.cssText = 'font-size: 0.8rem; padding: 4px 10px; border-radius: 8px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); display: inline-flex; align-items: center; gap: 4px;';
+                badge.textContent = `${spell.name} (${spell.school || 'Magic'}) • ${spell.sp_cost || 4} SP`;
                 spellsContainer.appendChild(badge);
             });
         }
@@ -2251,16 +2319,8 @@ function updateConnectionStatus(status) {
     if (headerStatusText) {
         if (status.remote_configured  || status.local_online) {
             headerStatusText.textContent = "";
-            if (headerHeart) {
-                headerHeart.style.setProperty('--heart-color', 'var(--primary-accent)');
-                headerHeart.style.setProperty('--heart-glow', 'var(--primary-glow)');
-            }
         } else {
             headerStatusText.textContent = "Disconnected";
-            if (headerHeart) {
-                headerHeart.style.setProperty('--heart-color', '#ef4444');
-                headerHeart.style.setProperty('--heart-glow', 'rgba(239, 68, 68, 0.4)');
-            }
         }
     }
 
@@ -2862,31 +2922,32 @@ function renderUserProfilesList() {
         card.appendChild(leftArea);
 
         // Right side action area (matching program profile rows)
+        const isProtectedProfile = prof.id === 'eternal_champion';
         const rightArea = document.createElement('div');
         rightArea.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: auto;';
 
-        // Add Edit Settings button on each profile row (matching program profile rows)
-        const editBtn = document.createElement('button');
-        editBtn.className = 'action-icon-btn';
-        editBtn.innerHTML = `
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                <path d="M12 20h9"></path>
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-            </svg>
-        `;
-        editBtn.title = 'Edit User Profile';
-        editBtn.style.width = '26px';
-        editBtn.style.height = '26px';
-        editBtn.style.borderRadius = '6px';
-        editBtn.style.flexShrink = '0';
-        editBtn.onclick = (e) => {
-            e.stopPropagation();
-            openUserProfileEditor(prof.id);
-        };
-        rightArea.appendChild(editBtn);
+        if (!isProtectedProfile) {
+            // Add Edit Settings button on each editable profile row
+            const editBtn = document.createElement('button');
+            editBtn.className = 'action-icon-btn';
+            editBtn.innerHTML = `
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+            `;
+            editBtn.title = 'Edit User Profile';
+            editBtn.style.width = '26px';
+            editBtn.style.height = '26px';
+            editBtn.style.borderRadius = '6px';
+            editBtn.style.flexShrink = '0';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                openUserProfileEditor(prof.id);
+            };
+            rightArea.appendChild(editBtn);
 
-        // Add Delete button on each non-default profile row (matching program profile rows)
-        if (prof.id !== 'builder') {
+            // Add Delete button on each editable profile row
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'action-icon-btn';
             deleteBtn.innerHTML = `
@@ -2968,7 +3029,7 @@ function populateProfileEditor() {
     }
 
     if (deleteBtn) {
-        deleteBtn.style.display = (selectedEditingProfileId && selectedEditingProfileId !== 'builder') ? 'inline-block' : 'none';
+        deleteBtn.style.display = (selectedEditingProfileId && selectedEditingProfileId !== 'eternal_champion') ? 'inline-block' : 'none';
     }
 }
 
@@ -3029,7 +3090,7 @@ async function saveActiveUserProfile() {
         const prof = userProfiles.find(p => p.id === profileId);
 
         // If the user changed the name, call rename API first
-        if (prof && prof.name !== newName && profileId !== 'builder') {
+        if (prof && prof.name !== newName && profileId !== 'eternal_champion') {
             const renameRes = await fetch('/api/user_profiles/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3154,7 +3215,7 @@ async function createNewUserProfile() {
 // --- deleteUserProfileById / deleteSelectedUserProfile ---
 async function deleteUserProfileById(targetProfileId) {
     const profileId = targetProfileId || selectedEditingProfileId;
-    if (!profileId || profileId === 'builder') return;
+    if (!profileId || profileId === 'eternal_champion') return;
 
     const prof = userProfiles.find(p => p.id === profileId);
     const displayTitle = prof ? prof.name : profileId;
@@ -3322,6 +3383,7 @@ function renderSavesList(saves, activeId) {
         const rightArea = document.createElement('div');
         rightArea.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: 12px;';
 
+        const isDefaultPreset = save.id === 'eternal_champion';
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'action-icon-btn';
         deleteBtn.innerHTML = `
@@ -3330,7 +3392,7 @@ function renderSavesList(saves, activeId) {
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
         `;
-        deleteBtn.title = 'Delete Save';
+        deleteBtn.title = isDefaultPreset ? 'Reset Save to Defaults' : 'Delete Save';
         deleteBtn.style.width = '26px';
         deleteBtn.style.height = '26px';
         deleteBtn.style.borderRadius = '6px';
@@ -3407,7 +3469,13 @@ async function loadSaveGame(saveId) {
 }
 
 function deleteSaveGame(saveId, saveName) {
-    showCustomConfirm("Delete Save", `Are you sure you want to permanently delete save "${saveName}"? This action cannot be undone.`, async () => {
+    const isEternal = saveId === 'eternal_champion';
+    const title = isEternal ? "Reset Eternal Champion" : "Delete Save";
+    const msg = isEternal 
+        ? "Resetting Eternal Champion will restore the default starting game state (clean inventory, full vitals, and fresh Imperial Dungeon opening) and reload the page. Proceed?"
+        : `Are you sure you want to permanently delete save "${saveName}"? This action cannot be undone.`;
+
+    showCustomConfirm(title, msg, async () => {
         try {
             const res = await fetch('/api/saves/delete', {
                 method: 'POST',
@@ -3417,7 +3485,11 @@ function deleteSaveGame(saveId, saveName) {
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
-            await loadSavesList();
+            if (isEternal || data.refreshed) {
+                window.location.reload();
+            } else {
+                await loadSavesList();
+            }
         } catch (e) {
             console.error("Error deleting save:", e);
             showCustomAlert("Error", "Failed to delete save: " + e.message);
@@ -3805,14 +3877,7 @@ async function selectAssistant(assistantId) {
             const heartElement = document.getElementById('header-heart-pulse') || document.querySelector('.heart-pulse');
             if (heartElement) {
                 heartElement.classList.remove('jiggling', 'burst');
-                currentHeartState = {
-                    name: "calm",
-                    color: "#85b9eb",
-                    glow: "rgba(133, 185, 235, 0.9)",
-                    speed: "2.0s",
-                    intensity: 0.0
-                };
-                updateHeartState(currentHeartState, "");
+                fetchCharacterStatus();
             }
             
             // Reset the chat container and reload history for new assistant
@@ -5443,13 +5508,20 @@ function renderMessage(msg, isLive = false) {
     const bubblesToCreate = [];
     const isTextEmpty = !text.replace(/[:\s]/g, '').trim();
 
-    if (!isTextEmpty || !msg.media || msg.media.length === 0) {
+    if (!isTextEmpty) {
         bubblesToCreate.push({ type: 'text', content: text });
     }
     if (msg.media) {
         msg.media.forEach(m => {
             bubblesToCreate.push({ type: 'media', content: m });
         });
+    }
+    if (bubblesToCreate.length === 0 && (!msg.tool_calls || msg.tool_calls.length === 0)) {
+        if (role === 'user') {
+            bubblesToCreate.push({ type: 'text', content: text });
+        } else {
+            return null;
+        }
     }
 
     bubblesToCreate.forEach((item, idx) => {
@@ -5589,42 +5661,17 @@ function renderMessage(msg, isLive = false) {
         }
 
         if (item.type === 'text') {
-            let actualResponse = item.content;
-            if (role === 'program') {
-                let thoughts = [];
-                let tempText = item.content;
-                while (true) {
-                    const openMatch = tempText.match(/(?:<think>|\[think\]|<thought>|\[thought\]|<\|thought\|>|<\|channel\|>thought|<channel\|>thought)/i);
-                    if (!openMatch) break;
-                    
-                    const openIdx = openMatch.index;
-                    const openTagLength = openMatch[0].length;
-                    const beforeText = tempText.substring(0, openIdx);
-                    const remainingText = tempText.substring(openIdx + openTagLength);
-                    
-                    const closePattern = /(?:<\/think>|\[\/think\]|<\/thought>|\[\/thought\]|<\|\/thought\|>|<\|channel\|>|<channel\|>|<\/\s*think>|\[\s*\/think\s*\])/i;
-                    const closeMatch = remainingText.match(closePattern);
-                    
-                    if (closeMatch) {
-                        const closeIdx = closeMatch.index;
-                        const closeTagLength = closeMatch[0].length;
-                        
-                        const thought = remainingText.substring(0, closeIdx).trim();
-                        if (thought) thoughts.push(thought);
-                        
-                        const afterText = remainingText.substring(closeIdx + closeTagLength);
-                        tempText = beforeText + afterText;
-                    } else {
-                        const thought = remainingText.trim();
-                        if (thought) thoughts.push(thought);
-                        tempText = beforeText;
-                        break;
-                    }
-                }
-                
-                let thoughtContent = thoughts.join("\n\n").trim();
-                actualResponse = tempText.replace(/<\|channel\|>|<channel\|>/gi, '').trim();
-
+            let actualResponse = item.content || '';
+            if (role === 'program' && actualResponse) {
+                const cleaned = actualResponse.replace(/<think>[\s\S]*?<\/think>/gi, '')
+                                              .replace(/\[think\][\s\S]*?\[\/think\]/gi, '')
+                                              .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+                                              .replace(/\[thought\][\s\S]*?\[\/thought\]/gi, '')
+                                              .replace(/<\|thought\|>[\s\S]*?<\|\/thought\|>/gi, '')
+                                              .replace(/<\|channel\|>[\s\S]*?<\|\/channel\|>/gi, '')
+                                              .replace(/<\|channel\|>|<channel\|>/gi, '')
+                                              .trim();
+                actualResponse = cleaned || item.content.trim();
             }
 
             if (actualResponse) {
@@ -6673,6 +6720,9 @@ async function deleteTurnFromMessage(button) {
             if (data.status === 'success') {
                 const row = (bubble || voiceCallRow).closest('.message-row') || voiceCallRow;
                 if (row) row.remove();
+                if (typeof fetchCharacterStatus === 'function') {
+                    fetchCharacterStatus();
+                }
             } else if (data.error) {
                 showCustomAlert("Delete Failed", data.error);
             }
@@ -7985,7 +8035,6 @@ async function loadQuests() {
                         ${quest.due ? `<div><strong style="color: var(--text-muted);">Target:</strong> <span style="color: var(--text-main);">${quest.due}</span></div>` : ''}
                     </div>
                     <div style="margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
-                        <strong style="font-size: 0.8rem; color: var(--arena-gold, #fbbf24); text-transform: uppercase; letter-spacing: 0.04em;">Current Objectives:</strong>
                         <ul style="margin: 6px 0 0 18px; padding: 0; list-style-type: square;">
                             ${objectivesHtml}
                         </ul>
@@ -8083,7 +8132,6 @@ function switchDataBankTab(tab) {
             btn.style.background = 'rgba(255,255,255,0.05)';
             btn.style.color = 'var(--text-muted)';
             btn.style.border = '1px solid rgba(255,255,255,0.1)';
-            btn.classList.add('edit-cancel-btn');
         }
     });
 
@@ -8102,7 +8150,6 @@ function switchDataBankTab(tab) {
             btn.style.background = 'rgba(255, 255, 255, 0.08)';
             btn.style.color = 'var(--primary-accent)';
             btn.style.border = '1px solid var(--primary-accent)';
-            btn.classList.remove('edit-cancel-btn');
         }
     };
 

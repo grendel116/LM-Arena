@@ -321,7 +321,7 @@ _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG MECHANICS & TOOLS\n"
     "To mutate character state or arbitrate checks, output the exact tool tag. The system will intercept it, update the character sheet, and return the result.\n\n"
     "Available RPG & Mechanics Tools:\n"
-    "1. `[arena_spend_magicka(character_name=\"{{user}}\", amount=...)]` - Deduct Magicka (MP) when casting spells (e.g. Spark costs 4 MP, Mend Wounds costs 5 MP, custom spells cost their tier MP).\n"
+    "1. `[arena_spend_magicka(character_name=\"{{user}}\", amount=...)]` - Deduct Magicka (MP) when casting any spell based on its spell point cost.\n"
     "2. `[arena_spend_stamina(character_name=\"{{user}}\", amount=...)]` - Deduct Stamina for physical exertion (sprinting, dodging, power strikes: 5-15 Stamina).\n"
     "3. `[arena_take_damage(character_name=\"{{user}}\", amount=...)]` - Inflict combat or trap damage to player HP.\n"
     "4. `[arena_heal(character_name=\"{{user}}\", amount=...)]` - Restore player HP from rest or healing.\n"
@@ -341,7 +341,7 @@ _ARENA_DIRECTIVE_PROMPT = (
     "18. `[generate_local_image(prompt=\"...\")]` - Generate a character portrait/scene via ComfyUI (comma-separated tags).\n"
     "19. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate environment/creature visual art.\n\n"
     "Mandatory Gameplay Rules:\n"
-    "- SPELLCASTING: Whenever the player or companion casts a spell (e.g. Spark, Light, Mend Wounds, Fireball, or custom spell), YOU MUST CALL `[arena_spend_magicka(character_name=\"{{user}}\", amount=...)]` with the spell's MP cost in the same turn.\n"
+    "- SPELLCASTING: Whenever the player casts or channels any spell, incantation, or magical power from their grimoire or imagination, YOU MUST CALL `[arena_spend_magicka(character_name=\"{{user}}\", amount=...)]` with the spell's MP cost in the same turn.\n"
     "- EXERTION: Whenever the player performs heavy exertion (sprinting, leaping chasms, dodging, power attacks), call `[arena_spend_stamina(character_name=\"{{user}}\", amount=...)]`.\n"
     "- COMBAT & DAMAGE: Call `[arena_roll_combat]` on attacks, and call `[arena_take_damage]` when enemies hit the player.\n"
     "- LOOT & INVENTORY: Call `[arena_add_item]` or `[arena_add_gold]` whenever items or coins are discovered or awarded.\n"
@@ -673,7 +673,12 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         history = self.runner_obj.sessions_history[self.session_id]
         raw_messages = []
         
-        filtered_history = [msg for msg in history if msg.get('role') not in ('voice-call', 'system-memory') and not msg.get('compacted')]
+        filtered_history = [
+            msg for msg in history 
+            if msg.get('role') not in ('voice-call', 'system-memory') 
+            and not msg.get('compacted')
+            and not (msg.get('role') == 'program' and not msg.get('text', '').strip() and not msg.get('tool_calls'))
+        ]
         if not filtered_history:
             return [{"role": "system", "content": sys_inst}]
             
@@ -867,14 +872,17 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     post_history_inst = mf.read().strip()
             
             if post_history_inst:
-                if openai_messages and openai_messages[-1]["role"] == "user":
-                    prev = openai_messages[-1]["content"]
-                    if isinstance(prev, str):
-                        openai_messages[-1]["content"] += f"\n\n{post_history_inst}"
-                    else:
-                        openai_messages[-1]["content"] = prev + [{"type": "text", "text": f"\n\n{post_history_inst}"}]
-                else:
-                    openai_messages.append({"role": "user", "content": post_history_inst})
+                found_user = False
+                for m in reversed(openai_messages):
+                    if m["role"] == "user":
+                        if isinstance(m["content"], str):
+                            m["content"] += f"\n\n{post_history_inst}"
+                        else:
+                            m["content"].append({"type": "text", "text": f"\n\n{post_history_inst}"})
+                        found_user = True
+                        break
+                if not found_user and openai_messages:
+                    openai_messages[0]["content"] += f"\n\n[Player Preferences / Directives]:\n{post_history_inst}"
         except Exception as e:
             print(f"Error loading player mods / post-history instructions: {e}", flush=True)
 
@@ -1211,17 +1219,13 @@ class BaseProgramRunner:
                 raise asyncio.CancelledError("Session cancelled by user request.")
                 
             # Auto-offload to cloud if local server is offline or image/keyword triggers detected
+            # Auto-route to cloud if local server is offline, image attached, or keyword requested
             from utils.local_llm_manager import check_status
             is_offline = not check_status()
             
             if (has_image or is_offline or has_offload_keyword) and not is_cloud and is_remote_configured:
-                reason = (
-                    "Local server is offline" if is_offline else (
-                        "User requested offload (/cloud or /offload)" if has_offload_keyword else "Multimodal input (image)"
-                    )
-                )
-                print(f"[OFFLOAD] {reason} detected. Intercepting and offloading to cloud.", flush=True)
-                raise LocalOffloadTrigger(reason, iteration)
+                model = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
+                is_cloud = True
                 
             sys_inst = self._get_system_instructions(session_id, user_message=new_message_text)
             openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
@@ -1240,7 +1244,8 @@ class BaseProgramRunner:
 
             # Determine if we should route to the remote cloud server or the local server
             remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
-            is_cloud = _is_cloud_model_check(model)
+            if not is_cloud:
+                is_cloud = _is_cloud_model_check(model)
                 
             if is_cloud:
                 url = remote_cloud_url
@@ -1248,7 +1253,7 @@ class BaseProgramRunner:
                 remote_key = os.getenv("REMOTE_API_KEY")
                 if remote_key:
                     headers["Authorization"] = f"Bearer {remote_key}"
-                target_model = model
+                target_model = model if (model and model != 'local-llm') else os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
             else:
                 url = REMOTE_SERVER_URL
                 headers = get_remote_server_headers()
@@ -1272,11 +1277,18 @@ class BaseProgramRunner:
             if target_model:
                 payload["model"] = target_model
                 
+            print(f"[LLM DISPATCH] Iteration {iteration}: routing to url={url}, model={target_model}, messages_count={len(openai_messages)}", flush=True)
             try:
                 response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+                print(f"[LLM RESPONSE] Status={response.status_code}, Body Length={len(response.text)}", flush=True)
                 if response.status_code == 200:
                     res_json = response.json()
-                    bot_response_text = res_json['choices'][0]['message']['content']
+                    choice = res_json.get('choices', [{}])[0]
+                    bot_response_text = choice.get('message', {}).get('content') or ''
+                    finish_reason = choice.get('finish_reason', '')
+                    if not bot_response_text and str(finish_reason).upper() in ('SAFETY', 'RECITATION', 'BLOCK'):
+                        bot_response_text = "*[Cloud Model Refusal: The remote safety filter blocked generation for this prompt. Modify prompt keywords or use the local model.]*"
+                    print(f"[LLM CONTENT PREVIEW] finish_reason={finish_reason}, preview={repr(bot_response_text[:120])}", flush=True)
                     from variables import is_thinking_enabled
                     if not is_thinking_enabled(is_cloud):
                         bot_response_text = re.sub(r'(?:<think>|\[think\]|<thought>|\[thought\]|<\|thought\|>|<\|channel\|>thought|<channel\|>thought)[\s\S]*?(?:</think>|\[/think\]|</thought>|\[/thought\]|<\|/thought\|>|<\|channel\|>|<channel\|>|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', bot_response_text, flags=re.IGNORECASE)
@@ -1868,7 +1880,7 @@ class OpenSourceRunner(BaseProgramRunner):
         headers = {"Content-Type": "application/json"}
         if is_cloud:
             headers["Authorization"] = f"Bearer {remote_key}"
-            target_model = model if model else os.getenv("REMOTE_MODEL", "gemini-2.5-flash")
+            target_model = model if model else os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
         else:
             if remote_key:
                 headers["Authorization"] = f"Bearer {remote_key}"
@@ -2128,6 +2140,15 @@ class OpenSourceRunner(BaseProgramRunner):
                 self._save_session_to_disk(session_id)
 
     async def _run_async_internal(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None) -> tuple:
+        # Resolve effective model upfront to eliminate double-dispatch latency
+        from utils.local_llm_manager import check_status
+        has_offload_kw = bool(new_message_text and ("/cloud" in new_message_text.lower() or "/offload" in new_message_text.lower()))
+        has_media = bool(image_data or media_path)
+        is_offline = not check_status()
+        
+        if (not model or is_local_model(model)) and (is_offline or has_offload_kw or has_media) and _is_remote_configured():
+            model = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
+
         # Clean up keyword triggers if routing to the cloud model
         is_cloud = _is_cloud_model_check(model)
         if is_cloud and new_message_text:
@@ -2204,30 +2225,12 @@ class OpenSourceRunner(BaseProgramRunner):
             
             bot_response_text, tool_calls = res
             program_msg_id = None
-            program_texts = []
-            
-            history = self.sessions_history.get(session_id, [])
-            user_idx = -1
-            for idx, msg in enumerate(history):
-                if msg.get('id') == user_msg_id:
-                    user_idx = idx
+            for msg in reversed(self.sessions_history.get(session_id, [])):
+                if msg.get('role') == 'program':
+                    program_msg_id = msg.get('id')
+                    if not bot_response_text and msg.get('text'):
+                        bot_response_text = msg['text']
                     break
-                    
-            if user_idx != -1:
-                for msg in history[user_idx + 1:]:
-                    if msg.get('role') == 'program':
-                        if msg.get('text'):
-                            program_texts.append(msg['text'])
-                        if msg.get('id'):
-                            program_msg_id = msg['id']
-                            
-            if program_texts:
-                bot_response_text = "\n\n".join(program_texts)
-            else:
-                for msg in reversed(history):
-                    if msg.get('role') == 'program':
-                        program_msg_id = msg.get('id')
-                        break
                         
             return bot_response_text, tool_calls, user_msg_id, program_msg_id
         except LocalOffloadTrigger as trigger_exc:
@@ -2264,7 +2267,17 @@ class OpenSourceRunner(BaseProgramRunner):
                 user_idx = i
                 break
         if user_idx == -1:
-            raise ValueError("Message not found")
+            if new_text:
+                # If msg_id was not in history but text was provided, dispatch as a new turn cleanly
+                return await self.run_async(session_id=session_id, new_message_text=new_text, model=model)
+            else:
+                # Reroll fallback: find the most recent user turn
+                for i in range(len(history) - 1, -1, -1):
+                    if history[i].get('role') == 'user':
+                        user_idx = i
+                        break
+                if user_idx == -1:
+                    raise ValueError("No user messages found in session history to reroll.")
             
         orig_msg = history[user_idx]
         
@@ -2281,15 +2294,28 @@ class OpenSourceRunner(BaseProgramRunner):
             else:
                 media_path = url_str
                 
+        # Rollback tool mutations for all turns being truncated/discarded
+        discarded_turns = history[user_idx:]
+        try:
+            from utils.program import get_active_user
+            from engine.character import rollback_tool_effects
+            active_user = get_active_user()
+            for turn in discarded_turns:
+                if turn.get('tool_calls'):
+                    rollback_tool_effects(active_user, turn['tool_calls'])
+        except Exception as rb_err:
+            print(f"[edit_turn] Error rolling back tool effects: {rb_err}", flush=True)
+
         # Truncate history
         history = history[:user_idx]
         self.sessions_history[session_id] = history
         self._save_session_to_disk(session_id)
         
-        # If forcing offload, override model with remote model
-        if force_offload:
+        # If offline or forcing offload, override model with remote model upfront
+        from utils.local_llm_manager import check_status
+        is_offline = not check_status()
+        if (not model or is_local_model(model)) and (is_offline or force_offload or img_data or media_path) and _is_remote_configured():
             remote_model = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
-            print(f"[OFFLOAD] Forcing offload to remote model: {remote_model}", flush=True)
             model = remote_model
 
         # Re-run turn
@@ -2412,6 +2438,13 @@ class OpenSourceRunner(BaseProgramRunner):
             real_history = self.sessions_history[session_id]
             for i, msg in enumerate(real_history):
                 if msg.get('id') == msg_id:
+                    if msg.get('tool_calls'):
+                        try:
+                            from utils.program import get_active_user
+                            from engine.character import rollback_tool_effects
+                            rollback_tool_effects(get_active_user(), msg['tool_calls'])
+                        except Exception as rb_err:
+                            print(f"[delete_message_at] Error rolling back tool effects: {rb_err}", flush=True)
                     del real_history[i]
                     self._save_session_to_disk(session_id)
                     return True

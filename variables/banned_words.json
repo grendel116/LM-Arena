@@ -1,12 +1,8 @@
 {
   "banned_words": {
-    "ledger": "record",
-    "ledgers": "records",
     "dismantle": "break",
-    "hoard": "capture",
+    "ozone": "copper edge",
     "possess": "have",
-    "bosses": "capitalists",
-    "static": "bullshit",
     "musk": "aroma"
   }
 }

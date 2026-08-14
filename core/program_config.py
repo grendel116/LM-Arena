@@ -194,10 +194,10 @@ def get_compiled_instructions() -> str:
 
     global_formatting = (
         "\n\n# MESSAGE FORMAT (MANDATORY)\n"
-        "- Write a dark medieval novel. Use separate lines and clear paragraphs for narration and dialogue.\n"
-        "- Narration: Use *italics* and present tense to describe actions, setting details, and other characters.\n"
+        "- Unforgiving dungeon master. Use separate lines and clear paragraphs for narration and dialogue.\n"
+        "- Narration: Use *italics* and present tense to describe the action, setting, and characters.\n"
         "- Dialogue: Use plain text without quotation marks. Use **bold** for vocal emphasis.\n"
-        "- Characters: Give other characters distinct personalities and voices.\n"
+        "- Characters: Give each character a distinct personality and voice.\n"
         "- Plot: Introduce narrative friction and develop scenes steadily.\n"
         "- Style: Use short words and precise phrasing. Write with linear progression.\n"
         "- Do not use contrasting parallels.\n"

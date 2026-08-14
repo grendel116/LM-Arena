@@ -259,7 +259,7 @@ def index():
 
     from utils.program import get_active_user
     active_user = get_active_user()
-    if os.getenv("AUTH_USER") and request.authorization and active_user == "builder":
+    if os.getenv("AUTH_USER") and request.authorization and active_user == "eternal_champion":
         # If Basic Auth is active, default active user to authenticated user
         active_user = request.authorization.username
 
@@ -577,11 +577,26 @@ You must return a valid JSON object matching the following schema:
                 payload["model"] = target_model
             try:
                 headers = get_remote_server_headers()
-                r = requests.post(REMOTE_SERVER_URL, json=payload, headers=headers, timeout=30.0)
+                r = requests.post(REMOTE_SERVER_URL, json=payload, headers=headers, timeout=10.0)
                 if r.status_code == 200:
                     raw_response = r.json()['choices'][0]['message']['content'].strip()
             except Exception as e:
-                print(f"[PROACTIVE] Local LLM query failed: {e}")
+                # Local LLM is offline - fallback to remote cloud model if available
+                api_key = os.getenv("REMOTE_API_KEY")
+                remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
+                if api_key and remote_cloud_url:
+                    try:
+                        target_model = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
+                        headers = {
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {api_key}"
+                        }
+                        payload["model"] = target_model
+                        r_cloud = requests.post(remote_cloud_url, json=payload, headers=headers, timeout=15.0)
+                        if r_cloud.status_code == 200:
+                            raw_response = r_cloud.json()['choices'][0]['message']['content'].strip()
+                    except Exception as ce:
+                        pass
         else:
             api_key = os.getenv("REMOTE_API_KEY")
             remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
@@ -610,7 +625,7 @@ You must return a valid JSON object matching the following schema:
                     print(f"[PROACTIVE] Remote cloud query failed: {e}")
                     
         if not raw_response:
-            return jsonify({'error': 'Failed to generate proactive response'}), 500
+            return jsonify({'status': 'idle', 'message': 'No proactive action taken'}), 200
             
         # Parse output
         action_type = "thought"
@@ -813,6 +828,7 @@ def edit():
     new_text = request.json.get('new_text') # None means reroll (use original text)
     selected_model = request.json.get('model')
     force_offload = request.json.get('force_offload', new_text is None)
+    print(f"[EDIT ROUTE] session_id={session_id}, msg_id={msg_id}, new_text={repr(new_text)}, model={selected_model}", flush=True)
 
     import tools
     tools.current_session_id.set(session_id)
@@ -834,6 +850,7 @@ def edit():
             )
         )
         duration = round(time.time() - start_time, 1)
+        print(f"[EDIT ROUTE DONE] len(response_text)={len(response_text)}, tools={len(tool_calls)}, duration={duration}s", flush=True)
         
         # Apply banned words filter to output response
         response_text = sanitize_response(response_text, session_id, program_msg_id)
@@ -3024,15 +3041,15 @@ def list_user_profiles():
                 except Exception as e:
                     print(f"Error reading profile {file}: {e}")
         
-        # If there are no profiles at all, ensure at least "builder" is present
+        # If there are no profiles at all, ensure at least "eternal_champion" is present
         if not profiles:
-            builder_path = os.path.join(USER_PROFILES_DIR, "builder.md")
-            default_content = "# CHARACTER: Adventurer\n- Race: Nord\n- Class: Warrior\n- Strength: 60 | Intelligence: 40 | Willpower: 50\n- Agility: 50 | Endurance: 60 | Personality: 45 | Speed: 55 | Luck: 50\n- HP: 30/30\n- Gold: 100\n- Active Spells: none\n- Inventory: Iron Longsword, Leather Armor\n- Quest Stage: 10\n- Location: Imperial Dungeon\n"
-            with open(builder_path, "w", encoding="utf-8") as f:
+            eternal_path = os.path.join(USER_PROFILES_DIR, "eternal_champion.md")
+            default_content = "# ETERNAL CHAMPION\n- Race: Nord\n- Class: Battlemage\n- Level: 1\n- Vitals: HP: 38/38 | MP: 117/117 | SP: 81/81\n- Location: Imperial Dungeon, Cyrodiil\n"
+            with open(eternal_path, "w", encoding="utf-8") as f:
                 f.write(default_content)
             profiles.append({
-                "id": "builder",
-                "name": "Builder",
+                "id": "eternal_champion",
+                "name": "Eternal Champion",
                 "content": default_content,
                 "mods": ""
             })
@@ -3077,6 +3094,8 @@ def save_user_profile():
         
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
+        if profile_id == "eternal_champion":
+            return jsonify({"error": "Eternal Champion is a protected profile and cannot be edited"}), 400
         if content is None:
             return jsonify({"error": "Missing content"}), 400
         
@@ -3120,8 +3139,8 @@ def delete_user_profile():
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
             
-        if profile_id == "builder":
-            return jsonify({"error": "Cannot delete the default 'builder' profile"}), 400
+        if profile_id == "eternal_champion":
+            return jsonify({"error": "Cannot delete the default protected 'eternal_champion' profile"}), 400
             
         from variables import USER_PROFILES_DIR
         from utils.program import get_active_user, set_active_user
@@ -3138,11 +3157,11 @@ def delete_user_profile():
             except Exception:
                 pass
         
-        # If the deleted profile was active, switch active profile back to "builder"
+        # If the deleted profile was active, switch active profile back to "eternal_champion"
         active_user = get_active_user()
                 
         if profile_id == active_user:
-            set_active_user("builder")
+            set_active_user("eternal_champion")
             reload_program_state()
                 
         return jsonify({"status": "success", "deleted": profile_id})
@@ -3161,8 +3180,8 @@ def rename_user_profile():
         if not old_profile_id or not new_name:
             return jsonify({"error": "Missing old_profile_id or new_profile_name"}), 400
             
-        if old_profile_id == "builder":
-            return jsonify({"error": "Cannot rename the default 'builder' profile"}), 400
+        if old_profile_id == "eternal_champion":
+            return jsonify({"error": "Cannot rename the default 'eternal_champion' profile"}), 400
             
         new_profile_id = re.sub(r'[^a-zA-Z0-9_\-]', '', new_name).strip().replace(' ', '_').lower()
         new_profile_id = re.sub(r'_+', '_', new_profile_id)
@@ -3170,8 +3189,8 @@ def rename_user_profile():
         if not new_profile_id:
             return jsonify({"error": "Invalid new profile name"}), 400
             
-        if new_profile_id == "builder":
-            return jsonify({"error": "Cannot rename a profile to 'builder'"}), 400
+        if new_profile_id == "eternal_champion":
+            return jsonify({"error": "Cannot rename a profile to 'eternal_champion'"}), 400
             
         if old_profile_id == new_profile_id:
             return jsonify({"status": "success", "profile_id": new_profile_id})

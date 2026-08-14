@@ -211,21 +211,91 @@ def load_save(save_id: str) -> dict:
     return meta
 
 
+def reset_default_save() -> dict:
+    """Reset the eternal_champion save to a pristine default state."""
+    save_id = "eternal_champion"
+    save_path = SAVES_DIR / save_id
+    save_path.mkdir(parents=True, exist_ok=True)
+    
+    from engine.character import DEFAULT_SHEET
+    import copy
+    sheet = copy.deepcopy(DEFAULT_SHEET)
+    with open(save_path / "character_sheet.json", "w", encoding="utf-8") as f:
+        json.dump(sheet, f, indent=4, ensure_ascii=False)
+        
+    default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
+    if default_world_path.exists():
+        with open(default_world_path, "r", encoding="utf-8") as f:
+            world_state = json.load(f)
+    else:
+        world_state = {
+            "tamrielic_date": {"day": 1, "month": "Morning Star", "year": 389, "era": "Third Era"},
+            "current_province": "Cyrodiil",
+            "current_location": "Imperial Dungeon",
+            "quest_stage": 10,
+            "fragments_collected": [],
+            "provinces_visited": ["Cyrodiil"],
+            "cities_discovered": [],
+            "dungeons_cleared": [],
+            "world_flags": {"shift_gate_answered": False, "ria_vision_1_seen": True}
+        }
+    with open(save_path / "world_state.json", "w", encoding="utf-8") as f:
+        json.dump(world_state, f, indent=4, ensure_ascii=False)
+        
+    opening_mes = DEFAULT_GREETING.replace("{{user}}", "Eternal Champion")
+    history_data = {
+        "messages": [
+            {
+                "role": "assistant",
+                "content": opening_mes
+            }
+        ]
+    }
+    with open(save_path / "history.json", "w", encoding="utf-8") as f:
+        json.dump(history_data, f, indent=2, ensure_ascii=False)
+        
+    meta = {
+        "id": "eternal_champion",
+        "name": "Eternal Champion - Nord Battlemage",
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "character_name": "Eternal Champion",
+        "race": "Nord",
+        "gender": "Male",
+        "class": "Battlemage",
+        "level": 1,
+        "gold": 0,
+        "current_province": "Cyrodiil",
+        "current_location": "Imperial Dungeon",
+        "quest_stage": 10,
+        "tamrielic_date": "1 Morning Star, 3E 389"
+    }
+    with open(save_path / "meta.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=4, ensure_ascii=False)
+        
+    set_active_save_id(save_id)
+    meta["is_active"] = True
+    return meta
+
+
 def delete_save(save_id: str) -> bool:
-    """Delete a save state."""
+    """Delete a save state or reset eternal_champion to pristine state if requested."""
+    if save_id == "eternal_champion":
+        reset_default_save()
+        return True
+
     save_path = SAVES_DIR / save_id
     if not save_path.exists():
         return False
         
     shutil.rmtree(save_path, ignore_errors=True)
     
-    # If deleted save was active, pick the first remaining save
+    # If deleted save was active, switch to eternal_champion
     if get_active_save_id() == save_id:
         remaining = [item.name for item in SAVES_DIR.iterdir() if item.is_dir()]
         if remaining:
             set_active_save_id(remaining[0])
         else:
-            # Create a fresh default save
-            create_save(character_name="Eternal Champion")
+            reset_default_save()
             
     return True

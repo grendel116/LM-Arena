@@ -81,7 +81,7 @@ def get_active_user() -> str:
         # Fall back to environment variable, then to default
         active_usr = os.getenv("ACTIVE_USER")
         if not active_usr:
-            active_usr = "builder"
+            active_usr = "eternal_champion"
 
     # Set environment variable
     os.environ["ACTIVE_USER"] = active_usr

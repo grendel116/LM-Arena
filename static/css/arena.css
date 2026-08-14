@@ -1,17 +1,17 @@
 :root {
     /* Arena Tokens */
-    --arena-bg:             hsl(28, 12%, 9%);
-    --arena-surface:        hsl(28, 10%, 13%);
-    --arena-surface-raised: hsl(28, 10%, 17%);
-    --arena-border:         hsl(38, 18%, 22%);
-    --arena-gold:           hsl(42, 75%, 58%);
+    --arena-bg:             #111317;             /* Deep rich stone gray #111317 */
+    --arena-surface:        #161920;             /* Stone gray surface #161920 */
+    --arena-surface-raised: #1e222b;             /* Stone gray elevated #1e222b */
+    --arena-border:         rgba(255, 255, 255, 0.08);
+    --arena-gold:           #f59e0b;             /* Standard bright gold */
     --arena-gold-dim:       hsl(42, 40%, 32%);
-    --arena-copper:         hsl(22, 52%, 58%);  /* muted copper for italics/narration */
+    --arena-dull-gold:      #c5a359;             /* Dull gold for italics/narration */
     --arena-text:           hsl(38, 15%, 84%);
-    --arena-text-muted:     hsl(38, 10%, 52%);
-    --arena-text-dim:       hsl(38, 8%, 38%);
-    --arena-narration:      var(--arena-copper); /* muted copper italics */
-    --arena-dialogue:       var(--arena-gold);   /* gold spoken lines / quotes */
+    --arena-text-muted:     #9ca3af;
+    --arena-text-dim:       #6b7280;
+    --arena-narration:      var(--arena-dull-gold); /* Dull gold for italics/narration */
+    --arena-dialogue:       var(--arena-gold);      /* Standard gold for dialogue/quotes */
     --arena-system:         hsl(30, 25%, 60%);
     --arena-success:        hsl(120, 35%, 52%);
     --arena-danger:         hsl(0, 55%, 52%);
@@ -27,30 +27,85 @@
     --primary-glow:    hsla(42, 70%, 52%, 0.07);
     --text-main:       var(--arena-text);
     --text-muted:      var(--arena-text-muted);
-    --program-bubble:  var(--arena-surface-raised);
-    --user-bubble:     hsl(28, 10%, 15%);
+    --program-bubble:  #161920;                  /* Stone gray program bubble */
+    --user-bubble:     #1e222b;                  /* Stone gray user bubble */
     --send-btn-hover:  hsla(42, 70%, 52%, 0.10);
-    --accent-green:    var(--arena-copper); /* italics use muted copper */
-    --glass-bg:        hsla(28, 12%, 9%, 0.92);
-    --quote-blue:      var(--arena-gold);   /* quotes use gold */
+    --accent-green:    var(--arena-dull-gold);   /* Dull gold */
+    --glass-bg:        rgba(17, 19, 23, 0.94);
+    --quote-blue:      var(--arena-gold);        /* Standard gold */
 }
 
 /* Explicit text styling for markdown content */
 .message-text em,
 .message-text i,
 em, i {
-    color: var(--arena-copper);
+    color: var(--arena-narration) !important;
 }
 
 .message-text blockquote,
-.dialogue-quote {
-    color: var(--arena-gold);
-    border-left-color: var(--arena-gold);
+.dialogue-quote,
+blockquote {
+    color: var(--arena-dialogue) !important;
+    border-left-color: var(--arena-gold) !important;
 }
 
+/* Unified header buttons hover state (matches attachment button yellow) */
+.header-actions button:hover,
+.header-actions .inventory-btn:hover,
+.header-actions .quest-btn:hover,
+.header-actions .user-btn:hover,
+.header-actions .databank-btn:hover,
+.header-actions .share-btn:hover,
+.header-actions .tts-btn:hover,
+.header-actions .pokeball-btn:hover {
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+}
 
-body, #app-container {
-    background-color: var(--arena-bg);
+.header-status,
+.header-status:hover {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Standardized modal tab buttons - zero hover scaling */
+.modal .edit-btn,
+.modal-card .edit-btn,
+.modal .edit-cancel-btn,
+.modal-card .edit-cancel-btn,
+.modal .edit-save-btn,
+.modal-card .edit-save-btn {
+    transform: none !important;
+    box-shadow: none !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+}
+
+.modal .edit-btn:hover,
+.modal-card .edit-btn:hover,
+.modal .edit-cancel-btn:hover,
+.modal-card .edit-cancel-btn:hover {
+    transform: none !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-main) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Unified stone gray chat bubbles */
+.message.program {
+    background: var(--program-bubble) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.message.user {
+    background: var(--user-bubble) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+body, #app-container, #chat-container, .chat-container {
+    background-color: var(--arena-bg) !important;
     color: var(--arena-text);
 }
 
@@ -457,15 +512,57 @@ body, #app-container {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
+    position: relative !important;
     width: 32px;
     height: 32px;
     cursor: pointer;
-    color: var(--heart-color, #e2b047) !important;
+    color: var(--heart-color, #ef4444) !important;
     animation: arenaHeartBeat var(--heart-speed, 2.0s) infinite ease-in-out !important;
     opacity: 1 !important;
     visibility: visible !important;
     transform: none;
     filter: none;
+}
+
+.heart-delta-pop {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    pointer-events: none;
+    font-size: 0.68rem;
+    font-weight: 700;
+    font-family: var(--font-arena, "Cinzel", Georgia, serif);
+    letter-spacing: 0.02em;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: rgba(12, 12, 16, 0.88);
+    border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 6px color-mix(in srgb, currentColor 40%, transparent);
+    white-space: nowrap;
+    z-index: 9999;
+    animation: heartDeltaFloat 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heartDeltaFloat {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.75);
+    }
+    18% {
+        opacity: 1;
+        transform: translate(-50%, -14px) scale(1.05);
+    }
+    35% {
+        transform: translate(-50%, -18px) scale(1.0);
+    }
+    70% {
+        opacity: 0.95;
+        transform: translate(-50%, -26px) scale(0.95);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -34px) scale(0.85);
+    }
 }
 
 .heart-pulse svg {
