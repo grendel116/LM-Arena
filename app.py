@@ -950,7 +950,7 @@ def generate_user_message():
             print(f"Error loading fallback user profile: {e}")
             
     if not user_profile:
-        user_profile = "A software developer and code builder."
+        user_profile = "An adventurer imprisoned in the Imperial Dungeon."
         
     try:
         generated_msg = generate_impersonated_message(session_id, user_profile, model)
@@ -2048,12 +2048,7 @@ def save_lorebook_entries(filename):
 @requires_auth
 def get_program_memories():
     try:
-        from utils.program import get_active_program
-        program_id = request.args.get('program_id') or get_active_program()
-        
-        db_dir = os.path.join(base_dir, "core", "programs", program_id)
-        
-        manager = DataBankManager(db_dir=db_dir)
+        manager = DataBankManager()
         memories = manager.get_all_memories()
         return jsonify({"memories": memories})
     except Exception as e:
@@ -2816,21 +2811,39 @@ def get_character_status():
 def update_character_profile():
     try:
         data = request.get_json(silent=True) or {}
-        from engine.save_manager import get_active_save_id
+        from engine.save_manager import get_active_save_id, sync_save_meta
         from engine.character import load_character, save_character, update_character_identity
         
         save_id = get_active_save_id()
         sheet = load_character(save_id)
         
+        new_name = data.get("name")
         sheet = update_character_identity(
             sheet=sheet,
-            name=data.get("name"),
+            name=new_name,
             race=data.get("race"),
             gender=data.get("gender"),
             character_class=data.get("class"),
             custom_attributes=data.get("attributes")
         )
         save_character(save_id, sheet)
+        sync_save_meta(save_id)
+        
+        if new_name:
+            from engine.save_manager import SAVES_DIR
+            profile_path = SAVES_DIR / save_id / "profile.md"
+            if profile_path.exists():
+                try:
+                    with open(profile_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    lines = content.splitlines()
+                    if lines and lines[0].startswith("#"):
+                        lines[0] = f"# {new_name.upper()}"
+                        content = "\n".join(lines)
+                        with open(profile_path, "w", encoding="utf-8") as f:
+                            f.write(content)
+                except Exception as sync_err:
+                    print(f"Error syncing profile name: {sync_err}")
         
         return jsonify({
             "status": "success",
@@ -3029,47 +3042,73 @@ def extract_profile_display_name(profile_id: str, content: str) -> str:
 @requires_auth
 def list_user_profiles():
     try:
-        from variables import USER_PROFILES_DIR
+        from engine.save_manager import SAVES_DIR, sync_save_meta, create_save
         from utils.program import get_active_user
-        if not os.path.exists(USER_PROFILES_DIR):
-            os.makedirs(USER_PROFILES_DIR, exist_ok=True)
+        if not SAVES_DIR.exists():
+            SAVES_DIR.mkdir(parents=True, exist_ok=True)
         
         # Get active user profile
         active_user = get_active_user()
         
         profiles = []
-        for file in os.listdir(USER_PROFILES_DIR):
-            if file.lower().endswith(".md") and not file.lower().endswith("_mods.md"):
-                profile_name = os.path.splitext(file)[0]
-                profile_path = os.path.join(USER_PROFILES_DIR, file)
-                mods_path = os.path.join(USER_PROFILES_DIR, f"{profile_name}_mods.txt")
+        
+        for item in SAVES_DIR.iterdir():
+            if item.is_dir():
+                profile_name = item.name
+                profile_path = item / "profile.md"
+                mods_path = item / "profile_mods.txt"
+                
+                # Auto create profile.md if missing
+                meta = sync_save_meta(profile_name) or {}
+                if not profile_path.exists():
+                    try:
+                        char_name = meta.get("character_name", profile_name.replace("_", " ").title())
+                        race = meta.get("race", "Nord")
+                        char_class = meta.get("class", "Mage")
+                        gender = meta.get("gender", "Male")
+                        default_content = f"# {char_name.upper()}\n- Race: {race}\n- Class: {char_class}\n- Gender: {gender}\n- Description: A brave adventurer.\n"
+                        with open(profile_path, "w", encoding="utf-8") as f:
+                            f.write(default_content)
+                    except Exception as e:
+                        print(f"Error auto creating profile.md for {profile_name}: {e}")
+                
                 try:
                     with open(profile_path, "r", encoding="utf-8") as pf:
                         content = pf.read()
                     mods = ""
-                    if os.path.exists(mods_path):
+                    if mods_path.exists():
                         with open(mods_path, "r", encoding="utf-8") as mf:
                             mods = mf.read()
+                            
                     profiles.append({
                         "id": profile_name,
                         "name": extract_profile_display_name(profile_name, content),
                         "content": content,
-                        "mods": mods
+                        "mods": mods,
+                        "gender": meta.get("gender", "Male"),
+                        "race": meta.get("race", "Nord"),
+                        "class": meta.get("class", "Mage"),
+                        "level": meta.get("level", 1)
                     })
                 except Exception as e:
-                    print(f"Error reading profile {file}: {e}")
+                    print(f"Error reading profile {profile_name}: {e}")
         
-        # If there are no profiles at all, ensure at least "eternal_champion" is present
+        # Ensure at least "eternal_champion" is present
         if not profiles:
-            eternal_path = os.path.join(USER_PROFILES_DIR, "eternal_champion.md")
-            default_content = "# ETERNAL CHAMPION\n- Race: Nord\n- Class: Battlemage\n- Level: 1\n- Vitals: HP: 38/38 | MP: 117/117 | SP: 81/81\n- Location: Imperial Dungeon, Cyrodiil\n"
-            with open(eternal_path, "w", encoding="utf-8") as f:
-                f.write(default_content)
+            create_save(save_id="eternal_champion", user_profile_id="eternal_champion")
+            meta = sync_save_meta("eternal_champion") or {}
+            profile_path = SAVES_DIR / "eternal_champion" / "profile.md"
+            with open(profile_path, "r", encoding="utf-8") as pf:
+                content = pf.read()
             profiles.append({
                 "id": "eternal_champion",
                 "name": "Eternal Champion",
-                "content": default_content,
-                "mods": ""
+                "content": content,
+                "mods": "",
+                "gender": meta.get("gender", "Male"),
+                "race": meta.get("race", "Nord"),
+                "class": meta.get("class", "Battlemage"),
+                "level": meta.get("level", 1)
             })
 
         return jsonify({"profiles": profiles, "active": active_user})
@@ -3085,23 +3124,18 @@ def select_user_profile():
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
         
-        from variables import USER_PROFILES_DIR
         from utils.program import set_active_user
-        profile_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}.md")
-        if not os.path.exists(profile_path):
+        from engine.save_manager import SAVES_DIR, load_save
+        
+        save_path = SAVES_DIR / profile_id
+        if not save_path.exists():
             return jsonify({"error": f"Profile '{profile_id}' does not exist"}), 404
         
         # Update active user profile settings
         set_active_user(profile_id)
 
         # Sync active save game locked to this player character profile
-        from engine.save_manager import list_saves, load_save, create_save
-        saves = list_saves()
-        matching_save = next((s for s in saves if s.get("user_profile_id") == profile_id or s.get("id") == profile_id), None)
-        if matching_save:
-            load_save(matching_save["id"])
-        else:
-            create_save(user_profile_id=profile_id, character_name=profile_id.replace("_", " ").title())
+        load_save(profile_id)
         
         # Re-initialize the program config module and runner
         reload_program_state()
@@ -3119,6 +3153,11 @@ def save_user_profile():
         content = data.get("content")
         mods = data.get("mods")
         
+        gender = data.get("gender")
+        race = data.get("race")
+        character_class = data.get("class")
+        name = data.get("name")
+        
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
         if profile_id == "eternal_champion":
@@ -3133,19 +3172,42 @@ def save_user_profile():
         if not profile_id:
             return jsonify({"error": "Invalid profile name"}), 400
             
-        from variables import USER_PROFILES_DIR
         from utils.program import get_active_user
-        if not os.path.exists(USER_PROFILES_DIR):
-            os.makedirs(USER_PROFILES_DIR, exist_ok=True)
+        from engine.save_manager import SAVES_DIR, create_save, sync_save_meta
+        from engine.character import load_character, save_character, update_character_identity
+        
+        save_path = SAVES_DIR / profile_id
+        display_name = name or extract_profile_display_name(profile_id, content)
+        
+        if not save_path.exists():
+            create_save(
+                save_id=profile_id,
+                user_profile_id=profile_id,
+                character_name=display_name,
+                race=race or "Nord",
+                gender=gender or "Male",
+                character_class=character_class or "Mage"
+            )
             
-        profile_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}.md")
+        profile_path = save_path / "profile.md"
         with open(profile_path, "w", encoding="utf-8") as f:
             f.write(content)
             
         if mods is not None:
-            mods_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}_mods.txt")
+            mods_path = save_path / "profile_mods.txt"
             with open(mods_path, "w", encoding="utf-8") as mf:
                 mf.write(mods)
+                
+        sheet = load_character(profile_id)
+        sheet = update_character_identity(
+            sheet=sheet,
+            name=display_name,
+            race=race,
+            gender=gender,
+            character_class=character_class
+        )
+        save_character(profile_id, sheet)
+        sync_save_meta(profile_id)
             
         # Read active profile
         active_user = get_active_user()
@@ -3158,7 +3220,6 @@ def save_user_profile():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/user_profiles/delete', methods=['POST'])
 @requires_auth
 def delete_user_profile():
@@ -3168,33 +3229,16 @@ def delete_user_profile():
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
             
-        if profile_id == "eternal_champion":
-            return jsonify({"error": "Cannot delete the default protected 'eternal_champion' profile"}), 400
-            
-        from variables import USER_PROFILES_DIR
         from utils.program import get_active_user, set_active_user
-        profile_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}.md")
-        if not os.path.exists(profile_path):
+        from engine.save_manager import SAVES_DIR, delete_save, set_active_save_id
+        
+        save_path = SAVES_DIR / profile_id
+        if not save_path.exists():
             return jsonify({"error": f"Profile '{profile_id}' does not exist"}), 404
             
-        # Delete associated saves bound to this player profile
-        from engine.save_manager import list_saves, delete_save, set_active_save_id
-        saves = list_saves()
-        for s in saves:
-            s_id = s.get("id")
-            s_prof = s.get("user_profile_id")
-            if (s_prof == profile_id or s_id == profile_id) and s_id != "eternal_champion":
-                delete_save(s_id)
+        # Delete associated save bound to this player profile permanently (or reset if eternal_champion)
+        delete_save(profile_id, force_delete=True)
 
-        # Delete profile markdown & mods file
-        os.remove(profile_path)
-        mods_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}_mods.txt")
-        if os.path.exists(mods_path):
-            try:
-                os.remove(mods_path)
-            except Exception:
-                pass
-        
         # If the deleted profile was active, switch active profile and save back to "eternal_champion"
         active_user = get_active_user()
                 
@@ -3206,7 +3250,6 @@ def delete_user_profile():
         return jsonify({"status": "success", "deleted": profile_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/user_profiles/rename', methods=['POST'])
 @requires_auth
@@ -3235,26 +3278,24 @@ def rename_user_profile():
         if old_profile_id == new_profile_id:
             return jsonify({"status": "success", "profile_id": new_profile_id})
             
-        from variables import USER_PROFILES_DIR
+        from engine.save_manager import SAVES_DIR, sync_save_meta, set_active_save_id
         from utils.program import get_active_user, set_active_user
-        old_path = os.path.join(USER_PROFILES_DIR, f"{old_profile_id}.md")
-        new_path = os.path.join(USER_PROFILES_DIR, f"{new_profile_id}.md")
         
-        if not os.path.exists(old_path):
+        old_save_path = SAVES_DIR / old_profile_id
+        new_save_path = SAVES_DIR / new_profile_id
+        
+        if not old_save_path.exists():
             return jsonify({"error": f"Profile '{old_profile_id}' does not exist"}), 404
             
-        if os.path.exists(new_path):
+        if new_save_path.exists():
             return jsonify({"error": f"Profile '{new_profile_id}' already exists"}), 400
             
-        # Rename file
-        os.rename(old_path, new_path)
-        old_mods = os.path.join(USER_PROFILES_DIR, f"{old_profile_id}_mods.txt")
-        new_mods = os.path.join(USER_PROFILES_DIR, f"{new_profile_id}_mods.txt")
-        if os.path.exists(old_mods):
-            try:
-                os.rename(old_mods, new_mods)
-            except Exception:
-                pass
+        # Rename save directory if exists to enforce unified mapping
+        try:
+            os.rename(old_save_path, new_save_path)
+            sync_save_meta(new_profile_id)
+        except Exception as save_err:
+            return jsonify({"error": f"Error renaming save directory: {save_err}"}), 500
         
         # Check active user
         active_user = get_active_user()
@@ -3262,6 +3303,7 @@ def rename_user_profile():
         # If the renamed profile was active, update and reload
         if old_profile_id == active_user:
             set_active_user(new_profile_id)
+            set_active_save_id(new_profile_id)
             reload_program_state()
                 
         return jsonify({"status": "success", "profile_id": new_profile_id})

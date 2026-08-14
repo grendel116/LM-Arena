@@ -11,10 +11,7 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-from variables import (
-    USER_MD_FILE, DEFAULT_REMOTE_MODEL, PROGRAMS_DIR, 
-    USER_PROFILES_DIR
-)
+from variables import DEFAULT_REMOTE_MODEL, PROGRAMS_DIR
 
 # --- SYSTEM CONTEXT COMPILER ---
 
@@ -39,16 +36,24 @@ def get_program_name() -> str:
     # v3: data.name / legacy: name
     return card.get("name") or active_program.title()
 
-def replace_placeholders(text: str) -> str:
+def replace_placeholders(text: str, user_name: str = None, comp_name: str = None) -> str:
     """Replaces {{user}} and {{char}} placeholders (case-insensitive) with their actual values."""
     if not text:
         return text
-    from utils.program import get_active_user
-    user_name = get_active_user().replace("_", " ").title()
-    try:
-        comp_name = get_program_name()
-    except Exception:
-        comp_name = "Program"
+    if not user_name:
+        from utils.program import get_active_user
+        from engine.character import load_character
+        active_id = get_active_user()
+        try:
+            user_sheet = load_character(active_id)
+            user_name = user_sheet.get("name") or active_id.replace("_", " ").title()
+        except Exception:
+            user_name = active_id.replace("_", " ").title()
+    if not comp_name:
+        try:
+            comp_name = get_program_name()
+        except Exception:
+            comp_name = "Program"
     
     text = re.sub(r'(?i)\{\{user\}\}', user_name, text)
     text = re.sub(r'(?i)\{\{char\}\}', comp_name, text)
@@ -144,31 +149,35 @@ def load_dynamic_runtime_context() -> str:
     )
 
 def load_user_instructions() -> str:
-    """Reads the active user profile configuration from variables/user_profiles/*.md 
+    """Reads the active user profile configuration from variables/saves/{active_user}/profile.md 
     to set private relationship context.
     """
     from utils.program import get_active_user
+    from engine.save_manager import SAVES_DIR, create_save
     active_profile = get_active_user()
 
-    if not os.path.exists(USER_PROFILES_DIR):
+    save_path = SAVES_DIR / active_profile
+    profile_path = save_path / "profile.md"
+
+    if not save_path.exists():
         try:
-            os.makedirs(USER_PROFILES_DIR, exist_ok=True)
-        except Exception as e:
-            print(f"Error creating user profiles directory: {e}")
+            create_save(save_id=active_profile, user_profile_id=active_profile, character_name=active_profile.replace("_", " ").title())
+        except Exception as create_err:
+            print(f"Error creating default character save: {create_err}")
 
-    profile_path = os.path.join(USER_PROFILES_DIR, f"{active_profile}.md")
-
-    if not os.path.exists(profile_path):
-        if os.path.exists(USER_MD_FILE):
+    if not profile_path.exists():
+        eternal_path = SAVES_DIR / "eternal_champion" / "profile.md"
+        if eternal_path.exists():
             try:
-                shutil.copy(USER_MD_FILE, profile_path)
-                print(f">>> Automatically copied {USER_MD_FILE} to {profile_path}")
-            except Exception as e:
-                print(f"Error copying {USER_MD_FILE} to {profile_path}: {e}")
+                shutil.copy(eternal_path, profile_path)
+                print(f">>> Automatically copied {eternal_path} to {profile_path}")
+            except Exception as copy_err:
+                print(f"Error copying default profile: {copy_err}")
         else:
             try:
+                save_path.mkdir(parents=True, exist_ok=True)
                 with open(profile_path, "w", encoding="utf-8") as f:
-                    f.write("# USER CONTEXT: BUILDER\n- A software developer and code builder.\n- Hobby: Collects cute AI program programs in the Sanctuary.\n")
+                    f.write("# ETERNAL CHAMPION\n- An adventurer imprisoned in the Imperial Dungeon.\n")
                 print(f">>> Automatically created default {profile_path}")
             except Exception as e:
                 print(f"Error creating default {profile_path}: {e}")
@@ -180,9 +189,8 @@ def load_user_instructions() -> str:
     except Exception as e:
         print(f"Failed to read user instructions from {profile_path}: {e}")
         fallback_msg = (
-            "# USER CONTEXT: BUILDER\n"
-            "- A software developer and code builder.\n"
-            "- Hobby: Collects cute AI program programs in the Sanctuary.\n"
+            "# ETERNAL CHAMPION\n"
+            "- An adventurer imprisoned in the Imperial Dungeon.\n"
         )
         return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{fallback_msg}"
 

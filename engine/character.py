@@ -634,7 +634,7 @@ RACE_BONUSES = {
     "imperial": {"attributes": {"personality": 10, "willpower": 5, "luck": 5}}
 }
 
-def update_character_identity(sheet: dict, name: str = None, race: str = None, gender: str = None, character_class: str = None, custom_attributes: dict = None) -> dict:
+def update_character_identity(sheet: dict, name: str = None, race: str = None, gender: str = None, character_class: str = None, custom_attributes: dict = None, reset_vitals: bool = False) -> dict:
     """Updates race, class, gender, name and recalculates base attributes and derived vitals."""
     if name:
         sheet["name"] = name.strip()
@@ -681,21 +681,21 @@ def update_character_identity(sheet: dict, name: str = None, race: str = None, g
     d = sheet.setdefault("derived", {})
     hp_base = 20 + int(endurance * 0.2) + tmpl.get("hp_bonus", 4)
     d["hp_max"] = hp_base
-    if "hp_current" not in d:
+    if reset_vitals or "hp_current" not in d:
         d["hp_current"] = hp_base
     else:
         d["hp_current"] = min(hp_base, max(0, d["hp_current"]))
     
     mp_base = max(10, int(intelligence * tmpl.get("mp_mult", 1.0)))
     d["mp_max"] = mp_base
-    if "mp_current" not in d:
+    if reset_vitals or "mp_current" not in d:
         d["mp_current"] = mp_base
     else:
         d["mp_current"] = min(mp_base, max(0, d["mp_current"]))
     
     stamina_base = int((endurance + strength) * 0.6)
     d["stamina_max"] = stamina_base
-    if "stamina_current" not in d:
+    if reset_vitals or "stamina_current" not in d:
         d["stamina_current"] = stamina_base
     else:
         d["stamina_current"] = min(stamina_base, max(0, d["stamina_current"]))

@@ -863,9 +863,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         # Inject Player Mods / post_history_instructions verbatim after the chat history
         try:
             from utils.program import get_active_user
-            from variables import USER_PROFILES_DIR
+            from engine.save_manager import SAVES_DIR
             active_user = get_active_user()
-            mods_path = os.path.join(USER_PROFILES_DIR, f"{active_user}_mods.txt")
+            mods_path = os.path.join(SAVES_DIR, active_user, "profile_mods.txt")
             post_history_inst = ""
             if os.path.exists(mods_path):
                 with open(mods_path, "r", encoding="utf-8") as mf:
@@ -1999,7 +1999,7 @@ class OpenSourceRunner(BaseProgramRunner):
 
     def _normalize_message(self, msg: dict) -> dict:
         """Transforms a raw stored message into the canonical frontend format."""
-        text = msg.get('text', '') or ''
+        text = msg.get('text', '') or msg.get('content', '') or ''
         media = []
 
         # 1. Extract markdown images from text into media[]
@@ -2042,9 +2042,17 @@ class OpenSourceRunner(BaseProgramRunner):
                 if not m.get('prompt'):
                     m['prompt'] = image_prompt
 
+        msg_id = msg.get('id')
+        if not msg_id:
+            import uuid as _uuid
+            msg_id = f"msg_{_uuid.uuid4().hex[:12]}"
+            msg['id'] = msg_id
+
         role = msg.get('role', 'user')
+        if role == 'assistant':
+            role = 'program'
         return {
-            'id': msg.get('id', ''),
+            'id': msg_id,
             'role': role,
             'text': clean_text,
             'media': media,
@@ -2281,6 +2289,14 @@ class OpenSourceRunner(BaseProgramRunner):
             
         orig_msg = history[user_idx]
         
+        # Direct editing of program / assistant messages
+        if orig_msg.get('role') in ('program', 'assistant'):
+            if new_text is not None:
+                orig_msg['text'] = new_text.strip()
+                orig_msg['content'] = new_text.strip()
+                self._save_session_to_disk(session_id)
+                return new_text.strip(), [], "", orig_msg.get('id', '')
+        
         # Parse image_data or media_path if exists in original message to preserve it
         img_data = None
         img_mime = None
@@ -2354,7 +2370,7 @@ class OpenSourceRunner(BaseProgramRunner):
             if session_id in self.sessions_history:
                 history = self.sessions_history[session_id]
                 for msg in history:
-                    if msg.get('role') == 'system-memory' and abs(msg.get('timestamp', 0) - timestamp) < 1.0:
+                    if msg.get('role') == 'system-memory' and abs(msg.get('timestamp', 0) - timestamp) < 10.0:
                         msg['compacted'] = True
                         marked_compacted = True
                         print(f"[MEMORY DELETE] Marked OS message as compacted.", flush=True)
@@ -2362,10 +2378,9 @@ class OpenSourceRunner(BaseProgramRunner):
                     self._save_session_to_disk(session_id)
                     
             # Delete from memories.json vector database
-            from utils.program import get_active_program
-            active_program = get_active_program()
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            memories_path = os.path.join(base_dir, "core", "programs", active_program, "memories.json")
+            from core.skills.vectorized_databank.databank import DataBankManager
+            db = DataBankManager()
+            memories_path = db.memories_path
             deleted_from_db = False
             if os.path.exists(memories_path):
                 try:
@@ -2378,7 +2393,8 @@ class OpenSourceRunner(BaseProgramRunner):
                     matching_ids = []
                     for doc in docs:
                         doc_name = doc.get("name", "")
-                        if doc.get("source_type") == "chat_history" and doc_name.startswith(prefix) and abs(doc.get("timestamp", 0) - timestamp) < 10.0:
+                        doc_ts = doc.get("timestamp", 0)
+                        if doc.get("source_type") == "chat_history" and (abs(doc_ts - timestamp) < 10.0 or doc_name.startswith(prefix)):
                             matching_ids.append(doc.get("id"))
                             
                     if matching_ids:

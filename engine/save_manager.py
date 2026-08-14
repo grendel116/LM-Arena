@@ -31,6 +31,14 @@ def get_active_save_id() -> str:
         except Exception:
             pass
     
+def get_save_directory(save_id: str = None) -> Path:
+    """Return absolute Path object to a save directory."""
+    if not save_id:
+        save_id = get_active_save_id()
+    path = SAVES_DIR / save_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
     # Default fallback
     default_id = "eternal_champion"
     if not (SAVES_DIR / default_id).exists():
@@ -82,9 +90,7 @@ def sync_save_meta(save_id: str) -> dict:
     t_date = world.get("tamrielic_date", {})
     date_str = f"{t_date.get('day', 1)} {t_date.get('month', 'Morning Star')}, 3E {t_date.get('year', 389)}"
 
-    user_profile_id = existing_meta.get("user_profile_id")
-    if not user_profile_id:
-        user_profile_id = "eternal_champion" if save_id == "eternal_champion" else save_id
+    user_profile_id = save_id
 
     meta = {
         "id": save_id,
@@ -121,6 +127,20 @@ def list_saves() -> list:
             save_id = item.name
             meta = sync_save_meta(save_id)
             if meta:
+                # Ensure the player profile file exists inside the save folder
+                profile_path = item / "profile.md"
+                if not profile_path.exists():
+                    try:
+                        char_name = meta.get("character_name", "Eternal Champion")
+                        race = meta.get("race", "Nord")
+                        char_class = meta.get("class", "Mage")
+                        gender = meta.get("gender", "Male")
+                        default_content = f"# {char_name.upper()}\n- Race: {race}\n- Class: {char_class}\n- Gender: {gender}\n- Description: A brave adventurer.\n"
+                        with open(profile_path, "w", encoding="utf-8") as f:
+                            f.write(default_content)
+                    except Exception as e:
+                        print(f"Error auto creating profile.md in save {save_id}: {e}")
+                
                 meta["is_active"] = (save_id == active_id)
                 saves.append(meta)
                 
@@ -129,23 +149,34 @@ def list_saves() -> list:
     return saves
 
 
-def create_save(name: str = None, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage", user_profile_id: str = None) -> dict:
+def create_save(name: str = None, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage", user_profile_id: str = None, save_id: str = None) -> dict:
     """Create an isolated, complete new save state locked to a player profile."""
-    timestamp_slug = datetime.now().strftime("%Y%m%d_%H%M%S")
-    clean_name = "".join(c for c in (character_name or "hero").lower() if c.isalnum() or c in "_-")
-    save_id = f"{clean_name}_{timestamp_slug}"
+    if not save_id:
+        timestamp_slug = datetime.now().strftime("%Y%m%d_%H%M%S")
+        clean_name = "".join(c for c in (character_name or "hero").lower() if c.isalnum() or c in "_-")
+        save_id = f"{clean_name}_{timestamp_slug}"
+        
     save_path = SAVES_DIR / save_id
     save_path.mkdir(parents=True, exist_ok=True)
 
     if not user_profile_id:
-        from utils.program import get_active_user
-        user_profile_id = get_active_user() or "eternal_champion"
+        user_profile_id = save_id
     
+    # Ensure player profile file exists inside the save path
+    profile_path = save_path / "profile.md"
+    if not profile_path.exists():
+        try:
+            default_content = f"# {character_name.upper()}\n- Race: {race}\n- Class: {character_class}\n- Gender: {gender}\n- Description: A brave adventurer.\n"
+            with open(profile_path, "w", encoding="utf-8") as f:
+                f.write(default_content)
+        except Exception as e:
+            print(f"Error auto creating user profile file: {e}")
+
     # 1. Initialize character sheet
     from engine.character import DEFAULT_SHEET, update_character_identity
     import copy
     sheet = copy.deepcopy(DEFAULT_SHEET)
-    sheet = update_character_identity(sheet, name=character_name, race=race, gender=gender, character_class=character_class)
+    sheet = update_character_identity(sheet, name=character_name, race=race, gender=gender, character_class=character_class, reset_vitals=True)
     with open(save_path / "character_sheet.json", "w", encoding="utf-8") as f:
         json.dump(sheet, f, indent=4, ensure_ascii=False)
         
@@ -170,11 +201,16 @@ def create_save(name: str = None, character_name: str = "Eternal Champion", race
         json.dump(world_state, f, indent=4, ensure_ascii=False)
         
     # 3. Initialize narrative chat history
-    opening_mes = DEFAULT_GREETING.replace("{{user}}", character_name)
+    from core.program_config import get_program_greeting, replace_placeholders
+    opening_mes = replace_placeholders(get_program_greeting(), user_name=character_name)
+    import uuid
+    first_msg_id = f"first_mes_{uuid.uuid4().hex[:12]}"
     history_data = {
         "messages": [
             {
-                "role": "assistant",
+                "id": first_msg_id,
+                "role": "program",
+                "text": opening_mes,
                 "content": opening_mes
             }
         ]
@@ -229,18 +265,40 @@ def load_save(save_id: str) -> dict:
     return meta
 
 
-def reset_default_save() -> dict:
-    """Reset the eternal_champion save to a pristine default state."""
-    save_id = "eternal_champion"
+def reset_save_to_defaults(save_id: str) -> dict:
+    """Reset a save state to a pristine default state."""
     save_path = SAVES_DIR / save_id
     save_path.mkdir(parents=True, exist_ok=True)
     
-    from engine.character import DEFAULT_SHEET
+    # 1. Retrieve character metadata from current save if possible, otherwise defaults
+    meta_path = save_path / "meta.json"
+    character_name = save_id.replace("_", " ").title()
+    race = "Nord"
+    gender = "Male"
+    character_class = "Battlemage" if save_id == "eternal_champion" else "Mage"
+    user_profile_id = save_id
+    
+    if meta_path.exists():
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+                character_name = meta.get("character_name", character_name)
+                race = meta.get("race", race)
+                gender = meta.get("gender", gender)
+                character_class = meta.get("class", character_class)
+                user_profile_id = meta.get("user_profile_id", user_profile_id)
+        except Exception:
+            pass
+            
+    # 2. Reset character sheet
+    from engine.character import DEFAULT_SHEET, update_character_identity
     import copy
     sheet = copy.deepcopy(DEFAULT_SHEET)
+    sheet = update_character_identity(sheet, name=character_name, race=race, gender=gender, character_class=character_class, reset_vitals=True)
     with open(save_path / "character_sheet.json", "w", encoding="utf-8") as f:
         json.dump(sheet, f, indent=4, ensure_ascii=False)
         
+    # 3. Reset world state
     default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
     if default_world_path.exists():
         with open(default_world_path, "r", encoding="utf-8") as f:
@@ -260,11 +318,17 @@ def reset_default_save() -> dict:
     with open(save_path / "world_state.json", "w", encoding="utf-8") as f:
         json.dump(world_state, f, indent=4, ensure_ascii=False)
         
-    opening_mes = DEFAULT_GREETING.replace("{{user}}", "Eternal Champion")
+    # 4. Reset history
+    from core.program_config import get_program_greeting, replace_placeholders
+    opening_mes = replace_placeholders(get_program_greeting(), user_name=character_name)
+    import uuid
+    first_msg_id = f"first_mes_{uuid.uuid4().hex[:12]}"
     history_data = {
         "messages": [
             {
-                "role": "assistant",
+                "id": first_msg_id,
+                "role": "program",
+                "text": opening_mes,
                 "content": opening_mes
             }
         ]
@@ -272,34 +336,43 @@ def reset_default_save() -> dict:
     with open(save_path / "history.json", "w", encoding="utf-8") as f:
         json.dump(history_data, f, indent=2, ensure_ascii=False)
         
+    # 5. Reset metadata json
     meta = {
-        "id": "eternal_champion",
-        "name": "Eternal Champion - Nord Battlemage",
+        "id": save_id,
+        "name": f"{character_name} - {race} {character_class}",
+        "user_profile_id": user_profile_id,
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat(),
-        "character_name": "Eternal Champion",
-        "race": "Nord",
-        "gender": "Male",
-        "class": "Battlemage",
+        "character_name": character_name,
+        "race": race,
+        "gender": gender,
+        "class": character_class,
         "level": 1,
-        "gold": 0,
+        "gold": sheet.get("gold", 75),
         "current_province": "Cyrodiil",
         "current_location": "Imperial Dungeon",
         "quest_stage": 10,
         "tamrielic_date": "1 Morning Star, 3E 389"
     }
-    with open(save_path / "meta.json", "w", encoding="utf-8") as f:
+    with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=4, ensure_ascii=False)
         
-    set_active_save_id(save_id)
-    meta["is_active"] = True
     return meta
 
 
-def delete_save(save_id: str) -> bool:
-    """Delete a save state or reset eternal_champion to pristine state if requested."""
+def reset_default_save() -> dict:
+    """Reset the eternal_champion save to a pristine default state."""
+    return reset_save_to_defaults("eternal_champion")
+
+
+def delete_save(save_id: str, force_delete: bool = False) -> bool:
+    """Reset a save state, or permanently delete its folder if force_delete is True."""
+    if not force_delete:
+        reset_save_to_defaults(save_id)
+        return True
+
     if save_id == "eternal_champion":
-        reset_default_save()
+        reset_save_to_defaults("eternal_champion")
         return True
 
     save_path = SAVES_DIR / save_id
@@ -314,6 +387,7 @@ def delete_save(save_id: str) -> bool:
         if remaining:
             set_active_save_id(remaining[0])
         else:
-            reset_default_save()
+            reset_save_to_defaults("eternal_champion")
+            set_active_save_id("eternal_champion")
             
     return True

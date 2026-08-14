@@ -10,8 +10,6 @@ VARIABLES_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Configuration and data file paths
 BANNED_WORDS_FILE = os.path.join(VARIABLES_DIR, "banned_words.json")
-USER_MD_FILE = os.path.join(VARIABLES_DIR, "user.md")
-USER_PROFILES_DIR = os.path.join(VARIABLES_DIR, "user_profiles")
 
 # Model and server configurations
 DEFAULT_REMOTE_MODEL = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")

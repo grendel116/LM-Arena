@@ -59,8 +59,15 @@
         <div id="chat-loading-overlay">
             <div class="loading-content">
                 <div class="loading-logo">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
+                        <line x1="13" y1="19" x2="19" y2="13"></line>
+                        <line x1="16" y1="16" x2="20" y2="20"></line>
+                        <line x1="19" y1="21" x2="21" y2="19"></line>
+                        <polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline>
+                        <line x1="11" y1="19" x2="5" y2="13"></line>
+                        <line x1="8" y1="16" x2="4" y2="20"></line>
+                        <line x1="5" y1="21" x2="3" y2="19"></line>
                     </svg>
                 </div>
             </div>
@@ -101,16 +108,15 @@
                     </svg>
                 </button>
 
-                <!-- 3. Player & Saves -->
-                <button class="user-btn" onclick="openAssistantModal('user')" title="Player & Saves">
+                <button class="user-btn" onclick="openAssistantModal('program')" title="Player & Follower Profiles">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                 </button>
 
-                <!-- 4. Follower Journals -->
-                <button class="databank-btn" onclick="openDataBank()" title="Follower Journals & Lore">
+                <!-- 4. Player Knowledge -->
+                <button class="databank-btn" onclick="openDataBank()" title="Player Knowledge & Lore">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
                         <polyline points="2 17 12 22 22 17"></polyline>
@@ -436,7 +442,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <span>Follower Knowledge</span>
+                <span>Player Knowledge</span>
             </h3>
             <p id="databank-descriptor" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
                 Upload documents (TXT, MD, HTML, PDF) to ingest lore or guides into the vectorized databank.
@@ -582,9 +588,6 @@
                 <button onclick="switchAssistantModalTab('user')" id="assistant-tab-btn-user" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Player
                 </button>
-                <button onclick="switchAssistantModalTab('sessions')" id="assistant-tab-btn-sessions" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    Saves
-                </button>
             </div>
 
             <!-- Select Program Tab Content -->
@@ -681,7 +684,7 @@
                                 </optgroup>
                                 <optgroup label="Mage Archetype">
                                     <option value="Mage" selected>Mage</option>
-                                    <option value="Sorcerer">Sorcerer (Spell Absorption)</option>
+                                    <option value="Sorcerer">Sorcerer</option>
                                     <option value="Healer">Healer</option>
                                     <option value="Battlemage">Battlemage</option>
                                     <option value="Spellsword">Spellsword</option>
@@ -728,95 +731,7 @@
                 </div>
             </div>
 
-            <!-- Saves Tab Content -->
-            <div id="assistant-tab-content-sessions" style="display: none;">
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                    Manage your game saves. Each save preserves your character, level, quest progress, world state, and narrative history.
-                </p>
-
-                <!-- Saves List Container -->
-                <div id="saves-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; padding-right: 4px;">
-                    <!-- Saves rendered dynamically -->
-                </div>
-
-                <!-- Collapsible New Save Panel -->
-                <div id="new-save-panel" style="display: none; background: rgba(0,0,0,0.35); border: 1px solid var(--arena-gold); border-radius: 10px; padding: 14px; margin-top: 15px;">
-                    <h4 style="margin: 0 0 10px 0; color: var(--arena-gold); font-size: 0.9rem; font-weight: 700;">Create New Save</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                        <div>
-                            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Save Title</label>
-                            <input id="new-save-title" type="text" placeholder="e.g. Redguard Spellsword Run" class="onboarding-input" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 7px 10px; border-radius: 6px; font-size: 0.85rem;" />
-                        </div>
-                        <div>
-                            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Character Name</label>
-                            <input id="new-save-char-name" type="text" value="Eternal Champion" class="onboarding-input" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 7px 10px; border-radius: 6px; font-size: 0.85rem;" />
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1.2fr 1.4fr; gap: 10px; margin-bottom: 12px;">
-                        <div>
-                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 3px;">Gender</label>
-                            <select id="new-save-gender" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem;">
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 3px;">Race</label>
-                            <select id="new-save-race" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem;">
-                                <option value="Nord">Nord (Cold Resist)</option>
-                                <option value="Breton">Breton (Magic Resist)</option>
-                                <option value="Redguard">Redguard (Blademaster)</option>
-                                <option value="High Elf">High Elf (Arcane Magicka)</option>
-                                <option value="Wood Elf">Wood Elf (Archery)</option>
-                                <option value="Dark Elf">Dark Elf (Fire Resist)</option>
-                                <option value="Khajiit">Khajiit (Agile / Stealth)</option>
-                                <option value="Argonian">Argonian (Poison Resist)</option>
-                                <option value="Imperial">Imperial (Diplomat)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 3px;">Class</label>
-                            <select id="new-save-class" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem;">
-                                <optgroup label="Warrior Archetype">
-                                    <option value="Warrior">Warrior</option>
-                                    <option value="Knight">Knight</option>
-                                    <option value="Ranger">Ranger</option>
-                                    <option value="Archer">Archer</option>
-                                    <option value="Monk">Monk</option>
-                                    <option value="Barbarian">Barbarian</option>
-                                </optgroup>
-                                <optgroup label="Mage Archetype">
-                                    <option value="Mage" selected>Mage</option>
-                                    <option value="Sorcerer">Sorcerer</option>
-                                    <option value="Healer">Healer</option>
-                                    <option value="Battlemage">Battlemage</option>
-                                    <option value="Spellsword">Spellsword</option>
-                                    <option value="Nightblade">Nightblade</option>
-                                </optgroup>
-                                <optgroup label="Thief Archetype">
-                                    <option value="Thief">Thief</option>
-                                    <option value="Burglar">Burglar</option>
-                                    <option value="Assassin">Assassin</option>
-                                    <option value="Rogue">Rogue</option>
-                                    <option value="Acrobat">Acrobat</option>
-                                    <option value="Bard">Bard</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                    </div>
-                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <button onclick="toggleNewSavePanel(false)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; padding: 5px 12px; font-size: 0.8rem; cursor: pointer;">Cancel</button>
-                        <button onclick="submitNewSaveGame()" style="background: var(--arena-gold); border: none; color: #111827; font-weight: 700; border-radius: 6px; padding: 5px 16px; font-size: 0.8rem; cursor: pointer;">Start New Game</button>
-                    </div>
-                </div>
-
-                <!-- Action Bar -->
-                <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; display: flex; justify-content: flex-end;">
-                    <button onclick="toggleNewSavePanel(true)" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; min-width: auto; width: auto; height: auto; margin: 0;">
-                        <span>+ New Save</span>
-                    </button>
-                </div>
-            </div>
+      </div>
         </div>
     </div>
 

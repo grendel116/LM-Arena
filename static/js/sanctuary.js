@@ -1980,22 +1980,30 @@ function renderCharacterStatusModal(data) {
                 
                 itemRow.style.cssText = `display: inline-flex; align-items: center; gap: 6px; background: ${isEq ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255,255,255,0.04)'}; border: 1px solid ${isEq ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 4px 6px 4px 10px; transition: all 0.15s ease;`;
                 
+                if (canEquip) {
+                    itemRow.style.cursor = 'pointer';
+                    itemRow.title = isEq ? `Click to unequip ${item.name}` : `Click to equip ${item.name}`;
+                    itemRow.onmouseover = () => {
+                        itemRow.style.background = isEq ? 'rgba(245, 158, 11, 0.22)' : 'rgba(255, 255, 255, 0.08)';
+                        itemRow.style.borderColor = isEq ? 'rgba(245, 158, 11, 0.6)' : 'rgba(255, 255, 255, 0.2)';
+                    };
+                    itemRow.onmouseout = () => {
+                        itemRow.style.background = isEq ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.04)';
+                        itemRow.style.borderColor = isEq ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255, 255, 255, 0.08)';
+                    };
+                    itemRow.onclick = () => {
+                        toggleItemEquip(item.name, isEq);
+                    };
+                }
+                
                 const qtyStr = item.quantity && item.quantity > 1 ? ` x${item.quantity}` : '';
                 const slotLabel = item.equipped_slot ? item.equipped_slot.replace('_', ' ').toUpperCase() : 'EQUIPPED';
                 const tag = isEq ? `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: var(--primary-accent); color: #000; font-weight: 700;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
                 
-                const equipBtn = document.createElement('button');
-                equipBtn.className = 'edit-btn';
-                equipBtn.style.cssText = `background: transparent; border: none; padding: 0; font-size: 0.82rem; color: ${isEq ? 'var(--primary-accent)' : '#fff'}; display: inline-flex; align-items: center; gap: 6px; cursor: ${canEquip ? 'pointer' : 'default'};`;
-                equipBtn.innerHTML = `<span>${item.name}${qtyStr}</span> ${tag}`;
-                if (canEquip) {
-                    equipBtn.title = isEq ? `Click to unequip ${item.name} (${slotLabel})` : `Click to equip ${item.name}`;
-                    equipBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        toggleItemEquip(item.name, isEq);
-                    };
-                }
-                itemRow.appendChild(equipBtn);
+                const equipLabel = document.createElement('div');
+                equipLabel.style.cssText = `background: transparent; border: none; padding: 0; font-size: 0.82rem; color: ${isEq ? 'var(--primary-accent)' : '#fff'}; display: inline-flex; align-items: center; gap: 6px;`;
+                equipLabel.innerHTML = `<span>${item.name}${qtyStr}</span> ${tag}`;
+                itemRow.appendChild(equipLabel);
 
                 const dropBtn = document.createElement('button');
                 dropBtn.className = 'action-icon-btn';
@@ -2642,7 +2650,7 @@ function closeConnectionModal() {
 
 // --- openUserProfileModal ---
 function openUserProfileModal() {
-    openAssistantModal('user');
+    openAssistantModal('program');
 }
 
 // --- closeUserProfileModal ---
@@ -2914,8 +2922,8 @@ function renderUserProfilesList() {
         info.appendChild(nameDiv);
 
         const idDiv = document.createElement('div');
-        idDiv.style.cssText = 'font-size: 0.75rem; color: var(--text-muted);';
-        idDiv.innerText = `id: ${prof.id}`;
+        idDiv.style.cssText = 'font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 2px;';
+        idDiv.innerText = `Level ${prof.level || 1} ${prof.race || 'Nord'} ${prof.class || 'Mage'} (${prof.id})`;
         info.appendChild(idDiv);
 
         leftArea.appendChild(info);
@@ -2936,7 +2944,7 @@ function renderUserProfilesList() {
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
             `;
-            editBtn.title = 'Edit User Profile';
+            editBtn.title = 'Edit Character Profile';
             editBtn.style.width = '26px';
             editBtn.style.height = '26px';
             editBtn.style.borderRadius = '6px';
@@ -2946,27 +2954,27 @@ function renderUserProfilesList() {
                 openUserProfileEditor(prof.id);
             };
             rightArea.appendChild(editBtn);
-
-            // Add Delete button on each editable profile row
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'action-icon-btn';
-            deleteBtn.innerHTML = `
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-            `;
-            deleteBtn.title = 'Delete User Profile';
-            deleteBtn.style.width = '26px';
-            deleteBtn.style.height = '26px';
-            deleteBtn.style.borderRadius = '6px';
-            deleteBtn.style.flexShrink = '0';
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                deleteUserProfileById(prof.id);
-            };
-            rightArea.appendChild(deleteBtn);
         }
+
+        // Add Delete/Reset button on all profile rows
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'action-icon-btn';
+        deleteBtn.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        `;
+        deleteBtn.title = isProtectedProfile ? 'Reset Character Progress' : 'Delete Character';
+        deleteBtn.style.width = '26px';
+        deleteBtn.style.height = '26px';
+        deleteBtn.style.borderRadius = '6px';
+        deleteBtn.style.flexShrink = '0';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteUserProfileById(prof.id);
+        };
+        rightArea.appendChild(deleteBtn);
 
         card.appendChild(rightArea);
         container.appendChild(card);
@@ -3009,16 +3017,13 @@ function populateProfileEditor() {
     const modsTextarea = document.getElementById('user-profile-mods');
     if (modsTextarea) modsTextarea.value = prof.mods || '';
 
-    // Populate Character Trinity (Gender, Race, Class) from active character sheet
-    if (currentCharacterData && currentCharacterData.character) {
-        const char = currentCharacterData.character;
-        const genderSelect = document.getElementById('user-profile-gender-select');
-        if (genderSelect && char.gender) genderSelect.value = char.gender;
-        const raceSelect = document.getElementById('user-profile-race-select');
-        if (raceSelect && char.race) raceSelect.value = char.race;
-        const classSelect = document.getElementById('user-profile-class-select');
-        if (classSelect && char.class) classSelect.value = char.class;
-    }
+    // Populate Character Trinity (Gender, Race, Class) from profile data
+    const genderSelect = document.getElementById('user-profile-gender-select');
+    if (genderSelect && prof.gender) genderSelect.value = prof.gender;
+    const raceSelect = document.getElementById('user-profile-race-select');
+    if (raceSelect && prof.race) raceSelect.value = prof.race;
+    const classSelect = document.getElementById('user-profile-class-select');
+    if (classSelect && prof.class) classSelect.value = prof.class;
 
     if (selectedEditingProfileId === activeUserProfile) {
         if (activeBadge) activeBadge.style.display = 'inline-block';
@@ -3049,16 +3054,8 @@ async function activateUserProfile(profileId) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        selectedEditingProfileId = profileId;
-
-        const messagesList = document.getElementById('messages-list');
-        if (messagesList) {
-            messagesList.innerHTML = "";
-            showWelcomeMessage();
-        }
-
-        await loadUserProfiles();
-        await fetchCharacterStatus();
+        closeAssistantModal();
+        window.location.reload();
     } catch (e) {
         showCustomAlert("Error", e.message || "Failed to activate profile.");
     }
@@ -3118,15 +3115,6 @@ async function saveActiveUserProfile() {
         const modsTextarea = document.getElementById('user-profile-mods');
         const modsContent = modsTextarea ? modsTextarea.value : '';
 
-        const saveRes = await fetch('/api/user_profiles/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile_id: profileId, content: content, mods: modsContent })
-        });
-        const saveData = await saveRes.json();
-        if (saveData.error) throw new Error(saveData.error);
-
-        // Sync Character Sheet (Gender, Race, Class, Name)
         const genderSelect = document.getElementById('user-profile-gender-select');
         const raceSelect = document.getElementById('user-profile-race-select');
         const classSelect = document.getElementById('user-profile-class-select');
@@ -3134,21 +3122,21 @@ async function saveActiveUserProfile() {
         const charRace = raceSelect ? raceSelect.value : 'Nord';
         const charClass = classSelect ? classSelect.value : 'Mage';
 
-        try {
-            await fetch('/api/character/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: newName,
-                    gender: charGender,
-                    race: charRace,
-                    class: charClass
-                })
-            });
-            await fetchCharacterStatus();
-        } catch (ce) {
-            console.error('Error syncing character sheet:', ce);
-        }
+        const saveRes = await fetch('/api/user_profiles/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                profile_id: profileId,
+                content: content,
+                mods: modsContent,
+                gender: charGender,
+                race: charRace,
+                class: charClass,
+                name: newName
+            })
+        });
+        const saveData = await saveRes.json();
+        if (saveData.error) throw new Error(saveData.error);
 
         // Select & activate this profile if not already active
         if (profileId !== activeUserProfile) {
@@ -3159,6 +3147,9 @@ async function saveActiveUserProfile() {
             });
             const selData = await selRes.json();
             if (selData.error) throw new Error(selData.error);
+        } else {
+            // Already active profile, sync the display attributes
+            await fetchCharacterStatus();
         }
 
         showCustomAlert("Success", `Character profile saved and updated!`);
@@ -3221,12 +3212,18 @@ async function createNewUserProfile() {
 // --- deleteUserProfileById / deleteSelectedUserProfile ---
 async function deleteUserProfileById(targetProfileId) {
     const profileId = targetProfileId || selectedEditingProfileId;
-    if (!profileId || profileId === 'eternal_champion') return;
+    if (!profileId) return;
 
     const prof = userProfiles.find(p => p.id === profileId);
     const displayTitle = prof ? prof.name : profileId;
+    const isEternal = profileId === 'eternal_champion';
 
-    showCustomConfirm("Delete Profile", `Are you sure you want to permanently delete user profile '${displayTitle}'?`, async () => {
+    const confirmTitle = isEternal ? "Reset Character Progress" : "Delete Character";
+    const confirmMessage = isEternal 
+        ? "Are you sure you want to reset all game progress for Eternal Champion? This will clear stats, inventory, and world history." 
+        : `Are you sure you want to permanently delete character '${displayTitle}'?`;
+
+    showCustomConfirm(confirmTitle, confirmMessage, async () => {
         try {
             const res = await fetch('/api/user_profiles/delete', {
                 method: 'POST',
@@ -3236,26 +3233,24 @@ async function deleteUserProfileById(targetProfileId) {
             const data = await res.json();
 
             if (data.status === 'success') {
-                showCustomAlert("Profile Deleted", `User profile '${displayTitle}' has been deleted.`);
-
-                if (profileId === activeUserProfile) {
-                    const messagesList = document.getElementById('messages-list');
-                    if (messagesList) {
-                        messagesList.innerHTML = "";
-                        showWelcomeMessage();
-                    }
+                if (profileId === activeUserProfile || isEternal) {
+                    window.location.reload();
+                } else {
+                    const successTitle = "Character Deleted";
+                    const successMsg = `Character '${displayTitle}' has been deleted.`;
+                    showCustomAlert(successTitle, successMsg);
+                    selectedEditingProfileId = "";
+                    closeUserProfileEditor();
+                    await loadUserProfiles();
+                    await fetchCharacterStatus();
                 }
-
-                selectedEditingProfileId = "";
-                closeUserProfileEditor();
                 await loadUserProfiles();
-                await loadSavesList();
                 await fetchCharacterStatus();
             } else {
-                showCustomAlert("Error", data.error || "Failed to delete profile.");
+                showCustomAlert("Error", data.error || "Failed to perform action.");
             }
         } catch (e) {
-            showCustomAlert("Error", "Failed to communicate with server to delete profile.");
+            showCustomAlert("Error", "Failed to communicate with server.");
         }
     });
 }
@@ -3268,243 +3263,9 @@ async function deleteSelectedUserProfile() {
    VI. 5.b SAVE STATES MANAGEMENT
    ========================================================================== */
 
-function toggleNewSavePanel(show) {
-    const panel = document.getElementById('new-save-panel');
-    if (!panel) return;
-    if (show !== undefined) {
-        panel.style.display = show ? 'block' : 'none';
-    } else {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    }
-}
+// New save panel toggle removed as profiles and saves are unified.
 
-async function loadSavesList() {
-    try {
-        const res = await fetch('/api/saves');
-        const data = await res.json();
-        if (data.saves) {
-            renderSavesList(data.saves, data.active_save_id);
-        }
-    } catch (e) {
-        console.error("Error loading saves:", e);
-    }
-}
-
-function renderSavesList(saves, activeId) {
-    const container = document.getElementById('saves-list-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (!saves || saves.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin: 20px 0;">No save states found. Click "+ New Save" below to begin a fresh adventure!</p>';
-        return;
-    }
-
-    saves.forEach(save => {
-        const isActive = save.id === activeId;
-        const card = document.createElement('div');
-        card.style.cssText = `
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background: ${isActive ? 'color-mix(in srgb, var(--primary-accent) 12%, transparent)' : 'rgba(255, 255, 255, 0.03)'};
-            border: 1px solid ${isActive ? 'color-mix(in srgb, var(--primary-accent) 35%, transparent)' : 'var(--border-color)'};
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        `;
-
-        card.onmouseover = () => {
-            if (!isActive) {
-                card.style.background = 'rgba(255, 255, 255, 0.07)';
-                card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-            }
-        };
-        card.onmouseout = () => {
-            if (!isActive) {
-                card.style.background = 'rgba(255, 255, 255, 0.03)';
-                card.style.borderColor = 'var(--border-color)';
-            }
-        };
-        card.onclick = () => {
-            if (!isActive) {
-                loadSaveGame(save.id);
-            }
-        };
-
-        // Left info area
-        const leftArea = document.createElement('div');
-        leftArea.style.cssText = 'display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;';
-
-        // Avatar icon container
-        const avatarDiv = document.createElement('div');
-        avatarDiv.style.cssText = `
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: ${isActive ? 'color-mix(in srgb, var(--primary-accent) 25%, transparent)' : 'rgba(255, 255, 255, 0.08)'};
-            border: 1px solid ${isActive ? 'var(--primary-accent)' : 'rgba(255, 255, 255, 0.12)'};
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: ${isActive ? 'var(--primary-accent)' : 'var(--text-main)'};
-            flex-shrink: 0;
-        `;
-        avatarDiv.innerHTML = `
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-        `;
-        leftArea.appendChild(avatarDiv);
-
-        const info = document.createElement('div');
-        info.style.cssText = 'display: flex; flex-direction: column; gap: 2px; min-width: 0;';
-
-        const dateFormatted = save.tamrielic_date || '1 Morning Star, 3E 389';
-        const loc = `${save.current_location || 'Imperial Dungeon'}, ${save.current_province || 'Cyrodiil'}`;
-        const charName = save.name || save.character_name || 'Eternal Champion';
-
-        const nameDiv = document.createElement('div');
-        nameDiv.style.cssText = 'font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px;';
-        nameDiv.innerText = loc;
-
-        if (isActive) {
-            const activeBadge = document.createElement('span');
-            activeBadge.style.cssText = 'font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; background: rgba(56, 189, 248, 0.15); color: var(--primary-accent); border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 500;';
-            activeBadge.innerText = 'Active';
-            nameDiv.appendChild(activeBadge);
-        }
-        info.appendChild(nameDiv);
-
-        const subtitleDiv = document.createElement('div');
-        subtitleDiv.style.cssText = 'font-size: 0.75rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;';
-        const userProf = save.user_profile_id || 'eternal_champion';
-        subtitleDiv.innerText = `${charName} (${userProf}) • Level ${save.level || 1} ${save.race || 'Nord'} ${save.class || 'Mage'} • ${dateFormatted}`;
-        info.appendChild(subtitleDiv);
-
-        leftArea.appendChild(info);
-        card.appendChild(leftArea);
-
-        // Right side action area
-        const rightArea = document.createElement('div');
-        rightArea.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: 12px;';
-
-        const isDefaultPreset = save.id === 'eternal_champion';
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'action-icon-btn';
-        deleteBtn.innerHTML = `
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-        `;
-        deleteBtn.title = isDefaultPreset ? 'Reset Save to Defaults' : 'Delete Save';
-        deleteBtn.style.width = '26px';
-        deleteBtn.style.height = '26px';
-        deleteBtn.style.borderRadius = '6px';
-        deleteBtn.style.flexShrink = '0';
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            deleteSaveGame(save.id, save.name || save.character_name);
-        };
-        rightArea.appendChild(deleteBtn);
-
-        card.appendChild(rightArea);
-        container.appendChild(card);
-    });
-}
-
-async function submitNewSaveGame() {
-    const titleInput = document.getElementById('new-save-title');
-    const charNameInput = document.getElementById('new-save-char-name');
-    const genderSelect = document.getElementById('new-save-gender');
-    const raceSelect = document.getElementById('new-save-race');
-    const classSelect = document.getElementById('new-save-class');
-
-    const title = titleInput?.value.trim() || '';
-    const charName = charNameInput?.value.trim() || 'Eternal Champion';
-    const gender = genderSelect?.value || 'Male';
-    const race = raceSelect?.value || 'Nord';
-    const charClass = classSelect?.value || 'Mage';
-
-    try {
-        const res = await fetch('/api/saves/new', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: title || `${charName} - ${race} ${charClass}`,
-                character_name: charName,
-                gender: gender,
-                race: race,
-                class: charClass
-            })
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        toggleNewSavePanel(false);
-        closeAssistantModal();
-
-        showCustomAlert("New Save Created", `Starting new adventure for ${charName} the ${race} ${charClass}!`, () => {
-            window.location.reload();
-        });
-    } catch (e) {
-        console.error("Error creating save:", e);
-        showCustomAlert("Error", "Failed to create save: " + e.message);
-    }
-}
-
-async function loadSaveGame(saveId) {
-    try {
-        const res = await fetch('/api/saves/load', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ save_id: saveId })
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        closeAssistantModal();
-        showCustomAlert("Save Loaded", `Save loaded successfully!`, () => {
-            window.location.reload();
-        });
-    } catch (e) {
-        console.error("Error loading save:", e);
-        showCustomAlert("Error", "Failed to load save: " + e.message);
-    }
-}
-
-function deleteSaveGame(saveId, saveName) {
-    const isEternal = saveId === 'eternal_champion';
-    const title = isEternal ? "Reset Eternal Champion" : "Delete Save";
-    const msg = isEternal 
-        ? "Resetting Eternal Champion will restore the default starting game state (clean inventory, full vitals, and fresh Imperial Dungeon opening) and reload the page. Proceed?"
-        : `Are you sure you want to permanently delete save "${saveName}"? This action cannot be undone.`;
-
-    showCustomConfirm(title, msg, async () => {
-        try {
-            const res = await fetch('/api/saves/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ save_id: saveId })
-            });
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-
-            if (isEternal || data.refreshed) {
-                window.location.reload();
-            } else {
-                await loadSavesList();
-            }
-        } catch (e) {
-            console.error("Error deleting save:", e);
-            showCustomAlert("Error", "Failed to delete save: " + e.message);
-        }
-    });
-}
+// Saves state management functions removed as profiles and saves are unified.
 
 
 /* ==========================================================================
@@ -3569,15 +3330,6 @@ function switchAssistantModalTab(tab) {
         userTab.style.display = 'block';
         closeUserProfileEditor();
         loadUserProfiles();
-    } else if (tab === 'sessions' || tab === 'saves') {
-        if (sessBtn) {
-            sessBtn.style.background = 'rgba(255, 255, 255, 0.08)';
-            sessBtn.style.color = 'var(--primary-accent)';
-            sessBtn.style.border = '1px solid var(--primary-accent)';
-        }
-        if (sessTab) sessTab.style.display = 'block';
-        toggleNewSavePanel(false);
-        loadSavesList();
     }
 }
 
@@ -4628,11 +4380,9 @@ async function loadHistory() {
             }
         }
 
-        // Fetch history and server images concurrently
-        const [historyRes, _] = await Promise.all([
-            fetch(`/history?session_id=${sessionId}&t=${Date.now()}`),
-            loadServerImages()
-        ]);
+        // Trigger server images in background without blocking history load
+        loadServerImages();
+        const historyRes = await fetch(`/history?session_id=${sessionId}&t=${Date.now()}`);
         const data = await historyRes.json();
         if (data.welcome_message) {
             programWelcomeMessage = data.welcome_message;

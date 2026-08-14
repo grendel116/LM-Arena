@@ -22,15 +22,38 @@ def get_embedding_model():
 class DataBankManager:
     def __init__(self, db_dir=None):
         if db_dir is None:
-            # Go up 3 levels to get from core/skills/vectorized_databank to core
-            base_core = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            from utils.program import get_active_program
-            active_program = get_active_program()
-            db_dir = os.path.join(base_core, "programs", active_program)
+            from engine.save_manager import get_active_save_id, get_save_directory
+            save_id = get_active_save_id()
+            db_dir = get_save_directory(save_id)
         
         os.makedirs(db_dir, exist_ok=True)
         self.db_path = os.path.join(db_dir, "databank.json")
         self.memories_path = os.path.join(db_dir, "memories.json")
+
+        # Migration from legacy program directory if save directory databank does not exist
+        if not os.path.exists(self.db_path):
+            try:
+                base_core = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from utils.program import get_active_program
+                legacy_dir = os.path.join(base_core, "programs", get_active_program())
+                legacy_db = os.path.join(legacy_dir, "databank.json")
+                if os.path.exists(legacy_db):
+                    import shutil
+                    shutil.copy2(legacy_db, self.db_path)
+            except Exception as _e:
+                print(f"[DATABANK MIGRATION ERROR] Failed to copy legacy databank: {_e}", flush=True)
+
+        if not os.path.exists(self.memories_path):
+            try:
+                base_core = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                from utils.program import get_active_program
+                legacy_dir = os.path.join(base_core, "programs", get_active_program())
+                legacy_mem = os.path.join(legacy_dir, "memories.json")
+                if os.path.exists(legacy_mem):
+                    import shutil
+                    shutil.copy2(legacy_mem, self.memories_path)
+            except Exception as _e:
+                print(f"[DATABANK MIGRATION ERROR] Failed to copy legacy memories: {_e}", flush=True)
         
         # Migration from legacy journal.json to memories.json
         legacy_journal_path = os.path.join(db_dir, "journal.json")
