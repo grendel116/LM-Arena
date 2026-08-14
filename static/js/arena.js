@@ -2133,6 +2133,7 @@ function triggerHeartBurst() {
 }
 
 function openStatusModal() {
+    playBGMTrack("Where Dost Thou Hail.mp3");
     fetchCharacterStatus().then(() => {
         const modal = document.getElementById('status-modal');
         if (modal) modal.style.display = 'flex';
