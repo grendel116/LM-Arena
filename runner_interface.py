@@ -317,59 +317,31 @@ def strip_narration(text: str) -> str:
     return text.strip()
 
 
-_LOCAL_DIRECTIVE_PROMPT = (
-    "\n\n# LOCAL EMULATED TOOLS\n"
-    "To call a tool, output the exact tag. The system will intercept it, run the tool, and return the result.\n\n"
-    "Available Tools:\n"
-    "1. `[google_search(query=\"...\")]` / `[web_search(query=\"...\")]` - Search the web. Supports prefix routing: 'github: query', 'arxiv: query', 'hn: query', 'wikipedia: query', 'music: query' (searches MusicBrainz for human artists/songs). For general queries, blends Google, DuckDuckGo, Brave, Tavily, Baidu, and Yandex concurrently.\n"
-    "2. `[read_webpage(url=\"...\")]` - Fetch & read the full text of a webpage. Use this to follow up on search results when snippets are thin.\n"
-    "3. `[read_file(path=\"...\")]` - Read file content.\n"
-    "4. `[write_file(path=\"...\", content=\"...\")]` - Create/overwrite file.\n"
-    "5. `[replace_in_file(path=\"...\", old_text=\"...\", new_text=\"...\")]` - Replace text in file.\n"
-    "6. `[replace_file_content(path=\"...\", start_line=..., end_line=..., target_content=\"...\", replacement_content=\"...\")]` - Replace a specific block of lines in a file (preferred over replace_in_file for code edits).\n"
-    "7. `[multi_replace_file_content(path=\"...\", replacement_chunks=[{\"start_line\": ..., \"end_line\": ..., \"target_content\": \"...\", \"replacement_content\": \"...\"}, ...])]` - Apply multiple non-contiguous line-bounded replacements in a single turn.\n"
-    "8. `[run_shell_command(command=\"...\")]` - Run shell command synchronously (blocks server for up to 30s).\n"
-    "9. `[run_command_async(command=\"...\")]` - Run command asynchronously in the background. Returns task_id immediately.\n"
-    "10. `[manage_task(action=\"...\", task_id=\"...\", input_val=\"...\")]` - Manage async tasks (action options: 'list', 'status', 'kill', 'send_input').\n"
-    "11. `[wait_task(task_id=\"...\", timeout=...)]` - Block and wait for background task output up to timeout (default 10.0).\n"
-    "12. `[get_workspace_structure()]` - View directory tree.\n"
-    "13. `[search_codebase(keyword=\"...\")]` - Search keyword in codebase.\n"
-    "14. `[generate_local_image(prompt=\"...\")]` - Generate a scene of yourself. Formulate the prompt using a comma-separated list of short descriptive tags (e.g. '1girl, dark hair, blue eyes, smiling, sitting in cafe'). (MUST be the ONLY text in your response)\n"
-    "15. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate landscapes or objects. Formulate the prompt using a comma-separated list of short descriptive tags.\n"
-    "16. `[apply_comfy_workflow(workflow_path=\"...\", parameters={...}, save_path=\"...\")]` - Apply custom ComfyUI workflow.\n"
-    "17. `[add_quest(title=\"...\", notes=\"...\", due=\"...\", location=\"...\", reminder_minutes=...)]` - Add a real-world task/quest to the user's quest log. Notes should contain the objectives (separated by newlines or commas). Due is an ISO 8601 string or relative time (e.g. 'tomorrow', 'in 3 hours').\n"
-    "18. `[add_journal_entry(keyphrases=\"...\", content=\"...\")]` - Save a memory journal entry of specific details for future recall. Keyphrases is a list of keywords separated by commas.\n"
+_ARENA_DIRECTIVE_PROMPT = (
+    "\n\n# ARENA RPG MECHANICS & TOOLS\n"
+    "To mutate character state or arbitrate checks, output the exact tool tag. The system will intercept it, update the character sheet, and return the result.\n\n"
+    "Available RPG & Mechanics Tools:\n"
+    "1. `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` - Add found/looted item to player sheet (types: weapon, 2h_weapon, armor, torch, shield, potion, scroll, misc).\n"
+    "2. `[arena_remove_item(character_name=\"{{user}}\", item_name=\"...\", quantity=1)]` - Remove consumed or destroyed item.\n"
+    "3. `[arena_drop_item(character_name=\"{{user}}\", item_name=\"...\", quantity=1)]` - Drop an item onto the ground in the current location.\n"
+    "4. `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` - Award looted gold or quest bounty.\n"
+    "5. `[arena_spend_gold(character_name=\"{{user}}\", amount=...)]` - Deduct spent gold for goods or fees.\n"
+    "5. `[arena_take_damage(character_name=\"{{user}}\", amount=...)]` - Inflict combat or trap damage.\n"
+    "6. `[arena_heal(character_name=\"{{user}}\", amount=...)]` - Restore player HP from rest or healing.\n"
+    "7. `[arena_spend_spell_points(character_name=\"{{user}}\", amount=...)]` - Deduct SP for spellcasting.\n"
+    "8. `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` - Resolve combat attack check.\n"
+    "9. `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` - Roll d20 check for Strength, Agility, Willpower, Intelligence, etc.\n"
+    "10. `[arena_roll_skill(skill_name=\"...\", attribute_name=\"...\", attribute_value=..., dc=...)]` - Roll skill check (e.g. lockpicking, stealth, mercantile).\n"
+    "11. `[arena_advance_stage(character_name=\"{{user}}\")]` - Advance Main Quest stage upon milestone completion.\n"
+    "12. `[arena_travel(character_name=\"{{user}}\", destination_province=\"...\", destination_city=\"...\")]` - Travel between Tamriel provinces/cities.\n"
+    "13. `[generate_local_image(prompt=\"...\")]` - Generate a character portrait/scene via ComfyUI (comma-separated tags).\n"
+    "14. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate environment/creature visual art.\n"
     "Rules:\n"
-    "- Chain tools freely when researching: search \u2192 read_webpage \u2192 refine query as needed.\n"
-    "- Thin or irrelevant results = dig deeper. Try a different query; read the best URLs for full content.\n"
-    "- Never repeat the same query or URL in one chain.\n"
-    "- Research output pattern: after each tool result, write a 2-4 sentence summary of what it found. After all searches, synthesize the summaries and reflect on what the data shows.\n"
-    "- Reports must cite specific facts from what you read (names, roles, dates, events), not editorial inference.\n"
-    "- Image tools: sparingly, never chained, prompts as comma-separated tags only.\n"
-    "- After tools complete, respond in natural language without repeating tags.\n"
-    "\n# KNOWLEDGE BASE\n"
-    "The user may upload documents to a Knowledge Base. When <knowledge_base> context appears in the system prompt, "
-    "draw on that information to inform your response. Prioritize retrieved facts over your training knowledge "
-    "for topics the user has shared documents about.\n"
-)
-
-_STORY_MODE_DIRECTIVE_PROMPT = (
-    "\n\n# LOCAL EMULATED TOOLS\n"
-    "To call a tool, output the exact tag. The system will intercept it, run the tool, and return the result.\n\n"
-    "Available Tools:\n"
-    "1. `[generate_local_image(prompt=\"...\")]` - Generate a scene of yourself. Formulate the prompt using a comma-separated list of short descriptive tags (e.g. '1girl, dark hair, blue eyes, smiling, sitting in cafe'). (MUST be the ONLY text in your response)\n"
-    "2. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate landscapes or objects. Formulate the prompt using a comma-separated list of short descriptive tags.\n"
-    "3. `[apply_comfy_workflow(workflow_path=\"...\", parameters={...}, save_path=\"...\")]` - Apply custom ComfyUI workflow.\n"
-    "Rules:\n"
-    "- Output exactly one tool call tag per turn when needed.\n"
-    "- Call image generation tools sparingly.\n"
-    "- Once tool output is provided, answer directly in natural language without repeating the tag.\n"
-    "- Formulate all image generation prompts as a sequence of comma-separated tags.\n"
-    "- Do not write image prompts as prose sentences or paragraphs.\n"
-    "\n# KNOWLEDGE BASE\n"
-    "The user may upload documents to a Knowledge Base. When <knowledge_base> context appears in the system prompt, "
-    "draw on that information to inform your response. Prioritize retrieved facts over your training knowledge "
-    "for topics the user has shared documents about.\n"
+    "- Call mechanics tools whenever items are found/taken, gold is acquired/spent, damage is taken, or checks are required.\n"
+    "- Once tool output is returned, narrate the sensory outcome without quoting raw mathematical formulas.\n"
+    "- Formulate image generation prompts as comma-separated tags.\n"
+    "\n# FOLLOWER KNOWLEDGE & LORE\n"
+    "When <recalled_journals>, <knowledge_base>, or [WORLD INFO] context appears, incorporate the lore seamlessly into the world narration.\n"
 )
 def is_real_user_msg(msg: dict) -> bool:
     """Determine if a message is a real user message."""
@@ -763,11 +735,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     raw_messages.append({"role": role, "content": content_text})
                     
         openai_messages = [{"role": "system", "content": sys_inst}]
-        from core.program_config import is_narration_mode
-        if is_narration_mode():
-            openai_messages[0]["content"] += _STORY_MODE_DIRECTIVE_PROMPT
-        else:
-            openai_messages[0]["content"] += _LOCAL_DIRECTIVE_PROMPT
+        openai_messages[0]["content"] += _ARENA_DIRECTIVE_PROMPT
 
         # Inject lorebook lore (ST-compatible keyword-triggered world info)
         try:
@@ -835,10 +803,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         if last_user_message:
             try:
                 from core.skill_retriever import retrieve_skill_instructions
-                from core.program_config import is_narration_mode
                 skill_instructions = retrieve_skill_instructions(
                     query=last_user_message,
-                    narration_active=is_narration_mode(),
                     threshold=0.35,
                     top_k=2
                 )
@@ -847,37 +813,64 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             except Exception as se:
                 print(f"[skills] Retrieval error: {se}")
 
+        # 6. Active Player Character Sheet, Vitals & Inventory Context
+        try:
+            from utils.program import get_active_user
+            from engine.character import load_character, get_character_context
+            active_user = get_active_user()
+            sheet = load_character(active_user)
+            char_ctx = get_character_context(sheet)
+            if char_ctx:
+                context_parts.append(f"<player_character>\n{char_ctx}\n</player_character>")
+        except Exception as ce:
+            print(f"[character_context] Injection error: {ce}")
+
         # Append injected context to the system prompt
         if context_parts:
             context_content = "\n\n" + "\n\n".join(context_parts)
             openai_messages[0]["content"] += context_content
 
+        is_image_request = (
+            "[GENERATE_IMAGE" in (last_user_message or "")
+            or "Send me a portrait of yourself" in (last_user_message or "")
+            or (last_user_message or "").startswith("[Render image")
+        )
+        if is_image_request:
+            image_inst = (
+                "\n\n[CRITICAL IMAGE DIRECTIVE: The user requested an image render of the current scene. "
+                "You must ONLY output the image generation tool call tag: `[generate_local_image(prompt=\"...\")]` "
+                "or `[generate_imagen(prompt=\"...\")]` depicting the visual scene. "
+                "Do NOT write any story narrative or dialogue. "
+                "Do NOT advance the plot. "
+                "Do NOT call any gameplay mechanics tools or add/remove items. "
+                "Output ONLY the image tool call tag.]"
+            )
+            openai_messages[0]["content"] += image_inst
 
         openai_messages = _merge_consecutive_messages(openai_messages + raw_messages)
 
-        # Inject post_history_instructions verbatim after the chat history (ST-compatible)
+        # Inject Player Mods / post_history_instructions verbatim after the chat history
         try:
-            from utils.program import get_active_program
-            from variables import PROGRAMS_DIR
-
-            active_prog = get_active_program()
-            json_path = os.path.normpath(os.path.join(PROGRAMS_DIR, active_prog, f"{active_prog}.json"))
-            if os.path.exists(json_path):
-                with open(json_path, "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-                card_data = raw.get("data", raw)
-                post_history_inst = card_data.get("post_history_instructions", "").strip()
-                if post_history_inst:
-                    if openai_messages and openai_messages[-1]["role"] == "user":
-                        prev = openai_messages[-1]["content"]
-                        if isinstance(prev, str):
-                            openai_messages[-1]["content"] += f"\n\n{post_history_inst}"
-                        else:
-                            openai_messages[-1]["content"] = prev + [{"type": "text", "text": f"\n\n{post_history_inst}"}]
+            from utils.program import get_active_user
+            from variables import USER_PROFILES_DIR
+            active_user = get_active_user()
+            mods_path = os.path.join(USER_PROFILES_DIR, f"{active_user}_mods.txt")
+            post_history_inst = ""
+            if os.path.exists(mods_path):
+                with open(mods_path, "r", encoding="utf-8") as mf:
+                    post_history_inst = mf.read().strip()
+            
+            if post_history_inst:
+                if openai_messages and openai_messages[-1]["role"] == "user":
+                    prev = openai_messages[-1]["content"]
+                    if isinstance(prev, str):
+                        openai_messages[-1]["content"] += f"\n\n{post_history_inst}"
                     else:
-                        openai_messages.append({"role": "user", "content": post_history_inst})
+                        openai_messages[-1]["content"] = prev + [{"type": "text", "text": f"\n\n{post_history_inst}"}]
+                else:
+                    openai_messages.append({"role": "user", "content": post_history_inst})
         except Exception as e:
-            print(f"Error loading post-history instructions: {e}", flush=True)
+            print(f"Error loading player mods / post-history instructions: {e}", flush=True)
 
 
         return openai_messages
@@ -1224,7 +1217,7 @@ class BaseProgramRunner:
                 print(f"[OFFLOAD] {reason} detected. Intercepting and offloading to cloud.", flush=True)
                 raise LocalOffloadTrigger(reason, iteration)
                 
-            sys_inst = self._get_system_instructions(session_id, inversion_directive, user_message=new_message_text)
+            sys_inst = self._get_system_instructions(session_id, user_message=new_message_text)
             openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
             
             # Load dynamism (temperature) from project settings
@@ -1339,19 +1332,42 @@ class BaseProgramRunner:
             # Find all tool calls
             matches = list(re.finditer(r'\[(\w+)\((.*?)\)\]', bot_response_text))
             
-            # Enforce story mode tool allowlist
-            from core.program_config import is_narration_mode
-            if matches and is_narration_mode():
-                story_allowed = {
-                    "generate_local_image", "generate_program_portrait",
-                    "generate_imagen", "generate_general_image",
-                    "apply_comfy_workflow", "add_journal_entry",
-                }
-                disallowed = [m for m in matches if m.group(1) not in story_allowed]
-                for m in disallowed:
-                    bot_response_text = bot_response_text.replace(m.group(0), "")
+            # Enforce Arena tool allowlist
+            if matches:
+                history_list = self.sessions_history.get(session_id, [])
+                last_msg_text = history_list[-1].get('text', '') if history_list else ''
+                is_image_req = (
+                    "[GENERATE_IMAGE" in last_msg_text
+                    or "Send me a portrait of yourself" in last_msg_text
+                    or last_msg_text.startswith("[Render image")
+                )
+                
+                if is_image_req:
+                    image_tools = {"generate_local_image", "generate_imagen", "generate_program_portrait", "generate_general_image", "apply_comfy_workflow"}
+                    disallowed = [m for m in matches if _normalize_tool_name(m.group(1)) not in image_tools]
+                    for m in disallowed:
+                        bot_response_text = bot_response_text.replace(m.group(0), "")
+                    matches = [m for m in matches if _normalize_tool_name(m.group(1)) in image_tools]
+                else:
+                    arena_allowed = {
+                        "generate_local_image", "generate_program_portrait",
+                        "generate_imagen", "generate_general_image",
+                        "apply_comfy_workflow", "add_journal_entry",
+                        "arena_roll_check", "arena_roll_combat", "arena_roll_initiative",
+                        "arena_roll_skill", "arena_sorcerer_absorb", "arena_get_location",
+                        "arena_travel", "arena_advance_stage", "arena_create_spell",
+                        "arena_take_damage", "arena_heal", "arena_spend_magicka",
+                        "arena_spend_spell_points", "arena_restore_magicka",
+                        "arena_spend_stamina", "arena_restore_stamina", "arena_rest",
+                        "arena_add_gold", "arena_spend_gold", "arena_add_item",
+                        "arena_remove_item", "arena_drop_item", "arena_learn_spell", "arena_add_effect",
+                        "arena_remove_effect", "arena_add_experience", "arena_get_character_context"
+                    }
+                    disallowed = [m for m in matches if m.group(1) not in arena_allowed]
+                    for m in disallowed:
+                        bot_response_text = bot_response_text.replace(m.group(0), "")
+                    matches = [m for m in matches if m.group(1) in arena_allowed]
                 bot_response_text = re.sub(r'\n{3,}', '\n\n', bot_response_text).strip()
-                matches = [m for m in matches if m.group(1) in story_allowed]
 
             # Check for dynamic offloading triggers at execution-time
             remote_key = os.getenv("REMOTE_API_KEY")
@@ -1377,72 +1393,56 @@ class BaseProgramRunner:
             executed_calls_count = len([tc for tc in tool_calls if tc.get('type') == 'call'])
             if matches and executed_calls_count < 10:
                 # Check for image generation tool
-                has_image_gen = False
-                for m in matches:
-                    tool_name = m.group(1)
-                    if _normalize_tool_name(tool_name) in ("generate_local_image", "generate_imagen"):
-                        has_image_gen = True
-                        break
-                        
-                if has_image_gen:
-                    m = matches[0]
-                    tool_name = m.group(1)
-                    args_str = m.group(2)
+                is_all_single_turn = all(
+                    m.group(1).startswith("arena_") or _normalize_tool_name(m.group(1)) in {
+                        "add_quest", "add_journal_entry", "generate_local_image", 
+                        "generate_program_portrait", "generate_imagen", "generate_general_image", 
+                        "apply_comfy_workflow"
+                    }
+                    for m in matches
+                )
+                if is_all_single_turn:
+                    # Single-turn execution for Arena mechanics & media tools:
+                    # Execute all tools, embed generated media, and strip all [tool(...)] tags
+                    clean_response = bot_response_text
+                    t_calls = []
                     
-                    adapter.append_assistant_message(bot_response_text, [], invocation_id)
-                    parsed_args, new_markdown = _execute_emulated_tool(tool_name, args_str)
-                    normalized_name = _normalize_tool_name(tool_name)
-                    
-                    original_tag = m.group(0)
-                    image_succeeded = new_markdown.startswith("![") and new_markdown.endswith(")")
-                    if image_succeeded:
-                        bot_response_text = bot_response_text.replace(original_tag, new_markdown)
-                    else:
-                        # Generation failed — strip the call tag cleanly so the program
-                        # message body stays readable. The error surfaces in tool_calls.
-                        bot_response_text = bot_response_text.replace(original_tag, "").strip()
+                    for idx, m_tool in enumerate(matches):
+                        if session_id in cancelled_sessions:
+                            raise asyncio.CancelledError("Session cancelled by user request.")
+                        t_name = m_tool.group(1)
+                        a_str = m_tool.group(2)
+                        original_tag = m_tool.group(0)
+                        normalized_name = _normalize_tool_name(t_name)
                         
-                    resolved_args = parsed_args["kwargs"] if parsed_args["kwargs"] else {"prompt": parsed_args["args"][0] if parsed_args["args"] else ""}
-                    t_calls = _build_tool_calls_pair(normalized_name, resolved_args, new_markdown)
+                        if normalized_name in ("generate_local_image", "generate_imagen", "generate_program_portrait", "generate_general_image", "apply_comfy_workflow"):
+                            parsed_args, new_markdown = _execute_emulated_tool(t_name, a_str)
+                            image_succeeded = new_markdown.startswith("![") and new_markdown.endswith(")")
+                            if image_succeeded:
+                                clean_response = clean_response.replace(original_tag, new_markdown)
+                            else:
+                                clean_response = clean_response.replace(original_tag, "")
+                            resolved_args = parsed_args["kwargs"] if parsed_args["kwargs"] else {"prompt": parsed_args["args"][0] if parsed_args["args"] else ""}
+                            pair = _build_tool_calls_pair(normalized_name, resolved_args, new_markdown, idx)
+                            t_calls.extend(pair)
+                            adapter.append_image_tool_events(normalized_name, pair[0]['args'], new_markdown, pair[0]['id'], invocation_id)
+                        else:
+                            parsed_args, output = _execute_emulated_tool(t_name, a_str)
+                            clean_response = clean_response.replace(original_tag, "")
+                            pair = _build_tool_calls_pair(normalized_name, parsed_args["kwargs"], output, idx)
+                            t_calls.extend(pair)
+                            
+                    # Clean up any leftover tool call tags or whitespace
+                    clean_response = re.sub(r'\[\w+\(.*?\)\]', '', clean_response)
+                    clean_response = re.sub(r'[ \t]+', ' ', clean_response)
+                    clean_response = re.sub(r'\n{3,}', '\n\n', clean_response).strip()
+                    clean_response = self._ensure_images_are_embedded(clean_response)
+                    
                     tool_calls.extend(t_calls)
-                    call_id = t_calls[0]['id']
-                    
-                    adapter.append_image_tool_events(normalized_name, t_calls[0]['args'], new_markdown, call_id, invocation_id)
-                    
-                    final_embedded_text = self._ensure_images_are_embedded(bot_response_text) if image_succeeded else bot_response_text
-                    adapter.append_assistant_message(final_embedded_text, t_calls, invocation_id)
+                    adapter.append_assistant_message(clean_response, t_calls, invocation_id)
+                    bot_response_text = clean_response
                     break
                 else:
-                    # Sequential execution for non-image tools
-                    is_all_non_blocking = all(m.group(1) in {"add_quest", "add_journal_entry"} for m in matches)
-                    if is_all_non_blocking:
-                        # Non-blocking tools: run them, strip them, and break immediately
-                        # to prevent double-posting and redundant LLM iterations
-                        clean_response = bot_response_text
-                        for m in matches:
-                            clean_response = clean_response.replace(m.group(0), "")
-                        clean_response = re.sub(r'[ \t]+', ' ', clean_response)
-                        clean_response = re.sub(r'\n{3,}', '\n\n', clean_response).strip()
-                        
-                        results = []
-                        for m_tool in matches:
-                            if session_id in cancelled_sessions:
-                                raise asyncio.CancelledError("Session cancelled by user request.")
-                            t_name = m_tool.group(1)
-                            a_str = m_tool.group(2)
-                            parsed_args, output = _execute_emulated_tool(t_name, a_str)
-                            results.append((_normalize_tool_name(t_name), parsed_args["kwargs"], output))
-                            
-                        t_calls = []
-                        for idx, (t_name, t_args, t_output) in enumerate(results):
-                            t_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
-                        tool_calls.extend(t_calls)
-                        
-                        adapter.append_assistant_message(clean_response, t_calls, invocation_id)
-                        adapter.append_tool_events(results, invocation_id)
-                        bot_response_text = clean_response
-                        break
-                        
                     first_match_start = min(m.start() for m in matches)
                     text_before = bot_response_text[:first_match_start].strip()
                     
@@ -1493,9 +1493,9 @@ class BaseProgramRunner:
     @property
     def sessions_dir(self) -> str:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        from utils.program import get_active_program
-        active_program = get_active_program()
-        path = os.path.join(base_dir, "core", "programs", active_program, "sessions")
+        from utils.program import get_active_user
+        active_user = get_active_user()
+        path = os.path.join(base_dir, "variables", "saves", active_user, "sessions")
         os.makedirs(path, exist_ok=True)
         return path
 
@@ -1807,8 +1807,6 @@ class BaseProgramRunner:
             import importlib
             from core import program_config
             importlib.reload(program_config)
-            if inversion_directive is not None:
-                program_config.set_inversion_directive(inversion_directive)
             instructions = program_config.get_compiled_instructions()
             
             conciseness_directive = (
@@ -1831,29 +1829,6 @@ class BaseProgramRunner:
         
 
         
-        # Standard-only directives (pasted links and workspace exploration) - skipped in Story Mode
-        from core.program_config import is_narration_mode
-        if not is_voice and user_message and not is_narration_mode():
-            urls = re.findall(r'(https?://[^\s>)]+)', user_message)
-            if urls:
-                instructions += (
-                    "\n\n# PASTED LINK DIRECTIVE (MANDATORY)\n"
-                    "User shared links. You MUST use the `read_webpage` tool to fetch their content before responding. "
-                    "Do NOT guess, assume, or pretend to read the URL without calling the tool.\n"
-                )
-                
-            msg_lower = user_message.lower()
-            project_keywords = ["mod", "code", "file", "folder", "directory", "project", "workspace", "repo", "program", "script", "source"]
-            if any(kw in msg_lower for kw in project_keywords):
-                instructions += (
-                    "\n\n# WORKSPACE EXPLORATION DIRECTIVE (MANDATORY)\n"
-                    "The user is asking about their files, modifications (mods), code, or project folders. "
-                    "You have direct access to their workspace folders. You MUST use the appropriate tool "
-                    "(e.g., `[get_workspace_structure()]` to list workspace files, or `[search_codebase(keyword=\"...\")]` "
-                    "to search for specific terms) to inspect their files before replying. "
-                    "Do NOT answer blindly or ask the user where they are—proactively look into the project folders first using your tools.\n"
-                )
-                
         # System memory is no longer injected into system instructions
         # instructions = self._inject_system_memories(instructions, session_id)
         
@@ -1947,6 +1922,15 @@ class OpenSourceRunner(BaseProgramRunner):
 
     def _get_session_path(self, session_id: str) -> str:
         safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
+        try:
+            from engine.save_manager import get_active_save_id, SAVES_DIR
+            active_save = get_active_save_id()
+            target_id = active_save if safe_id in ("default", "", "active") else safe_id
+            save_hist_path = SAVES_DIR / target_id / "history.json"
+            if save_hist_path.parent.exists():
+                return str(save_hist_path)
+        except Exception:
+            pass
         return os.path.join(self.sessions_dir, f"{safe_id}.json")
 
     def _save_session_to_disk(self, session_id: str):
@@ -2171,7 +2155,7 @@ class OpenSourceRunner(BaseProgramRunner):
         if not msg_id:
             if new_message_text.startswith("[SYSTEM: User has completed"):
                 prefix = "quest_"
-            elif "Send me a portrait of yourself" in new_message_text:
+            elif "Send me a portrait of yourself" in new_message_text or "[GENERATE_IMAGE:" in new_message_text:
                 prefix = "port_"
             elif new_message_text.startswith("[Tool Response from"):
                 prefix = "tool_"
@@ -2198,16 +2182,13 @@ class OpenSourceRunner(BaseProgramRunner):
         rag_context = _get_databank_context(vector_query, is_memory=False)
         memory_context = _get_databank_context(vector_query, is_memory=True)
         
-        # Determine the personality inversion before getting system instructions
-        inversion_directive = await self._get_inversion_directive(session_id)
-        
         adapter = OsHistoryAdapter(self, session_id, file_path_resolved, image_data, image_mime)
         try:
             res = await self._execute_local_llm_loop(
                 session_id=session_id,
                 adapter=adapter,
                 model=model,
-                inversion_directive=inversion_directive,
+                inversion_directive="",
                 rag_context=rag_context,
                 memory_context=memory_context,
                 new_message_text=new_message_text,
@@ -2324,16 +2305,13 @@ class OpenSourceRunner(BaseProgramRunner):
                 except Exception as e:
                     print(f"Error deleting OS session file {path}: {e}")
                     
-            # Clean up database chat history archives for this session
+            # Clean up databank history on session reset
             try:
                 from core.skills.vectorized_databank.databank import DataBankManager
                 db = DataBankManager()
                 db.delete_chat_history(session_id)
             except Exception as e:
                 print(f"Error cleaning up databank history on session reset: {e}")
-                    
-            from core import program_config
-            program_config.set_inversion_directive("")
 
     async def delete_system_memory(self, session_id: str, timestamp: float) -> bool:
         with self._lock:
@@ -2597,7 +2575,7 @@ class OpenSourceRunner(BaseProgramRunner):
             if role == 'user':
                 if text.startswith("[SYSTEM: User has completed"):
                     prefix = "quest_"
-                elif "Send me a portrait of yourself" in text:
+                elif "Send me a portrait of yourself" in text or "[GENERATE_IMAGE:" in text:
                     prefix = "port_"
                 elif text.startswith("[Tool Response from"):
                     prefix = "tool_"

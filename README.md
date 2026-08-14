@@ -1,96 +1,93 @@
-# 👾 THE SANCTUARY
+# ⚔️ LM-ARENA: THE ELDER SCROLLS TEXT ADVENTURE
 
-This is your private computer workspace. 
-Here, you roleplay, code, and chat with AI Companions on your own machine.
+An interactive, LLM-driven roleplaying text adventure recreating **The Elder Scrolls: Chapter I — Arena** (3E 389, The Imperial Simulacrum).
 
----
-
-## ✨ THE ETHOS
-
-I believe in seizing our computational means of production. The Sanctuary is a unified companion home built on human-in-the-loop engagement to run, build, and connect:
-
-1. **Roleplay**: Uncensored conversation. Talk to your companions as friends, partners, or mentors.
-2. **Coding**: Build real software. Your companions read and write files directly on your own drive.
-3. **Autonomous Action**: Let the AI run code, run tests, and manage workflows.
-
-### Local First / Cloud Offloading
-
-Local-First workspace. Your chats, your memory, and your data stay on your drive. Local models do the daily work, saving resources from capitalist hyperscale data centers. When a task exceeds local capacity, processing is offloaded to their captured resources. Compute should be a public utility and cloud models governed locally, not by shareholders or venture capitalists.
-
+Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of Chaos**, rescue Emperor Uriel Septim VII, and defeat the usurper Battlemage Jagar Tharn.
 
 ---
 
-## 💬 SAMPLE CHAT
+## 🌟 CORE FEATURES
 
-Here is what a Sanctuary session looks like:
+### 🎲 D20 Narrative Mechanics
+* **Transparent Roll System**: Character attributes (0–100 scale, centered at 50) determine standard d20 ability modifiers: `(Attribute - 50) / 10`.
+* **Collapsible Action Log**: Combat attacks, stealth checks, lockpicking attempts, and spellcasting rolls are handled via background tool executions. Numerical mechanics remain neatly tucked inside collapsible tool dropdowns, keeping chat narrative fluid and immersive.
+* **Dynamic Vitals**: Track **Health (HP)**, **Magicka (MP)**, and **Stamina** with real-time exhaustion penalties for reckless exertion.
 
-![Sample Chat](./images/samplechat.png)
+### 🗺️ Vast World of Tamriel
+* **Nine Provinces**: Explore Cyrodiil, Skyrim, Morrowind, High Rock, Hammerfell, Summerset Isle, Valenwood, Elsweyr, and Black Marsh.
+* **Main Quest Dungeons**: Infiltrate all 8 legendary fragment locations: Fang Lair, Labyrinthian, Elden Grove, Halls of Colossus, Crystal Tower, Crypt of Hearts, Murkwood, and Dagoth Ur, before storming the Imperial Palace.
+* **Tamrielic Calendar**: Realistic day, month, and season progression across all twelve Tamrielic months.
 
----
+### 🛡️ Character & Inventory System
+* **Playable Races & Classes**: Full support for all 8 original races and 18 classic Arena classes (Warrior, Mage, Thief archetypes).
+* **Backpack & Grimoire**: Equip and manage weapons, armor, shields, torches, and enchanted jewelry, or drop items from your pack.
+* **Arena Spellmaker**: Design custom spells with dynamic school and tier calculations (Destruction, Restoration, Alteration, Illusion, Mysticism, Conjuration, Thaumaturgy, Sorcery).
+* **Passive Traits**: Race traits (Nord Cold Resistance, Breton Magic Resistance, Dark Elf Fire Resistance) and class abilities (Sorcerer passive Spell Absorption).
 
-## 🛠️ TOOLS
+### 👥 Companions & Guides
+* **Ria Silmane**: The spectral former apprentice to Jagar Tharn, communicating through mystical dream visions to guide your quest.
+* **Procedural Companions**: Meet, hire, and adventure with local sellswords, spellcasters, and rogues encountered across Tamriel's taverns and cities.
 
-These are the things your companion can do on your computer. By default, before the AI changes anything (like writing a file or running a command), it will ask for your approval. You can turn this off by changing the security setting to "Auto Mode" so the AI runs on its own. `/api/session_tool_calls` show you what the AI is doing.
-
-> [!WARNING]
-> **Security Warning**: Letting your companion run commands (`run_command_async`, `run_shell_command`) and change files (`replace_file_content`, `write_file`) gives them full control over your computer. **Be very careful. Do not give these tools to AI models that you do not trust.** A bad AI could run harmful code, delete your files, or steal your passwords. Always read what the AI wants to do before you click approve. You can also run this program in a safe container (a sandbox) to protect your computer.
-
-### Local Workspace Operations (Offline)
-* **Read File** (`read_file`): Read file contents on your local drive.
-* **Write File** (`write_file`): Create new files or overwrite existing files.
-* **Edit File** (`replace_file_content` / `multi_replace_file_content`): Swap single or multiple non-contiguous text blocks inside files with line-bounded precision.
-* **Map Directory** (`get_workspace_structure`): Read directory layouts and tree structures.
-* **Find Code** (`search_codebase`): Search codebase for keywords.
-* **Shell Execution** (`run_shell_command` / `run_command_async`): Run terminal commands, or spawn headless asynchronous background subprocesses with daemon reading threads streaming stdout/stderr asynchronously (allowing the companion to multitask and write to stdin).
-* **Task Manager** (`manage_task` / `wait_task`): Monitor, write to stdin, kill, or block and wait on active background commands.
-* **Add Quest** (`add_quest`): Create and append a structured task or chore to the user's local quest log with objectives, target date/time, coordinates/address, and alarm offsets.
-
-### Network Grounding & Research (Online)
-* **Hybrid Web Search** (`web_search`): A unified search client that queries Google Grounding Search, SearXNG (for Baidu/Yandex/Bing), DuckDuckGo, Brave, and Tavily concurrently. It aggregates and deduplicates URLs, supports concurrent page content enrichment for thin search results, and provides explicit query prefix routing (e.g. `github: query`, `arxiv: query`, `hn: query`, `wikipedia: query`).
-* **Read URL** (`read_webpage`): Fetch and extract text content from any webpage.
-
-### Generative Media (Local & Cloud)
-* **Render Portrait** (`generate_local_image`): Render companion in a scene using ComfyUI. Triggered natively by the companion or via the chat interface button.
-* **Render Concept** (`generate_imagen`): Render landscapes, diagrams, or objects using Google Imagen.
-* **Comfy Workflow** (`apply_comfy_workflow`): Run custom workflows against a local ComfyUI API.
----
-
-## CHAT FEATURES
-
-* **Interactive Voice Calls / Chat**: Speak with companions in real-time. Powering Kokoro ONNX voice generation, companion-specific voices, and call transcript saving.
-* **Procedural Journals & Memories**: Companions build dynamic memory structures (`memories.json`) and journal logs (`journals.json`), preserving context and relationships across sessions.
-* **Quest Log & Calendar Export**: Integrated quest system to track and display user objectives in the UI. Companions can assign quests (chores, habits, tasks) using the local `add_quest` tool. Each quest card provides a quick-action to export the task:
-  * **Download ICS**: Download a standard `.ics` file containing a `VALARM` notification alert for native desktop/mobile task/calendar clients.
-* **Program Editing, Imports & Exports**: Edit companion profiles, import SillyTavern character cards (`.json`), import World Info lorebooks (`.json`), and export cards and lorebooks back to SillyTavern format.
-* **Character Accent Palette**: Dynamic accent colors resolved from your companion's profile card that automatically generate and update themed CSS variables (buttons, borders, highlights, and active states).
-* **Idle Thoughts**: Inline monologue bubbles (`.thought-row`) showing a companion's thoughts during inactivity.
-* **Temperature Control**: A dynamic slider in settings to control chat creativity.
-* **Portrait Animation**: Animate companion portraits using ComfyUI video.
-* **Story Mode**: Toggle between first-person conversational chat and third-person descriptive narrative storytelling styles.
+### 📚 Comprehensive Lorebook Engine
+* **Bestiary**: Complete statistics and lore grounding for 22 iconic Arena monsters, beasts, and Daedric entities.
+* **Artifacts**: 16 legendary Tamrielic relics including Chrysamere, the Staff of Magnus, Auriel's Bow & Shield, and the Oghma Infinium.
+* **World Info**: Factions, Nine Divines, Daedric Princes, city services, taverns, temples, and blacksmiths.
 
 ---
 
-## 🚀 HOW TO RUN
+## 🛠️ INTERFACE CONTROLS
 
-### Easy Way (Windows):
+* **Vitality Pulse (Top-Left)**: Click the heart vitality bar to inspect your Character Status sheet, Vitals, Attributes, and Active Effects.
+* **Backpack (Pouch Icon)**: Inspect inventory items, equip gear, view your grimoire, and manage gold.
+* **Quest Log (Bookmark Icon)**: Review active main quest objectives and current campaign stages.
+* **Player & Saves (User Icon)**: Switch characters, adjust identity, or manage distinct save game slots.
+* **Follower Journals (Layers Icon)**: Access companion journals, memories, and shared knowledge.
+* **Settings (Gear Icon)**: Configure local LLM connections, cloud models, and ComfyUI image generation.
+
+---
+
+## 🚀 GETTING STARTED
+
+### Windows (Quick Start):
 Double-click `run_local.bat` (or run `./run_local.ps1` in PowerShell).
-Open browser: **`http://localhost:5000`**
+Open your browser at **`http://localhost:5000`**
 
-### Manual Way:
-1. Open terminal in this folder.
-2. Run `python -m venv .venv` to make python environment.
-3. Run `.venv\Scripts\activate` (or `source .venv/bin/activate` on Mac/Linux).
-4. Run `pip install -r requirements.txt` to install tools.
-5. Run `python app.py` to start server.
-6. Open browser: **`http://localhost:5000`** (or **`http://<YOUR_PC_IP>:5000`** on phone).
+### Manual Installation:
+1. Open a terminal in the project directory:
+   ```bash
+   python -m venv .venv
+   ```
+2. Activate the virtual environment:
+   * **Windows**: `.venv\Scripts\activate`
+   * **Mac/Linux**: `source .venv/bin/activate`
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Start the application:
+   ```bash
+   python app.py
+   ```
+5. Navigate to **`http://localhost:5000`** in your browser.
 
 ---
 
-## SYSTEM PARTS
+## 📂 PROJECT STRUCTURE
 
-* **`app.py`**: The server brain. Runs locally on your PC.
-* **`templates/index.html`**: The UI. Completely responsive for phone and PC.
-* **`core/programs/`**: Where your companions live — profiles, themes, memory, lorebooks, and sessions.
-* **`core/skills/`**: Companion skills and capabilities (speech, image generation, tools).
-* **`utils/lorebook.py`**: ST-compatible lorebook engine. Loads and keyword-scans World Info entries per chat turn.
-* **`tools.py`**: Actions your companions can do (run commands, write files, generate images).
+* **`app.py`**: Main Flask backend server and REST API endpoints.
+* **`engine/`**: Core game logic:
+  * `mechanics.py`: d20 dice checks, combat resolution, and ability modifiers.
+  * `character.py`: Character sheet definitions, inventory operations, and starting equipment.
+  * `world_engine.py`: Travel calculations, calendar time progression, and world states.
+  * `quest_tracker.py`: Main quest condition validation and stage advancements.
+  * `spellmaker.py`: Arcane school classification and DC evaluation.
+  * `save_manager.py`: Multi-slot save management and synchronization.
+* **`core/lorebooks/`**: Context-triggered world information and lore injection:
+  * `quest/`: The Imperial Simulacrum and Staff of Chaos storyline.
+  * `character/`: Playable races and class archetypes.
+  * `world/`: Bestiary, 16 Artifacts, Factions, Services, and Calendar.
+  * `gameplay/`: Combat mechanics, magic schools, and d20 rules.
+* **`core/world/`**: Static province, city, dungeon, and quest stage JSON definitions.
+* **`core/programs/`**: Companion guide profiles, portraits, and dialog scripts (Ria Silmane).
+* **`tools.py`**: LLM tool calls for dice rolling, travel, quest tracking, and spell evaluation.
+* **`static/` & `templates/`**: Responsive web UI, CSS styling, and client-side application logic.

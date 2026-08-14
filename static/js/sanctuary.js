@@ -29,6 +29,164 @@ window.addEventListener('unhandledrejection', function(event) {
     }
 });
 
+// ── Arena: Tamriel Map Modal ──────────────────────────────────────────────
+let cachedProvincesData = null;
+let selectedProvinceName = null;
+
+const PROVINCE_MAP_COORDS = {
+    "High Rock": { pinX: 235, pinY: 200, labelX: 235, labelY: 175 },
+    "Hammerfell": { pinX: 300, pinY: 330, labelX: 300, labelY: 305 },
+    "Skyrim": { pinX: 470, pinY: 170, labelX: 470, labelY: 145 },
+    "Cyrodiil": { pinX: 538, pinY: 320, labelX: 538, labelY: 295 },
+    "Morrowind": { pinX: 740, pinY: 215, labelX: 740, labelY: 185 },
+    "Summerset Isle": { pinX: 175, pinY: 505, labelX: 175, labelY: 475 },
+    "Valenwood": { pinX: 375, pinY: 460, labelX: 375, labelY: 435 },
+    "Elsweyr": { pinX: 515, pinY: 480, labelX: 515, labelY: 455 },
+    "Black Marsh": { pinX: 720, pinY: 465, labelX: 720, labelY: 440 }
+};
+
+async function openMapModal() {
+    const modal = document.getElementById('map-modal');
+    if (modal) modal.style.display = 'flex';
+    await renderTamrielMap();
+}
+
+function closeMapModal() {
+    const modal = document.getElementById('map-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function renderTamrielMap() {
+    const container = document.getElementById('arena-map-container');
+    const headerLoc = document.getElementById('map-location-header');
+    if (!container) return;
+
+    if (!cachedProvincesData) {
+        try {
+            const res = await fetch('/api/world/provinces');
+            const data = await res.json();
+            if (data.provinces) cachedProvincesData = data.provinces;
+        } catch (e) {
+            console.error("Error fetching provinces:", e);
+        }
+    }
+
+    const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
+    const curProvince = world.current_province || 'Cyrodiil';
+    const curLocation = world.current_location || 'Imperial Dungeon';
+
+    if (headerLoc) {
+        headerLoc.innerHTML = `📍 <strong>Current Position:</strong> ${curLocation}, <span style="color: var(--arena-gold);">${curProvince}</span>`;
+    }
+
+    if (!selectedProvinceName) selectedProvinceName = curProvince;
+
+    const pinCoords = PROVINCE_MAP_COORDS[curProvince] || { pinX: 538, pinY: 320 };
+
+    let markersSvg = '';
+    for (const [pName, data] of Object.entries(PROVINCE_MAP_COORDS)) {
+        const isCurrent = pName.toLowerCase() === curProvince.toLowerCase();
+        const isSelected = pName.toLowerCase() === selectedProvinceName.toLowerCase();
+        
+        const badgeBg = isCurrent ? 'rgba(239, 68, 68, 0.85)' : (isSelected ? 'rgba(56, 189, 248, 0.85)' : 'rgba(15, 23, 42, 0.75)');
+        const badgeBorder = isCurrent ? '#fca5a5' : (isSelected ? '#7dd3fc' : 'rgba(226, 176, 71, 0.6)');
+        const textColor = isCurrent ? '#ffffff' : (isSelected ? '#ffffff' : '#fef08a');
+
+        markersSvg += `
+            <g class="province-marker-group" style="cursor: pointer;" onclick="inspectProvince('${pName}')">
+                <!-- Interactive click area -->
+                <circle cx="${data.pinX}" cy="${data.pinY}" r="36" fill="transparent" />
+                
+                <!-- Province Label Badge -->
+                <rect x="${data.labelX - 48}" y="${data.labelY - 10}" width="96" height="20" rx="5" fill="${badgeBg}" stroke="${badgeBorder}" stroke-width="1.2" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); transition: all 0.2s ease;" />
+                <text x="${data.labelX}" y="${data.labelY + 4}" fill="${textColor}" font-size="9.5" font-weight="700" font-family="'Cinzel', Georgia, serif" text-anchor="middle" letter-spacing="0.5" pointer-events="none">${pName.toUpperCase()}</text>
+            </g>
+        `;
+    }
+
+    // High resolution Tamriel Map SVG with image backdrop and pulsing pin
+    container.innerHTML = `
+        <svg viewBox="0 0 1024 589" style="width: 100%; height: auto; display: block; background: #a6c9e2;">
+            <defs>
+                <filter id="pinGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+
+            <!-- Authentic Tamriel Map Image -->
+            <image href="/static/images/tamriel_map.png" x="0" y="0" width="1024" height="589" />
+
+            <!-- Province Badges & Click Hotspots -->
+            ${markersSvg}
+
+            <!-- Real-time Location Pin 📍 -->
+            <g transform="translate(${pinCoords.pinX}, ${pinCoords.pinY})" filter="url(#pinGlow)">
+                <!-- Pulse animation rings -->
+                <circle cx="0" cy="0" r="16" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0.9">
+                    <animate attributeName="r" values="10;28" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="1;0" dur="2s" repeatCount="indefinite" />
+                </circle>
+                <!-- Center Pin Marker -->
+                <circle cx="0" cy="0" r="8" fill="#ef4444" stroke="#ffffff" stroke-width="2" />
+                <circle cx="0" cy="0" r="3.5" fill="#ffffff" />
+                <rect x="-46" y="12" width="92" height="20" rx="4" fill="rgba(15, 23, 42, 0.92)" stroke="#fbbf24" stroke-width="1.2" />
+                <text x="0" y="26" fill="#fef08a" font-size="10" font-weight="700" text-anchor="middle" font-family="sans-serif">YOU ARE HERE</text>
+            </g>
+        </svg>
+    `;
+
+    renderProvinceDetailsCard(selectedProvinceName);
+}
+
+function inspectProvince(provinceName) {
+    selectedProvinceName = provinceName;
+    renderTamrielMap();
+}
+
+function renderProvinceDetailsCard(pName) {
+    const detailsContainer = document.getElementById('map-province-details');
+    if (!detailsContainer) return;
+
+    const prov = (cachedProvincesData || []).find(p => p.name.toLowerCase() === pName.toLowerCase()) || {
+        name: pName,
+        dominant_race: "Inhabitants of Tamriel",
+        climate: "Varied",
+        culture_summary: "A storied realm within the Empire of Tamriel.",
+        cities: [],
+        main_quest_dungeon: "Ancient Ruins"
+    };
+
+    const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
+    const isCurrent = (world.current_province || '').toLowerCase() === pName.toLowerCase();
+
+    detailsContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--arena-gold); font-family: var(--font-heading); display: flex; align-items: center; gap: 8px;">
+                    ${prov.name}
+                    ${isCurrent ? '<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #ef4444; color: #fff; font-weight: 700; text-transform: uppercase;">Current Province</span>' : ''}
+                </h3>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                    <strong>Climate:</strong> ${prov.climate || 'Temperate'} • <strong>Dominant Race:</strong> ${prov.dominant_race || 'Native'}
+                </div>
+            </div>
+            <div style="text-align: right; font-size: 0.78rem; color: var(--arena-gold);">
+                <strong>Quest Dungeon:</strong> ${prov.main_quest_dungeon || 'Unknown'}
+            </div>
+        </div>
+        <p style="margin: 0 0 10px 0; font-size: 0.82rem; color: var(--text-main); line-height: 1.45;">
+            ${prov.culture_summary || ''}
+        </p>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">
+            <strong style="color: var(--text-main);">Major Cities:</strong> ${(prov.cities || []).join(', ') || 'Various settlements'}
+        </div>
+    `;
+}
+
 function showDebugToast(message) {
     let container = document.getElementById('debug-toast-container');
     if (!container) {
@@ -278,10 +436,7 @@ async function softReloadApp() {
             }
         }
         
-        if (data.state) {
-            updateHeartState(data.state, data.inversion_active);
-        }
-        inversionActive = data.inversion_active || "";
+        fetchCharacterStatus();
         
         // Maintain scroll posture
         if (domUpdated) {
@@ -332,38 +487,12 @@ function initHeartPulse() {
     const heartElement = document.querySelector('.heart-pulse');
     if (heartElement) {
         heartElement.style.cursor = 'pointer';
-        heartElement.addEventListener('click', () => {
-            const stateNames = {
-                intimate: "Deep Intimacy (Warm & Blushing)",
-                excited: "Playful Excitement (Fast & Energetic)",
-                calm: "Thoughtful Serenity (Calm & Balanced)",
-                intense: "Radical Determination (Sharp & Focused)",
-                sad: "Concerned Sadness (Dim & Attuned)"
-            };
-            const statusName = stateNames[currentHeartState.name] || "Unknown State";
-            const intensityPercent = Math.round((currentHeartState.intensity || 0) * 100);
-            
-            let extraMsg = "";
-            if (inversionActive) {
-                const stateQualities = {
-                    intimate: "intimate",
-                    excited: "excited",
-                    calm: "calm",
-                    intense: "intense",
-                    sad: "sad"
-                };
-                const quality = stateQualities[inversionActive] || "sad";
-                extraMsg = `<br><br><span style="color: var(--text-muted); font-size: 0.9rem;">${activeProgramName || 'The program'} is in a dialectical state: ${quality}.</span>`;
-            }
-            
-            showCustomAlert("Heart Status",
-                  `${activeProgramName || 'Program'}'s Mood: <strong>${statusName}</strong><br>` +
-                  `Emotional Intensity: <strong>${intensityPercent}%</strong>` + extraMsg);
-        });
-        heartElement.addEventListener('dblclick', () => {
-            triggerHeartBurst();
+        heartElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openStatusModal();
         });
     }
+    fetchCharacterStatus();
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initHeartPulse);
@@ -421,7 +550,7 @@ function generateMessageId(text, role = 'user') {
                 prefix = 'prgm_';
             }
         } else {
-            if (text && text.includes("Send me a portrait of yourself")) {
+            if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:"))) {
                 prefix = 'port_';
             } else if (text && text.startsWith("[SYSTEM: User has completed")) {
                 prefix = 'quest_';
@@ -1574,77 +1703,397 @@ async function resolveWorkflowDependencies(btn) {
    V. 4. DYNAMIC UI ACCESSORIES & PROMPTS
    ========================================================================== */
 
-// --- updateHeartState ---
-function updateHeartState(state, activeInversion) {
-    const heartElement = document.querySelector('.heart-pulse');
-    if (!heartElement || !state) return;
-    
-    currentHeartState = state;
-    
-    const resolvedInversion = (activeInversion !== undefined) ? activeInversion : inversionActive;
-    
-    // Set CSS custom properties on the heart element dynamically
-    heartElement.style.setProperty('--heart-color', state.color || '#85b9eb');
-    heartElement.style.setProperty('--heart-glow', state.glow || 'rgba(133, 185, 235, 0.9)');
-    heartElement.style.setProperty('--heart-speed', state.speed || '2.0s');
-    
-    // Set faster pulse speed for typing/generating states based on current baseline intensity
-    let activeSpeed = '0.7s';
-    if (state.name === 'excited') activeSpeed = '0.4s';
-    else if (state.name === 'intimate') activeSpeed = '0.6s';
-    else if (state.name === 'intense') activeSpeed = '0.5s';
-    else if (state.name === 'sad') activeSpeed = '1.3s'; // slower, heavier pulse during sad generation
-    else if (state.name === 'calm') activeSpeed = '1.0s';
-    heartElement.style.setProperty('--heart-speed-active', activeSpeed);
-    
-    // Add a dynamic description to title tooltips for depth
-    const name = activeProgramName || "Program";
-    const stateTitles = {
-        intimate: `${name}'s heart glows warmly with deep intimacy`,
-        excited: `${name}'s heart is beating rapidly with playful excitement`,
-        calm: `${name}'s heart is beating in calm, thoughtful serenity`,
-        intense: `${name}'s heart pulses with intense determination`,
-        sad: `${name}'s heart glows dimly with concern and sadness`
-    };
-    
-    let title = stateTitles[state.name] || `${name}'s Encoded Heart`;
-    if (resolvedInversion) {
-        const stateQualities = {
-            intimate: "intimate",
-            excited: "excited",
-            calm: "calm",
-            intense: "intense",
-            sad: "sad"
-        };
-        const quality = stateQualities[resolvedInversion] || "sad";
-        title += ` (Dialectical State: ${quality})`;
+// ── Arena: Player Character Status & Heart Controller ─────────────────────
+let currentCharacterData = null;
+
+async function fetchCharacterStatus() {
+    try {
+        const res = await fetch('/api/character/status?t=' + Date.now());
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'success' && data.character) {
+            currentCharacterData = data;
+            updatePlayerHeartState(data.character, data.world);
+            renderCharacterStatusModal(data);
+        }
+    } catch (e) {
+        console.warn('Error fetching character status:', e);
     }
-    heartElement.title = title;
 }
 
-// --- triggerHeartBurst ---
-function triggerHeartBurst() {
-    const heart = document.querySelector('.heart-pulse');
-    if (heart) {
-        heart.classList.remove('burst');
-        void heart.offsetWidth; // Force reflow
-        heart.classList.add('burst');
-        setTimeout(() => {
-            heart.classList.remove('burst');
-        }, 1500);
+function updatePlayerHeartState(char, world) {
+    const heartElement = document.getElementById('header-heart-pulse') || document.querySelector('.heart-pulse');
+    if (!heartElement || !char || !char.derived) return;
+
+    const d = char.derived;
+    const hpCurrent = d.hp_current !== undefined ? d.hp_current : 28;
+    const hpMax = d.hp_max || 28;
+    const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
+
+    const conditions = (char.conditions || []).map(c => c.toLowerCase());
+    const isAfflicted = conditions.some(c => c.includes('poison') || c.includes('disease'));
+
+    let color = '#e2b047'; // Gold
+    let glow = 'rgba(226, 176, 71, 0.6)';
+    let speed = '2.0s';
+    let statusText = `Vitality: ${hpCurrent}/${hpMax} HP (Healthy)`;
+
+    if (hpCurrent <= 0) {
+        color = '#64748b'; // Slate gray (fallen)
+        glow = 'rgba(100, 116, 139, 0.4)';
+        speed = '4.0s';
+        statusText = 'Player Status: Incapacitated';
+        heartElement.classList.remove('jiggling');
+    } else if (isAfflicted) {
+        color = '#22c55e'; // Sickly green
+        glow = 'rgba(34, 197, 94, 0.7)';
+        speed = '0.9s';
+        statusText = `Player Status: Afflicted (${char.conditions.join(', ')}) - ${hpCurrent}/${hpMax} HP`;
+        heartElement.classList.remove('jiggling');
+    } else if (hpPct <= 25) {
+        color = '#ef4444'; // Red
+        glow = 'rgba(239, 68, 68, 0.85)';
+        speed = '0.5s';
+        statusText = `Player Status: Critical Health! (${hpCurrent}/${hpMax} HP)`;
+        heartElement.classList.add('jiggling');
+    } else if (hpPct <= 60) {
+        color = '#f59e0b'; // Amber
+        glow = 'rgba(245, 158, 11, 0.7)';
+        speed = '1.0s';
+        statusText = `Player Status: Wounded (${hpCurrent}/${hpMax} HP)`;
+        heartElement.classList.remove('jiggling');
+    } else {
+        color = '#e2b047';
+        glow = 'rgba(226, 176, 71, 0.6)';
+        speed = '2.0s';
+        statusText = `Player Status: Healthy (${hpCurrent}/${hpMax} HP)`;
+        heartElement.classList.remove('jiggling');
     }
-    
-    // Play inversion sound effect from program assets
-    try {
-        const audio = new Audio('/sparkle.mp3');
-        audio.volume = 0.25;
-        audio.play().catch(err => {
-            console.warn("Inversion audio play prevented or file not found:", err);
-        });
-    } catch (e) {
-        console.error("Error playing inversion sound:", e);
+
+    heartElement.style.setProperty('--heart-color', color);
+    heartElement.style.setProperty('--heart-glow', glow);
+    heartElement.style.setProperty('--heart-speed', speed);
+    heartElement.style.setProperty('--heart-speed-active', '0.6s');
+    heartElement.title = `${statusText} — Click to view character sheet`;
+}
+
+function updateHeartState() {
+    fetchCharacterStatus();
+}
+
+function triggerHeartBurst() {
+    // Legacy no-op stub
+}
+
+function openStatusModal() {
+    fetchCharacterStatus().then(() => {
+        const modal = document.getElementById('status-modal');
+        if (modal) modal.style.display = 'flex';
+    });
+}
+
+function closeStatusModal() {
+    const modal = document.getElementById('status-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function openInventoryModal() {
+    fetchCharacterStatus().then(() => {
+        const modal = document.getElementById('inventory-modal');
+        if (modal) modal.style.display = 'flex';
+    });
+}
+
+function closeInventoryModal() {
+    const modal = document.getElementById('inventory-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function renderCharacterStatusModal(data) {
+    if (!data || !data.character) return;
+    const char = data.character;
+    const d = char.derived || {};
+    const world = data.world || {};
+    const mods = data.modifiers || {};
+
+    // Header info
+    const nameEl = document.getElementById('modal-char-name');
+    if (nameEl) nameEl.textContent = char.name || 'Eternal Champion';
+
+    const subEl = document.getElementById('modal-char-subtitle');
+    if (subEl) subEl.textContent = `${char.race || 'Nord'} ${char.gender || 'Male'} ${char.class || 'Mage'} • Level ${char.level || 1}`;
+
+    // Location & Date
+    const locEl = document.getElementById('modal-char-location');
+    if (locEl) locEl.textContent = `${world.current_location || 'Imperial Dungeon'}, ${world.current_province || 'Cyrodiil'}`;
+
+    const dateEl = document.getElementById('modal-char-date');
+    if (dateEl) {
+        const tDate = world.tamrielic_date || { day: 1, month: "Morning Star", year: 389, era: "Third Era" };
+        dateEl.textContent = `${tDate.day} ${tDate.month}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}`;
+    }
+
+    // HP, MP & Stamina
+    const hpCurrent = d.hp_current !== undefined ? d.hp_current : 28;
+    const hpMax = d.hp_max || 28;
+    const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
+
+    const mpCurrent = d.mp_current !== undefined ? d.mp_current : (d.sp_current !== undefined ? d.sp_current : 42);
+    const mpMax = d.mp_max || d.sp_max || 42;
+    const mpPct = Math.max(0, Math.min(100, (mpCurrent / mpMax) * 100));
+
+    const stmCurrent = d.stamina_current !== undefined ? d.stamina_current : 50;
+    const stmMax = d.stamina_max || 50;
+    const stmPct = Math.max(0, Math.min(100, (stmCurrent / stmMax) * 100));
+
+    const hpText = document.getElementById('modal-char-hp-text');
+    if (hpText) hpText.textContent = `${hpCurrent} / ${hpMax}`;
+    const hpBar = document.getElementById('modal-char-hp-bar');
+    if (hpBar) hpBar.style.width = `${hpPct}%`;
+
+    const mpText = document.getElementById('modal-char-mp-text') || document.getElementById('modal-char-sp-text');
+    if (mpText) mpText.textContent = `${mpCurrent} / ${mpMax}`;
+    const mpBar = document.getElementById('modal-char-mp-bar') || document.getElementById('modal-char-sp-bar');
+    if (mpBar) mpBar.style.width = `${mpPct}%`;
+
+    const stmText = document.getElementById('modal-char-stamina-text');
+    if (stmText) stmText.textContent = `${stmCurrent} / ${stmMax}`;
+    const stmBar = document.getElementById('modal-char-stamina-bar');
+    if (stmBar) stmBar.style.width = `${stmPct}%`;
+
+    // Armor, Gold, XP
+    const armorEl = document.getElementById('modal-char-armor');
+    if (armorEl) armorEl.textContent = d.armor_rating !== undefined ? d.armor_rating : 4;
+
+    const goldEl = document.getElementById('modal-char-gold');
+    if (goldEl) goldEl.textContent = `${char.gold !== undefined ? char.gold : 75}`;
+
+    const invGoldEl = document.getElementById('inventory-gold-display');
+    if (invGoldEl) invGoldEl.textContent = `${char.gold !== undefined ? char.gold : 0} Gold`;
+
+    const xpEl = document.getElementById('modal-char-xp');
+    if (xpEl) xpEl.textContent = `${char.experience || 0}`;
+
+    // Attributes
+    const attrContainer = document.getElementById('modal-char-attributes');
+    if (attrContainer && char.attributes) {
+        attrContainer.innerHTML = '';
+        for (const [attr, val] of Object.entries(char.attributes)) {
+            const card = document.createElement('div');
+            card.style.cssText = 'background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 4px; text-align: center;';
+            const mod = mods[attr] || '+0';
+            card.innerHTML = `
+                <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">${attr.slice(0, 3)}</div>
+                <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">${val}</div>
+                <div style="font-size: 0.7rem; color: var(--arena-gold);">${mod}</div>
+            `;
+            attrContainer.appendChild(card);
+        }
+    }
+
+    // Inventory
+    const invContainer = document.getElementById('modal-char-inventory');
+    if (invContainer) {
+        invContainer.innerHTML = '';
+        const items = char.inventory || [];
+        const itemCountEl = document.getElementById('inventory-item-count');
+        if (itemCountEl) itemCountEl.textContent = `${items.length} ${items.length === 1 ? 'item' : 'items'}`;
+        if (items.length === 0) {
+            invContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">Empty — no items in your pack</span>';
+        } else {
+            items.forEach(item => {
+                const itemRow = document.createElement('div');
+                const isEq = !!item.equipped;
+                const nameLower = (item.name || '').toLowerCase();
+                const typeLower = (item.type || '').toLowerCase();
+                const isTorch = nameLower.includes('torch') || nameLower.includes('lantern') || typeLower === 'torch' || typeLower === 'light';
+                const isJewelry = nameLower.includes('ring') || nameLower.includes('amulet') || nameLower.includes('necklace') || typeLower === 'ring' || typeLower === 'neck';
+                const canEquip = isTorch || isJewelry || ['weapon', '2h_weapon', 'armor', 'robes', 'shield', 'head', 'helmet', 'hood', 'hands', 'feet', 'boots', 'apparel'].includes(typeLower) || nameLower.includes('dagger') || nameLower.includes('sword') || nameLower.includes('staff') || nameLower.includes('bow') || nameLower.includes('robe') || nameLower.includes('cuirass');
+                
+                itemRow.style.cssText = `display: inline-flex; align-items: center; gap: 4px; background: ${isEq ? 'rgba(226, 176, 71, 0.15)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${isEq ? 'var(--arena-gold)' : 'var(--border-color)'}; border-radius: 6px; padding: 2px 4px 2px 8px; transition: all 0.15s ease;`;
+                
+                const qtyStr = item.quantity && item.quantity > 1 ? ` x${item.quantity}` : '';
+                const slotLabel = item.equipped_slot ? item.equipped_slot.replace('_', ' ').toUpperCase() : 'EQUIPPED';
+                const tag = isEq ? `<span style="font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; background: var(--arena-gold); color: #000; font-weight: 700;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
+                
+                const equipBtn = document.createElement('button');
+                equipBtn.className = 'edit-btn';
+                equipBtn.style.cssText = `background: transparent; border: none; padding: 2px 4px; font-size: 0.78rem; color: ${isEq ? 'var(--arena-gold)' : 'var(--text-main)'}; display: inline-flex; align-items: center; gap: 6px; cursor: ${canEquip ? 'pointer' : 'default'};`;
+                equipBtn.innerHTML = `<span>${item.name}${qtyStr}</span> ${tag}`;
+                if (canEquip) {
+                    equipBtn.title = isEq ? `Click to unequip ${item.name} (${slotLabel})` : `Click to equip ${item.name}`;
+                    equipBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleItemEquip(item.name, isEq);
+                    };
+                }
+                itemRow.appendChild(equipBtn);
+
+                const dropBtn = document.createElement('button');
+                dropBtn.className = 'action-icon-btn';
+                dropBtn.title = `Drop ${item.name}`;
+                dropBtn.style.cssText = `width: 20px; height: 20px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
+                dropBtn.innerHTML = `
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                `;
+                dropBtn.onmouseover = () => {
+                    dropBtn.style.color = 'var(--text-main)';
+                    dropBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                    dropBtn.style.background = 'rgba(255, 255, 255, 0.12)';
+                };
+                dropBtn.onmouseout = () => {
+                    dropBtn.style.color = 'var(--text-muted)';
+                    dropBtn.style.borderColor = 'var(--border-color)';
+                    dropBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                };
+                dropBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    dropItemFromInventory(item.name);
+                };
+                itemRow.appendChild(dropBtn);
+
+                invContainer.appendChild(itemRow);
+            });
+        }
+    }
+
+    // Spells
+    const spellsContainer = document.getElementById('modal-char-spells');
+    if (spellsContainer) {
+        spellsContainer.innerHTML = '';
+        const spells = char.spells || [];
+        const spellCountEl = document.getElementById('inventory-spell-count');
+        if (spellCountEl) spellCountEl.textContent = `${spells.length} ${spells.length === 1 ? 'spell' : 'spells'}`;
+        if (spells.length === 0) {
+            spellsContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">None known</span>';
+        } else {
+            spells.forEach(spell => {
+                const badge = document.createElement('span');
+                badge.style.cssText = 'font-size: 0.78rem; padding: 3px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);';
+                badge.textContent = `${spell.name} (${spell.school || 'Magic'}) [${spell.sp_cost || 4} SP]`;
+                spellsContainer.appendChild(badge);
+            });
+        }
+    }
+
+    // Effects & Conditions
+    const effContainer = document.getElementById('modal-char-effects');
+    if (effContainer) {
+        const effects = char.active_effects || [];
+        const conds = char.conditions || [];
+        if (effects.length === 0 && conds.length === 0) {
+            effContainer.textContent = 'None active';
+        } else {
+            const list = [...conds, ...effects.map(e => `${e.name} (${e.duration_turns}t)`)];
+            effContainer.textContent = list.join(', ');
+        }
     }
 }
+
+function toggleCharacterEditForm(forceState) {
+    const panel = document.getElementById('char-edit-panel');
+    if (!panel) return;
+    if (forceState !== undefined) {
+        panel.style.display = forceState ? 'block' : 'none';
+    } else {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+    if (panel.style.display === 'block' && currentCharacterData && currentCharacterData.character) {
+        const char = currentCharacterData.character;
+        const nameInput = document.getElementById('edit-char-name');
+        if (nameInput) nameInput.value = char.name || 'Eternal Champion';
+        const genderSelect = document.getElementById('edit-char-gender');
+        if (genderSelect) genderSelect.value = char.gender || 'Male';
+        const raceSelect = document.getElementById('edit-char-race');
+        if (raceSelect && char.race) raceSelect.value = char.race;
+        const classSelect = document.getElementById('edit-char-class');
+        if (classSelect && char.class) classSelect.value = char.class;
+    }
+}
+
+async function saveCharacterCustomization() {
+    const name = document.getElementById('edit-char-name')?.value || 'Eternal Champion';
+    const gender = document.getElementById('edit-char-gender')?.value || 'Male';
+    const race = document.getElementById('edit-char-race')?.value || 'Nord';
+    const characterClass = document.getElementById('edit-char-class')?.value || 'Mage';
+
+    try {
+        const res = await fetch('/api/character/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                gender: gender,
+                race: race,
+                class: characterClass
+            })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        toggleCharacterEditForm(false);
+        await fetchCharacterStatus();
+    } catch (e) {
+        console.error('Error saving character profile:', e);
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Update Failed', e.message);
+        }
+    }
+}
+
+async function toggleItemEquip(itemName, currentEquipped) {
+    try {
+        const res = await fetch('/api/character/equip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_name: itemName, equip: !currentEquipped })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        await fetchCharacterStatus();
+    } catch (e) {
+        console.error('Error toggling equip state:', e);
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Equip Error', e.message);
+        }
+    }
+}
+
+async function dropItemFromInventory(itemName) {
+    if (typeof showCustomConfirm === 'function') {
+        showCustomConfirm("Drop Item", `Are you sure you want to drop ${itemName} onto the ground?`, async () => {
+            await executeDropItem(itemName);
+        });
+    } else {
+        if (confirm(`Drop ${itemName} onto the ground?`)) {
+            await executeDropItem(itemName);
+        }
+    }
+}
+
+async function executeDropItem(itemName) {
+    try {
+        const res = await fetch('/api/character/drop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_name: itemName, quantity: 1 })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        await fetchCharacterStatus();
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Item Dropped', `You dropped ${itemName} onto the ground.`);
+        }
+    } catch (e) {
+        console.error('Error dropping item:', e);
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Drop Error', e.message);
+        }
+    }
+}
+
 
 // --- updateInputGlow ---
 function updateInputGlow() {
@@ -2496,6 +2945,19 @@ function populateProfileEditor() {
 
     if (nameInput) nameInput.value = prof.name;
     if (contentTextarea) contentTextarea.value = prof.content;
+    const modsTextarea = document.getElementById('user-profile-mods');
+    if (modsTextarea) modsTextarea.value = prof.mods || '';
+
+    // Populate Character Trinity (Gender, Race, Class) from active character sheet
+    if (currentCharacterData && currentCharacterData.character) {
+        const char = currentCharacterData.character;
+        const genderSelect = document.getElementById('user-profile-gender-select');
+        if (genderSelect && char.gender) genderSelect.value = char.gender;
+        const raceSelect = document.getElementById('user-profile-race-select');
+        if (raceSelect && char.race) raceSelect.value = char.race;
+        const classSelect = document.getElementById('user-profile-class-select');
+        if (classSelect && char.class) classSelect.value = char.class;
+    }
 
     if (selectedEditingProfileId === activeUserProfile) {
         if (activeBadge) activeBadge.style.display = 'inline-block';
@@ -2535,6 +2997,7 @@ async function activateUserProfile(profileId) {
         }
 
         await loadUserProfiles();
+        await fetchCharacterStatus();
     } catch (e) {
         showCustomAlert("Error", e.message || "Failed to activate profile.");
     }
@@ -2580,14 +3043,41 @@ async function saveActiveUserProfile() {
             }
         }
 
-        // Save markdown content
+        // Save markdown content and mods
+        const modsTextarea = document.getElementById('user-profile-mods');
+        const modsContent = modsTextarea ? modsTextarea.value : '';
+
         const saveRes = await fetch('/api/user_profiles/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile_id: profileId, content: content })
+            body: JSON.stringify({ profile_id: profileId, content: content, mods: modsContent })
         });
         const saveData = await saveRes.json();
         if (saveData.error) throw new Error(saveData.error);
+
+        // Sync Character Sheet (Gender, Race, Class, Name)
+        const genderSelect = document.getElementById('user-profile-gender-select');
+        const raceSelect = document.getElementById('user-profile-race-select');
+        const classSelect = document.getElementById('user-profile-class-select');
+        const charGender = genderSelect ? genderSelect.value : 'Male';
+        const charRace = raceSelect ? raceSelect.value : 'Nord';
+        const charClass = classSelect ? classSelect.value : 'Mage';
+
+        try {
+            await fetch('/api/character/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newName,
+                    gender: charGender,
+                    race: charRace,
+                    class: charClass
+                })
+            });
+            await fetchCharacterStatus();
+        } catch (ce) {
+            console.error('Error syncing character sheet:', ce);
+        }
 
         // Select & activate this profile if not already active
         if (profileId !== activeUserProfile) {
@@ -2600,7 +3090,7 @@ async function saveActiveUserProfile() {
             if (selData.error) throw new Error(selData.error);
         }
 
-        showCustomAlert("Success", `User profile saved and applied as active persona!`);
+        showCustomAlert("Success", `Character profile saved and updated!`);
 
         const messagesList = document.getElementById('messages-list');
         if (messagesList) {
@@ -2706,119 +3196,233 @@ async function deleteSelectedUserProfile() {
 }
 
 /* ==========================================================================
-   VI. 5.b CHAT TIMELINE / SESSIONS MANAGEMENT
+   VI. 5.b SAVE STATES MANAGEMENT
    ========================================================================== */
 
-async function loadChatSessions() {
+function toggleNewSavePanel(show) {
+    const panel = document.getElementById('new-save-panel');
+    if (!panel) return;
+    if (show !== undefined) {
+        panel.style.display = show ? 'block' : 'none';
+    } else {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+async function loadSavesList() {
     try {
-        const res = await fetch('/api/sessions');
+        const res = await fetch('/api/saves');
         const data = await res.json();
-        if (data.sessions) {
-            const select = document.getElementById('chat-sessions-select');
-            if (select) {
-                select.innerHTML = '';
-                data.sessions.forEach(sess => {
-                    const opt = document.createElement('option');
-                    opt.value = sess;
-                    opt.textContent = sess;
-                    if (sess === sessionId) {
-                        opt.selected = true;
-                    }
-                    select.appendChild(opt);
-                });
-                updateDeleteSessionButtonLabel();
-            }
+        if (data.saves) {
+            renderSavesList(data.saves, data.active_save_id);
         }
     } catch (e) {
-        console.error("Error loading chat sessions:", e);
+        console.error("Error loading saves:", e);
     }
 }
 
-function updateDeleteSessionButtonLabel() {
-    const select = document.getElementById('chat-sessions-select');
-    const deleteBtn = document.getElementById('delete-session-btn');
-    if (select && deleteBtn) {
-        const val = select.value;
-        if (val === 'default') {
-            deleteBtn.textContent = 'Clear Chat';
-        } else {
-            deleteBtn.textContent = 'Delete';
-        }
-    }
-}
+function renderSavesList(saves, activeId) {
+    const container = document.getElementById('saves-list-container');
+    if (!container) return;
+    container.innerHTML = '';
 
-function onChatSessionSelectChange() {
-    const select = document.getElementById('chat-sessions-select');
-    if (select) {
-        const selected = select.value;
-        updateDeleteSessionButtonLabel();
-        window.location.href = `?session_id=${encodeURIComponent(selected)}`;
+    if (!saves || saves.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin: 20px 0;">No save states found. Click "+ New Save" below to begin a fresh adventure!</p>';
+        return;
     }
-}
 
-function createNewChatSession() {
-    showCustomPrompt("New Chat Session", "Enter a name for the new chat timeline:", "", (name) => {
-        if (!name || !name.trim()) {
-            showCustomAlert("Error", "Session name cannot be empty.");
-            return;
+    saves.forEach(save => {
+        const isActive = save.id === activeId;
+        const card = document.createElement('div');
+        card.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: ${isActive ? 'color-mix(in srgb, var(--primary-accent) 12%, transparent)' : 'rgba(255, 255, 255, 0.03)'};
+            border: 1px solid ${isActive ? 'color-mix(in srgb, var(--primary-accent) 35%, transparent)' : 'var(--border-color)'};
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        `;
+
+        card.onmouseover = () => {
+            if (!isActive) {
+                card.style.background = 'rgba(255, 255, 255, 0.07)';
+                card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            }
+        };
+        card.onmouseout = () => {
+            if (!isActive) {
+                card.style.background = 'rgba(255, 255, 255, 0.03)';
+                card.style.borderColor = 'var(--border-color)';
+            }
+        };
+        card.onclick = () => {
+            if (!isActive) {
+                loadSaveGame(save.id);
+            }
+        };
+
+        // Left info area
+        const leftArea = document.createElement('div');
+        leftArea.style.cssText = 'display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;';
+
+        // Avatar icon container
+        const avatarDiv = document.createElement('div');
+        avatarDiv.style.cssText = `
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: ${isActive ? 'color-mix(in srgb, var(--primary-accent) 25%, transparent)' : 'rgba(255, 255, 255, 0.08)'};
+            border: 1px solid ${isActive ? 'var(--primary-accent)' : 'rgba(255, 255, 255, 0.12)'};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: ${isActive ? 'var(--primary-accent)' : 'var(--text-main)'};
+            flex-shrink: 0;
+        `;
+        avatarDiv.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+        `;
+        leftArea.appendChild(avatarDiv);
+
+        const info = document.createElement('div');
+        info.style.cssText = 'display: flex; flex-direction: column; gap: 2px; min-width: 0;';
+
+        const dateFormatted = save.tamrielic_date || '1 Morning Star, 3E 389';
+        const loc = `${save.current_location || 'Imperial Dungeon'}, ${save.current_province || 'Cyrodiil'}`;
+        const charName = save.name || save.character_name || 'Eternal Champion';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.style.cssText = 'font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px;';
+        nameDiv.innerText = loc;
+
+        if (isActive) {
+            const activeBadge = document.createElement('span');
+            activeBadge.style.cssText = 'font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; background: rgba(56, 189, 248, 0.15); color: var(--primary-accent); border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 500;';
+            activeBadge.innerText = 'Active';
+            nameDiv.appendChild(activeBadge);
         }
-        const sanitized = name.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '_');
-        if (!sanitized) {
-            showCustomAlert("Error", "Invalid session name. Use only letters, numbers, hyphens, and underscores.");
-            return;
-        }
-        window.location.href = `?session_id=${encodeURIComponent(sanitized)}`;
+        info.appendChild(nameDiv);
+
+        const subtitleDiv = document.createElement('div');
+        subtitleDiv.style.cssText = 'font-size: 0.75rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;';
+        subtitleDiv.innerText = `${charName} • Level ${save.level || 1} ${save.race || 'Nord'} ${save.class || 'Mage'} • ${dateFormatted}`;
+        info.appendChild(subtitleDiv);
+
+        leftArea.appendChild(info);
+        card.appendChild(leftArea);
+
+        // Right side action area
+        const rightArea = document.createElement('div');
+        rightArea.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: 12px;';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'action-icon-btn';
+        deleteBtn.innerHTML = `
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        `;
+        deleteBtn.title = 'Delete Save';
+        deleteBtn.style.width = '26px';
+        deleteBtn.style.height = '26px';
+        deleteBtn.style.borderRadius = '6px';
+        deleteBtn.style.flexShrink = '0';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteSaveGame(save.id, save.name || save.character_name);
+        };
+        rightArea.appendChild(deleteBtn);
+
+        card.appendChild(rightArea);
+        container.appendChild(card);
     });
 }
 
-function deleteSelectedChatSession() {
-    const select = document.getElementById('chat-sessions-select');
-    if (!select) return;
-    const selected = select.value;
-    
-    if (selected === 'default') {
-        showCustomConfirm("Clear Chat Timeline", "Are you sure you want to clear all messages in this main chat timeline? This will reset the conversation.", async () => {
-            try {
-                const res = await fetch('/reset', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: 'default' })
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    showCustomAlert("Cleared", "Main chat timeline cleared.", () => {
-                        window.location.href = '?session_id=default';
-                    });
-                } else {
-                    throw new Error(data.error || "Failed to clear.");
-                }
-            } catch (e) {
-                console.error("Error clearing session:", e);
-                showCustomAlert("Error", "Failed to clear timeline: " + e.message);
-            }
+async function submitNewSaveGame() {
+    const titleInput = document.getElementById('new-save-title');
+    const charNameInput = document.getElementById('new-save-char-name');
+    const genderSelect = document.getElementById('new-save-gender');
+    const raceSelect = document.getElementById('new-save-race');
+    const classSelect = document.getElementById('new-save-class');
+
+    const title = titleInput?.value.trim() || '';
+    const charName = charNameInput?.value.trim() || 'Eternal Champion';
+    const gender = genderSelect?.value || 'Male';
+    const race = raceSelect?.value || 'Nord';
+    const charClass = classSelect?.value || 'Mage';
+
+    try {
+        const res = await fetch('/api/saves/new', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: title || `${charName} - ${race} ${charClass}`,
+                character_name: charName,
+                gender: gender,
+                race: race,
+                class: charClass
+            })
         });
-    } else {
-        showCustomConfirm("Delete Chat Session", `Are you sure you want to permanently delete the chat session "${selected}"? This action cannot be undone.`, async () => {
-            try {
-                const res = await fetch('/reset', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: selected })
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    showCustomAlert("Deleted", "Chat session deleted successfully.", () => {
-                        window.location.href = '?session_id=default';
-                    });
-                } else {
-                    throw new Error(data.error || "Failed to delete.");
-                }
-            } catch (e) {
-                console.error("Error deleting session:", e);
-                showCustomAlert("Error", "Failed to delete the chat session: " + e.message);
-            }
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        toggleNewSavePanel(false);
+        closeAssistantModal();
+
+        showCustomAlert("New Save Created", `Starting new adventure for ${charName} the ${race} ${charClass}!`, () => {
+            window.location.reload();
         });
+    } catch (e) {
+        console.error("Error creating save:", e);
+        showCustomAlert("Error", "Failed to create save: " + e.message);
     }
+}
+
+async function loadSaveGame(saveId) {
+    try {
+        const res = await fetch('/api/saves/load', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ save_id: saveId })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        closeAssistantModal();
+        showCustomAlert("Save Loaded", `Save loaded successfully!`, () => {
+            window.location.reload();
+        });
+    } catch (e) {
+        console.error("Error loading save:", e);
+        showCustomAlert("Error", "Failed to load save: " + e.message);
+    }
+}
+
+function deleteSaveGame(saveId, saveName) {
+    showCustomConfirm("Delete Save", `Are you sure you want to permanently delete save "${saveName}"? This action cannot be undone.`, async () => {
+        try {
+            const res = await fetch('/api/saves/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ save_id: saveId })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            await loadSavesList();
+        } catch (e) {
+            console.error("Error deleting save:", e);
+            showCustomAlert("Error", "Failed to delete save: " + e.message);
+        }
+    });
 }
 
 
@@ -2884,14 +3488,15 @@ function switchAssistantModalTab(tab) {
         userTab.style.display = 'block';
         closeUserProfileEditor();
         loadUserProfiles();
-    } else if (tab === 'sessions') {
+    } else if (tab === 'sessions' || tab === 'saves') {
         if (sessBtn) {
             sessBtn.style.background = 'rgba(255, 255, 255, 0.08)';
             sessBtn.style.color = 'var(--primary-accent)';
             sessBtn.style.border = '1px solid var(--primary-accent)';
         }
         if (sessTab) sessTab.style.display = 'block';
-        loadChatSessions();
+        toggleNewSavePanel(false);
+        loadSavesList();
     }
 }
 
@@ -3038,7 +3643,13 @@ async function submitDescriptionImport() {
 function renderProgramsList(assistants, activeId) {
     const container = document.getElementById('assistants-list-container');
     container.innerHTML = '';
-    assistants.forEach(assistant => {
+
+    // Only show followers who are narratively present (recruited)
+    const visible = assistants.filter(a => a.recruited !== false);
+
+    visible.forEach(assistant => {
+        const isRia = assistant.id === 'ria_silmane';
+
         const div = document.createElement('div');
         div.style.cssText = `
             display: flex;
@@ -3074,7 +3685,7 @@ function renderProgramsList(assistants, activeId) {
         img.src = `/programs/${assistant.id}/profile.png?t=${profileCacheBuster}`;
         img.alt = assistant.name;
         img.setAttribute('data-name', assistant.name);
-        img.setAttribute('data-color', assistant.theme_color || '#38bdf8');
+        img.setAttribute('data-color', assistant.theme_color || '#4a3520');
         img.style.cssText = `
             width: 44px;
             height: 44px;
@@ -3102,7 +3713,7 @@ function renderProgramsList(assistants, activeId) {
         leftArea.appendChild(info);
         div.appendChild(leftArea);
 
-        // Add Palette settings button on each program row
+        // Palette settings button
         const paletteBtn = document.createElement('button');
         paletteBtn.className = 'action-icon-btn';
         paletteBtn.innerHTML = `
@@ -3126,7 +3737,7 @@ function renderProgramsList(assistants, activeId) {
         };
         div.appendChild(paletteBtn);
 
-        // Add Edit Settings button on each program row
+        // Edit button
         const editBtn = document.createElement('button');
         editBtn.className = 'action-icon-btn';
         editBtn.innerHTML = `
@@ -3147,14 +3758,26 @@ function renderProgramsList(assistants, activeId) {
         };
         div.appendChild(editBtn);
 
-        if (assistant.id !== 'sebile') {
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'action-icon-btn';
-            deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
-            deleteBtn.title = 'Delete Program';
-            deleteBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;margin-left:10px;flex-shrink:0;';
-            deleteBtn.onclick = (e) => { e.stopPropagation(); deleteAssistant(assistant.id, assistant.name); };
-            div.appendChild(deleteBtn);
+        // Ria is immortal — no delete button.
+        // Mortal followers get a skull button (permadeath).
+        if (!isRia) {
+            const skullBtn = document.createElement('button');
+            skullBtn.className = 'action-icon-btn';
+            skullBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block">
+                <path d="M9 18h6M10 22h4M12 2C7.03 2 3 6.03 3 11c0 2.97 1.42 5.6 3.6 7.2V20a1 1 0 0 0 1 1h8.8a1 1 0 0 0 1-1v-1.8C19.58 16.6 21 13.97 21 11c0-4.97-4.03-9-9-9z"/>
+                <line x1="9" y1="14" x2="9" y2="14"/><line x1="15" y1="14" x2="15" y2="14"/>
+            </svg>`;
+            skullBtn.title = 'Kill Follower (Permadeath)';
+            skullBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;margin-left:10px;flex-shrink:0;color:var(--danger-color,#f87171);';
+            skullBtn.onclick = (e) => {
+                e.stopPropagation();
+                showCustomConfirm(
+                    "Permadeath",
+                    `<strong>${assistant.name}</strong> will be permanently removed from your party. This cannot be undone.`,
+                    () => deleteAssistant(assistant.id, assistant.name)
+                );
+            };
+            div.appendChild(skullBtn);
         }
 
         container.appendChild(div);
@@ -3272,10 +3895,8 @@ async function openProgramProfileModal(programId) {
     
     // Clear inputs
     document.getElementById('comp-name').value = '';
-    document.getElementById('comp-narration-mode').checked = false;
     document.getElementById('comp-backstory').value = '';
     document.getElementById('comp-directives').value = '';
-    document.getElementById('comp-post-history-instructions').value = '';
     document.getElementById('comp-example-msg').value = '';
     document.getElementById('comp-personality-type').value = '';
     document.getElementById('comp-scenario').value = '';
@@ -3296,9 +3917,7 @@ async function openProgramProfileModal(programId) {
         document.getElementById('comp-scenario').value = data.scenario || '';
         document.getElementById('comp-example-msg').value = data.first_mes || '';
         document.getElementById('comp-directives').value = data.system_prompt || '';
-        document.getElementById('comp-post-history-instructions').value = data.post_history_instructions || '';
         document.getElementById('comp-tts-voice').value = data.tts_voice || 'af_heart';
-        document.getElementById('comp-narration-mode').checked = data.narration_mode || false;
         
         // Image prompts from extensions.sanctuary
         const sanctuary = (data.extensions || {}).sanctuary || {};
@@ -3561,14 +4180,12 @@ async function saveProgramProfile() {
     const payload = {
         program_id: targetProgramId,
         name: newName,
-        narration_mode: document.getElementById('comp-narration-mode').checked,
         tts_voice: document.getElementById('comp-tts-voice').value,
         description: document.getElementById('comp-backstory').value.trim(),
         personality: document.getElementById('comp-personality-type').value.trim(),
         scenario: document.getElementById('comp-scenario').value.trim(),
         first_mes: document.getElementById('comp-example-msg').value.trim(),
         system_prompt: document.getElementById('comp-directives').value.trim(),
-        post_history_instructions: document.getElementById('comp-post-history-instructions').value.trim(),
         extensions: {
             sanctuary: {
                 program_id: targetProgramId,
@@ -3607,7 +4224,8 @@ async function saveProgramProfile() {
 }
 
 async function loadProgramJournals() {
-    if (!currentEditingProgramId) return;
+    const progId = currentEditingProgramId || activeProgram;
+    if (!progId) return;
     const journalsContainer = document.getElementById('program-journals-list');
     const memoriesContainer = document.getElementById('program-memories-list');
     if (journalsContainer) {
@@ -3619,7 +4237,7 @@ async function loadProgramJournals() {
     
     try {
         // 1. Fetch Keyphrase-Triggered Journals
-        const res = await fetch(`/api/programs/journals?program_id=${currentEditingProgramId}&t=${Date.now()}`);
+        const res = await fetch(`/api/programs/journals?program_id=${progId}&t=${Date.now()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
@@ -4006,10 +4624,7 @@ async function loadHistory() {
                 }
             }
         }
-        if (data.state) {
-            updateHeartState(data.state, data.inversion_active);
-        }
-        inversionActive = data.inversion_active || "";
+        fetchCharacterStatus();
 
         // Restore scroll position
         const savedScrollPos = safeSessionStorage.getItem('chat_scroll_pos');
@@ -5355,10 +5970,10 @@ function clearAttachment() {
 // --- handleSuccessReload ---
 function handleSuccessReload(data) {
     const executedTools = data && data.tool_calls && data.tool_calls.length > 0;
-    if (hasApprovedToolThisTurn || executedTools) {
-        setTimeout(() => {
-            reloadApp();
-        }, 1500);
+    if (executedTools) {
+        if (typeof fetchCharacterStatus === 'function') {
+            fetchCharacterStatus();
+        }
     }
 }
 
@@ -5413,7 +6028,7 @@ async function sendMessage() {
         userImageUrl = `data:${attachedMime};base64,${attachedBase64}`;
     }
     let prefix = 'usr_';
-    if (text && text.includes("Send me a portrait of yourself")) {
+    if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:"))) {
         prefix = 'port_';
     } else if (text && text.startsWith("[SYSTEM: User has completed")) {
         prefix = 'quest_';
@@ -5500,13 +6115,7 @@ async function sendMessage() {
             }
             appendMessage('program', errMsg);
         }
-        if (data.state) {
-            updateHeartState(data.state, data.inversion_active);
-        }
-        if (data.inversion_active && !inversionActive) {
-            triggerHeartBurst();
-        }
-        inversionActive = data.inversion_active || "";
+        fetchCharacterStatus();
         handleSuccessReload(data);
     } catch (error) {
         if (chatContainer.contains(typingIndicatorRow)) {
@@ -5515,7 +6124,7 @@ async function sendMessage() {
         if (error.name === 'AbortError') {
             appendMessage('program', '*(Generation stopped)*');
         } else {
-            appendMessage('program', 'Error connecting to the Sanctuary.');
+            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
         }
         handleToolReloadOrRecovery();
     } finally {
@@ -5598,16 +6207,17 @@ async function continueMessage() {
         if (error.name === 'AbortError') {
             appendMessage('program', '*(Generation stopped)*');
         } else {
-            appendMessage('program', 'Error connecting to the Sanctuary.');
+            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
         }
     } finally {
         setGenerating(false);
         userInput.disabled = false;
-        userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        userInput.placeholder = "What do you do?";
         updateInputGlow();
         if (heartElement) {
             heartElement.classList.remove('jiggling');
         }
+        await fetchCharacterStatus();
         await initializeModelSelect();
     }
 }
@@ -5893,13 +6503,7 @@ async function resendUserMessage(bubble) {
             }
             appendMessage('program', errMsg);
         }
-        if (data.state) {
-            updateHeartState(data.state, data.inversion_active);
-        }
-        if (data.inversion_active && !inversionActive) {
-            triggerHeartBurst();
-        }
-        inversionActive = data.inversion_active || "";
+        fetchCharacterStatus();
         handleSuccessReload(data);
     } catch (error) {
         if (chatContainer.contains(typingIndicatorRow)) {
@@ -5908,7 +6512,7 @@ async function resendUserMessage(bubble) {
         if (error.name === 'AbortError') {
             appendMessage('program', '*(Generation stopped)*');
         } else {
-            appendMessage('program', 'Error connecting to the Sanctuary.');
+            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
         }
         handleToolReloadOrRecovery();
     } finally {
@@ -6008,13 +6612,7 @@ async function rerollFromMessage(button) {
             }
             appendMessage('program', errMsg);
         }
-        if (data.state) {
-            updateHeartState(data.state, data.inversion_active);
-        }
-        if (data.inversion_active && !inversionActive) {
-            triggerHeartBurst();
-        }
-        inversionActive = data.inversion_active || "";
+        fetchCharacterStatus();
         handleSuccessReload(data);
     } catch (error) {
         if (chatContainer.contains(typingIndicatorRow)) {
@@ -6023,7 +6621,7 @@ async function rerollFromMessage(button) {
         if (error.name === 'AbortError') {
             appendMessage('program', '*(Generation stopped)*');
         } else {
-            appendMessage('program', 'Error connecting to the Sanctuary.');
+            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
         }
         handleToolReloadOrRecovery();
     } finally {
@@ -6620,7 +7218,7 @@ function handleSwipeGesture() {
 // --- generatePortraitPrompt ---
 async function generatePortraitPrompt() {
     if (isGenerating) return;
-    userInput.value = "Send me a portrait of yourself based on the context of our last message/current dialogue!";
+    userInput.value = "[GENERATE_IMAGE: Render a visual illustration of the current scene/character. Do not narrate new story events or call mechanics tools.]";
     await sendMessage();
 }
 
@@ -7372,101 +7970,25 @@ async function loadQuests() {
         }
         
         container.innerHTML = quests.map(quest => {
-            let dueTime = 'No Target Time';
-            let googleUrl = '';
-            
-            if (quest.due) {
-                const parsedDate = new Date(quest.due);
-                if (!isNaN(parsedDate.getTime())) {
-                    dueTime = parsedDate.toLocaleString();
-                    
-                    // Generate Google Calendar Link: YYYYMMDDTHHMMSSZ
-                    const startStr = parsedDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                    const endParsed = new Date(parsedDate.getTime() + 60 * 60 * 1000); // 1 hour duration
-                    const endStr = endParsed.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                    
-                    const title = encodeURIComponent(quest.title);
-                    const details = encodeURIComponent((quest.objectives || []).join('\n'));
-                    const loc = encodeURIComponent(quest.location || '');
-                    googleUrl = `https://calendar.google.com/calendar/r/eventedit?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${loc}`;
-                } else {
-                    dueTime = quest.due;
-                    
-                    // Fallback Google Calendar Link using current time
-                    const now = new Date();
-                    const startStr = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                    const endParsed = new Date(now.getTime() + 60 * 60 * 1000);
-                    const endStr = endParsed.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                    
-                    const title = encodeURIComponent(quest.title);
-                    const details = encodeURIComponent((quest.objectives || []).join('\n') + `\n\n(Target time: ${quest.due})`);
-                    const loc = encodeURIComponent(quest.location || '');
-                    googleUrl = `https://calendar.google.com/calendar/r/eventedit?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${loc}`;
-                }
-            } else {
-                // Default Google Calendar Link if no due date
-                const now = new Date();
-                const startStr = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                const endParsed = new Date(now.getTime() + 60 * 60 * 1000);
-                const endStr = endParsed.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-                
-                const title = encodeURIComponent(quest.title);
-                const details = encodeURIComponent((quest.objectives || []).join('\n'));
-                const loc = encodeURIComponent(quest.location || '');
-                googleUrl = `https://calendar.google.com/calendar/r/eventedit?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${loc}`;
-            }
-
             const objectivesHtml = (quest.objectives || []).map(obj => 
-                `<li style="margin-bottom: 5px; color: var(--text-main); font-size: 0.82rem;">${obj}</li>`
+                `<li style="margin-bottom: 6px; color: var(--text-main); font-size: 0.84rem; line-height: 1.4;">${obj}</li>`
             ).join('');
             
             return `
-                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 15px; display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-                        <h4 style="margin: 0; color: #fbbf24; font-size: 0.95rem; font-weight: 600;">${quest.title}</h4>
-                        <div style="display: flex; gap: 6px;">
-                            <!-- Delete (Quiet) -->
-                            <button class="edit-btn edit-cancel-btn" onclick="deleteQuest('${quest.id}')" title="Delete Quest" style="padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                            </button>
-                            <!-- Complete (Notifying) -->
-                            <button class="edit-btn edit-save-btn" onclick="completeQuest('${quest.id}')" title="Complete Quest" style="padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </button>
-                        </div>
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                        <h4 style="margin: 0; color: #fbbf24; font-size: 0.98rem; font-weight: 600; letter-spacing: 0.01em;">${quest.title}</h4>
+                        <span style="font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3);">ACTIVE</span>
                     </div>
-                    ${quest.location ? `<div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;"><strong>Location:</strong> ${quest.location}</div>` : ''}
-                    <div style="font-size: 0.75rem; color: var(--text-muted);"><strong>Target:</strong> ${dueTime}</div>
-                    <div style="margin-top: 5px;">
-                        <strong style="font-size: 0.78rem; color: var(--text-muted);">Objectives:</strong>
-                        <ul style="margin: 4px 0 0 15px; padding: 0; list-style-type: square;">
+                    <div style="display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap;">
+                        ${quest.location ? `<div><strong style="color: var(--text-muted);">Location:</strong> <span style="color: var(--text-main);">${quest.location}</span></div>` : ''}
+                        ${quest.due ? `<div><strong style="color: var(--text-muted);">Target:</strong> <span style="color: var(--text-main);">${quest.due}</span></div>` : ''}
+                    </div>
+                    <div style="margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+                        <strong style="font-size: 0.8rem; color: var(--arena-gold, #fbbf24); text-transform: uppercase; letter-spacing: 0.04em;">Current Objectives:</strong>
+                        <ul style="margin: 6px 0 0 18px; padding: 0; list-style-type: square;">
                             ${objectivesHtml}
                         </ul>
-                    </div>
-                    <!-- Add to Calendar Footer -->
-                    <div style="margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 10px; flex-wrap: wrap;">
-                        <a href="${googleUrl}" target="_blank" class="edit-btn edit-save-btn" style="text-decoration: none; font-size: 0.72rem; padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="16" y1="2" x2="16" y2="6"></line>
-                                <line x1="8" y1="2" x2="8" y2="6"></line>
-                                <line x1="3" y1="10" x2="21" y2="10"></line>
-                            </svg>
-                            Add to Google
-                        </a>
-                        <button onclick="downloadQuest('${quest.id}')" class="edit-btn edit-cancel-btn" style="font-size: 0.72rem; padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: white; border: 1px solid rgba(255,255,255,0.12);">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Download ICS
-                        </button>
                     </div>
                 </div>
             `;
@@ -7537,21 +8059,18 @@ async function completeQuest(questId) {
 // --- switchDataBankTab ---
 function switchDataBankTab(tab) {
     const uploadTab = document.getElementById('databank-tab-upload');
-    const settingsTab = document.getElementById('databank-tab-settings');
     const memoriesTab = document.getElementById('databank-tab-memories');
     const lorebooksTab = document.getElementById('databank-tab-lorebooks');
     const docsContainer = document.getElementById('databank-documents-container');
     const uploadBtn = document.getElementById('tab-btn-upload');
-    const settingsBtn = document.getElementById('tab-btn-settings');
     const memoriesBtn = document.getElementById('tab-btn-memories');
     const lorebooksBtn = document.getElementById('tab-btn-lorebooks');
     const descriptor = document.getElementById('databank-descriptor');
 
     const descriptors = {
-        upload: "Upload files (TXT, MD, HTML, PDF) or scrape web page URLs to ingest them into the program's vectorized memory database.",
-        memories: "Manage keyword-triggered memory journals and long-term conversation compactions.",
-        lorebooks: "Import and manage interactive lorebooks and World Info files (.json) for dynamic context insertion.",
-        settings: "Configure project folder access paths, security execution policies, and search engine integration."
+        upload: "Upload documents (TXT, MD, HTML, PDF) to ingest lore or guides into the vectorized databank.",
+        memories: "Manage keyword-triggered memory journals and long-term character memories.",
+        lorebooks: "Import and manage interactive lorebooks and World Info files (.json) for dynamic context insertion."
     };
 
     if (descriptor && descriptors[tab]) {
@@ -7559,7 +8078,7 @@ function switchDataBankTab(tab) {
     }
 
     // Reset all buttons
-    [uploadBtn, settingsBtn, memoriesBtn, lorebooksBtn].forEach(btn => {
+    [uploadBtn, memoriesBtn, lorebooksBtn].forEach(btn => {
         if (btn) {
             btn.style.background = 'rgba(255,255,255,0.05)';
             btn.style.color = 'var(--text-muted)';
@@ -7569,7 +8088,7 @@ function switchDataBankTab(tab) {
     });
 
     // Hide all tabs
-    [uploadTab, settingsTab, memoriesTab, lorebooksTab].forEach(t => {
+    [uploadTab, memoriesTab, lorebooksTab].forEach(t => {
         if (t) t.style.display = 'none';
     });
 
@@ -7587,10 +8106,16 @@ function switchDataBankTab(tab) {
         }
     };
 
-    if (tab === 'upload')     activate(uploadTab, uploadBtn);
-    else if (tab === 'settings')  activate(settingsTab, settingsBtn);
-    else if (tab === 'memories')  activate(memoriesTab, memoriesBtn);
-    else if (tab === 'lorebooks') { activate(lorebooksTab, lorebooksBtn); loadLorebooks(); }
+    if (tab === 'upload') {
+        activate(uploadTab, uploadBtn);
+        loadDataBankFiles();
+    } else if (tab === 'memories') {
+        activate(memoriesTab, memoriesBtn);
+        loadProgramJournals();
+    } else if (tab === 'lorebooks') {
+        activate(lorebooksTab, lorebooksBtn);
+        loadLorebooks();
+    }
 }
 
 // --- Lorebook management ---
@@ -7625,9 +8150,11 @@ function buildLorebookCard(book) {
     header.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; user-select: none;';
     const nameSpan = document.createElement('div');
     nameSpan.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+    const scopeLabel = book.scope || (book.source === 'world' ? 'World & Rules' : (book.source === 'card' ? 'Follower Card' : 'Follower Custom'));
+    const scopeColor = book.source === 'world' ? 'var(--arena-gold)' : 'var(--primary-accent)';
     nameSpan.innerHTML = `
         <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 500;">${book.name}</span>
-        <span style="font-size: 0.75rem; color: var(--text-muted);">${book.entry_count} entr${book.entry_count === 1 ? 'y' : 'ies'} &bull; ${book.source === 'card' ? 'embedded in card' : 'standalone file'}</span>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">${book.entry_count} entr${book.entry_count === 1 ? 'y' : 'ies'} &bull; <span style="color: ${scopeColor}; font-weight: 500;">${scopeLabel}</span></span>
     `;
     const headerActions = document.createElement('div');
     headerActions.style.cssText = 'display: flex; gap: 6px; align-items: center;';
@@ -8480,7 +9007,6 @@ const previewFilename = document.getElementById('preview-filename');
 let attachedBase64 = null;
 let attachedMime = null;
 let attachedMediaPath = null;
-let inversionActive = "";
 let hasApprovedToolThisTurn = false;
 
 let profileCacheBuster = Date.now();
@@ -8625,14 +9151,18 @@ let touchEndX = 0;
 
 // Bind keyboard navigation globally
 document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        closeModal();
+        closeStatusModal();
+        closeInventoryModal();
+        return;
+    }
     const modal = document.getElementById('image-modal');
     if (modal && modal.style.display === 'flex') {
         if (event.key === 'ArrowLeft') {
             prevGalleryImage();
         } else if (event.key === 'ArrowRight') {
             nextGalleryImage();
-        } else if (event.key === 'Escape') {
-            closeModal();
         }
     }
 });
@@ -8801,7 +9331,7 @@ function switchToCircleFallback(img) {
     }
     
     if (!name) name = 'Program';
-    if (!color) color = '#38bdf8';
+    if (!color) color = '#4a3520';
     
     const fallback = document.createElement('div');
     // Copy classes

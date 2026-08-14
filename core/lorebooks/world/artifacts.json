@@ -1,0 +1,141 @@
+{
+  "name": "Artifacts",
+  "description": "The sixteen legendary artifacts of power scattered across Tamriel in Arena.",
+  "entries": [
+    {
+      "uid": 8001,
+      "key": ["chrysamere", "blade of paladins", "sword of heroes"],
+      "secondary_key": ["blade", "sword", "artifact"],
+      "content": "Chrysamere, the Paladin's Blade, is an ancient claymore imbued with defensive magic. It wards its wielder against hostile spells, regenerates health, and grants fire resistance in battle. It never remains with one champion for long, choosing its own bearers across eras.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8002,
+      "key": ["staff of magnus", "magnus"],
+      "secondary_key": ["staff", "artifact"],
+      "content": "The Staff of Magnus is an ancient relic crafted by the god of sorcery himself. In the hands of a spellcaster, it absorbs hostile magical energy and regenerates the wielder's health and magicka reserves at tremendous speed.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8003,
+      "key": ["auriel's bow", "bow of auriel"],
+      "secondary_key": ["bow", "artifact", "auriel"],
+      "content": "Auriel's Bow is the divine weapon wielded by the Elven ancestor god Auri-El during the Dawn Era. It channels solar energy through its arrows, incinerating undead and delivering radiant destruction to unholy foes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8004,
+      "key": ["auriel's shield", "shield of auriel"],
+      "secondary_key": ["shield", "artifact", "auriel"],
+      "content": "Auriel's Shield is an ebony shield of divine elven craftsmanship. It absorbs the kinetic energy of enemy strikes, bolstering the bearer's armor rating and reflecting physical and magical trauma back upon attackers.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8005,
+      "key": ["lord's mail", "armor of morihaus", "gift of kynareth"],
+      "secondary_key": ["cuirass", "mail", "armor", "artifact"],
+      "content": "The Lord's Mail, also known as the Armor of Morihaus, is an ancient cuirass blessed by Kynareth. It grants the wearer exceptional resistance to magic, regenerates physical wounds, and cures poison and disease instantly upon donning.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8006,
+      "key": ["spell breaker", "spellbreaker", "shield of peryite"],
+      "secondary_key": ["shield", "artifact"],
+      "content": "Spell Breaker is a Dwemer heavy shield crafted during the ancient Rourken clan's migration to Hammerfell. It projects a ward that silences spellcasters, reflects incoming spells, and protects the bearer from destructive sorcery.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8007,
+      "key": ["ebony blade", "blade of mephala"],
+      "secondary_key": ["sword", "blade", "katana", "mephala"],
+      "content": "The Ebony Blade is a sinister katana associated with the Daedric Prince Mephala. It siphons the life force of victims with every strike and cannot be damaged or dulled, feeding upon the blood of enemies.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8008,
+      "key": ["oghma infinium", "tome of knowledge", "hermaeus mora"],
+      "secondary_key": ["book", "tome", "artifact"],
+      "content": "The Oghma Infinium is a tome of boundless knowledge penned by Xarxes under the direction of Hermaeus Mora. Reading its pages grants profound, permanent mastery over core attributes and skills in combat, stealth, or magic before vanishing.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8009,
+      "key": ["skeleton key", "key of nocturnal"],
+      "secondary_key": ["key", "lock", "nocturnal"],
+      "content": "The Skeleton Key is an artifact of Nocturnal capable of unlocking any physical or magical barrier in existence. It never breaks during lockpicking and allows thieves to bypass the most complex security seals in Tamriel.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8010,
+      "key": ["warlock's ring", "ring of syrabane"],
+      "secondary_key": ["ring", "artifact"],
+      "content": "The Warlock's Ring is an ancient Altmeri artifact once worn by Syrabane. It grants the wearer total spell reflection, accelerated movement speed, and natural health regeneration in combat.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8011,
+      "key": ["ring of phynaster", "phynaster"],
+      "secondary_key": ["ring", "artifact"],
+      "content": "The Ring of Phynaster was crafted centuries ago by the hero god of the Summerset Isles. It grants tremendous resistance to poison, shock, and magic, preserving the wearer through rigorous journeys.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8012,
+      "key": ["ring of khajiiti", "ring of khajiit", "rajhin"],
+      "secondary_key": ["ring", "artifact", "invisibility"],
+      "content": "The Ring of Khajiiti is an ancient relic made famous by the Khajiiti thief god Rajhin. Wearing the ring renders the bearer completely invisible, muffles sound, and dramatically increases movement speed.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8013,
+      "key": ["necromancer's amulet", "amulet of mannimarco"],
+      "secondary_key": ["amulet", "necklace", "artifact"],
+      "content": "The Necromancer's Amulet is a relic linked to the King of Worms, Mannimarco. It greatly bolsters the bearer's intelligence and magicka pool while granting absorption of hostile spells, though it taxes physical vitality.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8014,
+      "key": ["cuirass of the savior's hide", "savior's hide", "hircine"],
+      "secondary_key": ["cuirass", "armor", "artifact"],
+      "content": "The Cuirass of the Savior's Hide is a leather armor artifact forged from the pelt of a Daedric prince's beast by Malacath or Hircine. It grants the wearer supreme magic resistance against all offensive spells.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8015,
+      "key": ["volendrung", "hammer of might", "hammer of rourken"],
+      "secondary_key": ["warhammer", "hammer", "artifact", "malacath"],
+      "content": "Volendrung is the legendary Dwemer warhammer hurled across Tamriel by the chieftain of the Rourken clan. Later claimed by Malacath, it drains the stamina and life force of struck foes, paralyzing them in combat.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

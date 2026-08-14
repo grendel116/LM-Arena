@@ -107,15 +107,33 @@ def get_active_lore(
     """
     Return (before_entries, after_entries) — triggered lore content strings.
     before: injected before character block; after: injected after.
+    Scans:
+      1. Global World & Mechanics Lorebooks (core/lorebooks/)
+      2. Follower Card character_book
+      3. Follower-specific lorebooks (core/programs/<program_id>/lorebooks/)
     """
     if programs_dir is None:
         from variables import PROGRAMS_DIR
         programs_dir = PROGRAMS_DIR
 
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    global_lore_dir = os.path.join(base_dir, "core", "lorebooks")
     program_dir = os.path.join(programs_dir, program_id)
     all_entries: list[dict] = []
 
-    # 1. character_book from card
+    # 1. Global World & Mechanics Lorebooks
+    if os.path.isdir(global_lore_dir):
+        for root, _, files in os.walk(global_lore_dir):
+            for fname in files:
+                if fname.endswith(".json"):
+                    fpath = os.path.join(root, fname)
+                    try:
+                        with open(fpath, encoding="utf-8") as f:
+                            all_entries.extend(_parse_lorebook(json.load(f)))
+                    except Exception as e:
+                        print(f"[lorebook] Error reading global lorebook {fname}: {e}")
+
+    # 2. character_book from card
     card_path = os.path.join(program_dir, f"{program_id}.json")
     if os.path.exists(card_path):
         try:
@@ -127,7 +145,7 @@ def get_active_lore(
         except Exception as e:
             print(f"[lorebook] Error reading card: {e}")
 
-    # 2. Standalone lorebook files
+    # 3. Follower-specific lorebook files
     lorebooks_dir = os.path.join(program_dir, "lorebooks")
     if os.path.isdir(lorebooks_dir):
         for fname in os.listdir(lorebooks_dir):
@@ -142,7 +160,7 @@ def get_active_lore(
     if not all_entries:
         return [], []
 
-    # 3. Build scan window
+    # 4. Build scan window
     max_depth = max(
         (e["scan_depth"] for e in all_entries if e["scan_depth"] is not None),
         default=DEFAULT_SCAN_DEPTH,
@@ -155,7 +173,7 @@ def get_active_lore(
         (m.get("text") or "").lower() for m in scan_msgs[-max_depth:]
     )
 
-    # 4. Evaluate and sort
+    # 5. Evaluate and sort
     triggered = sorted(
         [e for e in all_entries if _entry_triggers(e, scan_text)],
         key=lambda e: e["order"],
@@ -176,7 +194,34 @@ def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dic
         programs_dir = PROGRAMS_DIR
 
     results = []
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    global_lore_dir = os.path.join(base_dir, "core", "lorebooks")
 
+    # 1. Global Core Lorebooks
+    if os.path.isdir(global_lore_dir):
+        for root, _, files in os.walk(global_lore_dir):
+            for fname in sorted(files):
+                if not fname.endswith(".json"):
+                    continue
+                fpath = os.path.join(root, fname)
+                try:
+                    with open(fpath, encoding="utf-8") as f:
+                        book = json.load(f)
+                    rel_category = os.path.basename(root).title()
+                    book_name = book.get("name") or fname.replace(".json", "").replace("_", " ").title()
+                    results.append({
+                        "id": f"global_{fname}",
+                        "name": f"{book_name} ({rel_category})",
+                        "source": "world",
+                        "scope": "World & Rules",
+                        "entry_count": len(_parse_lorebook(book)),
+                        "filename": fname,
+                        "readonly": True
+                    })
+                except Exception:
+                    pass
+
+    # 2. Card Embedded Lorebook
     card_path = os.path.join(programs_dir, program_id, f"{program_id}.json")
     if os.path.exists(card_path):
         try:
@@ -186,13 +231,15 @@ def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dic
             if cb:
                 results.append({
                     "id": "__card__",
-                    "name": cb.get("name") or f"{program_id} (embedded)",
+                    "name": cb.get("name") or f"{program_id} (Card Embedded)",
                     "source": "card",
+                    "scope": "Follower Card",
                     "entry_count": len(_parse_lorebook(cb)),
                 })
         except Exception:
             pass
 
+    # 3. Follower-specific Lorebooks
     lorebooks_dir = os.path.join(programs_dir, program_id, "lorebooks")
     if os.path.isdir(lorebooks_dir):
         for fname in sorted(os.listdir(lorebooks_dir)):
@@ -203,8 +250,9 @@ def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dic
                     book = json.load(f)
                 results.append({
                     "id": fname,
-                    "name": book.get("name") or fname.replace(".json", ""),
+                    "name": book.get("name") or fname.replace(".json", "").title(),
                     "source": "file",
+                    "scope": "Follower Custom",
                     "entry_count": len(_parse_lorebook(book)),
                     "filename": fname,
                 })

@@ -129,21 +129,14 @@ def _get_skill_registry() -> list:
     return _skill_cache
 
 
-def get_toolbelt_block(narration_active: bool = False) -> str:
+def get_toolbelt_block() -> str:
     """Builds the compact toolbelt string listing all available skill summaries.
-
-    Respects narration mode filtering (only portrait_generation, memory_journaling,
-    and vectorized_databank are permitted in narration mode).
-
     Returns a formatted toolbelt block ready for system prompt injection.
     """
-    story_mode_allowed = {"portrait_generation", "memory_journaling", "vectorized_databank"}
     registry = _get_skill_registry()
 
     lines = []
     for record in registry:
-        if narration_active and record["name"] not in story_mode_allowed:
-            continue
         summary = record.get("summary", "")
         if summary:
             lines.append(f"- {record['name']}: {summary}")
@@ -175,8 +168,7 @@ def _keyword_match(query: str, record: dict) -> bool:
     return False
 
 
-def retrieve_skill_instructions(query: str, narration_active: bool = False,
-                                 threshold: float = 0.35, top_k: int = 2) -> str:
+def retrieve_skill_instructions(query: str, threshold: float = 0.35, top_k: int = 2) -> str:
     """Retrieves full instruction blocks for matched skills.
 
     Uses a hybrid keyword + vector approach (same pattern as journals.py):
@@ -184,21 +176,10 @@ def retrieve_skill_instructions(query: str, narration_active: bool = False,
     2. Keyword matching: checks trigger phrases against the user's message
     3. Vector fallback: for skills not matched by keywords, checks semantic
        similarity against the skill description
-
-    Args:
-        query: The user's message or conversation context to match against.
-        narration_active: Whether narration/story mode is enabled.
-        threshold: Minimum cosine similarity score for vector matched skills.
-        top_k: Maximum number of vector matched skills to include.
-
-    Returns:
-        Formatted instruction text with the MANDATORY TASK PROTOCOLS header,
-        or empty string if no skills matched.
     """
     if not query:
         return ""
 
-    story_mode_allowed = {"portrait_generation", "memory_journaling", "vectorized_databank"}
     registry = _get_skill_registry()
 
     always_blocks = []
@@ -207,9 +188,6 @@ def retrieve_skill_instructions(query: str, narration_active: bool = False,
     vector_candidates = []
 
     for record in registry:
-        if narration_active and record["name"] not in story_mode_allowed:
-            continue
-
         if record["retrieval"] == "always":
             always_blocks.append(
                 f"## Skill Instruction: {record['name']}\n\n{record['instruction_body']}"

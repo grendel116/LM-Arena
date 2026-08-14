@@ -1879,15 +1879,34 @@ def import_lorebook_route():
         return jsonify({'error': str(e)}), 500
 
 
+def find_lorebook_path(filename, program_id):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    global_lore_dir = os.path.join(base_dir, "core", "lorebooks")
+    
+    # 1. Search in global core/lorebooks/
+    if os.path.isdir(global_lore_dir):
+        for root, _, files in os.walk(global_lore_dir):
+            if filename in files:
+                return os.path.join(root, filename)
+                
+    # 2. Search in program-specific lorebooks
+    from variables import PROGRAMS_DIR
+    prog_lore_dir = os.path.join(PROGRAMS_DIR, program_id, 'lorebooks')
+    fpath = os.path.join(prog_lore_dir, filename)
+    if os.path.exists(fpath):
+        return fpath
+        
+    return None
+
+
 @app.route('/api/lorebooks/<filename>/export', methods=['GET'])
 @requires_auth
 def export_lorebook_route(filename):
     try:
         from utils.program import get_active_program
-        from variables import PROGRAMS_DIR
         program_id = get_active_program()
-        fpath = os.path.join(PROGRAMS_DIR, program_id, 'lorebooks', filename)
-        if not os.path.exists(fpath):
+        fpath = find_lorebook_path(filename, program_id)
+        if not fpath or not os.path.exists(fpath):
             return jsonify({'error': 'Lorebook not found'}), 404
         with open(fpath, encoding='utf-8') as lf:
             book_data = json.load(lf)
@@ -1968,10 +1987,9 @@ def get_lorebook_entries(filename):
     """Return the raw entry list for a lorebook file so the UI can render an editor."""
     try:
         from utils.program import get_active_program
-        from variables import PROGRAMS_DIR
         program_id = get_active_program()
-        fpath = os.path.join(PROGRAMS_DIR, program_id, 'lorebooks', filename)
-        if not os.path.exists(fpath):
+        fpath = find_lorebook_path(filename, program_id)
+        if not fpath or not os.path.exists(fpath):
             return jsonify({'error': 'Lorebook not found'}), 404
         with open(fpath, encoding='utf-8') as lf:
             book = json.load(lf)
@@ -1990,10 +2008,9 @@ def save_lorebook_entries(filename):
     """Overwrite a lorebook file with updated entries from the editor."""
     try:
         from utils.program import get_active_program
-        from variables import PROGRAMS_DIR
         program_id = get_active_program()
-        fpath = os.path.join(PROGRAMS_DIR, program_id, 'lorebooks', filename)
-        if not os.path.exists(fpath):
+        fpath = find_lorebook_path(filename, program_id)
+        if not fpath or not os.path.exists(fpath):
             return jsonify({'error': 'Lorebook not found'}), 404
         data = request.get_json(silent=True) or {}
         with open(fpath, encoding='utf-8') as lf:
@@ -2049,14 +2066,37 @@ def delete_memory():
 @requires_auth
 def list_quests():
     try:
-        from utils.program import get_active_program
+        from utils.program import get_active_program, get_active_user
+        from engine.world_engine import load_world_state
+        from engine.quest_tracker import load_quest_stages, get_current_stage
+
+        user = get_active_user()
+        world_state = load_world_state(user)
+        current_stage_num = world_state.get("quest_stage", 10)
+        stages = load_quest_stages()
+        current_stage = get_current_stage(current_stage_num, stages)
+
+        quests = []
+
+        # 1. Main Quest Entry (Active Chapter)
+        if current_stage:
+            quests.append({
+                "id": f"main_quest_stage_{current_stage_num}",
+                "title": f"Main Quest: {current_stage.get('label', 'Escape the Imperial Dungeon')}",
+                "objectives": current_stage.get("objectives", []),
+                "due": "Current Chapter",
+                "location": f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}",
+                "is_main_quest": True
+            })
+
+        # 2. Companion / Local Side Quests
         active_program = get_active_program()
         quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
-        
-        quests = []
         if os.path.exists(quests_path):
             with open(quests_path, 'r', encoding='utf-8') as f:
-                quests = json.load(f)
+                comp_quests = json.load(f)
+                if isinstance(comp_quests, list):
+                    quests.extend(comp_quests)
                 
         return jsonify({
             "quests": quests
@@ -2272,12 +2312,33 @@ def list_programs():
                     if os.path.exists(profile_path):
                         has_profile = True
                         
+                    # Read recruited flag from card extensions
+                    recruited = False
+                    json_path2 = os.path.join(folder_path, f"{folder}.json")
+                    if os.path.exists(json_path2):
+                        try:
+                            with open(json_path2, "r", encoding="utf-8") as jf2:
+                                jdata2 = json.load(jf2)
+                                card2 = jdata2.get("data", jdata2)
+                                exts2 = card2.get("extensions", {})
+                                san2 = exts2.get("sanctuary", exts2.get("arena", {}))
+                                # ria_silmane is always recruited (spectral guide, always present)
+                                if folder == "ria_silmane":
+                                    recruited = True
+                                else:
+                                    recruited = bool(san2.get("recruited", False))
+                        except Exception:
+                            recruited = folder == "ria_silmane"
+                    else:
+                        recruited = folder == "ria_silmane"
+
                     programs.append({
                         'id': folder,
                         'name': program_name,
                         'active': folder == active_program,
                         'theme_color': theme_color,
-                        'has_profile': has_profile
+                        'has_profile': has_profile,
+                        'recruited': recruited
                     })
         return jsonify({'programs': programs, 'active': active_program})
     except Exception as e:
@@ -2571,8 +2632,6 @@ def get_program_profile():
         settings = _load_settings()
         program_voices = settings.get('program_voices', {})
         card_data['tts_voice'] = program_voices.get(program_id, settings.get('tts_voice', 'af_heart'))
-        card_data['narration_mode'] = settings.get('narration_mode', False)
-
 
         return jsonify(card_data)
     except Exception as e:
@@ -2594,16 +2653,10 @@ def save_program_profile():
 
         # Extract sidecars before writing card
         tts_voice = incoming.pop('tts_voice', None)
-        narration_mode = incoming.pop('narration_mode', None)
         incoming.pop('program_id', None)
 
         if tts_voice:
             set_tts_voice_for_program(program_id, tts_voice)
-
-        if narration_mode is not None:
-            settings = _load_settings()
-            settings['narration_mode'] = bool(narration_mode)
-            _save_settings(settings)
 
         # Load existing card to preserve spec envelope and any fields not sent by UI
         existing = {}
@@ -2708,6 +2761,235 @@ def delete_program_journals():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/character/status', methods=['GET'])
+@requires_auth
+def get_character_status():
+    try:
+        from utils.program import get_active_user
+        from engine.character import load_character
+        from engine.world_engine import load_world_state
+        from engine.mechanics import get_modifier
+        
+        active_user = get_active_user()
+        character_sheet = load_character(active_user)
+        world_state = load_world_state(active_user)
+        
+        # Calculate d20 modifiers for attributes for convenient UI rendering
+        modifiers = {}
+        for attr, val in character_sheet.get("attributes", {}).items():
+            mod = get_modifier(val)
+            modifiers[attr] = f"+{mod}" if mod >= 0 else f"{mod}"
+            
+        return jsonify({
+            "status": "success",
+            "active_user": active_user,
+            "character": character_sheet,
+            "modifiers": modifiers,
+            "world": world_state
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/character/update', methods=['POST'])
+@requires_auth
+def update_character_profile():
+    try:
+        data = request.get_json(silent=True) or {}
+        from utils.program import get_active_user
+        from engine.character import load_character, save_character, update_character_identity
+        
+        active_user = get_active_user()
+        sheet = load_character(active_user)
+        
+        sheet = update_character_identity(
+            sheet=sheet,
+            name=data.get("name"),
+            race=data.get("race"),
+            gender=data.get("gender"),
+            character_class=data.get("class"),
+            custom_attributes=data.get("attributes")
+        )
+        save_character(active_user, sheet)
+        
+        return jsonify({
+            "status": "success",
+            "character": sheet
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/world/provinces', methods=['GET'])
+@requires_auth
+def get_world_provinces():
+    try:
+        from pathlib import Path
+        prov_path = Path(__file__).parent / "core" / "world" / "provinces.json"
+        if prov_path.exists():
+            with open(prov_path, "r", encoding="utf-8") as f:
+                provinces = json.load(f)
+            return jsonify({"status": "success", "provinces": provinces})
+        return jsonify({"status": "success", "provinces": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Save State Management Endpoints ──────────────────────────────────────────
+
+@app.route('/api/saves', methods=['GET'])
+@requires_auth
+def get_saves():
+    try:
+        from engine.save_manager import list_saves, get_active_save_id
+        saves = list_saves()
+        active_id = get_active_save_id()
+        return jsonify({
+            "status": "success",
+            "saves": saves,
+            "active_save_id": active_id
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/saves/new', methods=['POST'])
+@requires_auth
+def create_new_save():
+    try:
+        data = request.get_json(silent=True) or {}
+        from engine.save_manager import create_save
+        meta = create_save(
+            name=data.get("name"),
+            character_name=data.get("character_name", "Eternal Champion"),
+            race=data.get("race", "Nord"),
+            gender=data.get("gender", "Male"),
+            character_class=data.get("class", "Mage")
+        )
+        if hasattr(runner, 'sessions_history'):
+            runner.sessions_history.clear()
+        return jsonify({
+            "status": "success",
+            "save": meta
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/saves/load', methods=['POST'])
+@requires_auth
+def load_existing_save():
+    try:
+        data = request.get_json(silent=True) or {}
+        save_id = data.get("save_id")
+        if not save_id:
+            return jsonify({"error": "Missing save_id"}), 400
+            
+        from engine.save_manager import load_save
+        meta = load_save(save_id)
+        
+        if hasattr(runner, 'sessions_history'):
+            runner.sessions_history.clear()
+            
+        return jsonify({
+            "status": "success",
+            "save": meta
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/saves/delete', methods=['POST'])
+@requires_auth
+def delete_existing_save():
+    try:
+        data = request.get_json(silent=True) or {}
+        save_id = data.get("save_id")
+        if not save_id:
+            return jsonify({"error": "Missing save_id"}), 400
+            
+        from engine.save_manager import delete_save
+        success = delete_save(save_id)
+        
+        if hasattr(runner, 'sessions_history'):
+            runner.sessions_history.clear()
+            
+        return jsonify({
+            "status": "success",
+            "deleted": success
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/character/equip', methods=['POST'])
+@requires_auth
+def toggle_equip_item():
+    try:
+        data = request.get_json(silent=True) or {}
+        item_name = data.get("item_name")
+        should_equip = data.get("equip", True)
+        
+        if not item_name:
+            return jsonify({"error": "Missing item_name"}), 400
+            
+        from utils.program import get_active_user
+        from engine.character import load_character, save_character, equip_item, unequip_item
+        
+        active_user = get_active_user()
+        sheet = load_character(active_user)
+        
+        if should_equip:
+            sheet, success = equip_item(sheet, item_name)
+        else:
+            sheet, success = unequip_item(sheet, item_name)
+            
+        if success:
+            save_character(active_user, sheet)
+            
+        return jsonify({
+            "status": "success",
+            "character": sheet,
+            "item_name": item_name,
+            "equipped": should_equip
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/character/drop', methods=['POST'])
+@requires_auth
+def drop_character_item_route():
+    try:
+        data = request.get_json(silent=True) or {}
+        item_name = data.get("item_name")
+        quantity = int(data.get("quantity", 1))
+        
+        if not item_name:
+            return jsonify({"error": "Missing item_name"}), 400
+            
+        from utils.program import get_active_user
+        from engine.character import load_character, save_character, drop_item
+        
+        active_user = get_active_user()
+        sheet = load_character(active_user)
+        
+        sheet, dropped = drop_item(sheet, item_name, quantity)
+        if not dropped:
+            return jsonify({"error": f"Item '{item_name}' not found in inventory."}), 404
+            
+        save_character(active_user, sheet)
+        
+        return jsonify({
+            "status": "success",
+            "character": sheet,
+            "dropped": dropped,
+            "message": f"Dropped {dropped.get('quantity', 1)}x {dropped['name']}"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/user_profiles', methods=['GET'])
 @requires_auth
 def list_user_profiles():
@@ -2722,16 +3004,22 @@ def list_user_profiles():
         
         profiles = []
         for file in os.listdir(USER_PROFILES_DIR):
-            if file.lower().endswith(".md"):
+            if file.lower().endswith(".md") and not file.lower().endswith("_mods.md"):
                 profile_name = os.path.splitext(file)[0]
                 profile_path = os.path.join(USER_PROFILES_DIR, file)
+                mods_path = os.path.join(USER_PROFILES_DIR, f"{profile_name}_mods.txt")
                 try:
                     with open(profile_path, "r", encoding="utf-8") as pf:
                         content = pf.read()
+                    mods = ""
+                    if os.path.exists(mods_path):
+                        with open(mods_path, "r", encoding="utf-8") as mf:
+                            mods = mf.read()
                     profiles.append({
                         "id": profile_name,
                         "name": profile_name.replace("_", " ").title(),
-                        "content": content
+                        "content": content,
+                        "mods": mods
                     })
                 except Exception as e:
                     print(f"Error reading profile {file}: {e}")
@@ -2745,7 +3033,8 @@ def list_user_profiles():
             profiles.append({
                 "id": "builder",
                 "name": "Builder",
-                "content": default_content
+                "content": default_content,
+                "mods": ""
             })
 
         return jsonify({"profiles": profiles, "active": active_user})
@@ -2784,6 +3073,7 @@ def save_user_profile():
         data = request.get_json(silent=True) or {}
         profile_id = data.get("profile_id")
         content = data.get("content")
+        mods = data.get("mods")
         
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
@@ -2803,6 +3093,11 @@ def save_user_profile():
         profile_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}.md")
         with open(profile_path, "w", encoding="utf-8") as f:
             f.write(content)
+            
+        if mods is not None:
+            mods_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}_mods.txt")
+            with open(mods_path, "w", encoding="utf-8") as mf:
+                mf.write(mods)
             
         # Read active profile
         active_user = get_active_user()
@@ -2836,6 +3131,12 @@ def delete_user_profile():
             
         # Delete file
         os.remove(profile_path)
+        mods_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}_mods.txt")
+        if os.path.exists(mods_path):
+            try:
+                os.remove(mods_path)
+            except Exception:
+                pass
         
         # If the deleted profile was active, switch active profile back to "builder"
         active_user = get_active_user()
@@ -2888,6 +3189,13 @@ def rename_user_profile():
             
         # Rename file
         os.rename(old_path, new_path)
+        old_mods = os.path.join(USER_PROFILES_DIR, f"{old_profile_id}_mods.txt")
+        new_mods = os.path.join(USER_PROFILES_DIR, f"{new_profile_id}_mods.txt")
+        if os.path.exists(old_mods):
+            try:
+                os.rename(old_mods, new_mods)
+            except Exception:
+                pass
         
         # Check active user
         active_user = get_active_user()
@@ -2900,6 +3208,7 @@ def rename_user_profile():
         return jsonify({"status": "success", "profile_id": new_profile_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 

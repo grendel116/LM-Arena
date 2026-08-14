@@ -1,37 +1,53 @@
 :root {
     /* Arena Tokens */
-    --arena-bg: hsl(30, 15%, 8%);
-    --arena-surface: hsl(30, 12%, 12%);
-    --arena-surface-raised: hsl(30, 10%, 16%);
-    --arena-border: hsl(42, 30%, 22%);
-    --arena-gold: hsl(42, 85%, 58%);
-    --arena-gold-dim: hsl(42, 50%, 35%);
-    --arena-text: hsl(42, 25%, 88%);
-    --arena-text-muted: hsl(42, 15%, 55%);
-    --arena-text-dim: hsl(42, 10%, 40%);
-    --arena-narration: hsl(42, 20%, 82%);
-    --arena-dialogue: hsl(200, 60%, 80%);
-    --arena-system: hsl(30, 40%, 65%);
-    --arena-success: hsl(120, 40%, 55%);
-    --arena-danger: hsl(0, 60%, 55%);
-    --arena-font-prose: 'IM Fell English', Georgia, serif;
-    --arena-font-ui: 'Cinzel', 'Times New Roman', serif;
-    --arena-font-mono: 'JetBrains Mono', monospace;
+    --arena-bg:             hsl(28, 12%, 9%);
+    --arena-surface:        hsl(28, 10%, 13%);
+    --arena-surface-raised: hsl(28, 10%, 17%);
+    --arena-border:         hsl(38, 18%, 22%);
+    --arena-gold:           hsl(42, 75%, 58%);
+    --arena-gold-dim:       hsl(42, 40%, 32%);
+    --arena-copper:         hsl(22, 52%, 58%);  /* muted copper for italics/narration */
+    --arena-text:           hsl(38, 15%, 84%);
+    --arena-text-muted:     hsl(38, 10%, 52%);
+    --arena-text-dim:       hsl(38, 8%, 38%);
+    --arena-narration:      var(--arena-copper); /* muted copper italics */
+    --arena-dialogue:       var(--arena-gold);   /* gold spoken lines / quotes */
+    --arena-system:         hsl(30, 25%, 60%);
+    --arena-success:        hsl(120, 35%, 52%);
+    --arena-danger:         hsl(0, 55%, 52%);
+    --arena-font-prose:     'Outfit', system-ui, sans-serif;
+    --arena-font-ui:        'Outfit', system-ui, sans-serif;
+    --arena-font-mono:      monospace;
 
     /* Sanctuary Overrides */
-    --bg-color: var(--arena-bg);
-    --panel-bg: var(--arena-surface);
-    --border-color: var(--arena-border);
-    --primary-accent: var(--arena-gold);
-    --primary-glow: hsla(42, 85%, 58%, 0.08);
-    --text-main: var(--arena-text);
-    --text-muted: var(--arena-text-muted);
-    --program-bubble: var(--arena-surface-raised);
-    --user-bubble: hsl(30, 12%, 14%);
-    --send-btn-hover: hsla(42, 85%, 58%, 0.12);
-    --accent-green: var(--arena-gold);
-    --glass-bg: hsla(30, 15%, 8%, 0.92);
+    --bg-color:        var(--arena-bg);
+    --panel-bg:        var(--arena-surface);
+    --border-color:    var(--arena-border);
+    --primary-accent:  var(--arena-gold);
+    --primary-glow:    hsla(42, 70%, 52%, 0.07);
+    --text-main:       var(--arena-text);
+    --text-muted:      var(--arena-text-muted);
+    --program-bubble:  var(--arena-surface-raised);
+    --user-bubble:     hsl(28, 10%, 15%);
+    --send-btn-hover:  hsla(42, 70%, 52%, 0.10);
+    --accent-green:    var(--arena-copper); /* italics use muted copper */
+    --glass-bg:        hsla(28, 12%, 9%, 0.92);
+    --quote-blue:      var(--arena-gold);   /* quotes use gold */
 }
+
+/* Explicit text styling for markdown content */
+.message-text em,
+.message-text i,
+em, i {
+    color: var(--arena-copper);
+}
+
+.message-text blockquote,
+.dialogue-quote {
+    color: var(--arena-gold);
+    border-left-color: var(--arena-gold);
+}
+
 
 body, #app-container {
     background-color: var(--arena-bg);
@@ -427,6 +443,53 @@ body, #app-container {
     margin-bottom: 0;
 }
 
+#status-modal .modal-panel {
+    background:
+        radial-gradient(ellipse at 20% 30%, hsla(42, 40%, 20%, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 70%, hsla(30, 30%, 15%, 0.12) 0%, transparent 50%),
+        var(--arena-surface);
+    border: 1px solid var(--arena-gold-dim);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 30px hsla(42, 75%, 58%, 0.05);
+    animation: arena-fade-in 0.25s ease-out;
+}
+
+.heart-pulse {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    color: var(--heart-color, #e2b047) !important;
+    animation: arenaHeartBeat var(--heart-speed, 2.0s) infinite ease-in-out !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none;
+    filter: none;
+}
+
+.heart-pulse svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor !important;
+    stroke: currentColor !important;
+    pointer-events: none;
+    transition: transform 0.15s ease;
+}
+
+.heart-pulse:hover svg {
+    transform: scale(1.2);
+}
+
+@keyframes arenaHeartBeat {
+    0%   { transform: scale(1); }
+    12%  { transform: scale(1.22); }
+    24%  { transform: scale(1); }
+    36%  { transform: scale(1.15); }
+    60%  { transform: scale(1); }
+    100% { transform: scale(1); }
+}
+
 @keyframes arena-fade-in {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
@@ -435,4 +498,10 @@ body, #app-container {
 @keyframes arena-pulse-gold {
     0%, 100% { box-shadow: 0 0 0 0 hsla(42, 85%, 58%, 0); }
     50% { box-shadow: 0 0 0 4px hsla(42, 85%, 58%, 0.2); }
+}
+
+/* Avatar fallback — parchment tone for followers without portraits */
+.avatar-fallback {
+    background-color: hsl(35, 30%, 22%) !important;
+    color: hsl(42, 40%, 70%) !important;
 }

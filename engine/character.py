@@ -1,0 +1,703 @@
+"""
+engine/character.py
+Character sheet management for LM-Arena.
+Reads/writes variables/saves/<character_name>/character_sheet.json.
+All mutation functions return the updated sheet — callers must save explicitly.
+"""
+
+import json
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+SAVES_DIR = BASE_DIR / "variables" / "saves"
+
+
+# ── I/O ──────────────────────────────────────────────────────────────────────
+
+DEFAULT_SHEET = {
+    "name": "Eternal Champion",
+    "race": "Nord",
+    "gender": "Male",
+    "class": "Mage",
+    "level": 1,
+    "experience": 0,
+    "attributes": {
+        "strength": 50,
+        "intelligence": 65,
+        "willpower": 65,
+        "agility": 50,
+        "speed": 50,
+        "endurance": 50,
+        "personality": 50,
+        "luck": 50
+    },
+    "derived": {
+        "hp_current": 30,
+        "hp_max": 30,
+        "mp_current": 162,
+        "mp_max": 162,
+        "stamina_current": 60,
+        "stamina_max": 60,
+        "armor_rating": 0
+    },
+    "skills": {
+        "destruction": 35,
+        "mysticism": 30,
+        "alteration": 25,
+        "illusion": 20,
+        "restoration": 25,
+        "long_blade": 15,
+        "mercantile": 15,
+        "stealth": 15,
+        "lockpicking": 10,
+        "athletics": 20
+    },
+    "gold": 0,
+    "inventory": [
+        { "name": "Prison Rags", "type": "armor", "equipped": True }
+    ],
+    "spells": [
+        { "name": "Spark", "school": "Destruction", "tier": 1, "mp_cost": 4 }
+    ],
+    "active_effects": [],
+    "conditions": []
+}
+
+def _normalize_save_slot(character_name: str) -> str:
+    if not character_name or str(character_name).strip() in ("{{user}}", "user", "player", "current", ""):
+        try:
+            from engine.save_manager import get_active_save_id
+            return get_active_save_id()
+        except Exception:
+            return "eternal_champion"
+    return str(character_name).strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def load_character(character_name: str) -> dict:
+    """Load and return the character sheet for the given save slot."""
+    slot = _normalize_save_slot(character_name)
+    path = SAVES_DIR / slot / "character_sheet.json"
+    if not path.exists():
+        import copy
+        new_sheet = copy.deepcopy(DEFAULT_SHEET)
+        new_sheet["name"] = character_name.replace("_", " ").title() if character_name else "Eternal Champion"
+        save_character(slot, new_sheet)
+        return new_sheet
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            sheet = json.load(f)
+            
+        # Seamless migration: SP -> MP and Stamina
+        d = sheet.setdefault("derived", {})
+        if "sp_current" in d and "mp_current" not in d:
+            d["mp_current"] = d.pop("sp_current")
+            d["mp_max"] = d.pop("sp_max", 42)
+        if "stamina_current" not in d:
+            endurance = sheet.get("attributes", {}).get("endurance", 50)
+            strength = sheet.get("attributes", {}).get("strength", 50)
+            stamina_val = int((endurance + strength) * 0.6)
+            d["stamina_current"] = stamina_val
+            d["stamina_max"] = stamina_val
+        return sheet
+    except Exception:
+        import copy
+        return copy.deepcopy(DEFAULT_SHEET)
+
+
+def save_character(character_name: str, sheet: dict) -> None:
+    """Persist the character sheet to disk."""
+    slot = _normalize_save_slot(character_name)
+    path = SAVES_DIR / slot / "character_sheet.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(sheet, f, indent=4, ensure_ascii=False)
+
+
+# ── Equipment Slots & Categorization ──────────────────────────────────────────
+
+EQUIP_SLOTS = {
+    "weapon": "main_hand",
+    "shield": "off_hand",
+    "torch": "off_hand",
+    "light": "off_hand",
+    "tool": "off_hand",
+    "armor": "body",
+    "robes": "body",
+    "head": "head",
+    "helmet": "head",
+    "hood": "head",
+    "circlet": "head",
+    "hands": "hands",
+    "gauntlets": "hands",
+    "gloves": "hands",
+    "feet": "feet",
+    "boots": "feet",
+    "shoes": "feet",
+    "neck": "neck",
+    "amulet": "neck",
+    "necklace": "neck",
+    "ring": "ring"
+}
+
+TWO_HANDED_KEYWORDS = [
+    "claymore", "greatsword", "battleaxe", "warhammer", 
+    "quarterstaff", "staff", "bow", "crossbow", "halberd", "two-handed", "2h"
+]
+
+def is_two_handed_item(item: dict) -> bool:
+    """Check if item is a two-handed weapon."""
+    if item.get("two_handed") is True or item.get("slot") in ["two_handed", "both_hands"]:
+        return True
+    name = item.get("name", "").lower()
+    item_type = item.get("type", "").lower()
+    if item_type in ["2h_weapon", "two_handed"]:
+        return True
+    return any(k in name for k in TWO_HANDED_KEYWORDS)
+
+def get_item_category(item: dict) -> str:
+    """Determine the equip category/slot for an item."""
+    explicit_slot = item.get("slot")
+    if explicit_slot:
+        return explicit_slot.lower()
+    item_type = item.get("type", "").lower()
+    name = item.get("name", "").lower()
+    
+    if "torch" in name or "lantern" in name or item_type in ["torch", "light"]:
+        return "torch"
+    if "shield" in name or item_type == "shield":
+        return "shield"
+    if item_type in ["weapon", "2h_weapon"] or any(w in name for w in ["dagger", "sword", "blade", "mace", "axe", "staff", "bow"]):
+        return "weapon"
+    if item_type in ["armor", "robes"] or any(a in name for a in ["robe", "robes", "cuirass", "mail", "armor", "tunic", "leather"]):
+        return "armor"
+    if item_type in ["head", "helmet", "hood"] or any(h in name for h in ["helm", "helmet", "hood", "circlet", "cap", "crown"]):
+        return "head"
+    if item_type in ["hands", "gauntlets", "gloves"] or any(g in name for g in ["gauntlet", "glove", "bracer"]):
+        return "hands"
+    if item_type in ["feet", "boots", "shoes"] or any(b in name for b in ["boot", "shoe", "greave"]):
+        return "feet"
+    if item_type in ["neck", "amulet"] or any(n in name for n in ["amulet", "necklace", "pendant", "talisman"]):
+        return "neck"
+    if item_type in ["ring"] or "ring" in name:
+        return "ring"
+    return EQUIP_SLOTS.get(item_type, "")
+
+# ── Context injection ─────────────────────────────────────────────────────────
+
+def get_character_context(sheet: dict) -> str:
+    """
+    Return a compact one-block string injected into the system prompt each turn.
+    Keeps token cost low while giving the LLM accurate mechanical state and full inventory.
+    """
+    d = sheet.get("derived", {})
+    equipped_parts = []
+    inv_parts = []
+    for i in sheet.get("inventory", []):
+        qty = i.get("quantity", 1)
+        qty_str = f" x{qty}" if qty > 1 else ""
+        if i.get("equipped"):
+            slot = i.get("equipped_slot", "").replace("_", " ").title()
+            slot_str = f" ({slot})" if slot else ""
+            equipped_parts.append(f"{i['name']}{qty_str}{slot_str}")
+        inv_parts.append(f"{i['name']}{qty_str}")
+            
+    effects = [e["name"] for e in sheet.get("active_effects", [])] or ["none"]
+    conditions = sheet.get("conditions", []) or ["none"]
+    spells = [s["name"] for s in sheet.get("spells", [])]
+
+    mp_cur = d.get("mp_current", d.get("sp_current", 42))
+    mp_max = d.get("mp_max", d.get("sp_max", 42))
+    stm_cur = d.get("stamina_current", 50)
+    stm_max = d.get("stamina_max", 50)
+
+    return (
+        f"[CHARACTER STATUS]\n"
+        f"Name: {sheet.get('name', 'Eternal Champion')} | {sheet.get('race', 'Nord')} {sheet.get('class', 'Mage')} | Level {sheet.get('level', 1)}\n"
+        f"Vitals: HP {d.get('hp_current', 28)}/{d.get('hp_max', 28)} | MP {mp_cur}/{mp_max} | Stamina {stm_cur}/{stm_max} | Armor {d.get('armor_rating', 4)} | Gold {sheet.get('gold', 0)}\n"
+        f"Equipped: {', '.join(equipped_parts) or 'none'}\n"
+        f"Carried Inventory: {', '.join(inv_parts) or 'empty'}\n"
+        f"Spells: {', '.join(spells) or 'none'}\n"
+        f"Active Effects: {', '.join(effects)} | Conditions: {', '.join(conditions)}"
+    )
+
+
+# ── Vitals & Resource Restoration ─────────────────────────────────────────────
+
+def take_damage(sheet: dict, amount: int) -> dict:
+    """Reduce current HP. Returns updated sheet (hp_current may reach 0)."""
+    sheet["derived"]["hp_current"] = max(0, sheet["derived"]["hp_current"] - amount)
+    return sheet
+
+
+def heal(sheet: dict, amount: int) -> dict:
+    """Restore HP up to hp_max."""
+    d = sheet["derived"]
+    d["hp_current"] = min(d["hp_max"], d["hp_current"] + amount)
+    return sheet
+
+
+def spend_magicka(sheet: dict, amount: int) -> tuple[dict, bool]:
+    """
+    Spend MP (Magicka). Returns (updated_sheet, success).
+    Returns False if insufficient MP — spell fails.
+    """
+    d = sheet["derived"]
+    cur_mp = d.get("mp_current", d.get("sp_current", 0))
+    if cur_mp < amount:
+        return sheet, False
+    d["mp_current"] = cur_mp - amount
+    return sheet, True
+
+def spend_spell_points(sheet: dict, amount: int) -> tuple[dict, bool]:
+    """Backwards compatibility alias for spend_magicka."""
+    return spend_magicka(sheet, amount)
+
+
+def restore_magicka(sheet: dict, amount: int) -> dict:
+    """Restore MP up to mp_max."""
+    d = sheet["derived"]
+    max_mp = d.get("mp_max", d.get("sp_max", 42))
+    cur_mp = d.get("mp_current", d.get("sp_current", 0))
+    d["mp_current"] = min(max_mp, cur_mp + amount)
+    return sheet
+
+def restore_spell_points(sheet: dict, amount: int) -> dict:
+    """Backwards compatibility alias for restore_magicka."""
+    return restore_magicka(sheet, amount)
+
+
+def spend_stamina(sheet: dict, amount: int) -> tuple[dict, bool]:
+    """
+    Spend Stamina (running, power attacks, dodging).
+    Stamina can reach 0 (exhaustion).
+    """
+    d = sheet["derived"]
+    cur_stm = d.get("stamina_current", 50)
+    d["stamina_current"] = max(0, cur_stm - amount)
+    return sheet, d["stamina_current"] > 0
+
+
+def restore_stamina(sheet: dict, amount: int) -> dict:
+    """Restore Stamina up to stamina_max."""
+    d = sheet["derived"]
+    max_stm = d.get("stamina_max", 50)
+    cur_stm = d.get("stamina_current", 0)
+    d["stamina_current"] = min(max_stm, cur_stm + amount)
+    return sheet
+
+
+def rest(sheet: dict, hours: int = 8, safe: bool = True) -> tuple[dict, str]:
+    """
+    Restore resources through rest/sleep:
+    - Safe rest (Inn, Camp with guard): Restores Stamina to 100%, HP to 100%, and MP to 100% (unless Sorcerer).
+    - Unsafe/Short rest: Restores Stamina to 100%, HP +30%, MP +30% (unless Sorcerer).
+    - Sorcerers cannot regenerate MP through rest (they rely on Spell Absorption).
+    """
+    d = sheet["derived"]
+    is_sorcerer = sheet.get("class", "").lower() == "sorcerer"
+    
+    # Stamina always recovers rapidly with rest
+    d["stamina_current"] = d.get("stamina_max", 50)
+    
+    if safe and hours >= 6:
+        d["hp_current"] = d.get("hp_max", 28)
+        if not is_sorcerer:
+            d["mp_current"] = d.get("mp_max", 42)
+        summary = "Rested fully. Health, Stamina, and Magicka restored to maximum." if not is_sorcerer else "Rested fully. Health and Stamina restored (Sorcerers do not regain Magicka through rest)."
+    else:
+        # Partial recovery
+        hp_heal = max(4, int(d.get("hp_max", 28) * 0.35))
+        d["hp_current"] = min(d.get("hp_max", 28), d.get("hp_current", 0) + hp_heal)
+        if not is_sorcerer:
+            mp_heal = max(5, int(d.get("mp_max", 42) * 0.35))
+            d["mp_current"] = min(d.get("mp_max", 42), d.get("mp_current", 0) + mp_heal)
+        summary = f"Rested for {hours} hours. Stamina restored; Health +{hp_heal}."
+        
+    return sheet, summary
+
+
+def is_dead(sheet: dict) -> bool:
+    """Return True if HP has reached zero."""
+    return sheet["derived"]["hp_current"] <= 0
+
+
+# ── Economy ───────────────────────────────────────────────────────────────────
+
+def add_gold(sheet: dict, amount: int) -> dict:
+    sheet["gold"] += amount
+    return sheet
+
+
+def spend_gold(sheet: dict, amount: int) -> tuple[dict, bool]:
+    """Spend gold. Returns (sheet, success). False if insufficient funds."""
+    if sheet["gold"] < amount:
+        return sheet, False
+    sheet["gold"] -= amount
+    return sheet, True
+
+
+# ── Inventory & Equip Logic ───────────────────────────────────────────────────
+
+def add_item(sheet: dict, item: dict) -> dict:
+    """
+    Add an item to inventory. item must have at minimum: name, type.
+    Optional keys: equipped (bool), quantity (int).
+    If item with same name exists, increments quantity.
+    """
+    for existing in sheet["inventory"]:
+        if existing["name"].lower() == item["name"].lower():
+            existing["quantity"] = existing.get("quantity", 1) + item.get("quantity", 1)
+            return sheet
+    sheet["inventory"].append(item)
+    return sheet
+
+
+def remove_item(sheet: dict, item_name: str, quantity: int = 1) -> tuple[dict, bool]:
+    """
+    Remove quantity of item. Returns (sheet, success).
+    Removes entry entirely when quantity reaches zero.
+    """
+    for i, item in enumerate(sheet["inventory"]):
+        if item["name"].lower() == item_name.lower():
+            if "quantity" in item:
+                if item["quantity"] <= quantity:
+                    sheet["inventory"].pop(i)
+                else:
+                    item["quantity"] -= quantity
+            else:
+                sheet["inventory"].pop(i)
+            return sheet, True
+    return sheet, False
+
+
+def equip_item(sheet: dict, item_name: str) -> tuple[dict, bool]:
+    """
+    Equip an item by name enforcing slot constraints:
+    - 2 Hand rule: 1H weapons can dual wield (Main + Off), 2H weapon occupies both hands.
+    - Shield/Torch occupies Off Hand (unequips 2H weapon).
+    - Body Armor / Head / Hands / Feet / Amulet: max 1.
+    - Ring: max 2.
+    """
+    target_item = None
+    for item in sheet["inventory"]:
+        if item["name"].lower() == item_name.lower():
+            target_item = item
+            break
+            
+    if not target_item:
+        return sheet, False
+        
+    category = get_item_category(target_item)
+    if not category:
+        return sheet, False
+
+    two_handed = is_two_handed_item(target_item)
+
+    # 1. Weapon / 2H Weapon Handling
+    if category == "weapon":
+        if two_handed:
+            # Unequip all other weapons, shields, and torches
+            for item in sheet["inventory"]:
+                cat = get_item_category(item)
+                if cat in ["weapon", "shield", "torch"]:
+                    item["equipped"] = False
+                    item.pop("equipped_slot", None)
+            target_item["equipped"] = True
+            target_item["equipped_slot"] = "both_hands"
+        else:
+            # 1-Handed weapon: check hand availability
+            main_hand = next((i for i in sheet["inventory"] if i.get("equipped") and i.get("equipped_slot") == "main_hand"), None)
+            off_hand = next((i for i in sheet["inventory"] if i.get("equipped") and i.get("equipped_slot") == "off_hand"), None)
+            both_hands = next((i for i in sheet["inventory"] if i.get("equipped") and i.get("equipped_slot") == "both_hands"), None)
+            
+            if both_hands:
+                both_hands["equipped"] = False
+                both_hands.pop("equipped_slot", None)
+                main_hand = None
+
+            if not main_hand:
+                target_item["equipped"] = True
+                target_item["equipped_slot"] = "main_hand"
+            elif not off_hand and main_hand != target_item:
+                # Dual wield secondary weapon!
+                target_item["equipped"] = True
+                target_item["equipped_slot"] = "off_hand"
+            else:
+                # Replace main hand weapon
+                if main_hand:
+                    main_hand["equipped"] = False
+                    main_hand.pop("equipped_slot", None)
+                target_item["equipped"] = True
+                target_item["equipped_slot"] = "main_hand"
+
+    # 2. Shield / Torch / Tool Handling (Off Hand)
+    elif category in ["shield", "torch"]:
+        # Unequip any 2H weapon
+        for item in sheet["inventory"]:
+            if item.get("equipped") and item.get("equipped_slot") == "both_hands":
+                item["equipped"] = False
+                item.pop("equipped_slot", None)
+        # Unequip existing off-hand item
+        for item in sheet["inventory"]:
+            if item.get("equipped") and item.get("equipped_slot") == "off_hand":
+                item["equipped"] = False
+                item.pop("equipped_slot", None)
+                
+        target_item["equipped"] = True
+        target_item["equipped_slot"] = "off_hand"
+
+    # 3. Body Armor
+    elif category == "armor":
+        for item in sheet["inventory"]:
+            if item.get("equipped") and get_item_category(item) == "armor":
+                item["equipped"] = False
+                item.pop("equipped_slot", None)
+        target_item["equipped"] = True
+        target_item["equipped_slot"] = "body"
+
+    # 4. Head / Hands / Feet / Neck
+    elif category in ["head", "hands", "feet", "neck"]:
+        for item in sheet["inventory"]:
+            if item.get("equipped") and get_item_category(item) == category:
+                item["equipped"] = False
+                item.pop("equipped_slot", None)
+        target_item["equipped"] = True
+        target_item["equipped_slot"] = category
+
+    # 5. Rings (Max 2)
+    elif category == "ring":
+        equipped_rings = [i for i in sheet["inventory"] if i.get("equipped") and get_item_category(i) == "ring"]
+        if len(equipped_rings) >= 2:
+            equipped_rings[0]["equipped"] = False
+            equipped_rings[0].pop("equipped_slot", None)
+        target_item["equipped"] = True
+        target_item["equipped_slot"] = "ring"
+
+    return sheet, True
+
+
+def unequip_item(sheet: dict, item_name: str) -> tuple[dict, bool]:
+    """Mark an item as unequipped."""
+    for item in sheet["inventory"]:
+        if item["name"].lower() == item_name.lower():
+            item["equipped"] = False
+            item.pop("equipped_slot", None)
+            return sheet, True
+    return sheet, False
+
+
+def drop_item(sheet: dict, item_name: str, quantity: int = 1) -> tuple[dict, dict]:
+    """
+    Removes an item or decrements its quantity from the player's inventory.
+    Returns (updated_sheet, dropped_item_dict or None).
+    """
+    inventory = sheet.setdefault("inventory", [])
+    dropped = None
+    
+    for i, item in enumerate(inventory):
+        if item.get("name", "").lower() == item_name.lower():
+            curr_qty = item.get("quantity", 1)
+            if curr_qty > quantity:
+                item["quantity"] = curr_qty - quantity
+                dropped = dict(item)
+                dropped["quantity"] = quantity
+            else:
+                dropped = inventory.pop(i)
+            break
+            
+    return sheet, dropped
+
+
+# ── Spells ────────────────────────────────────────────────────────────────────
+
+def learn_spell(sheet: dict, spell: dict) -> dict:
+    """Add a spell if not already known. spell: { name, school, tier, sp_cost }."""
+    names = [s["name"].lower() for s in sheet["spells"]]
+    if spell["name"].lower() not in names:
+        sheet["spells"].append(spell)
+    return sheet
+
+
+def forget_spell(sheet: dict, spell_name: str) -> dict:
+    sheet["spells"] = [s for s in sheet["spells"] if s["name"].lower() != spell_name.lower()]
+    return sheet
+
+
+# ── Effects and conditions ────────────────────────────────────────────────────
+
+def add_effect(sheet: dict, effect: dict) -> dict:
+    """
+    Add an active effect. effect: { name, duration_turns, source }.
+    Replaces existing effect with same name.
+    """
+    sheet["active_effects"] = [e for e in sheet["active_effects"] if e["name"] != effect["name"]]
+    sheet["active_effects"].append(effect)
+    return sheet
+
+
+def remove_effect(sheet: dict, effect_name: str) -> dict:
+    sheet["active_effects"] = [e for e in sheet["active_effects"] if e["name"] != effect_name]
+    return sheet
+
+
+def tick_effects(sheet: dict) -> tuple[dict, list]:
+    """
+    Decrement duration on all effects. Remove expired ones.
+    Returns (sheet, list_of_expired_effect_names).
+    """
+    expired = []
+    remaining = []
+    for e in sheet["active_effects"]:
+        e["duration_turns"] -= 1
+        if e["duration_turns"] <= 0:
+            expired.append(e["name"])
+        else:
+            remaining.append(e)
+    sheet["active_effects"] = remaining
+    return sheet, expired
+
+
+def add_condition(sheet: dict, condition: str) -> dict:
+    """Add a narrative condition string (e.g. 'poisoned', 'diseased')."""
+    if condition not in sheet["conditions"]:
+        sheet["conditions"].append(condition)
+    return sheet
+
+
+def remove_condition(sheet: dict, condition: str) -> dict:
+    sheet["conditions"] = [c for c in sheet["conditions"] if c != condition]
+    return sheet
+
+
+# ── Progression ───────────────────────────────────────────────────────────────
+
+def add_experience(sheet: dict, amount: int) -> tuple[dict, bool]:
+    """
+    Add XP. Returns (sheet, leveled_up).
+    Simple threshold: 100 * current_level XP per level.
+    """
+    sheet["experience"] += amount
+    threshold = 100 * sheet["level"]
+    if sheet["experience"] >= threshold:
+        sheet["experience"] -= threshold
+        sheet["level"] += 1
+        # Increase hp_max and sp_max on level up
+        sheet["derived"]["hp_max"] += 4
+        sheet["derived"]["sp_max"] += 6
+        return sheet, True
+    return sheet, False
+
+
+def get_attribute(sheet: dict, attr_name: str) -> int:
+    """Return attribute value by name (case-insensitive). Returns 50 if not found."""
+    return sheet["attributes"].get(attr_name.lower(), 50)
+
+
+# ── Character Creation & Class Templates ──────────────────────────────────────
+
+CLASS_TEMPLATES = {
+    # Warrior Archetype
+    "warrior": {"primary": ["strength", "endurance"], "hp_bonus": 12, "mp_mult": 0.5, "skills": ["long_blade", "blunt", "athletics", "armor"]},
+    "knight": {"primary": ["strength", "personality"], "hp_bonus": 10, "mp_mult": 0.5, "skills": ["long_blade", "shield", "mercantile", "armor"]},
+    "ranger": {"primary": ["agility", "endurance"], "hp_bonus": 8, "mp_mult": 0.8, "skills": ["archery", "stealth", "athletics", "long_blade"]},
+    "archer": {"primary": ["agility", "strength"], "hp_bonus": 6, "mp_mult": 0.5, "skills": ["archery", "stealth", "dodge", "athletics"]},
+    "monk": {"primary": ["agility", "willpower"], "hp_bonus": 8, "mp_mult": 0.8, "skills": ["hand_to_hand", "athletics", "dodge", "restoration"]},
+    "barbarian": {"primary": ["strength", "speed"], "hp_bonus": 14, "mp_mult": 0.3, "skills": ["two_handed", "blunt", "athletics", "intimidation"]},
+    
+    # Mage Archetype
+    "mage": {"primary": ["intelligence", "willpower"], "hp_bonus": 0, "mp_mult": 2.5, "skills": ["destruction", "mysticism", "alteration", "illusion", "restoration"]},
+    "sorcerer": {"primary": ["intelligence", "endurance"], "hp_bonus": 2, "mp_mult": 3.0, "skills": ["destruction", "mysticism", "alteration", "spell_absorption"]},
+    "healer": {"primary": ["willpower", "personality"], "hp_bonus": 4, "mp_mult": 2.0, "skills": ["restoration", "mysticism", "mercantile", "blunt"]},
+    "battlemage": {"primary": ["intelligence", "strength"], "hp_bonus": 6, "mp_mult": 1.8, "skills": ["destruction", "long_blade", "alteration", "armor"]},
+    "spellsword": {"primary": ["willpower", "agility"], "hp_bonus": 6, "mp_mult": 1.5, "skills": ["destruction", "restoration", "long_blade", "illusion"]},
+    "nightblade": {"primary": ["agility", "intelligence"], "hp_bonus": 4, "mp_mult": 1.5, "skills": ["illusion", "alteration", "stealth", "short_blade"]},
+    
+    # Thief Archetype
+    "thief": {"primary": ["agility", "speed"], "hp_bonus": 4, "mp_mult": 0.5, "skills": ["lockpicking", "stealth", "pickpocket", "short_blade"]},
+    "burglar": {"primary": ["agility", "intelligence"], "hp_bonus": 4, "mp_mult": 0.6, "skills": ["lockpicking", "stealth", "athletics", "mercantile"]},
+    "assassin": {"primary": ["agility", "speed"], "hp_bonus": 6, "mp_mult": 0.5, "skills": ["short_blade", "stealth", "alchemy", "archery"]},
+    "rogue": {"primary": ["agility", "personality"], "hp_bonus": 6, "mp_mult": 0.8, "skills": ["long_blade", "mercantile", "lockpicking", "streetwise"]},
+    "acrobat": {"primary": ["agility", "speed"], "hp_bonus": 4, "mp_mult": 0.5, "skills": ["athletics", "dodge", "hand_to_hand", "stealth"]},
+    "bard": {"primary": ["personality", "intelligence"], "hp_bonus": 4, "mp_mult": 1.2, "skills": ["mercantile", "illusion", "lore", "short_blade"]}
+}
+
+RACE_BONUSES = {
+    "nord": {"attributes": {"strength": 10, "endurance": 10}},
+    "breton": {"attributes": {"intelligence": 10, "willpower": 10}},
+    "redguard": {"attributes": {"strength": 10, "agility": 10}},
+    "high elf": {"attributes": {"intelligence": 15, "willpower": 5}},
+    "wood elf": {"attributes": {"agility": 15, "speed": 10}},
+    "dark elf": {"attributes": {"agility": 5, "intelligence": 5, "strength": 5}},
+    "khajiit": {"attributes": {"agility": 10, "speed": 10}},
+    "argonian": {"attributes": {"agility": 5, "endurance": 10}},
+    "imperial": {"attributes": {"personality": 10, "willpower": 5, "luck": 5}}
+}
+
+def update_character_identity(sheet: dict, name: str = None, race: str = None, gender: str = None, character_class: str = None, custom_attributes: dict = None) -> dict:
+    """Updates race, class, gender, name and recalculates base attributes and derived vitals."""
+    if name:
+        sheet["name"] = name.strip()
+    if gender:
+        sheet["gender"] = gender.strip().capitalize()
+    if race:
+        sheet["race"] = race.strip().title()
+    if character_class:
+        sheet["class"] = character_class.strip().title()
+        
+    cls_key = sheet.get("class", "Warrior").lower()
+    tmpl = CLASS_TEMPLATES.get(cls_key, CLASS_TEMPLATES["warrior"])
+    
+    attrs = sheet.setdefault("attributes", {
+        "strength": 50, "intelligence": 50, "willpower": 50, "agility": 50,
+        "speed": 50, "endurance": 50, "personality": 50, "luck": 50
+    })
+    
+    if custom_attributes:
+        for k, v in custom_attributes.items():
+            if k in attrs:
+                attrs[k] = int(v)
+    else:
+        # Base attributes at 50
+        for k in attrs:
+            attrs[k] = 50
+            
+        # Apply class primary attributes (65)
+        for prim in tmpl.get("primary", []):
+            if prim in attrs:
+                attrs[prim] = 65
+                
+        # Apply race bonuses
+        race_key = sheet.get("race", "Nord").lower()
+        race_bonus = RACE_BONUSES.get(race_key, {})
+        for attr, bonus in race_bonus.get("attributes", {}).items():
+            if attr in attrs:
+                attrs[attr] += bonus
+                
+    endurance = attrs.get("endurance", 50)
+    strength = attrs.get("strength", 50)
+    intelligence = attrs.get("intelligence", 50)
+    
+    d = sheet.setdefault("derived", {})
+    hp_base = 20 + int(endurance * 0.2) + tmpl.get("hp_bonus", 4)
+    d["hp_max"] = hp_base
+    d["hp_current"] = hp_base
+    
+    mp_base = max(10, int(intelligence * tmpl.get("mp_mult", 1.0)))
+    d["mp_max"] = mp_base
+    d["mp_current"] = mp_base
+    
+    stamina_base = int((endurance + strength) * 0.6)
+    d["stamina_max"] = stamina_base
+    d["stamina_current"] = stamina_base
+    
+    # Configure starting spells if empty
+    if "spells" not in sheet or not sheet["spells"]:
+        if cls_key in ("mage", "sorcerer", "battlemage", "spellsword", "nightblade"):
+            sheet["spells"] = [{"name": "Spark", "school": "Destruction", "tier": 1, "mp_cost": 4}]
+        elif cls_key == "healer":
+            sheet["spells"] = [{"name": "Mend Wounds", "school": "Restoration", "tier": 1, "mp_cost": 5}]
+        else:
+            sheet["spells"] = []
+            
+    return sheet

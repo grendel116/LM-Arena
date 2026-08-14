@@ -1,0 +1,204 @@
+{
+  "name": "Bestiary",
+  "description": "Creatures, monsters, and daedric entities of Tamriel",
+  "entries": [
+    {
+      "uid": 8001,
+      "key": ["rat", "giant rat", "sewer rat"],
+      "secondary_key": [],
+      "content": "Giant Rats infest damp dungeons, cellars, and sewer tunnels across Tamriel. They attack in swarms with sharp teeth and diseased claws.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8002,
+      "key": ["goblin", "goblins"],
+      "secondary_key": [],
+      "content": "Goblins dwell in caves and forgotten ruins throughout Tamriel. They fight with crude clubs and shields, often ambushing adventurers from dark corridors.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8003,
+      "key": ["lizardman", "lizardmen"],
+      "secondary_key": [],
+      "content": "Lizardmen inhabit tropical waterways and humid swamps. They wield crude weapons with surprising strength and thick scaly hides.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8004,
+      "key": ["wolf", "wolves", "dire wolf", "snow wolf"],
+      "secondary_key": [],
+      "content": "Wolves prowl the wild forests and frozen wastes of Skyrim and High Rock. Pack hunters coordinate fast strikes to bring down prey.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8005,
+      "key": ["spider", "giant spider", "spiders"],
+      "secondary_key": [],
+      "content": "Giant Spiders nest in abandoned catacombs and deep caverns. Their venomous fangs inflict deadly poison, slowing their victims.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8006,
+      "key": ["skeleton", "skeletons", "skeletal warrior"],
+      "secondary_key": [],
+      "content": "Skeletons are reanimated undead warriors raised by dark necromancy. They fight without fear or pain, vulnerable to blunt crushing blows.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8007,
+      "key": ["zombie", "zombies"],
+      "secondary_key": [],
+      "content": "Zombies are rotting corpses given relentless life through necromantic magic. Their decayed flesh resists standard bladed strikes while carrying virulent diseases.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8008,
+      "key": ["ghoul", "ghouls"],
+      "secondary_key": [],
+      "content": "Ghouls are ravenous undead feeding upon graves in ancient crypts. Their paralyzed touch can freeze a warrior in place instantly.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8009,
+      "key": ["orc", "orcs", "orsimer"],
+      "secondary_key": [],
+      "content": "Orc warriors roam mountain strongholds and ancient citadels. Masters of heavy armor and smithing, they deliver brutal strikes with heavy axes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8010,
+      "key": ["minotaur", "minotaurs"],
+      "secondary_key": [],
+      "content": "Minotaurs are powerful bullheaded humanoids guarding ancient ruins in Cyrodiil and High Rock. Their mighty horns and heavy hammers shatter armor.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8011,
+      "key": ["hellhound", "hell hound", "hellhounds"],
+      "secondary_key": [],
+      "content": "Hellhounds are demonic canines summoned from Oblivion. They breathe scorching flames and strike with fiery jaws.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8012,
+      "key": ["troll", "trolls", "frost troll"],
+      "secondary_key": [],
+      "content": "Trolls are three eyed brutes found in wild hills and caves. Their rapid flesh regeneration makes fire magic essential to defeat them.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8013,
+      "key": ["wraith", "wraiths"],
+      "secondary_key": [],
+      "content": "Wraiths are incorporeal spirits of profound malevolence. Mundane steel passes through their ghostly forms, requiring enchanted weapons or spells.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8014,
+      "key": ["fire atronach", "flame atronach", "fire golem"],
+      "secondary_key": [],
+      "content": "Fire Atronachs are elemental daedra formed of pure living flame. They fling fireballs and burst in blazing destruction upon defeat.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8015,
+      "key": ["frost atronach", "ice golem"],
+      "secondary_key": [],
+      "content": "Frost Atronachs are towering daedra sculpted from crystalline ice. Immune to bitter cold, they crush foes with frozen fists.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8016,
+      "key": ["storm atronach", "iron golem", "earth golem"],
+      "secondary_key": [],
+      "content": "Storm Atronachs are daedric titans bound with tempest energy and magnetic stone. They blast lightning arcs across the battlefield.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8017,
+      "key": ["winged twilight", "homunculus"],
+      "secondary_key": [],
+      "content": "Winged Twilights are predatory bat winged daedra serving Azura. They dive from ceilings with razor talons and spell reflection.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8018,
+      "key": ["medusa", "gorgon"],
+      "secondary_key": [],
+      "content": "Medusas are serpent scaled monstrosities inhabiting sunken ruins. Their piercing gaze causes petrification while their bows fire deadly arrows.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8019,
+      "key": ["vampire", "vampires", "vampire lord"],
+      "secondary_key": [],
+      "content": "Vampires are ancient undead masters of blood and illusion. They drain vital energy, cast high tier destruction magic, and regenerate wounds in darkness.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8020,
+      "key": ["lich", "liches", "archlich"],
+      "secondary_key": [],
+      "content": "Liches are immortal sorcerers who achieved undeath through profane rituals. They wield supreme master tier spells and resist nearly all mundane harm.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8021,
+      "key": ["clannfear", "clannfears"],
+      "secondary_key": [],
+      "content": "Clannfears are reptilian daedra with armored heads and vicious claws. They charge with ferocious speed in service to Mehrunes Dagon.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8022,
+      "key": ["dreugh", "land dreugh"],
+      "secondary_key": [],
+      "content": "Dreugh are armored aquatic monstrosities haunting coastal reefs and swamps in Morrowind and Black Marsh. Their claws crush heavy armor.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

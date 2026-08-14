@@ -15,24 +15,26 @@ scratch/
 reports/
 certs/
 
-# Ignore all runtime and user variables except code dependencies, template examples, and default builder profile
+# Ignore all runtime and user variables except code dependencies, template examples, and default profile
 variables/*
 !variables/__init__.py
 !variables/user.md.example
 !variables/user_profiles/
 !variables/banned_words.json
+!variables/saves/
+variables/saves/*
 variables/user_profiles/*
-!variables/user_profiles/builder.md
+!variables/user_profiles/champion.md
 
-# Ignore all companion profiles under core/programs except the default Sebile program template
+# Ignore all companion profiles under core/programs except the default Arena guide
 core/programs/*
-!core/programs/sebile/
+!core/programs/ria_silmane/
 !core/programs/sparkle.mp3
 
 # Ignore user-generated dynamic program sessions, databases, custom generated portraits, and memories
 core/programs/*/sessions/
 core/programs/*/portraits/*
-!core/programs/sebile/portraits/profile.png
+!core/programs/*/portraits/profile.png
 core/programs/*/media/
 core/programs/*/uploads/
 core/programs/*/databank.db
@@ -41,7 +43,6 @@ core/programs/*/journals.json
 core/programs/*/memories.json
 core/programs/*/quest_log.json
 core/programs/*/lorebooks/
-!core/programs/sebile/lorebooks/
 core/embeddings.pkl
 temp_uploads/
 

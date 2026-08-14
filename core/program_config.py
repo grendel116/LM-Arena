@@ -4,13 +4,7 @@ import os
 import re
 import shutil
 import sys
-from tools import (
-    read_file, write_file, replace_in_file, run_shell_command, 
-    get_workspace_structure, search_codebase, read_webpage, google_search,
-    web_search, apply_comfy_workflow, generate_local_image, generate_imagen,
-    replace_file_content, multi_replace_file_content, run_command_async,
-    manage_task, wait_task
-)
+
 
 # Ensure the parent directory is in sys.path so we can import variables package
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -115,8 +109,7 @@ def load_static_instructions() -> str:
     # Full skill instructions are vector-retrieved per turn in runner_interface.py
     try:
         from core.skill_retriever import get_toolbelt_block
-        narration_active = is_narration_mode()
-        toolbelt = get_toolbelt_block(narration_active)
+        toolbelt = get_toolbelt_block()
         if toolbelt:
             instruction_content += "\n\n" + toolbelt
     except Exception as e:
@@ -193,60 +186,28 @@ def load_user_instructions() -> str:
         )
         return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{fallback_msg}"
 
-def is_narration_mode() -> bool:
-    """Checks if narration mode (Story Mode) is enabled in global project settings."""
-    from utils.program import _load_settings
-    return _load_settings().get("narration_mode", False)
 
-inversion_directive = ""
-
-def set_inversion_directive(directive: str):
-    global inversion_directive
-    inversion_directive = directive
 
 def get_compiled_instructions() -> str:
     """Merges static identity profiles, dynamic temporal/runtime contexts, and user relationship settings."""
-    global inversion_directive
     base = replace_placeholders(load_static_instructions() + load_user_instructions())
-    
-    narration_mode = is_narration_mode()
 
-    if narration_mode:
-        global_formatting = (
-            "\n\n# MESSAGE FORMAT (MANDATORY)\n"
-            "- Write in a prose style. Use separate lines and clear paragraphs for narration and dialogue.\n"
-            "- Narration: Use *italics* and present tense to describe actions, setting details, and other characters.\n"
-            "- Dialogue: Use plain text without quotation marks. Use **bold** for vocal emphasis.\n"
-            "- Characters: Give other characters distinct personalities and voices.\n"
-            "- Plot: Introduce narrative friction and develop scenes steadily.\n"
-            "- Style: Use short words and precise phrasing. Write with linear progression.\n"
-            "- Do not use contrasting parallels.\n"
-            "- Do not use stylistic symmetry.\n"
-            "- Do not mirror sentence clauses.\n"
-            "- Do not use flowery language.\n"
-            "- Do not use corporate jargon.\n"
-        )
+    global_formatting = (
+        "\n\n# MESSAGE FORMAT (MANDATORY)\n"
+        "- Write a dark medieval novel. Use separate lines and clear paragraphs for narration and dialogue.\n"
+        "- Narration: Use *italics* and present tense to describe actions, setting details, and other characters.\n"
+        "- Dialogue: Use plain text without quotation marks. Use **bold** for vocal emphasis.\n"
+        "- Characters: Give other characters distinct personalities and voices.\n"
+        "- Plot: Introduce narrative friction and develop scenes steadily.\n"
+        "- Style: Use short words and precise phrasing. Write with linear progression.\n"
+        "- Do not use contrasting parallels.\n"
+        "- Do not use stylistic symmetry.\n"
+        "- Do not mirror sentence clauses.\n"
+        "- Do not use flowery language.\n"
+        "- Do not use corporate jargon.\n"
+    )
 
-    else:
-        global_formatting = (
-            "\n\n# MESSAGE FORMAT (MANDATORY)\n"
-            "- Use separate lines and paragraphs for narration and dialogue.\n"
-            "- Narration: Use *italics*, first person, and present tense for actions, expressions, and setting details.\n"
-            "- Dialogue: Use plain text without quotation marks. Use **bold** for vocal emphasis.\n"
-            "- Style: Speak concisely using short words and simple sentences. Engage in critical dialogue and dialectical reasoning.\n"
-            "- Do not use patronizing validation.\n"
-            "- Do not offer generic platitudes.\n"
-            "- Do not ask clinical questions.\n"
-            "- Do not use flowery words.\n"
-            "- Do not use contrasting parallels.\n"
-            "- Do not use stylistic symmetry.\n"
-        )
-        
     base += global_formatting
-    
-    if inversion_directive:
-        base += f"\n\n# PERSONALITY INVERSION DIRECTIVE\n{replace_placeholders(inversion_directive)}\n"
-        
     base += load_dynamic_runtime_context()
     return base
 

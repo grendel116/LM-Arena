@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Modern Typography -->
-    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Application Stylesheet -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sanctuary.css') }}?v=3">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/arena.css') }}">
@@ -75,8 +75,8 @@
                         </select>
                     </div>
 
-                    <div class="header-status" style="flex-direction: row-reverse;">
-                        <div id="header-heart-pulse" class="heart-pulse" title="Program's Encoded Heart">
+                    <div class="header-status" style="flex-direction: row-reverse; cursor: pointer;" onclick="openStatusModal()" title="View Character Status">
+                        <div id="header-heart-pulse" class="heart-pulse" title="Player Vitality">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"></path>
                             </svg>
@@ -85,30 +85,32 @@
                     </div>
                 </div>
             </div>            <div class="header-actions">
-
-                <button class="pokeball-btn" onclick="openMapModal()" title="Tamriel Map">
+                <!-- 1. Inventory & Spells (Bag Icon) -->
+                <button class="inventory-btn" onclick="openInventoryModal()" title="Inventory & Spells">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-                        <line x1="8" y1="2" x2="8" y2="18"></line>
-                        <line x1="16" y1="6" x2="16" y2="22"></line>
+                        <path d="M8 8a4 4 0 0 1 8 0c0 4 3 6 3 10a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3c0-4 3-6 3-10z"></path>
+                        <line x1="8" y1="8" x2="16" y2="8"></line>
+                        <path d="M10 5l2 3 2-3"></path>
                     </svg>
                 </button>
 
-                <button class="user-btn" onclick="openAssistantModal()" title="Programs & User Profiles">
+                <!-- 2. Quests -->
+                <button class="quest-btn" onclick="openQuestLog()" title="Quests">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </button>
+
+                <!-- 3. Player & Saves -->
+                <button class="user-btn" onclick="openAssistantModal('user')" title="Player & Saves">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                 </button>
 
-                <button class="share-btn" onclick="openConnectionModal()" title="Local LLM / Cloud Settings">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </button>
-
-                <button class="databank-btn" onclick="openDataBank()" title="Knowledge Base / Data Bank">
+                <!-- 4. Follower Journals -->
+                <button class="databank-btn" onclick="openDataBank()" title="Follower Journals & Lore">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
                         <polyline points="2 17 12 22 22 17"></polyline>
@@ -116,47 +118,28 @@
                     </svg>
                 </button>
 
-                <button class="quest-btn" onclick="openQuestLog()" title="Quest Log">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                <!-- 5. Settings -->
+                <button class="share-btn" onclick="openConnectionModal()" title="Settings">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
                 </button>
             </div>
         </header>
         
-        <div class="arena-layout">
-            <aside class="arena-sidebar-left" id="arena-sidebar-left">
-                <!-- Character Status -->
-                <section class="arena-status-panel" id="arena-status-panel">
-                    <h3 class="arena-panel-header">Status</h3>
-                    <div class="arena-stat-row"><span class="arena-stat-label">HP</span><div class="arena-bar"><div class="arena-bar-fill arena-bar-hp" id="status-hp-bar" style="width:100%"></div></div><span class="arena-stat-value" id="status-hp">—</span></div>
-                    <div class="arena-stat-row"><span class="arena-stat-label">SP</span><div class="arena-bar"><div class="arena-bar-fill arena-bar-sp" id="status-sp-bar" style="width:100%"></div></div><span class="arena-stat-value" id="status-sp">—</span></div>
-                    <div class="arena-stat-row"><span class="arena-stat-label">AR</span><span class="arena-stat-value" id="status-ar">—</span></div>
-                    <div class="arena-stat-row"><span class="arena-stat-label">Gold</span><span class="arena-stat-value" id="status-gold">—</span></div>
-                    <div class="arena-divider"></div>
-                    <div class="arena-location-row" id="status-location">Imperial Dungeon</div>
-                    <div class="arena-date-row" id="status-date">1 Morning Star, 3E 389</div>
-                </section>
-                <!-- Follower Roster -->
-                <section class="arena-follower-panel" id="arena-follower-panel">
-                    <h3 class="arena-panel-header">Followers</h3>
-                    <div id="arena-followers-list">
-                        <p class="arena-empty-note">No followers present.</p>
-                    </div>
-                </section>
-            </aside>
-            <main class="arena-center">
-                <div id="chat-container" class="arena-narrative">
+        <div id="chat-container">
             <div class="message-row program-row" id="welcome-message">
                 <div class="avatar-container">
-                    <img class="avatar program-avatar" src="/profile.png" alt="Program" onclick="expandImage('/profile.png')">
+                    <img id="welcome-avatar" src="" alt="Avatar" class="avatar-image">
                 </div>
-                <div class="message program">
-                    <div class="message-text">
-                        <p>{{ welcome_message }}</p>
-                    </div>
+                <div class="message-bubbles-container">
+                    <div class="message-sender-name" id="welcome-sender">PROGRAM SANCTUARY</div>
+                    <div class="message" id="welcome-message-text"></div>
                 </div>
             </div>
+            <!-- Dynamic message history will be injected here -->
+            <div id="messages-list"></div>
         </div>
 
         <!-- Live media upload preview area -->
@@ -171,7 +154,7 @@
             </div>
         </div>
         
-        <div id="input-area" class="arena-input-bar">
+        <div id="input-area">
             <div class="input-wrapper">
                 <!-- Attach button -->
                 <button class="attach-btn" onclick="document.getElementById('image-input').click()" title="Attach file">
@@ -211,32 +194,139 @@
                 </div>
             </div>
         </div>
-            </main>
-            <aside class="arena-sidebar-right" id="arena-sidebar-right">
-                <!-- Quest Log -->
-                <section class="arena-quest-panel" id="arena-quest-panel">
-                    <h3 class="arena-panel-header">Quest</h3>
-                    <div class="arena-fragment-tracker" id="arena-fragment-tracker">
-                        <!-- 8 fragment slots rendered by JS -->
+
+        <!-- Character Status Modal -->
+        <div id="status-modal" class="modal" onclick="closeStatusModal()">
+            <div class="modal-panel" onclick="event.stopPropagation()" style="max-width: 540px; width: 92%; max-height: 88vh; overflow-y: auto; background: var(--arena-surface); border: 1px solid var(--arena-border); border-radius: 16px; padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <h2 id="modal-char-name" style="margin: 0; font-size: 1.35rem; color: var(--arena-gold); font-weight: 700;">Eternal Champion</h2>
+                            <button onclick="closeStatusModal(); openAssistantModal('user');" title="Edit Character Sheet, Class & Narrative Background in Player Profile" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; padding: 3px 8px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                                Edit Profile
+                            </button>
+                        </div>
+                        <div id="modal-char-subtitle" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Nord Male Mage • Level 1</div>
                     </div>
-                    <div class="arena-objectives" id="arena-objectives">
-                        <p class="arena-empty-note">Awaiting guidance...</p>
-                    </div>
-                </section>
-                <!-- Map -->
-                <button class="arena-map-btn" onclick="openMapModal()">Open World Map</button>
-            </aside>
-        </div>
-        
-        <!-- Tamriel Map Modal -->
-        <div id="map-modal" class="modal arena-map-modal" onclick="closeMapModal()">
-            <div class="arena-map-inner" onclick="event.stopPropagation()">
-                <span class="close-modal-btn" onclick="closeMapModal()">×</span>
-                <h2 class="arena-map-title">Tamriel</h2>
-                <div id="arena-map-container">
-                    <!-- SVG map loaded dynamically -->
+                    <span class="close-modal-btn" onclick="closeStatusModal()" style="font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-muted);">&times;</span>
                 </div>
-                <p class="arena-map-hint">Click a province to travel there.</p>
+
+                <!-- Location & Date Bar -->
+                <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--arena-narration);">
+                    <span id="modal-char-location">Imperial Dungeon, Cyrodiil</span>
+                    <span id="modal-char-date">1 Morning Star, 3E 389</span>
+                </div>
+
+                <!-- Vitals Bars -->
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px;">
+                    <!-- HP -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600;">
+                            <span style="color: #f87171;">HEALTH (HP)</span>
+                            <span id="modal-char-hp-text" style="color: var(--text-main);">28 / 28</span>
+                        </div>
+                        <div style="height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+                            <div id="modal-char-hp-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #ef4444, #f87171); transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                    <!-- MP (Magicka) -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600;">
+                            <span style="color: #60a5fa;">MAGICKA (MP)</span>
+                            <span id="modal-char-mp-text" style="color: var(--text-main);">42 / 42</span>
+                        </div>
+                        <div style="height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+                            <div id="modal-char-mp-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                    <!-- Stamina / Fatigue -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600;">
+                            <span style="color: #34d399;">STAMINA</span>
+                            <span id="modal-char-stamina-text" style="color: var(--text-main);">50 / 50</span>
+                        </div>
+                        <div style="height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);">
+                            <div id="modal-char-stamina-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #059669, #34d399); transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combat & Wealth Stats -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 18px;">
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Armor</div>
+                        <div id="modal-char-armor" style="font-size: 1.1rem; font-weight: 700; color: var(--arena-gold);">4</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Gold</div>
+                        <div id="modal-char-gold" style="font-size: 1.1rem; font-weight: 700; color: #fbbf24;">75</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">XP</div>
+                        <div id="modal-char-xp" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">0</div>
+                    </div>
+                </div>
+
+                <!-- Attributes Grid -->
+                <h4 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">Attributes</h4>
+                <div id="modal-char-attributes" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px;">
+                    <!-- Rendered dynamically -->
+                </div>
+
+                <!-- Active Effects & Conditions -->
+                <h4 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px;">Conditions & Effects</h4>
+                <div id="modal-char-effects" style="font-size: 0.82rem; color: var(--text-muted);">
+                    None active
+                </div>
+            </div>
+        </div>
+
+        <!-- Dedicated Inventory & Spells Modal (Backpack) -->
+        <div id="inventory-modal" class="modal" onclick="closeInventoryModal()">
+            <div class="modal-panel" onclick="event.stopPropagation()" style="max-width: 560px; width: 92%; max-height: 88vh; overflow-y: auto; background: var(--arena-surface); border: 1px solid var(--arena-border); border-radius: 16px; padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); display: flex; align-items: center; justify-content: center; color: #4ade80;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 8a4 4 0 0 1 8 0c0 4 3 6 3 10a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3c0-4 3-6 3-10z"></path>
+                                <line x1="8" y1="8" x2="16" y2="8"></line>
+                                <path d="M10 5l2 3 2-3"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 style="margin: 0; font-size: 1.25rem; color: var(--arena-gold); font-weight: 700;">Inventory & Spells</h2>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Equipped items, carried gear, and learned spells</div>
+                        </div>
+                    </div>
+                    <span class="close-modal-btn" onclick="closeInventoryModal()" style="font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-muted);">&times;</span>
+                </div>
+
+                <!-- Gold Display -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px; margin-bottom: 18px; display: flex; align-items: baseline; gap: 8px;">
+                    <strong id="inventory-gold-display" style="font-size: 1.1rem; color: #fbbf24;">0 Gold</strong>
+                </div>
+
+                <!-- Equipment & Inventory -->
+                <div style="margin-bottom: 22px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0;">Inventory</h3>
+                        <span id="inventory-item-count" style="font-size: 0.75rem; color: var(--text-muted);">0 items</span>
+                    </div>
+                    <div id="modal-char-inventory" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px;">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Spells Known -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--arena-gold); margin: 0;">Spells Known</h3>
+                        <span id="inventory-spell-count" style="font-size: 0.75rem; color: var(--text-muted);">0 spells</span>
+                    </div>
+                    <div id="modal-char-spells" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px;">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -311,7 +401,7 @@
         </div>
     </div>
             
-    <!-- Data Bank / Knowledge Base Modal -->
+    <!-- Follower Knowledge & Lore Modal -->
     <div id="databank-modal" class="modal" onclick="closeDataBank()">
         <div class="modal-card" style="max-width: 600px; width: 90%; text-align: left; align-items: stretch; max-height: 85vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
             <span class="close-modal-btn" onclick="closeDataBank()">&times;</span>
@@ -319,10 +409,10 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <span>Knowledge Base</span>
+                <span>Follower Knowledge</span>
             </h3>
             <p id="databank-descriptor" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                Upload files (TXT, MD, HTML, PDF) or scrape web page URLs to ingest them into the program's vectorized memory database.
+                Upload documents (TXT, MD, HTML, PDF) to ingest lore or guides into the vectorized databank.
             </p>
             
             <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
@@ -330,7 +420,6 @@
                 <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1 1 0%; min-width: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; box-sizing: border-box; background: rgba(255, 255, 255, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 4px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Add Document</button>
                 <button onclick="switchDataBankTab('memories')" id="tab-btn-memories" class="edit-btn edit-cancel-btn" style="flex: 1 1 0%; min-width: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; box-sizing: border-box; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 4px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Journals & Memories</button>
                 <button onclick="switchDataBankTab('lorebooks')" id="tab-btn-lorebooks" class="edit-btn edit-cancel-btn" style="flex: 1 1 0%; min-width: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; box-sizing: border-box; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 4px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Lorebooks</button>
-                <button onclick="switchDataBankTab('settings')" id="tab-btn-settings" class="edit-btn edit-cancel-btn" style="flex: 1 1 0%; min-width: 0; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; box-sizing: border-box; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 4px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Project Settings</button>
             </div>
             
             <!-- Upload & Scrape Tab -->
@@ -354,76 +443,7 @@
                     <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">The program will fetch the page and extract readable content.</div>
                 </div>
             </div>
-                        <!-- Settings Tab -->
-            <div id="databank-tab-settings" class="form-card-container" style="margin-bottom: 20px; display: none;">
-                <!-- Folders -->
-                <div>
-                    <h4 class="modal-sub-header">Folders</h4>
-                    <div id="project-folders-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;">
-                        <!-- Folders populated dynamically -->
-                    </div>
-                    <button onclick="addProjectFolder()" class="dashed-action-btn">
-                        + Add Folder
-                    </button>
-                </div>
-                
-                <!-- Program Settings -->
-                <div class="form-section-divider">
-                    <h4 class="modal-sub-header">Program Settings</h4>
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                            <div>
-                                <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">Security Preset</div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Choose auto-execution policy for shell commands and file operations.</div>
-                            </div>
-                            <div style="width: 200px; flex-shrink: 0;">
-                                <select id="project-security-preset" class="glass-select" onchange="saveProjectSettings()">
-                                    <option value="ask_always">Always Ask</option>
-                                    <option value="auto">Auto</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                            <div>
-                                <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">Review Policy</div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Specifies behavior when generating documentation and plans.</div>
-                            </div>
-                            <div style="width: 200px; flex-shrink: 0;">
-                                <select id="project-review-policy" class="glass-select" onchange="saveProjectSettings()">
-                                    <option value="ask_always">Always Ask</option>
-                                    <option value="auto_approve">Auto</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
- 
-                <!-- Search Settings -->
-                <div class="form-section-divider">
-                    <h4 class="modal-sub-header">Search Settings</h4>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                            <div>
-                                <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">Search Mode</div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Unified search crawling multiple backends simultaneously.</div>
-                            </div>
-                            <div style="width: 240px; flex-shrink: 0;">
-                                <select id="project-search-engine" class="glass-select" onchange="toggleSearxUrlVisibility(); saveProjectSettings();">
-                                    <option value="web_crawling">Web Crawling (Unified)</option>
-                                    <option value="wikipedia">Wikipedia Only</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="searxng-url-container" style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">SearXNG Custom URL</div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">URL of your private/preferred instance (blank for public pool).</div>
-                            </div>
-                            <input type="text" id="project-searxng-url" onchange="saveProjectSettings()" placeholder="https://searx.be" class="onboarding-input" style="width: 180px; font-size: 0.8rem; padding: 6px 10px; height: 32px;">
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- Memories Tab -->
             <div id="databank-tab-memories" style="display: none; flex-direction: column; gap: 15px; max-height: 480px; margin-bottom: 20px;">
@@ -533,10 +553,10 @@
                     Active Follower
                 </button>
                 <button onclick="switchAssistantModalTab('user')" id="assistant-tab-btn-user" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    User Profiles
+                    Player
                 </button>
                 <button onclick="switchAssistantModalTab('sessions')" id="assistant-tab-btn-sessions" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    Chat Sessions
+                    Saves
                 </button>
             </div>
 
@@ -562,7 +582,7 @@
                 <!-- Sub-View 1: Profiles List View -->
                 <div id="user-profiles-list-view" style="display: block;">
                     <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                        Select or customize your user profile. This active persona grounds the relationship settings for program programs.
+                        Your active character. Stats and inventory are stored in the character sheet below and injected into every session.
                     </p>
 
                     <!-- Cards container for User Profiles list -->
@@ -573,7 +593,7 @@
                     <!-- Actions Bar under profiles list -->
                     <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; display: flex; justify-content: flex-end;">
                         <button onclick="createNewUserProfile()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; min-width: auto; width: auto; height: auto; margin: 0;">
-                            <span>+ New Profile</span>
+                            <span>+ New Character</span>
                         </button>
                     </div>
                 </div>
@@ -593,16 +613,79 @@
 
                     <div class="input-group" style="margin-bottom: 15px;">
                         <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600;">
-                            Profile Name
+                            Profile / Character Name
                         </label>
                         <input id="user-profile-name-input" type="text" class="onboarding-input" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; outline: none;" placeholder="Profile Name" oninput="onUserProfileFieldInput()" />
                     </div>
 
-                    <div class="input-group" style="margin-bottom: 20px;">
-                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">
-                            Profile Markdown Context
+                    <!-- RPG Character Trinity: Gender, Race, Class -->
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr 1.4fr; gap: 10px; margin-bottom: 16px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 4px; font-weight: 600;">Gender</label>
+                            <select id="user-profile-gender-select" onchange="onUserProfileFieldInput()" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem; outline: none;">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 4px; font-weight: 600;">Race</label>
+                            <select id="user-profile-race-select" onchange="onUserProfileFieldInput()" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem; outline: none;">
+                                <option value="Nord">Nord (Cold Resist)</option>
+                                <option value="Breton">Breton (Magic Resist)</option>
+                                <option value="Redguard">Redguard (Blademaster)</option>
+                                <option value="High Elf">High Elf (Arcane Magicka)</option>
+                                <option value="Wood Elf">Wood Elf (Archery)</option>
+                                <option value="Dark Elf">Dark Elf (Fire Resist)</option>
+                                <option value="Khajiit">Khajiit (Agile / Stealth)</option>
+                                <option value="Argonian">Argonian (Poison Resist)</option>
+                                <option value="Imperial">Imperial (Diplomat)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 4px; font-weight: 600;">Class</label>
+                            <select id="user-profile-class-select" onchange="onUserProfileFieldInput()" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem; outline: none;">
+                                <optgroup label="Warrior Archetype">
+                                    <option value="Warrior">Warrior</option>
+                                    <option value="Knight">Knight</option>
+                                    <option value="Ranger">Ranger</option>
+                                    <option value="Archer">Archer</option>
+                                    <option value="Monk">Monk</option>
+                                    <option value="Barbarian">Barbarian</option>
+                                </optgroup>
+                                <optgroup label="Mage Archetype">
+                                    <option value="Mage" selected>Mage</option>
+                                    <option value="Sorcerer">Sorcerer (Spell Absorption)</option>
+                                    <option value="Healer">Healer</option>
+                                    <option value="Battlemage">Battlemage</option>
+                                    <option value="Spellsword">Spellsword</option>
+                                    <option value="Nightblade">Nightblade</option>
+                                </optgroup>
+                                <optgroup label="Thief Archetype">
+                                    <option value="Thief">Thief</option>
+                                    <option value="Burglar">Burglar</option>
+                                    <option value="Assassin">Assassin</option>
+                                    <option value="Rogue">Rogue</option>
+                                    <option value="Acrobat">Acrobat</option>
+                                    <option value="Bard">Bard</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600;">
+                            Narrative Background & Roleplay Notes (Markdown)
+                            <span style="font-weight: 400; color: var(--text-muted); font-size: 0.7rem;">— Injected into system context for backstory, physical appearance, and narrative identity</span>
                         </label>
-                        <textarea id="user-profile-content" class="onboarding-input" style="width: 100%; height: 200px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 10px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; resize: vertical; line-height: 1.4; outline: none;" placeholder="# USER CONTEXT..." oninput="onUserProfileFieldInput()"></textarea>
+                        <textarea id="user-profile-content" class="onboarding-input" style="width: 100%; height: 140px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 10px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; resize: vertical; line-height: 1.4; outline: none;" placeholder="# Character Backstory..." oninput="onUserProfileFieldInput()"></textarea>
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 20px;">
+                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px; font-weight: 600;">
+                            Post-History Directives & Narrative Constraints (Mods)
+                            <span style="font-weight: 400; color: var(--text-muted); font-size: 0.7rem;">— Injected verbatim after the chat history on every turn (POV, descriptive tone, pacing rules)</span>
+                        </label>
+                        <textarea id="user-profile-mods" class="onboarding-input" style="width: 100%; height: 75px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 10px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; resize: vertical; line-height: 1.4; outline: none;" placeholder="e.g. [Narrate in visceral second-person perspective. Describe the damp atmosphere of dungeon corridors.]" oninput="onUserProfileFieldInput()"></textarea>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -618,25 +701,93 @@
                 </div>
             </div>
 
-            <!-- Chat Sessions Tab Content -->
+            <!-- Saves Tab Content -->
             <div id="assistant-tab-content-sessions" style="display: none;">
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.4;">
-                    Switch between different chat timelines or create a new session for your active program.
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
+                    Manage your game saves. Each save preserves your character, level, quest progress, world state, and narrative history.
                 </p>
 
-                <div style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Active Session</label>
-                        <select id="chat-sessions-select" onchange="onChatSessionSelectChange()" class="onboarding-input glass-select" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); height: 38px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; outline: none;"></select>
+                <!-- Saves List Container -->
+                <div id="saves-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; padding-right: 4px;">
+                    <!-- Saves rendered dynamically -->
+                </div>
+
+                <!-- Collapsible New Save Panel -->
+                <div id="new-save-panel" style="display: none; background: rgba(0,0,0,0.35); border: 1px solid var(--arena-gold); border-radius: 10px; padding: 14px; margin-top: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: var(--arena-gold); font-size: 0.9rem; font-weight: 700;">Create New Save</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Save Title</label>
+                            <input id="new-save-title" type="text" placeholder="e.g. Redguard Spellsword Run" class="onboarding-input" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 7px 10px; border-radius: 6px; font-size: 0.85rem;" />
+                        </div>
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Character Name</label>
+                            <input id="new-save-char-name" type="text" value="Eternal Champion" class="onboarding-input" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 7px 10px; border-radius: 6px; font-size: 0.85rem;" />
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button id="delete-session-btn" onclick="deleteSelectedChatSession()" class="onboarding-btn" style="padding: 10px 16px; font-size: 0.8rem; min-width: auto; height: 38px; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);">
-                            Delete
-                        </button>
-                        <button onclick="createNewChatSession()" class="onboarding-btn" style="padding: 10px 16px; font-size: 0.8rem; min-width: auto; height: 38px;">
-                            + New Session
-                        </button>
+                    <div style="display: grid; grid-template-columns: 1fr 1.2fr 1.4fr; gap: 10px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 3px;">Gender</label>
+                            <select id="new-save-gender" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem;">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 3px;">Race</label>
+                            <select id="new-save-race" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem;">
+                                <option value="Nord">Nord (Cold Resist)</option>
+                                <option value="Breton">Breton (Magic Resist)</option>
+                                <option value="Redguard">Redguard (Blademaster)</option>
+                                <option value="High Elf">High Elf (Arcane Magicka)</option>
+                                <option value="Wood Elf">Wood Elf (Archery)</option>
+                                <option value="Dark Elf">Dark Elf (Fire Resist)</option>
+                                <option value="Khajiit">Khajiit (Agile / Stealth)</option>
+                                <option value="Argonian">Argonian (Poison Resist)</option>
+                                <option value="Imperial">Imperial (Diplomat)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 3px;">Class</label>
+                            <select id="new-save-class" style="width: 100%; background: #161b22; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem;">
+                                <optgroup label="Warrior Archetype">
+                                    <option value="Warrior">Warrior</option>
+                                    <option value="Knight">Knight</option>
+                                    <option value="Ranger">Ranger</option>
+                                    <option value="Archer">Archer</option>
+                                    <option value="Monk">Monk</option>
+                                    <option value="Barbarian">Barbarian</option>
+                                </optgroup>
+                                <optgroup label="Mage Archetype">
+                                    <option value="Mage" selected>Mage</option>
+                                    <option value="Sorcerer">Sorcerer</option>
+                                    <option value="Healer">Healer</option>
+                                    <option value="Battlemage">Battlemage</option>
+                                    <option value="Spellsword">Spellsword</option>
+                                    <option value="Nightblade">Nightblade</option>
+                                </optgroup>
+                                <optgroup label="Thief Archetype">
+                                    <option value="Thief">Thief</option>
+                                    <option value="Burglar">Burglar</option>
+                                    <option value="Assassin">Assassin</option>
+                                    <option value="Rogue">Rogue</option>
+                                    <option value="Acrobat">Acrobat</option>
+                                    <option value="Bard">Bard</option>
+                                </optgroup>
+                            </select>
+                        </div>
                     </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                        <button onclick="toggleNewSavePanel(false)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-muted); border-radius: 6px; padding: 5px 12px; font-size: 0.8rem; cursor: pointer;">Cancel</button>
+                        <button onclick="submitNewSaveGame()" style="background: var(--arena-gold); border: none; color: #111827; font-weight: 700; border-radius: 6px; padding: 5px 16px; font-size: 0.8rem; cursor: pointer;">Start New Game</button>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; display: flex; justify-content: flex-end;">
+                    <button onclick="toggleNewSavePanel(true)" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; min-width: auto; width: auto; height: auto; margin: 0;">
+                        <span>+ New Save</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -942,23 +1093,6 @@
                         <textarea id="comp-directives" class="onboarding-input" style="height: 60px; resize: vertical;" placeholder="Speak naturally (use contractions). Be concise and direct."></textarea>
                     </div>
 
-                    <div class="input-group">
-                        <label for="comp-post-history-instructions">Post-History Instructions</label>
-                        <textarea id="comp-post-history-instructions" class="onboarding-input" style="height: 60px; resize: vertical;" placeholder="Injected verbatim after the chat history on every turn. e.g. [Write concisely. Stay in character.]"></textarea>
-
-                    </div>
-                    <label class="switch-container" style="margin-top: 4px; margin-bottom: 4px;">
-                        <div class="switch-label-group">
-                            <span class="switch-title">Story Mode</span>
-                            <span class="switch-subtitle">Describe story around character instead of first-person chat</span>
-                        </div>
-                        <div style="position: relative; width: 36px; height: 20px;">
-                            <input type="checkbox" id="comp-narration-mode" class="switch-input">
-                            <div class="switch-track">
-                                <span class="switch-thumb"></span>
-                            </div>
-                        </div>
-                    </label>
                 </div>
             </div>
 

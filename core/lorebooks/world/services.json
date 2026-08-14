@@ -1,0 +1,51 @@
+{
+  "name": "Services",
+  "description": "Taverns, temples, Mages Guilds, blacksmiths, and town rumors across Arena's cities.",
+  "entries": [
+    {
+      "uid": 8101,
+      "key": ["tavern", "inn", "innkeeper", "alehouse", "drinks", "room for the night"],
+      "secondary_key": ["sleep", "rest", "rumor", "bounty"],
+      "content": "Taverns in Tamriel are bustling hubs of town life, rumor, and mercenary contracts. Innkeepers rent rooms where adventurers can safely rest to recover Health, Magicka, and Stamina. Bartenders and patrons trade local gossip, directions to nearby dungeons, and whispered rumors of legendary artifacts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8102,
+      "key": ["temple", "chapel", "priest", "healer", "blessing", "altar"],
+      "secondary_key": ["cure disease", "cure poison", "healing"],
+      "content": "Temples and chapels dedicated to the Divines provide spiritual sanctuary in every major city. Priests offer restorative blessings, disease and poison purification, and wound tending in exchange for modest gold donations or faithful service.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8103,
+      "key": ["mages guild", "guildhall", "guildmaster", "alchemist"],
+      "secondary_key": ["spellcraft", "spellmaker", "potions", "scrolls"],
+      "content": "Mages Guild chapter halls are centers of scholarly research and arcane commerce. Guild members and visiting spellcasters can purchase known spells, acquire magical potions and enchanted scrolls, or utilize the Spellmaker altar to construct custom magical effects.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8104,
+      "key": ["blacksmith", "armorer", "weaponsmith", "forge", "smithy"],
+      "secondary_key": ["repair", "weapons", "armor", "metal"],
+      "content": "Blacksmiths and armorers forge and repair weapons and armor across Tamriel. Worn blades, damaged shields, and battered cuirasses can be restored to full condition for a price, or upgraded with sturdier materials ranging from iron and steel to mithril, adamantium, and ebony.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8105,
+      "key": ["city guard", "guards", "watchman", "town watch", "constable"],
+      "secondary_key": ["law", "crime", "bounty", "arrest"],
+      "content": "City guards enforce imperial and provincial law at town gates and along cobblestone streets. They defend settlements against wandering monsters at night, direct travelers toward services, and confront lawbreakers with fines, imprisonment, or lethal force.",
+      "enabled": true,
+      "probability": 100,
+      "priority": 10
+    }
+  ]
+}

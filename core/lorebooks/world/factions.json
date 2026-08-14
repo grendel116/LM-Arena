@@ -67,9 +67,14 @@
     },
     {
       "uid": 7008,
-      "key": ["daedric prince", "daedra", "shrine", "prince"],
+      "key": [
+        "daedric prince", "daedric princes", "daedra", "daedric shrine", "oblivion prince",
+        "azura", "boethiah", "clavicus vile", "hermaeus mora", "hircine", "jyggalag",
+        "malacath", "mehrunes dagon", "mephala", "meridia", "molag bal", "namira",
+        "nocturnal", "peryite", "sanguine", "sheogorath", "vaermina"
+      ],
       "secondary_key": [],
-      "content": "Seventeen Daedric Princes rule Oblivion realms. Cultists worship them at hidden shrines. They offer powerful artifacts in exchange for dangerous pacts.",
+      "content": "Seventeen Daedric Princes rule Oblivion realms: Azura (Dusk & Dawn), Boethiah (Plots & Treason), Clavicus Vile (Bargains & Pacts), Hermaeus Mora (Forbidden Knowledge), Hircine (The Hunt & Beasts), Jyggalag (Order), Malacath (The Spurned & Curses), Mehrunes Dagon (Destruction & Ambition), Mephala (Lies & Secrets), Meridia (Living Energy & Light), Molag Bal (Domination & Enslavement), Namira (Ancient Decay), Nocturnal (Night & Shadows), Peryite (Pestilence & Natural Order), Sanguine (Debauchery & Revelry), Sheogorath (Madness), and Vaermina (Nightmares & Tortured Dreams). Cultists worship them at hidden shrines throughout Tamriel. They bestow powerful artifacts upon mortals in exchange for dangerous bargains.",
       "enabled": true,
       "priority": 10,
       "probability": 100

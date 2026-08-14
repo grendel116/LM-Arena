@@ -5,14 +5,33 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
 
+def _normalize_save_slot(character_name: str) -> str:
+    if not character_name or str(character_name).strip() in ("{{user}}", "user", "player", "current", ""):
+        try:
+            from engine.save_manager import get_active_save_id
+            return get_active_save_id()
+        except Exception:
+            return "eternal_champion"
+    return str(character_name).strip().lower().replace(" ", "_").replace("-", "_")
+
 def _get_save_path(character_name: str) -> Path:
-    return BASE_DIR / "variables" / "saves" / character_name / "world_state.json"
+    slot = _normalize_save_slot(character_name)
+    return BASE_DIR / "variables" / "saves" / slot / "world_state.json"
 
 def load_world_state(character_name: str) -> dict:
     """Loads the world state JSON for the given character."""
     path = _get_save_path(character_name)
     if not path.exists():
-        return {}
+        default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
+        if default_world_path.exists():
+            try:
+                with open(default_world_path, "r", encoding="utf-8") as f:
+                    state = json.load(f)
+                save_world_state(character_name, state)
+                return state
+            except Exception:
+                pass
+        return {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -23,35 +42,93 @@ def save_world_state(character_name: str, state: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=4)
 
+TAMRIEL_GEOGRAPHY = {
+    "High Rock": {
+        "region": "Northwest Tamriel",
+        "borders": "Skyrim (East), Hammerfell (South across Dragontail Mountains / Iliac Bay), Abecean Sea (West)",
+        "routes": "Mountain passes east into Skyrim, coastal and desert roads south into Hammerfell."
+    },
+    "Hammerfell": {
+        "region": "West Tamriel",
+        "borders": "High Rock (North), Skyrim (Northeast), Cyrodiil (East across Colovian Highlands), Abecean Sea (West & South)",
+        "routes": "Mountain passes northeast into Skyrim, high road east into Cyrodiil, northern roads into High Rock."
+    },
+    "Skyrim": {
+        "region": "North Tamriel",
+        "borders": "High Rock (West), Hammerfell (Southwest), Cyrodiil (South across Jerall Mountains / Pale Pass), Morrowind (East across Velothi Mountains)",
+        "routes": "Pale Pass south into Cyrodiil, Dunmeth Pass east into Morrowind, western passes into High Rock & Hammerfell."
+    },
+    "Morrowind": {
+        "region": "Northeast Tamriel",
+        "borders": "Skyrim (West across Velothi Mountains), Cyrodiil (Southwest across Valus Mountains), Black Marsh (South)",
+        "routes": "Dunmeth Pass west into Skyrim, Cheydinhal Pass southwest into Cyrodiil, southern border roads into Black Marsh."
+    },
+    "Cyrodiil": {
+        "region": "Central Heartland of Tamriel",
+        "borders": "Skyrim (North), Hammerfell (Northwest), High Rock (Far Northwest), Valenwood (Southwest), Elsweyr (South), Black Marsh (Southeast), Morrowind (Northeast)",
+        "routes": "Hub of the Empire with imperial highways radiating north to Skyrim, west to Hammerfell, south to Elsweyr/Valenwood, and east to Morrowind/Black Marsh."
+    },
+    "Summerset Isle": {
+        "region": "Southwest Archipelago",
+        "borders": "Surrounded by the Abecean Sea and Sea of Pearls; closest mainland ports in Valenwood and Hammerfell",
+        "routes": "Requires sea voyage to/from ports in Valenwood (Woodhearth), Hammerfell (Rihad/Stros M'kai), or Cyrodiil (Anvil)."
+    },
+    "Valenwood": {
+        "region": "Southwest Tamriel",
+        "borders": "Cyrodiil (Northeast), Elsweyr (East), Abecean Sea (West & South)",
+        "routes": "Green Road northeast into Cyrodiil, river crossings and jungle trails east into Elsweyr."
+    },
+    "Elsweyr": {
+        "region": "South Tamriel",
+        "borders": "Cyrodiil (North), Valenwood (West), Black Marsh (East across Topal Bay), Southern Ocean (South)",
+        "routes": "Imperial roads north into Cyrodiil, river crossings west into Valenwood, coastal trade ships to Black Marsh."
+    },
+    "Black Marsh": {
+        "region": "Southeast Tamriel",
+        "borders": "Morrowind (North), Cyrodiil (West), Topal Bay / Elsweyr (Southwest), Padomaic Ocean (East)",
+        "routes": "Imperial road west through Leyawiin/Gideon into Cyrodiil, northern swamp roads into Morrowind."
+    }
+}
+
 def get_location_context(state: dict, provinces_data: list, cities_data: list, dungeons_data: list) -> str:
-    """Builds a context string for the LLM describing the current location."""
-    current_province = state.get("current_province", "Unknown")
-    current_location = state.get("current_location", "Unknown")
+    """Builds a rich geographic and environmental context string for the LLM DM."""
+    current_province = state.get("current_province", "Cyrodiil")
+    current_location = state.get("current_location", "Imperial Dungeon")
     
-    province_climate = "unknown"
+    province_climate = "temperate"
     for p in provinces_data:
-        if p.get("name") == current_province:
-            province_climate = p.get("climate", "unknown")
+        if p.get("name", "").lower() == current_province.lower():
+            province_climate = p.get("climate", "temperate")
             break
             
-    dominant_culture = "Unknown"
+    dominant_culture = "Imperial"
     for c in cities_data:
-        if c.get("name") == current_location:
-            dominant_culture = c.get("culture", "Unknown")
+        if c.get("name", "").lower() == current_location.lower():
+            dominant_culture = c.get("culture", "Imperial")
             break
             
-    date = state.get("date", {"day": 1, "month": "Morning Star", "year": 389})
+    date = state.get("tamrielic_date") or state.get("date") or {"day": 1, "month": "Morning Star", "year": 389}
+    
+    geo = TAMRIEL_GEOGRAPHY.get(current_province, {
+        "region": "Tamriel Realm",
+        "borders": "Adjacent Provinces",
+        "routes": "Roads and trails"
+    })
     
     return (
         f"Current Location: {current_location}, {current_province}\n"
+        f"Geographic Region: {geo['region']}\n"
+        f"Bordering Lands: {geo['borders']}\n"
+        f"Major Travel Routes: {geo['routes']}\n"
         f"Province Climate: {province_climate}\n"
         f"Dominant Culture: {dominant_culture}\n"
         f"Local Weather: {state.get('weather', 'clear')}\n"
-        f"Tamrielic Date: {date.get('day')} {date.get('month')}, Third Era {date.get('year')}"
+        f"Tamrielic Date: {date.get('day', 1)} {date.get('month', 'Morning Star')}, Third Era {date.get('year', 389)}"
     )
 
 def travel(state: dict, destination_province: str, destination_city: str) -> dict:
-    """Updates state to reflect travel to a new location and advances time."""
+    """Updates state to reflect narrative travel to a new location and advances time."""
+    prev_province = state.get("current_province", "Cyrodiil")
     state["current_province"] = destination_province
     state["current_location"] = destination_city
     
@@ -65,16 +142,21 @@ def travel(state: dict, destination_province: str, destination_city: str) -> dic
     if destination_city not in state["cities_discovered"]:
         state["cities_discovered"].append(destination_city)
         
-    hours = random.randint(24, 120)
+    # Approximate travel time based on adjacency
+    hours = random.randint(24, 48) if destination_province == prev_province else random.randint(72, 144)
     state = advance_time(state, hours)
     
     encounter_chance = random.random()
     
+    dest_geo = TAMRIEL_GEOGRAPHY.get(destination_province, {})
+    
     return state, {
         "hours_traveled": hours,
         "encounter_chance": encounter_chance,
+        "prev_province": prev_province,
         "new_province": destination_province,
-        "new_location": destination_city
+        "new_location": destination_city,
+        "destination_region": dest_geo.get("region", "Tamriel")
     }
 
 def advance_time(state: dict, hours: int) -> dict:
