@@ -13,7 +13,7 @@ active_program = get_active_program()
 QUEST_LOG_PATH = os.path.join(PROJECT_ROOT, "core", "programs", active_program, "quest_log.json")
 
 def main():
-    parser = argparse.ArgumentParser(description="Sanctuary Local Quest Manager")
+    parser = argparse.ArgumentParser(description="Arena Local Quest Manager")
     parser.add_argument("--action", required=True, choices=["add_quest"])
     parser.add_argument("--title", required=True, help="Title of the quest")
     parser.add_argument("--notes", required=True, help="Newline-separated list of objectives")

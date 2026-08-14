@@ -2227,11 +2227,11 @@ def download_quest(quest_id):
 
         ics_content = f"""BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//The Sanctuary//Quest Giver//EN
+PRODID:-//The Arena//Quest Giver//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT
-UID:{quest_id}@thesanctuary
+UID:{quest_id}@thearena
 DTSTAMP:{stamp_str}
 DTSTART:{start_str}
 DTEND:{end_str}
@@ -2339,7 +2339,7 @@ def list_programs():
                                 jdata2 = json.load(jf2)
                                 card2 = jdata2.get("data", jdata2)
                                 exts2 = card2.get("extensions", {})
-                                san2 = exts2.get("sanctuary", exts2.get("arena", {}))
+                                san2 = exts2.get("arena", exts2.get("sanctuary", {}))
                                 # ria_silmane is always recruited (spectral guide, always present)
                                 if folder == "ria_silmane":
                                     recruited = True
@@ -2562,8 +2562,8 @@ def rename_program():
                     data_block = jdata.get("data", jdata)
                     data_block["name"] = new_name
                     exts = data_block.setdefault("extensions", {})
-                    sanctuary = exts.setdefault("sanctuary", {})
-                    sanctuary["program_id"] = new_id
+                    arena = exts.setdefault("arena", {})
+                    arena["program_id"] = new_id
                     if "character_book" in data_block and isinstance(data_block["character_book"], dict):
                         data_block["character_book"]["name"] = new_name
                     with open(new_json, "w", encoding="utf-8") as f:
@@ -3458,11 +3458,11 @@ Output a single JSON object with EXACTLY these keys:
             "post_history_instructions": "",
             "creator_notes": "",
             "tags": [],
-            "creator": "LM-Sanctuary",
+            "creator": "LM-Arena",
             "character_version": "1.0",
             "alternate_greetings": [],
             "extensions": {
-                "sanctuary": {
+                "arena": {
                     "program_id": "",  # filled by finalize_imported_program
                     "image_details": {
                         "positive": parsed.get("image_positive") or f"solo, {name}",
@@ -3501,10 +3501,10 @@ def finalize_imported_program(program_path, program_id, card_json):
 
     os.makedirs(os.path.join(program_path, 'portraits'), exist_ok=True)
 
-    # Stamp program_id into the sanctuary extension
+    # Stamp program_id into the arena extension
     if card_json.get("data"):
         exts = card_json["data"].setdefault("extensions", {})
-        exts.setdefault("sanctuary", {})["program_id"] = program_id
+        exts.setdefault("arena", {})["program_id"] = program_id
     else:
         # Legacy flat format fallback
         card_json["program_id"] = program_id
@@ -3525,7 +3525,7 @@ def export_program_card(program_id):
             card_data = json.load(f)
         name = card_data.get('data', card_data).get('name', program_id)
         safe_name = re.sub(r'[^\w\- ]', '', name).strip().replace(' ', '_') or program_id
-        # Export only ST-spec keys — strip Sanctuary internals from root
+        # Export only ST-spec keys — strip Arena internals from root
         export_data = {k: v for k, v in card_data.items() if k in ('spec', 'spec_version', 'data')}
         resp = make_response(json.dumps(export_data, indent=2, ensure_ascii=False))
         resp.headers['Content-Type'] = 'application/json'
@@ -3662,21 +3662,21 @@ def import_tavern_program():
             return jsonify({'error': f"Program folder '{program_id}' already exists"}), 400
         os.makedirs(program_path, exist_ok=True)
 
-        # Ensure sanctuary extension block
+        # Ensure arena extension block
         exts = card_v3["data"].setdefault("extensions", {})
-        sanctuary = exts.setdefault("sanctuary", {})
-        sanctuary["program_id"] = program_id
-        if "image_details" not in sanctuary:
-            sanctuary["image_details"] = {"positive": "", "negative": ""}
+        arena = exts.setdefault("arena", {})
+        arena["program_id"] = program_id
+        if "image_details" not in arena:
+            arena["image_details"] = {"positive": "", "negative": ""}
 
         # Derive inversion and color from existing extensions or use defaults
-        inversion = sanctuary.pop("inversion", None) or {
+        inversion = arena.pop("inversion", None) or {
             "intimate": f"{name} is now deeply affectionate and tender.",
             "excited": f"{name} is now playful and energetic.",
             "intense": f"{name} is now focused and direct.",
             "sad": f"{name} is now empathetic and gentle."
         }
-        main_color = sanctuary.pop("main_color", None) or "#38bdf8"
+        main_color = arena.pop("main_color", None) or "#38bdf8"
 
         card_v3["_inversion"] = inversion
         card_v3["_colors"] = {"main_color": main_color}

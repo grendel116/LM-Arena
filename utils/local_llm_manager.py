@@ -65,7 +65,7 @@ def search_huggingface_repos(query):
         
     try:
         url = f"https://huggingface.co/api/models?search={cleaned_query}&filter=gguf&sort=likes&direction=-1&limit=20"
-        resp = requests.get(url, headers={"User-Agent": "LM-Sanctuary-Client/1.0"}, timeout=5.0).json()
+        resp = requests.get(url, headers={"User-Agent": "LM-Arena-Client/1.0"}, timeout=5.0).json()
         for item in resp:
             model_id = item.get("id")
             results.append({
@@ -83,7 +83,7 @@ def get_huggingface_repo_files(repo_id):
     files = []
     try:
         url = f"https://huggingface.co/api/models/{repo_id}/tree/main"
-        resp = requests.get(url, headers={"User-Agent": "LM-Sanctuary-Client/1.0"}, timeout=5.0).json()
+        resp = requests.get(url, headers={"User-Agent": "LM-Arena-Client/1.0"}, timeout=5.0).json()
         for item in resp:
             if item.get("type") == "file" and item.get("path", "").lower().endswith(".gguf"):
                 filename = item.get("path")

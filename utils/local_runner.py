@@ -46,7 +46,7 @@ def download_llama_server():
     os.makedirs(LLAMA_BIN_DIR, exist_ok=True)
     api_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
     try:
-        resp = requests.get(api_url, headers={"User-Agent": "LM-Sanctuary-Client/1.0"}, timeout=10.0).json()
+        resp = requests.get(api_url, headers={"User-Agent": "LM-Arena-Client/1.0"}, timeout=10.0).json()
         assets = resp.get("assets", [])
         
         gpu_type = detect_gpu_type()

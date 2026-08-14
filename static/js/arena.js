@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   Sanctuary — Application Script
+   Arena — Application Script
    Extracted from templates/index.html
-   Server config is read from window.__SANCTUARY_CONFIG (set by template).
+   Server config is read from window.__ARENA_CONFIG (set by template).
    ═══════════════════════════════════════════════════════════════════════ */
 
 // Global error catcher for mobile debugging
@@ -233,7 +233,7 @@ const safeSessionStorage = {
     }
 };
 
-const appConfig = window.__SANCTUARY_CONFIG || {};
+const appConfig = window.__ARENA_CONFIG || {};
 const localIp = appConfig.localIp || "127.0.0.1";
 const chatContainer = document.getElementById('chat-container');
 const userInput = document.getElementById('user-input');
@@ -3893,9 +3893,9 @@ async function openProgramProfileModal(programId) {
         document.getElementById('comp-directives').value = data.system_prompt || '';
         document.getElementById('comp-tts-voice').value = data.tts_voice || 'af_heart';
         
-        // Image prompts from extensions.sanctuary
-        const sanctuary = (data.extensions || {}).sanctuary || {};
-        const imgDetails = sanctuary.image_details || {};
+        // Image prompts from extensions.arena
+        const arena = (data.extensions || {}).arena || {};
+        const imgDetails = arena.image_details || {};
         document.getElementById('comp-image-details').value = imgDetails.positive || '';
         document.getElementById('comp-negative-details').value = imgDetails.negative || '';
         
@@ -3988,7 +3988,7 @@ async function saveProgramProfile() {
         first_mes: document.getElementById('comp-example-msg').value.trim(),
         system_prompt: document.getElementById('comp-directives').value.trim(),
         extensions: {
-            sanctuary: {
+            arena: {
                 program_id: targetProgramId,
                 image_details: {
                     positive: document.getElementById('comp-image-details').value.trim(),
@@ -4270,7 +4270,7 @@ async function deleteConsolidatedMemory(session_id, timestamp) {
 
 // --- getUserDisplayName ---
 function getUserDisplayName(userId) {
-    const id = userId || activeUserProfile || window.__SANCTUARY_CONFIG.activeUser;
+    const id = userId || activeUserProfile || window.__ARENA_CONFIG.activeUser;
     if (typeof userProfiles !== 'undefined' && userProfiles.length > 0) {
         const activeProf = userProfiles.find(p => p.id === id);
         if (activeProf && activeProf.name) {
@@ -5190,8 +5190,8 @@ function renderMessage(msg, isLive = false) {
     const isMsgTransient = msg.isTransient || (role === 'program' && (
         text === '*(Generation stopped)*' || 
         text === '*(Generation cancelled)*' || 
-        text === 'Error connecting to the Sanctuary.' ||
-        text === 'The Sanctuary is taking a while to restart. Please refresh manually.' ||
+        text === 'Error connecting to the Arena.' ||
+        text === 'The Arena is taking a while to restart. Please refresh manually.' ||
         (!msg.timestamp && !isLive && text.includes('Error'))
     ));
 
@@ -5796,7 +5796,7 @@ function handleToolReloadOrRecovery() {
                 if (checkAttempts > 20) {
                     clearInterval(checkInterval);
                     document.getElementById('reconnect-modal').style.display = 'none';
-                    appendMessage('program', 'The Sanctuary is taking a while to restart. Please refresh manually.');
+                    appendMessage('program', 'The Arena is taking a while to restart. Please refresh manually.');
                 }
             }
         }, 2000);
@@ -5912,7 +5912,7 @@ async function sendMessage() {
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
-                errMsg = "The Sanctuary is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
+                errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
             appendMessage('program', errMsg);
         }
@@ -6300,7 +6300,7 @@ async function resendUserMessage(bubble) {
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
-                errMsg = "The Sanctuary is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
+                errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
             appendMessage('program', errMsg);
         }
@@ -6409,7 +6409,7 @@ async function rerollFromMessage(button) {
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
-                errMsg = "The Sanctuary is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
+                errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
             appendMessage('program', errMsg);
         }
@@ -6663,7 +6663,7 @@ function expandImage(src) {
         if (profileIndex !== -1) {
             currentGalleryIndex = profileIndex;
         } else if (galleryImages.length === 0) {
-            showCustomAlert("No Media", "No portraits or generated images exist in this sanctuary yet.");
+            showCustomAlert("No Media", "No portraits or generated images exist in this arena yet.");
             return;
         } else {
             currentGalleryIndex = 0;
@@ -9288,7 +9288,7 @@ function playHangupSound() {
 
 function startVoiceCall() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showCustomAlert("Secure Context Required", "Microphone access is only available over HTTPS or localhost. Please access the Sanctuary using HTTPS or localhost to enable voice calls.");
+        showCustomAlert("Secure Context Required", "Microphone access is only available over HTTPS or localhost. Please access the Arena using HTTPS or localhost to enable voice calls.");
         return;
     }
 

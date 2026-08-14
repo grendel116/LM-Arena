@@ -550,7 +550,7 @@ def web_search(query: str) -> str:
         try:
             url = "https://en.wikipedia.org/w/api.php"
             headers = {
-                "User-Agent": "ProgramSanctuary/1.0"
+                "User-Agent": "ProgramArena/1.0"
             }
             params = {
                 "action": "query",
@@ -589,7 +589,7 @@ def web_search(query: str) -> str:
             }
             headers = {
                 "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "ProgramSanctuary/1.0"
+                "User-Agent": "ProgramArena/1.0"
             }
             res = requests.get(url, params=params, headers=headers, timeout=5)
             if res.status_code == 200:
@@ -734,7 +734,7 @@ def web_search(query: str) -> str:
         raw_query = query[len("music:"):].strip()
         try:
             import musicbrainzngs
-            musicbrainzngs.set_useragent("Sanctuary", "1.0", "https://github.com/sanctuary")
+            musicbrainzngs.set_useragent("Arena", "1.0", "https://github.com/arena")
             # Determine search type from query structure
             mb_results = []
             # Search artists
@@ -1446,7 +1446,7 @@ def generate_local_image(prompt: str) -> str:
         if available_vaes and selected_vae not in available_vaes:
             raise Exception(f"Missing VAE: The required VAE file `{selected_vae}` was not found.")
 
-        # Load image prompt tags from v3 extensions.sanctuary.image_details
+        # Load image prompt tags from v3 extensions.arena.image_details
         img_details_val = ""
         neg_details_val = ""
         
@@ -1459,8 +1459,8 @@ def generate_local_image(prompt: str) -> str:
                 with open(program_json_path, "r", encoding="utf-8") as f:
                     raw = json.load(f)
                 card = raw.get("data", raw)
-                sanctuary = card.get("extensions", {}).get("sanctuary", {})
-                img_details = sanctuary.get("image_details", {})
+                arena_ext = card.get("extensions", {}).get("arena", {})
+                img_details = arena_ext.get("image_details", {})
                 img_details_val = img_details.get("positive", "")
                 neg_details_val = img_details.get("negative", "")
             except Exception as e:

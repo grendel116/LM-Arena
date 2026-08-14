@@ -17,8 +17,7 @@
     <!-- Modern Typography -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Application Stylesheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sanctuary.css') }}?v=3">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/arena.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arena.css') }}?v=4">
     <!-- Vendor Stylesheets -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/github-dark.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cropper.min.css') }}">
@@ -43,7 +42,7 @@
     {% endif %}
     <!-- Server-side configuration bridge -->
     <script>
-        window.__SANCTUARY_CONFIG = {
+        window.__ARENA_CONFIG = {
             appName: "LM-Arena",
             localIp: "{{ local_ip }}",
             ttsAutoSpeak: {{ tts_auto_speak|tojson }},
@@ -140,7 +139,7 @@
                     <img id="welcome-avatar" src="" alt="Avatar" class="avatar-image">
                 </div>
                 <div class="message-bubbles-container">
-                    <div class="message-sender-name" id="welcome-sender">PROGRAM SANCTUARY</div>
+                    <div class="message-sender-name" id="welcome-sender">PROGRAM ARENA</div>
                     <div class="message" id="welcome-message-text"></div>
                 </div>
             </div>
@@ -842,7 +841,7 @@
                             <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                         </svg>
                     </button>
-                    <input type="range" id="audio-volume-slider" class="sanctuary-range" min="0" max="100" step="5" value="60" oninput="onAudioVolumeInput(this.value)" style="margin: 4px 0; flex: 1;">
+                    <input type="range" id="audio-volume-slider" class="arena-range" min="0" max="100" step="5" value="60" oninput="onAudioVolumeInput(this.value)" style="margin: 4px 0; flex: 1;">
                 </div>
             </div>
             
@@ -1089,7 +1088,7 @@
     <!-- Custom Dialog Modal (Alert/Confirm) -->
     <div id="custom-dialog-modal" class="modal" style="display: none;" onclick="closeCustomDialog(false)">
         <div class="modal-card" style="max-width: 400px; width: 90%; text-align: center; align-items: center;" onclick="event.stopPropagation()">
-            <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.2rem; font-weight: 600; color: var(--text-main); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; width: 100%;" id="custom-dialog-title">Sanctuary Dialog</h3>
+            <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.2rem; font-weight: 600; color: var(--text-main); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; width: 100%;" id="custom-dialog-title">Arena Dialog</h3>
             <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; text-align: left; width: 100%; box-sizing: border-box; overflow-wrap: break-word;" id="custom-dialog-message">Message content...</div>
             <div style="display: flex; gap: 12px; justify-content: center; width: 100%;" id="custom-dialog-buttons">
                 <!-- Buttons populated dynamically -->
@@ -1102,13 +1101,13 @@
         <div style="background: rgba(30, 32, 40, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); padding: 30px; border-radius: 16px; text-align: center; backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); max-width: 280px; width: 80%;">
             <div class="reconnect-spinner"></div>
             <h4 style="margin: 0 0 8px; font-weight: 600; font-size: 1rem;">Reconnecting...</h4>
-            <p style="color: var(--text-muted); font-size: 0.78rem; margin: 0; line-height: 1.4;">The Sanctuary is restarting after tool execution. Reconnecting...</p>
+            <p style="color: var(--text-muted); font-size: 0.78rem; margin: 0; line-height: 1.4;">The Arena is restarting after tool execution. Reconnecting...</p>
         </div>
     </div>
 
 
 
 
-    <script defer src="{{ url_for('static', filename='js/sanctuary.js') }}?v=4"></script>
+    <script defer src="{{ url_for('static', filename='js/arena.js') }}?v=4"></script>
 </body>
 </html>
