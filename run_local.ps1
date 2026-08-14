@@ -1,4 +1,4 @@
-# LM Sanctuary: Local Windows Startup Script (PowerShell)
+# LM Arena: Local Windows Startup Script (PowerShell)
 
 # 1. Check for Python
 if (!(Get-Command python -ErrorAction SilentlyContinue)) {
@@ -23,7 +23,7 @@ if (!(Test-Path .env)) {
     Copy-Item .env.example .env
 }
 
-# 5. Start LM Sanctuary
-Write-Host "--- Starting LM Sanctuary ---"
+# 5. Start LM Arena
+Write-Host "--- Starting LM Arena ---"
 $env:OPEN_BROWSER="true"
 .\.venv\Scripts\python app.py

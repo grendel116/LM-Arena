@@ -984,7 +984,7 @@ def _is_cloud_model_check(model: str) -> bool:
 
 
 class BaseProgramRunner:
-    def __init__(self, app_name="Sanctuary"):
+    def __init__(self, app_name="LM-Arena"):
         self.app_name = app_name
         self._winning_mode_cache = {}
 
@@ -1462,7 +1462,7 @@ class BaseProgramRunner:
                             if image_succeeded:
                                 clean_response = clean_response.replace(original_tag, new_markdown)
                             else:
-                                clean_response = clean_response.replace(original_tag, "")
+                                clean_response = clean_response.replace(original_tag, f"*({new_markdown})*")
                             resolved_args = parsed_args["kwargs"] if parsed_args["kwargs"] else {"prompt": parsed_args["args"][0] if parsed_args["args"] else ""}
                             pair = _build_tool_calls_pair(normalized_name, resolved_args, new_markdown, idx)
                             t_calls.extend(pair)
@@ -1885,7 +1885,7 @@ class OpenSourceRunner(BaseProgramRunner):
     """This operates independently of google-adk or Google cloud infrastructure, 
     reading character settings directly from the program's JSON profile.
     """
-    def __init__(self, app_name="Sanctuary"):
+    def __init__(self, app_name="LM-Arena"):
         super().__init__(app_name)
         self.sessions_history = {} # Simple in-memory session logs dictionary
         self.sessions_inversion_state = {} # Session-specific personality inversion states
@@ -1966,10 +1966,14 @@ class OpenSourceRunner(BaseProgramRunner):
         try:
             from engine.save_manager import get_active_save_id, SAVES_DIR
             active_save = get_active_save_id()
-            target_id = active_save if safe_id in ("default", "", "active") else safe_id
-            save_hist_path = SAVES_DIR / target_id / "history.json"
-            if save_hist_path.parent.exists():
-                return str(save_hist_path)
+            
+            specific_save_file = SAVES_DIR / safe_id / "history.json"
+            if specific_save_file.exists():
+                return str(specific_save_file)
+                
+            active_save_file = SAVES_DIR / active_save / "history.json"
+            if active_save_file.exists() or active_save_file.parent.exists():
+                return str(active_save_file)
         except Exception:
             pass
         return os.path.join(self.sessions_dir, f"{safe_id}.json")
@@ -2213,7 +2217,7 @@ class OpenSourceRunner(BaseProgramRunner):
         if not msg_id:
             if new_message_text.startswith("[SYSTEM: User has completed"):
                 prefix = "quest_"
-            elif "Send me a portrait of yourself" in new_message_text or "[GENERATE_IMAGE:" in new_message_text:
+            elif "Send me a portrait of yourself" in new_message_text or "[GENERATE_IMAGE:" in new_message_text or "[GENERATE_IMAGEN:" in new_message_text:
                 prefix = "port_"
             elif new_message_text.startswith("[Tool Response from"):
                 prefix = "tool_"
@@ -2653,7 +2657,7 @@ class OpenSourceRunner(BaseProgramRunner):
             if role == 'user':
                 if text.startswith("[SYSTEM: User has completed"):
                     prefix = "quest_"
-                elif "Send me a portrait of yourself" in text or "[GENERATE_IMAGE:" in text:
+                elif "Send me a portrait of yourself" in text or "[GENERATE_IMAGE:" in text or "[GENERATE_IMAGEN:" in text:
                     prefix = "port_"
                 elif text.startswith("[Tool Response from"):
                     prefix = "tool_"

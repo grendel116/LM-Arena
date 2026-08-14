@@ -550,7 +550,7 @@ function generateMessageId(text, role = 'user') {
                 prefix = 'prgm_';
             }
         } else {
-            if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:"))) {
+            if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:") || text.includes("[GENERATE_IMAGEN:"))) {
                 prefix = 'port_';
             } else if (text && text.startsWith("[SYSTEM: User has completed")) {
                 prefix = 'quest_';
@@ -886,7 +886,7 @@ function showOnboardingCard() {
     
     onboarding.innerHTML = `
         <div class="onboarding-header">
-            <h2>👾 Sanctuary Connection Guide</h2>
+            <h2>👾 LM-Arena Connection Guide</h2>
             <p>Your program needs a language model "brain" to speak. Choose one or both options below to connect.</p>
         </div>
         
@@ -932,7 +932,7 @@ function showOnboardingCard() {
         
         <div class="onboarding-footer">
             <span>Active Configuration File:</span>
-            <code class="env-path">C:/LLM/LM Sanctuary/.env</code>
+            <code class="env-path">C:/LLM/LM-Arena/.env</code>
         </div>
     `;
     chatContainer.appendChild(onboarding);
@@ -991,32 +991,149 @@ function saveModalConfig() {
     saveConfigData(apiKey, projectId, geminiModel);
 }
 
-// --- Slider Handlers ---
-function onDynamismSliderInput(val) {
-    const currentVal = document.getElementById('dynamism-current-val');
-    if (currentVal) currentVal.textContent = parseFloat(val).toFixed(2);
-}
+// --- Ambient BGM Audio Manager ---
+let audioTrackPlayer = null;
+let currentTrackPath = null;
+let audioVolume = 0.6; // 0.0 to 1.0
+let isAudioMuted = false;
+let useImagenMode = false;
 
-async function onDynamismSliderChange(val) {
-    await saveGenerationParams(val);
-}
+function initAudioSystem() {
+    const savedVol = safeLocalStorage.getItem('arena_audio_volume');
+    if (savedVol !== null) {
+        audioVolume = parseFloat(savedVol);
+    }
+    const savedMute = safeLocalStorage.getItem('arena_audio_muted');
+    if (savedMute === 'true') {
+        isAudioMuted = true;
+    }
+    const savedImagen = safeLocalStorage.getItem('arena_use_imagen');
+    if (savedImagen === 'true') {
+        useImagenMode = true;
+    }
 
-async function saveGenerationParams(temperature) {
-    try {
-        const res = await fetch('/api/save_generation_params', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ temperature: parseFloat(temperature) })
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-            console.log("Dynamism saved successfully:", temperature);
-            connectionStatus.temperature = parseFloat(temperature);
-        } else {
-            console.error("Failed to save dynamism settings:", data.error);
+    const slider = document.getElementById('audio-volume-slider');
+    const display = document.getElementById('audio-volume-display');
+    if (slider) slider.value = Math.round(audioVolume * 100);
+    if (display) display.textContent = `${Math.round(audioVolume * 100)}%`;
+
+    updateMuteButtonUI();
+    updateImagenToggleUI();
+
+    // Immediate startup track request
+    playBGMTrack("Opening Titles.mp3");
+
+    // Unified document unlocker for browser policies
+    const unlocker = () => {
+        if (audioTrackPlayer && audioTrackPlayer.paused) {
+            audioTrackPlayer.play().catch(() => {});
+        } else if (!audioTrackPlayer) {
+            playBGMTrack("Opening Titles.mp3");
         }
-    } catch (e) {
-        console.error("Error saving dynamism settings:", e);
+    };
+    ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+        window.addEventListener(evt, unlocker, { passive: true });
+    });
+}
+
+function toggleImagenMode() {
+    useImagenMode = !useImagenMode;
+    safeLocalStorage.setItem('arena_use_imagen', useImagenMode.toString());
+    updateImagenToggleUI();
+}
+
+function updateImagenToggleUI() {
+    const checkbox = document.getElementById('imagen-toggle-checkbox');
+    if (checkbox) {
+        checkbox.checked = useImagenMode;
+    }
+}
+
+function onAudioVolumeInput(val) {
+    audioVolume = parseFloat(val) / 100;
+    safeLocalStorage.setItem('arena_audio_volume', audioVolume.toString());
+    const display = document.getElementById('audio-volume-display');
+    if (display) display.textContent = `${Math.round(audioVolume * 100)}%`;
+
+    if (audioTrackPlayer) {
+        audioTrackPlayer.volume = isAudioMuted ? 0 : audioVolume;
+    }
+}
+
+function toggleAudioMute() {
+    isAudioMuted = !isAudioMuted;
+    safeLocalStorage.setItem('arena_audio_muted', isAudioMuted.toString());
+    updateMuteButtonUI();
+
+    if (audioTrackPlayer) {
+        audioTrackPlayer.volume = isAudioMuted ? 0 : audioVolume;
+    }
+}
+
+function updateMuteButtonUI() {
+    const icon = document.getElementById('audio-mute-icon');
+    if (!icon) return;
+    if (isAudioMuted) {
+        icon.innerHTML = `
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+        `;
+    } else {
+        icon.innerHTML = `
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        `;
+    }
+}
+
+function playBGMTrack(trackFilename, isLooping = true) {
+    if (!trackFilename) return;
+    const trackPath = `/sound/${encodeURIComponent(trackFilename)}`;
+    if (currentTrackPath === trackPath && audioTrackPlayer && !audioTrackPlayer.paused) {
+        return;
+    }
+
+    if (!audioTrackPlayer) {
+        audioTrackPlayer = new Audio();
+    }
+
+    audioTrackPlayer.src = trackPath;
+    audioTrackPlayer.loop = isLooping;
+    audioTrackPlayer.volume = isAudioMuted ? 0 : audioVolume;
+    currentTrackPath = trackPath;
+
+    audioTrackPlayer.play().catch(e => {
+        console.log("Audio autoplay waiting for user interaction:", e);
+    });
+}
+
+function evaluateSceneBGM(text, locationContext) {
+    if (!text && !locationContext) return;
+    const combined = `${text || ''} ${locationContext || ''}`.toLowerCase();
+
+    if (combined.includes("ria silmane") || combined.includes("vision") || combined.includes("spectral")) {
+        playBGMTrack("A Vision Beyond.mp3");
+    } else if (combined.includes("jagar tharn") || combined.includes("emperor's palace") || combined.includes("throne room")) {
+        playBGMTrack("Tharn's Betrayal.mp3");
+    } else if (combined.includes("inn") || combined.includes("tavern") || combined.includes("alehouse")) {
+        playBGMTrack("The Wandering Inn.mp3");
+    } else if (combined.includes("mages guild") || combined.includes("arcane academy")) {
+        playBGMTrack("The Mages Guild.mp3");
+    } else if (combined.includes("blacksmith") || combined.includes("armorer") || combined.includes("forge")) {
+        playBGMTrack("Blacksmith.mp3");
+    } else if (combined.includes("audience chamber") || combined.includes("ruler") || combined.includes("king's court")) {
+        playBGMTrack("The Audience Chamber.mp3");
+    } else if (combined.includes("dungeon") || combined.includes("sewer") || combined.includes("crypt") || combined.includes("vault")) {
+        playBGMTrack("Dungeon Crawling.mp3");
+    } else if (combined.includes("curfew") || combined.includes("night") || combined.includes("dark alley")) {
+        playBGMTrack("The Late Hours.mp3");
+    } else if (combined.includes("skyrim") || combined.includes("snow") || combined.includes("blizzard")) {
+        playBGMTrack("Winter In Hammerfell.mp3");
+    } else if (combined.includes("lockpick") || combined.includes("stealth") || combined.includes("sneaking")) {
+        playBGMTrack("Breaking And Entering.mp3");
+    } else {
+        playBGMTrack("A Warm Welcome.mp3");
     }
 }
 
@@ -5056,18 +5173,19 @@ function renderMessage(msg, isLive = false) {
         return renderVoiceCallRow(msg);
     }
 
+    const role = msg.role;
+    const text = msg.text || '';
+    const msgId = msg.id || generateMessageId(text, role);
+
     // Client-side hidden prefix check
     const _hiddenPrefixes = ['port_', 'quest_', 'tool_'];
     if (msg.id && _hiddenPrefixes.some(p => msg.id.startsWith(p))) return null;
+    if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:") || text.includes("[GENERATE_IMAGEN:"))) return null;
 
     const welcome = document.getElementById('welcome-message');
     if (welcome) welcome.remove();
     const onboarding = document.getElementById('onboarding-container');
     if (onboarding) onboarding.remove();
-
-    const role = msg.role;
-    const text = msg.text || '';
-    const msgId = msg.id || generateMessageId(text, role);
 
     const isMsgTransient = msg.isTransient || (role === 'program' && (
         text === '*(Generation stopped)*' || 
@@ -5133,12 +5251,8 @@ function renderMessage(msg, isLive = false) {
             bubblesToCreate.push({ type: 'media', content: m });
         });
     }
-    if (bubblesToCreate.length === 0 && (!msg.tool_calls || msg.tool_calls.length === 0)) {
-        if (role === 'user') {
-            bubblesToCreate.push({ type: 'text', content: text });
-        } else {
-            return null;
-        }
+    if (bubblesToCreate.length === 0) {
+        bubblesToCreate.push({ type: 'text', content: text || '*(Empty message)*' });
     }
 
     bubblesToCreate.forEach((item, idx) => {
@@ -5172,7 +5286,22 @@ function renderMessage(msg, isLive = false) {
                 actions.appendChild(tsSpan);
             }
 
-            if (role === 'user') {
+            // Image-only messages: only show delete
+            if (isImageOnly && item.type !== 'text') {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'action-icon-btn';
+                deleteBtn.title = 'Delete image from history';
+                deleteBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                `;
+                deleteBtn.onclick = () => deleteTurnFromMessage(deleteBtn);
+                actions.appendChild(deleteBtn);
+            } else if (role === 'user') {
                 const reuseBtn = document.createElement('button');
                 reuseBtn.className = 'action-icon-btn';
                 reuseBtn.title = 'Resend prompt (local)';
@@ -5323,6 +5452,9 @@ function renderMessage(msg, isLive = false) {
                     textDiv.textContent = actualResponse;
                 }
                 bubble.appendChild(textDiv);
+                if (role === 'program' && isLive) {
+                    evaluateSceneBGM(actualResponse);
+                }
             }
 
             if (msg.tool_calls && msg.tool_calls.length > 0) {
@@ -5384,8 +5516,8 @@ function renderMessage(msg, isLive = false) {
                             console.error("Failed to fetch prompt from server:", err);
                         }
                         showCustomTextareaPrompt(
-                            "Edit Portrait Prompt",
-                            "Modify the ComfyUI prompt to regenerate this portrait (Ctrl+Enter to save):",
+                            "Edit Image Prompt",
+                            "Modify the prompt to regenerate this image (Ctrl+Enter to save):",
                             activePrompt || "",
                             (newPrompt) => {
                                 if (newPrompt !== null) {
@@ -5399,7 +5531,7 @@ function renderMessage(msg, isLive = false) {
 
                     const recycleBtn = document.createElement('button');
                     recycleBtn.className = 'image-action-btn';
-                    recycleBtn.title = 'Reroll portrait with the same prompt';
+                    recycleBtn.title = 'Reroll image with the same prompt';
                     recycleBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="23 4 23 10 17 10"></polyline>
@@ -5419,7 +5551,7 @@ function renderMessage(msg, isLive = false) {
 
                     const animateBtn = document.createElement('button');
                     animateBtn.className = 'image-action-btn';
-                    animateBtn.title = 'Animate portrait (video generation)';
+                    animateBtn.title = 'Animate image (video generation)';
                     animateBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="23 7 16 12 23 17 23 7"></polygon>
@@ -5429,8 +5561,8 @@ function renderMessage(msg, isLive = false) {
                     animateBtn.onclick = (e) => {
                         e.stopPropagation();
                         showCustomTextareaPrompt(
-                            "Animate Portrait",
-                            "Describe the motion or animation for this portrait (e.g. blinking, smiling, wind in hair, looking at camera):",
+                            "Animate Image",
+                            "Describe the motion or animation (e.g. blinking, smiling, wind in hair, looking at camera):",
                             "gentle head turn, smiling, blinking, looking at camera",
                             (motionPrompt) => {
                                 if (motionPrompt !== null) {
@@ -5697,7 +5829,7 @@ async function sendMessage() {
         userImageUrl = `data:${attachedMime};base64,${attachedBase64}`;
     }
     let prefix = 'usr_';
-    if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:"))) {
+    if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:") || text.includes("[GENERATE_IMAGEN:"))) {
         prefix = 'port_';
     } else if (text && text.startsWith("[SYSTEM: User has completed")) {
         prefix = 'quest_';
@@ -6890,7 +7022,11 @@ function handleSwipeGesture() {
 // --- generatePortraitPrompt ---
 async function generatePortraitPrompt() {
     if (isGenerating) return;
-    userInput.value = "[GENERATE_IMAGE: Render a visual illustration of the current scene/character. Do not narrate new story events or call mechanics tools.]";
+    if (useImagenMode) {
+        userInput.value = "[GENERATE_IMAGEN: Render a visual illustration of the current scene or character using Google Imagen. Do not narrate new story events or call mechanics tools.]";
+    } else {
+        userInput.value = "[GENERATE_IMAGE: Render a visual illustration of the current scene/character. Do not narrate new story events or call mechanics tools.]";
+    }
     await sendMessage();
 }
 
@@ -6989,7 +7125,8 @@ async function regenerateImage(buttonElement, oldImageUrl, prompt) {
             body: JSON.stringify({
                 session_id: sessionId,
                 old_image_url: getRelativePath(oldImageUrl),
-                prompt: prompt
+                prompt: prompt,
+                use_imagen: useImagenMode
             })
         });
         
@@ -8848,6 +8985,7 @@ function initModalListeners() {
     if (ttsBtn && ttsAutoSpeak) {
         ttsBtn.classList.add('active');
     }
+    initAudioSystem();
 }
 if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', initModalListeners);

@@ -159,16 +159,16 @@ def load_theme(program_id):
 
 
 def load_temperature():
-    """Read temperature from project settings, defaulting to 0.95."""
+    """Read temperature from project settings, locked to 0.85 for LM-Arena balance."""
     from variables import VARIABLES_DIR
     settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
     if os.path.exists(settings_path):
         try:
             with open(settings_path, "r", encoding="utf-8") as f:
-                return json.load(f).get("temperature", 0.95)
+                return json.load(f).get("temperature", 0.85)
         except Exception:
             pass
-    return 0.95
+    return 0.85
 
 
 def find_image_sidecar_json(image_filename, active_program):
@@ -425,11 +425,10 @@ def crop_profile_picture():
         print(f"Error cropping profile picture: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/sparkle.mp3')
-@requires_auth
-def serve_sparkle_mp3():
-    core_dir = os.path.join(base_dir, 'core')
-    return send_from_directory(core_dir, 'sparkle.mp3')
+@app.route('/sound/<path:filename>')
+def serve_sound(filename):
+    sound_dir = os.path.join(base_dir, 'sound')
+    return send_from_directory(sound_dir, filename)
  
 @app.route('/images/<path:filename>')
 @requires_auth
@@ -1208,16 +1207,19 @@ def regenerate_image():
         tools.current_session_id.set(session_id)
         with tools.session_tool_calls_lock:
             tools.session_tool_calls[session_id] = []
+        use_imagen = request.json.get('use_imagen', False)
         # Generate new portrait
-        new_markdown = tools.generate_local_image(prompt)
+        if use_imagen:
+            new_markdown = tools.generate_imagen(prompt)
+        else:
+            new_markdown = tools.generate_local_image(prompt)
         if new_markdown.startswith("Error"):
             return jsonify({'error': new_markdown}), 500
             
-        # Parse the new image URL from Markdown link: ![Portrait](/images/portraits/portrait_123.png)
+        # Parse the new image URL from Markdown link: ![...](/images/...)
         new_image_url = None
-        if new_markdown.startswith("![Portrait](") and new_markdown.endswith(")"):
-            prefix_len = 12
-            new_image_url = new_markdown[prefix_len:-1]
+        if new_markdown.startswith("![") and new_markdown.endswith(")"):
+            new_image_url = new_markdown.split("(", 1)[1][:-1]
             
         if not new_image_url:
             return jsonify({'error': f'Failed to parse generated image markdown: {new_markdown}'}), 500
@@ -1344,14 +1346,21 @@ def list_generations():
 def list_images():
     try:
         active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
-        portraits_dir = os.path.join('core', 'programs', active_program, 'portraits')
-        if not os.path.exists(portraits_dir):
-            return jsonify({'images': []})
-        files = os.listdir(portraits_dir)
-        image_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.mp4', '.webm')) and f.lower() != 'profile.png']
-        image_files.sort(key=lambda x: os.path.getmtime(os.path.join(portraits_dir, x)), reverse=True)
-        image_urls = [f"/images/portraits/{f}" for f in image_files]
-        return jsonify({'images': image_urls})
+        program_dir = os.path.join('core', 'programs', active_program)
+        image_urls = []
+        
+        for subdir, url_prefix in [('portraits', '/images/portraits'), ('media', '/images/media')]:
+            scan_dir = os.path.join(program_dir, subdir)
+            if not os.path.exists(scan_dir):
+                continue
+            files = os.listdir(scan_dir)
+            media_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.mp4', '.webm')) and f.lower() != 'profile.png']
+            for f in media_files:
+                mtime = os.path.getmtime(os.path.join(scan_dir, f))
+                image_urls.append({'url': f"{url_prefix}/{f}", 'mtime': mtime})
+        
+        image_urls.sort(key=lambda x: x['mtime'], reverse=True)
+        return jsonify({'images': [item['url'] for item in image_urls]})
     except Exception as e:
         print(f"Error listing images: {e}")
         return jsonify({'error': str(e)}), 500

@@ -1524,8 +1524,8 @@ def generate_imagen(prompt: str, aspect_ratio: str = '1:1') -> str:
     import os
     import time
     import uuid
-    from google import genai
-    from google.genai import types
+    import base64
+    import requests
     from dotenv import load_dotenv
 
     try:
@@ -1536,28 +1536,64 @@ def generate_imagen(prompt: str, aspect_ratio: str = '1:1') -> str:
         if not api_key:
             return "Error: REMOTE_API_KEY not found in environment."
 
-        client = genai.Client(api_key=api_key)
-        model_name = os.getenv("IMAGEN_MODEL", "imagen-4.0-generate-001")
-
         from core.program_config import replace_placeholders
         resolved_prompt = replace_placeholders(prompt)
+        model_name = os.getenv("IMAGEN_MODEL", "imagen-4.0-generate-001")
         print(f"[IMAGEN] Generating image with model {model_name} and prompt: {resolved_prompt}")
-        response = client.models.generate_images(
-            model=model_name,
-            prompt=resolved_prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                output_mime_type='image/png',
-                aspect_ratio=aspect_ratio
+
+        image_bytes = None
+
+        # 1. Try Google GenAI SDK if installed
+        try:
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_images(
+                model=model_name,
+                prompt=resolved_prompt,
+                config=types.GenerateImagesConfig(
+                    number_of_images=1,
+                    output_mime_type='image/png',
+                    aspect_ratio=aspect_ratio
+                )
             )
-        )
+            if response.generated_images:
+                img_obj = response.generated_images[0]
+                if hasattr(img_obj.image, 'image_bytes'):
+                    image_bytes = img_obj.image.image_bytes
+        except Exception as sdk_err:
+            print(f"[IMAGEN] SDK call skipped ({sdk_err}), trying direct REST API.")
 
-        if not response.generated_images:
-            return "Error: No images were generated."
+        # 2. Try Direct REST API endpoint
+        if not image_bytes:
+            candidate_models = [model_name, "imagen-4.0-generate-001", "imagen-4.0-fast-generate-001", "imagen-3.0-generate-002"]
+            seen = set()
+            for m in candidate_models:
+                if m in seen:
+                    continue
+                seen.add(m)
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:predict?key={api_key}"
+                payload = {
+                    "instances": [{"prompt": resolved_prompt}],
+                    "parameters": {
+                        "sampleCount": 1,
+                        "outputMimeType": "image/png",
+                        "aspectRatio": aspect_ratio
+                    }
+                }
+                res = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    preds = data.get("predictions", [])
+                    if preds and "bytesBase64Encoded" in preds[0]:
+                        b64_str = preds[0]["bytesBase64Encoded"]
+                        image_bytes = base64.b64decode(b64_str)
+                        break
+                else:
+                    print(f"[IMAGEN] Model {m} returned {res.status_code}: {res.text[:200]}")
 
-        img_obj = response.generated_images[0]
-        if not hasattr(img_obj.image, 'image_bytes'):
-            return "Error: Generated image object does not contain image bytes."
+        if not image_bytes:
+            return "Error: Unable to generate image with available Imagen models."
 
         from utils.program import get_active_program
         active_program = get_active_program()
@@ -1569,7 +1605,7 @@ def generate_imagen(prompt: str, aspect_ratio: str = '1:1') -> str:
         local_path = os.path.join(media_dir, local_filename)
 
         with open(local_path, "wb") as f:
-            f.write(img_obj.image.image_bytes)
+            f.write(image_bytes)
 
         return f"![Generated Image](/images/media/{local_filename})"
 

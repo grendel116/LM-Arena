@@ -1,4 +1,4 @@
-const CACHE_NAME = 'program-sanctuary-v5';
+const CACHE_NAME = 'program-arena-v5';
 const ASSETS = [
   '/profile.png',
   '/app_icon.png',

@@ -1,5 +1,5 @@
 @echo off
-REM LM Sanctuary: Local Windows Startup Script (Batch)
+REM LM Arena: Local Windows Startup Script (Batch)
 
 REM 1. Check for Python
 where python >nul 2>nul
@@ -26,8 +26,8 @@ if not exist .env (
     copy .env.example .env >nul
 )
 
-REM 5. Start LM Sanctuary
-echo --- Starting LM Sanctuary ---
+REM 5. Start LM Arena
+echo --- Starting LM Arena ---
 set OPEN_BROWSER=true
 .venv\Scripts\python app.py
 pause
