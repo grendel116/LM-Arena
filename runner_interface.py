@@ -826,10 +826,10 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
         # 6. Active Player Character Sheet, Vitals & Inventory Context
         try:
-            from utils.program import get_active_user
+            from engine.save_manager import get_active_save_id
             from engine.character import load_character, get_character_context
-            active_user = get_active_user()
-            sheet = load_character(active_user)
+            active_save_id = get_active_save_id()
+            sheet = load_character(active_save_id)
             char_ctx = get_character_context(sheet)
             if char_ctx:
                 context_parts.append(f"<player_character>\n{char_ctx}\n</player_character>")

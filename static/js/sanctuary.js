@@ -3074,12 +3074,22 @@ async function saveActiveUserProfile() {
 
     let profileId = selectedEditingProfileId;
     const newName = nameInput.value.trim();
-    const content = textarea.value;
+    let content = textarea.value;
 
     if (!newName) {
         showCustomAlert("Error", "Profile name cannot be empty.");
         return;
     }
+
+    // Sync header title in markdown content
+    const lines = content.split('\n');
+    if (lines.length > 0 && lines[0].startsWith('#')) {
+        lines[0] = `# ${newName}`;
+        content = lines.join('\n');
+    } else {
+        content = `# ${newName}\n` + content;
+    }
+    textarea.value = content;
 
     if (saveBtn) {
         saveBtn.disabled = true;
@@ -3173,14 +3183,10 @@ async function saveActiveUserProfile() {
 
 // --- createNewUserProfile ---
 async function createNewUserProfile() {
-    let num = 1;
-    let sanitizedId = `profile_${num}`;
-    while (userProfiles.some(p => p.id === sanitizedId)) {
-        num++;
-        sanitizedId = `profile_${num}`;
-    }
-    const name = `Profile ${num}`;
-    const content = `# USER CONTEXT: ${name.toUpperCase()}\n- Describe your persona, role, and details here.\n`;
+    const timestamp = Date.now();
+    const sanitizedId = `prof_${timestamp}`;
+    const defaultName = "New Hero";
+    const content = `# ${defaultName}\n- Describe your hero persona, background, and roleplay details here.\n`;
 
     try {
         const res = await fetch('/api/user_profiles/save', {
@@ -3243,6 +3249,8 @@ async function deleteUserProfileById(targetProfileId) {
                 selectedEditingProfileId = "";
                 closeUserProfileEditor();
                 await loadUserProfiles();
+                await loadSavesList();
+                await fetchCharacterStatus();
             } else {
                 showCustomAlert("Error", data.error || "Failed to delete profile.");
             }
@@ -3373,7 +3381,8 @@ function renderSavesList(saves, activeId) {
 
         const subtitleDiv = document.createElement('div');
         subtitleDiv.style.cssText = 'font-size: 0.75rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;';
-        subtitleDiv.innerText = `${charName} • Level ${save.level || 1} ${save.race || 'Nord'} ${save.class || 'Mage'} • ${dateFormatted}`;
+        const userProf = save.user_profile_id || 'eternal_champion';
+        subtitleDiv.innerText = `${charName} (${userProf}) • Level ${save.level || 1} ${save.race || 'Nord'} ${save.class || 'Mage'} • ${dateFormatted}`;
         info.appendChild(subtitleDiv);
 
         leftArea.appendChild(info);

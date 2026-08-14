@@ -82,9 +82,14 @@ def sync_save_meta(save_id: str) -> dict:
     t_date = world.get("tamrielic_date", {})
     date_str = f"{t_date.get('day', 1)} {t_date.get('month', 'Morning Star')}, 3E {t_date.get('year', 389)}"
 
+    user_profile_id = existing_meta.get("user_profile_id")
+    if not user_profile_id:
+        user_profile_id = "eternal_champion" if save_id == "eternal_champion" else save_id
+
     meta = {
         "id": save_id,
         "name": existing_meta.get("name") or char.get("name", "Eternal Champion"),
+        "user_profile_id": user_profile_id,
         "created_at": existing_meta.get("created_at", datetime.now().isoformat()),
         "updated_at": datetime.now().isoformat(),
         "character_name": char.get("name", "Eternal Champion"),
@@ -124,13 +129,17 @@ def list_saves() -> list:
     return saves
 
 
-def create_save(name: str = None, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage") -> dict:
-    """Create an isolated, complete new save state."""
+def create_save(name: str = None, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage", user_profile_id: str = None) -> dict:
+    """Create an isolated, complete new save state locked to a player profile."""
     timestamp_slug = datetime.now().strftime("%Y%m%d_%H%M%S")
     clean_name = "".join(c for c in (character_name or "hero").lower() if c.isalnum() or c in "_-")
     save_id = f"{clean_name}_{timestamp_slug}"
     save_path = SAVES_DIR / save_id
     save_path.mkdir(parents=True, exist_ok=True)
+
+    if not user_profile_id:
+        from utils.program import get_active_user
+        user_profile_id = get_active_user() or "eternal_champion"
     
     # 1. Initialize character sheet
     from engine.character import DEFAULT_SHEET, update_character_identity
@@ -177,6 +186,7 @@ def create_save(name: str = None, character_name: str = "Eternal Champion", race
     meta = {
         "id": save_id,
         "name": name or f"{character_name} - {race} {character_class}",
+        "user_profile_id": user_profile_id,
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat(),
         "character_name": character_name,
@@ -193,20 +203,28 @@ def create_save(name: str = None, character_name: str = "Eternal Champion", race
     with open(save_path / "meta.json", "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=4, ensure_ascii=False)
         
-    # Set as active save
+    # Set as active save and sync player profile
     set_active_save_id(save_id)
+    from utils.program import set_active_user
+    set_active_user(user_profile_id)
     meta["is_active"] = True
     return meta
 
 
 def load_save(save_id: str) -> dict:
-    """Activate a save state by ID."""
+    """Activate a save state by ID and lock active user profile to its associated character."""
     save_path = SAVES_DIR / save_id
     if not save_path.exists():
         raise FileNotFoundError(f"Save {save_id} does not exist.")
         
     set_active_save_id(save_id)
     meta = sync_save_meta(save_id)
+    
+    # Automatically sync active user profile to this save's profile
+    user_prof = meta.get("user_profile_id") or save_id
+    from utils.program import set_active_user
+    set_active_user(user_prof)
+    
     meta["is_active"] = True
     return meta
 

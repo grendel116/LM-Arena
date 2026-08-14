@@ -2783,13 +2783,15 @@ def delete_program_journals():
 def get_character_status():
     try:
         from utils.program import get_active_user
+        from engine.save_manager import get_active_save_id
         from engine.character import load_character
         from engine.world_engine import load_world_state
         from engine.mechanics import get_modifier
         
         active_user = get_active_user()
-        character_sheet = load_character(active_user)
-        world_state = load_world_state(active_user)
+        save_id = get_active_save_id()
+        character_sheet = load_character(save_id)
+        world_state = load_world_state(save_id)
         
         # Calculate d20 modifiers for attributes for convenient UI rendering
         modifiers = {}
@@ -2800,6 +2802,7 @@ def get_character_status():
         return jsonify({
             "status": "success",
             "active_user": active_user,
+            "active_save_id": save_id,
             "character": character_sheet,
             "modifiers": modifiers,
             "world": world_state
@@ -2813,11 +2816,11 @@ def get_character_status():
 def update_character_profile():
     try:
         data = request.get_json(silent=True) or {}
-        from utils.program import get_active_user
+        from engine.save_manager import get_active_save_id
         from engine.character import load_character, save_character, update_character_identity
         
-        active_user = get_active_user()
-        sheet = load_character(active_user)
+        save_id = get_active_save_id()
+        sheet = load_character(save_id)
         
         sheet = update_character_identity(
             sheet=sheet,
@@ -2827,7 +2830,7 @@ def update_character_profile():
             character_class=data.get("class"),
             custom_attributes=data.get("attributes")
         )
-        save_character(active_user, sheet)
+        save_character(save_id, sheet)
         
         return jsonify({
             "status": "success",
@@ -2950,11 +2953,11 @@ def toggle_equip_item():
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
             
-        from utils.program import get_active_user
+        from engine.save_manager import get_active_save_id
         from engine.character import load_character, save_character, equip_item, unequip_item
         
-        active_user = get_active_user()
-        sheet = load_character(active_user)
+        save_id = get_active_save_id()
+        sheet = load_character(save_id)
         
         if should_equip:
             sheet, success = equip_item(sheet, item_name)
@@ -2962,7 +2965,7 @@ def toggle_equip_item():
             sheet, success = unequip_item(sheet, item_name)
             
         if success:
-            save_character(active_user, sheet)
+            save_character(save_id, sheet)
             
         return jsonify({
             "status": "success",
@@ -2985,17 +2988,17 @@ def drop_character_item_route():
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
             
-        from utils.program import get_active_user
+        from engine.save_manager import get_active_save_id
         from engine.character import load_character, save_character, drop_item
         
-        active_user = get_active_user()
-        sheet = load_character(active_user)
+        save_id = get_active_save_id()
+        sheet = load_character(save_id)
         
         sheet, dropped = drop_item(sheet, item_name, quantity)
         if not dropped:
             return jsonify({"error": f"Item '{item_name}' not found in inventory."}), 404
             
-        save_character(active_user, sheet)
+        save_character(save_id, sheet)
         
         return jsonify({
             "status": "success",
@@ -3005,6 +3008,21 @@ def drop_character_item_route():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def extract_profile_display_name(profile_id: str, content: str) -> str:
+    if profile_id == "eternal_champion":
+        return "Eternal Champion"
+    for line in (content or "").splitlines():
+        line = line.strip()
+        if line.startswith("#"):
+            raw = line.lstrip("#").strip()
+            for prefix in ("CHARACTER:", "USER CONTEXT:", "USER PROFILE:"):
+                if raw.upper().startswith(prefix):
+                    raw = raw[len(prefix):].strip()
+            if raw:
+                return raw
+    return profile_id.replace("_", " ").title()
 
 
 @app.route('/api/user_profiles', methods=['GET'])
@@ -3034,7 +3052,7 @@ def list_user_profiles():
                             mods = mf.read()
                     profiles.append({
                         "id": profile_name,
-                        "name": profile_name.replace("_", " ").title(),
+                        "name": extract_profile_display_name(profile_name, content),
                         "content": content,
                         "mods": mods
                     })
@@ -3075,6 +3093,15 @@ def select_user_profile():
         
         # Update active user profile settings
         set_active_user(profile_id)
+
+        # Sync active save game locked to this player character profile
+        from engine.save_manager import list_saves, load_save, create_save
+        saves = list_saves()
+        matching_save = next((s for s in saves if s.get("user_profile_id") == profile_id or s.get("id") == profile_id), None)
+        if matching_save:
+            load_save(matching_save["id"])
+        else:
+            create_save(user_profile_id=profile_id, character_name=profile_id.replace("_", " ").title())
         
         # Re-initialize the program config module and runner
         reload_program_state()
@@ -3100,7 +3127,9 @@ def save_user_profile():
             return jsonify({"error": "Missing content"}), 400
         
         # Sanitize profile_id
-        profile_id = re.sub(r'[^a-zA-Z0-9_\-]', '', profile_id).lower()
+        profile_id = profile_id.strip().replace(' ', '_').lower()
+        profile_id = re.sub(r'[^a-zA-Z0-9_\-]', '', profile_id)
+        profile_id = re.sub(r'_+', '_', profile_id)
         if not profile_id:
             return jsonify({"error": "Invalid profile name"}), 400
             
@@ -3148,7 +3177,16 @@ def delete_user_profile():
         if not os.path.exists(profile_path):
             return jsonify({"error": f"Profile '{profile_id}' does not exist"}), 404
             
-        # Delete file
+        # Delete associated saves bound to this player profile
+        from engine.save_manager import list_saves, delete_save, set_active_save_id
+        saves = list_saves()
+        for s in saves:
+            s_id = s.get("id")
+            s_prof = s.get("user_profile_id")
+            if (s_prof == profile_id or s_id == profile_id) and s_id != "eternal_champion":
+                delete_save(s_id)
+
+        # Delete profile markdown & mods file
         os.remove(profile_path)
         mods_path = os.path.join(USER_PROFILES_DIR, f"{profile_id}_mods.txt")
         if os.path.exists(mods_path):
@@ -3157,11 +3195,12 @@ def delete_user_profile():
             except Exception:
                 pass
         
-        # If the deleted profile was active, switch active profile back to "eternal_champion"
+        # If the deleted profile was active, switch active profile and save back to "eternal_champion"
         active_user = get_active_user()
                 
         if profile_id == active_user:
             set_active_user("eternal_champion")
+            set_active_save_id("eternal_champion")
             reload_program_state()
                 
         return jsonify({"status": "success", "deleted": profile_id})
@@ -3183,7 +3222,8 @@ def rename_user_profile():
         if old_profile_id == "eternal_champion":
             return jsonify({"error": "Cannot rename the default 'eternal_champion' profile"}), 400
             
-        new_profile_id = re.sub(r'[^a-zA-Z0-9_\-]', '', new_name).strip().replace(' ', '_').lower()
+        new_profile_id = new_name.strip().replace(' ', '_').lower()
+        new_profile_id = re.sub(r'[^a-zA-Z0-9_\-]', '', new_profile_id)
         new_profile_id = re.sub(r'_+', '_', new_profile_id)
         
         if not new_profile_id:
