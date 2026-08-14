@@ -1126,8 +1126,13 @@ function evaluateSceneBGM(text, locationContext) {
         return;
     }
 
-    // 2. Main Quest Completion / Fragment Recovery (Non-looping Victory fan-fare)
-    if (combined.includes("objective completed") || combined.includes("fragment recovered") || combined.includes("staff of chaos fragment") || combined.includes("quest completed")) {
+    // 2. Main Quest Completion / Fragment Recovery / Level Up (Non-looping Victory fan-fare)
+    if (combined.includes("objective completed") || combined.includes("fragment recovered") || 
+        combined.includes("staff of chaos fragment") || combined.includes("quest completed") || 
+        combined.includes("level up") || combined.includes("leveled up") || 
+        combined.includes("level-up") || combined.includes("level increased") || 
+        combined.includes("gained a level") || combined.includes("you have reached level") || 
+        combined.includes("you are now level") || combined.includes("leveled_up")) {
         playBGMTrack("Objective Completed.mp3", false);
         return;
     }
