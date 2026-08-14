@@ -1110,31 +1110,142 @@ function playBGMTrack(trackFilename, isLooping = true) {
 
 function evaluateSceneBGM(text, locationContext) {
     if (!text && !locationContext) return;
-    const combined = `${text || ''} ${locationContext || ''}`.toLowerCase();
 
-    if (combined.includes("ria silmane") || combined.includes("vision") || combined.includes("spectral")) {
-        playBGMTrack("A Vision Beyond.mp3");
-    } else if (combined.includes("jagar tharn") || combined.includes("emperor's palace") || combined.includes("throne room")) {
-        playBGMTrack("Tharn's Betrayal.mp3");
-    } else if (combined.includes("inn") || combined.includes("tavern") || combined.includes("alehouse")) {
-        playBGMTrack("The Wandering Inn.mp3");
-    } else if (combined.includes("mages guild") || combined.includes("arcane academy")) {
-        playBGMTrack("The Mages Guild.mp3");
-    } else if (combined.includes("blacksmith") || combined.includes("armorer") || combined.includes("forge")) {
-        playBGMTrack("Blacksmith.mp3");
-    } else if (combined.includes("audience chamber") || combined.includes("ruler") || combined.includes("king's court")) {
-        playBGMTrack("The Audience Chamber.mp3");
-    } else if (combined.includes("dungeon") || combined.includes("sewer") || combined.includes("crypt") || combined.includes("vault")) {
-        playBGMTrack("Dungeon Crawling.mp3");
-    } else if (combined.includes("curfew") || combined.includes("night") || combined.includes("dark alley")) {
-        playBGMTrack("The Late Hours.mp3");
-    } else if (combined.includes("skyrim") || combined.includes("snow") || combined.includes("blizzard")) {
-        playBGMTrack("Winter In Hammerfell.mp3");
-    } else if (combined.includes("lockpick") || combined.includes("stealth") || combined.includes("sneaking")) {
-        playBGMTrack("Breaking And Entering.mp3");
-    } else {
-        playBGMTrack("A Warm Welcome.mp3");
+    // Auto-fetch world location context from current active character sheet if available
+    const world = (window.currentCharacterData && window.currentCharacterData.world) ? window.currentCharacterData.world : {};
+    const worldLoc = `${world.current_location || ''} ${world.current_province || ''}`;
+    
+    // Auto-fetch HP state for defeat detection
+    const charHP = (window.currentCharacterData && window.currentCharacterData.vitals) ? window.currentCharacterData.vitals.hp : null;
+
+    const combined = `${text || ''} ${locationContext || ''} ${worldLoc}`.toLowerCase();
+
+    // 1. Defeat / Player Death (Non-looping Game Over)
+    if ((charHP !== null && charHP <= 0) || combined.includes("you have died") || combined.includes("slain") || combined.includes("fatal strike") || combined.includes("you perish")) {
+        playBGMTrack("Game Over.mp3", false);
+        return;
     }
+
+    // 2. Main Quest Completion / Fragment Recovery (Non-looping Victory fan-fare)
+    if (combined.includes("objective completed") || combined.includes("fragment recovered") || combined.includes("staff of chaos fragment") || combined.includes("quest completed")) {
+        playBGMTrack("Objective Completed.mp3", false);
+        return;
+    }
+
+    // 3. Spectral Visions & Ria Silmane
+    if (combined.includes("ria silmane") || combined.includes("vision") || combined.includes("spectral") || combined.includes("dream vision")) {
+        playBGMTrack("A Vision Beyond.mp3");
+        return;
+    }
+
+    // 4. Boss Encounters & Imperial Palace
+    if (combined.includes("jagar tharn") || combined.includes("emperor's palace") || combined.includes("throne room") || combined.includes("arch-mage tharn")) {
+        playBGMTrack("Tharn's Betrayal.mp3");
+        return;
+    }
+
+    // 5. Combat & Enemy Encounters (Rats, Goblins, Skeletons, Beasts, Attacks, Damage, Initiative)
+    const isCombat = combined.includes("combat") || combined.includes("battle") || combined.includes("initiative") ||
+                     combined.includes("attack") || combined.includes("lunges") || combined.includes("snapping") ||
+                     combined.includes("rat") || combined.includes("goblin") || combined.includes("skeleton") ||
+                     combined.includes("zombie") || combined.includes("orc") || combined.includes("spider") ||
+                     combined.includes("minotaur") || combined.includes("wraith") || combined.includes("vampire") ||
+                     combined.includes("lich") || combined.includes("troll") || combined.includes("imp") ||
+                     combined.includes("daedra") || combined.includes("monster") || combined.includes("beast") ||
+                     combined.includes("bitten") || combined.includes("slay") || combined.includes("swords") ||
+                     combined.includes("d20_roll");
+
+    if (isCombat) {
+        playBGMTrack("Tharn's Betrayal.mp3");
+        return;
+    }
+
+    // 6. Spellcasting / Spellmaker / Arcane Arts
+    if (combined.includes("spellmaker") || combined.includes("grimoire") || combined.includes("casting spell") || combined.includes("arcane arts")) {
+        playBGMTrack("Arcane Arts.mp3");
+        return;
+    }
+
+    // 7. Infiltration / Stealth / Lockpicking
+    if (combined.includes("lockpick") || combined.includes("stealth") || combined.includes("sneaking") || combined.includes("infiltrate") || combined.includes("pickpocket")) {
+        playBGMTrack("Breaking And Entering.mp3");
+        return;
+    }
+
+    // 8. Swimming / Water Bodies / Submerged
+    if (combined.includes("swimming") || combined.includes("underwater") || combined.includes("submerged") || combined.includes("diving") || combined.includes("lake") || combined.includes("river")) {
+        playBGMTrack("Swimming.mp3");
+        return;
+    }
+
+    // 9. Dungeons, Sewers, Crypts, Vaults & Catacombs
+    if (combined.includes("dungeon") || combined.includes("sewer") || combined.includes("crypt") || combined.includes("vault") || combined.includes("catacomb") || combined.includes("ruins") || combined.includes("fang lair") || combined.includes("underground")) {
+        playBGMTrack("Dungeon Crawling.mp3");
+        return;
+    }
+
+    // 10. Mages Guild & Arcane Academies
+    if (combined.includes("mages guild") || combined.includes("arcane academy") || combined.includes("guildhall")) {
+        playBGMTrack("The Mages Guild.mp3");
+        return;
+    }
+
+    // 11. Inns & Taverns
+    if (combined.includes("inn") || combined.includes("tavern") || combined.includes("alehouse") || combined.includes("pub")) {
+        playBGMTrack("The Wandering Inn.mp3");
+        return;
+    }
+
+    // 12. Blacksmith & Forge
+    if (combined.includes("blacksmith") || combined.includes("armorer") || combined.includes("forge") || combined.includes("weaponsmith")) {
+        playBGMTrack("Blacksmith.mp3");
+        return;
+    }
+
+    // 13. Royalty & Audience Chambers
+    if (combined.includes("audience chamber") || combined.includes("ruler") || combined.includes("king's court") || combined.includes("court")) {
+        playBGMTrack("The Audience Chamber.mp3");
+        return;
+    }
+
+    // 14. Fog / Swamp / Marshlands
+    if (combined.includes("fog") || combined.includes("mist") || combined.includes("swamp") || combined.includes("marsh") || combined.includes("murkwood")) {
+        playBGMTrack("Foggy Afternoon.mp3");
+        return;
+    }
+
+    // 15. Snow / Cold / Skyrim
+    if (combined.includes("skyrim") || combined.includes("snow") || combined.includes("blizzard") || combined.includes("frost") || combined.includes("ice")) {
+        playBGMTrack("Winter In Hammerfell.mp3");
+        return;
+    }
+
+    // 16. Night / Curfew / Late Hours
+    if (combined.includes("curfew") || combined.includes("night") || combined.includes("dark alley") || combined.includes("midnight")) {
+        playBGMTrack("The Late Hours.mp3");
+        return;
+    }
+
+    // 17. Dusk / Sunset / Evening
+    if (combined.includes("evening") || combined.includes("twilight") || combined.includes("sunset")) {
+        playBGMTrack("Evening Star.mp3");
+        return;
+    }
+
+    // 18. Wilderness / Traveling / Forests
+    if (combined.includes("wilderness") || combined.includes("forest") || combined.includes("woods") || combined.includes("traveling") || combined.includes("road")) {
+        playBGMTrack("The First Seed.mp3");
+        return;
+    }
+
+    // 19. Character Origins / Creation / Status
+    if (combined.includes("character creation") || combined.includes("hail") || combined.includes("where dost thou hail")) {
+        playBGMTrack("Where Dost Thou Hail.mp3");
+        return;
+    }
+
+    // 20. Default Town & Peaceful Environment
+    playBGMTrack("A Warm Welcome.mp3");
 }
 
 // --- verifyConnections ---
@@ -5453,7 +5564,8 @@ function renderMessage(msg, isLive = false) {
                 }
                 bubble.appendChild(textDiv);
                 if (role === 'program' && isLive) {
-                    evaluateSceneBGM(actualResponse);
+                    const toolCtx = (msg.tool_calls || []).map(tc => `${tc.name || ''} ${JSON.stringify(tc.args || {})}`).join(' ');
+                    evaluateSceneBGM(actualResponse, toolCtx);
                 }
             }
 
