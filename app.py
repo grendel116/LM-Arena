@@ -906,16 +906,56 @@ def generate_impersonated_message(session_id, user_profile, model):
         history_text += f"{role}: {msg.get('text', '')}\n"
         
     system_instruction = (
-        "You are an assistant that auto-generates the User's next reply. "
-        "You MUST write in the first-person, impersonating the user. "
-        "Match the user's tone and context. Be short and concise."
+        "You are an assistant that auto-generates the User's next message/action in the roleplay.\n"
+        "You MUST write in the first-person, impersonating the user's active character.\n\n"
+        "MESSAGE FORMAT & STYLE RULES (MANDATORY):\n"
+        "- Narration & Action: Use *italics* and present tense to describe physical actions, maneuvers, or movement (e.g., *I raise my torch and peer into the shadow*).\n"
+        "- Dialogue: Use plain text without quotation marks. Use **bold** for vocal emphasis (e.g., Stand back! I will handle this creature).\n"
+        "- Style: Use short words and precise phrasing with linear progression.\n"
+        "- Do NOT use flowery language, corporate jargon, contrasting parallels, or stylistic symmetry.\n"
+        "- Keep the suggestion succinct, direct, and immediately actionable for the next turn."
     )
     
-    from core.program_config import replace_placeholders
+    from core.program_config import load_user_instructions, replace_placeholders
+    from utils.program import get_active_user
+    from engine.character import load_character, get_character_context
+
+    char_context = ""
+    try:
+        active_user = get_active_user()
+        sheet = load_character(active_user)
+        if sheet:
+            char_context = get_character_context(sheet)
+            world = sheet.get("world", {})
+            loc = world.get("current_location", "Imperial Dungeon")
+            prov = world.get("current_province", "Cyrodiil")
+            char_context += f"\nCurrent Location: {loc}, {prov}"
+    except Exception as e:
+        print(f"Error compiling character sheet for suggestion: {e}")
+
+    user_rel_context = ""
+    try:
+        user_rel_context = load_user_instructions().strip()
+    except Exception as e:
+        print(f"Error loading user profile context for suggestion: {e}")
+
+    full_profile_block = ""
+    if user_profile and user_profile.strip():
+        full_profile_block += f"Custom Input Profile:\n{user_profile.strip()}\n\n"
+    if char_context:
+        full_profile_block += f"{char_context}\n\n"
+    if user_rel_context:
+        full_profile_block += f"{user_rel_context}\n"
+
+    if not full_profile_block.strip():
+        full_profile_block = "Character: Eternal Champion, Adventurer in Tamriel."
+
     prompt = (
-        f"User Profile Context:\n{replace_placeholders(user_profile)}\n\n"
-        f"Recent Chat History:\n{replace_placeholders(history_text)}\n"
-        f"Generate the User's next message to the Program:"
+        f"### USER CHARACTER PROFILE & STATUS\n"
+        f"{replace_placeholders(full_profile_block)}\n\n"
+        f"### RECENT CHAT HISTORY\n"
+        f"{replace_placeholders(history_text)}\n\n"
+        f"Generate a succinct, first-person message/action for the User that stays in character, reflects their profile/vitals/inventory, and follows the mandatory formatting rules:"
     )
     
     # Delegate entirely to the runner's provider-agnostic generator
@@ -931,22 +971,6 @@ def generate_user_message():
     session_id = request.json.get('session_id', 'default')
     model = request.json.get('model')
     user_profile = request.json.get('user_profile', '').strip()
-    
-    if not user_profile:
-        # Fallback to active user profile file
-        try:
-            from variables import USER_PROFILES_DIR
-            from utils.program import get_active_user
-            active_user = get_active_user()
-            profile_path = os.path.join(USER_PROFILES_DIR, f"{active_user}.md")
-            if os.path.exists(profile_path):
-                with open(profile_path, "r", encoding="utf-8") as f:
-                    user_profile = f.read().strip()
-        except Exception as e:
-            print(f"Error loading fallback user profile: {e}")
-            
-    if not user_profile:
-        user_profile = "An adventurer imprisoned in the Imperial Dungeon."
         
     try:
         generated_msg = generate_impersonated_message(session_id, user_profile, model)
