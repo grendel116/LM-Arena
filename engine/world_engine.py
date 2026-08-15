@@ -256,9 +256,11 @@ def discover_location(state: dict, location_type: str, location_name: str) -> di
 import copy
 
 def create_state_snapshot(world_state: dict, character_sheet: dict = None) -> dict:
-    """Creates a compact snapshot of location, date/time, quest, and vitals."""
+    """Creates a compact snapshot of location, date/time, quest, vitals, inventory, and spells."""
     date = world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
     derived = (character_sheet or {}).get("derived", {})
+    inventory = copy.deepcopy((character_sheet or {}).get("inventory", []))
+    spells = copy.deepcopy((character_sheet or {}).get("spells", []))
     return {
         "province": world_state.get("current_province", "Cyrodiil"),
         "location": world_state.get("current_location", "Imperial Dungeon"),
@@ -279,11 +281,13 @@ def create_state_snapshot(world_state: dict, character_sheet: dict = None) -> di
             "stamina": derived.get("stamina_current", 60),
             "stamina_max": derived.get("stamina_max", 60),
             "gold": (character_sheet or {}).get("gold", 0)
-        }
+        },
+        "inventory": inventory,
+        "spells": spells
     }
 
 def apply_state_snapshot(character_name: str, snapshot: dict) -> None:
-    """Restores world state and character vitals from a snapshot."""
+    """Restores world state, character vitals, inventory, and spells from a snapshot."""
     if not snapshot or not isinstance(snapshot, dict):
         return
 
@@ -314,29 +318,47 @@ def apply_state_snapshot(character_name: str, snapshot: dict) -> None:
 
     save_world_state(character_name, world_state)
 
-    vitals = snapshot.get("vitals")
-    if vitals:
-        try:
-            from engine.character import load_character, save_character
-            sheet = load_character(character_name)
+    try:
+        from engine.character import load_character, save_character
+        sheet = load_character(character_name)
+        char_modified = False
+        vitals = snapshot.get("vitals")
+        if vitals:
             derived = sheet.setdefault("derived", {})
             if "hp" in vitals:
                 derived["hp_current"] = vitals["hp"]
+                char_modified = True
             if "hp_max" in vitals:
                 derived["hp_max"] = vitals["hp_max"]
+                char_modified = True
             if "mp" in vitals:
                 derived["mp_current"] = vitals["mp"]
+                char_modified = True
             if "mp_max" in vitals:
                 derived["mp_max"] = vitals["mp_max"]
+                char_modified = True
             if "stamina" in vitals:
                 derived["stamina_current"] = vitals["stamina"]
+                char_modified = True
             if "stamina_max" in vitals:
                 derived["stamina_max"] = vitals["stamina_max"]
+                char_modified = True
             if "gold" in vitals:
                 sheet["gold"] = vitals["gold"]
+                char_modified = True
+
+        if "inventory" in snapshot and isinstance(snapshot["inventory"], list):
+            sheet["inventory"] = copy.deepcopy(snapshot["inventory"])
+            char_modified = True
+
+        if "spells" in snapshot and isinstance(snapshot["spells"], list):
+            sheet["spells"] = copy.deepcopy(snapshot["spells"])
+            char_modified = True
+
+        if char_modified:
             save_character(character_name, sheet)
-        except Exception as e:
-            print(f"[apply_state_snapshot] Error applying character vitals: {e}")
+    except Exception as e:
+        print(f"[apply_state_snapshot] Error applying character sheet updates: {e}")
 
 def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str, dict]:
     """Extracts and strips hidden state comments from text, updating the snapshot."""
@@ -409,10 +431,54 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
                 except Exception:
                     pass
 
+            elif key in ("add_item", "loot", "give_item"):
+                parts = str(val).split(":")
+                item_name = parts[0].strip()
+                item_type = parts[1].strip() if len(parts) > 1 else "misc"
+                qty = int(parts[2].strip()) if len(parts) > 2 and parts[2].strip().isdigit() else 1
+                inv = snapshot.setdefault("inventory", [])
+                found = False
+                for it in inv:
+                    if it.get("name", "").lower() == item_name.lower():
+                        it["quantity"] = it.get("quantity", 1) + qty
+                        found = True
+                        break
+                if not found:
+                    inv.append({"name": item_name, "type": item_type, "quantity": qty})
+
+            elif key in ("remove_item", "drop_item", "consume", "eat", "use_item"):
+                parts = str(val).split(":")
+                item_name = parts[0].strip()
+                qty = int(parts[1].strip()) if len(parts) > 1 and parts[1].strip().isdigit() else 1
+                inv = snapshot.setdefault("inventory", [])
+                for i, it in enumerate(inv):
+                    if it.get("name", "").lower() == item_name.lower():
+                        curr_qty = it.get("quantity", 1)
+                        if curr_qty > qty:
+                            it["quantity"] = curr_qty - qty
+                        else:
+                            inv.pop(i)
+                        break
+
+            elif key in ("learn_spell", "add_spell"):
+                parts = str(val).split(":")
+                sp_name = parts[0].strip()
+                sp_cost = int(parts[1].strip()) if len(parts) > 1 and parts[1].strip().isdigit() else 10
+                sp_school = parts[2].strip() if len(parts) > 2 else "Destruction"
+                spells = snapshot.setdefault("spells", [])
+                if not any(s.get("name", "").lower() == sp_name.lower() for s in spells):
+                    spells.append({"name": sp_name, "mp_cost": sp_cost, "school": sp_school})
+
+            elif key in ("remove_spell", "forget_spell"):
+                sp_name = str(val).strip()
+                spells = snapshot.setdefault("spells", [])
+                snapshot["spells"] = [s for s in spells if s.get("name", "").lower() != sp_name.lower()]
+
         cleaned_text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.DOTALL).rstrip()
         return cleaned_text, snapshot
 
     return text, snapshot
+
 
 def sync_world_state_from_history(character_name: str, history: list) -> dict:
     """Recomputes world location, calendar date, and quest stage deterministically from active history turns."""

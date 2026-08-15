@@ -7404,9 +7404,10 @@ async function resolvePlayerSkillCheck() {
             userInput.style.height = 'auto';
             userInput.style.height = (userInput.scrollHeight) + 'px';
 
-            // Keep text area locked so roll results cannot be accidentally typed over
-            userInput.disabled = true;
+            // Prefill text area and ensure it is fully editable and ready to send
+            userInput.disabled = false;
             userInput.classList.remove('user-input-frozen');
+            userInput.placeholder = "Ask " + (activeProgramName || "Program");
 
             // Reset dice button state
             if (diceBtn) {
@@ -7414,7 +7415,29 @@ async function resolvePlayerSkillCheck() {
                 diceBtn.title = "Roll Action (D20)";
             }
 
-            // Unlock and highlight the send button so the user can send when ready
+            // Restore all input toolbar buttons
+            const autoGenBtn = document.getElementById('auto-generate-user-btn');
+            if (autoGenBtn) {
+                autoGenBtn.disabled = false;
+                autoGenBtn.style.opacity = '';
+                autoGenBtn.style.pointerEvents = '';
+            }
+
+            const portraitBtn = document.getElementById('generate-portrait-btn');
+            if (portraitBtn) {
+                portraitBtn.disabled = false;
+                portraitBtn.style.opacity = '';
+                portraitBtn.style.pointerEvents = '';
+            }
+
+            const imgUploadBtn = document.getElementById('image-upload-btn');
+            if (imgUploadBtn) {
+                imgUploadBtn.disabled = false;
+                imgUploadBtn.style.opacity = '';
+                imgUploadBtn.style.pointerEvents = '';
+            }
+
+            // Unlock and focus the send button so the user can send with one click or Enter
             const sendBtn = document.querySelector('.send-btn');
             if (sendBtn) {
                 sendBtn.disabled = false;
@@ -7425,6 +7448,7 @@ async function resolvePlayerSkillCheck() {
 
             activePlayerSkillCheck = null;
             updateInputGlow();
+
         } else if (data.error) {
             showCustomAlert("Skill Check Failed", data.error);
             resetSkillCheckUI();
