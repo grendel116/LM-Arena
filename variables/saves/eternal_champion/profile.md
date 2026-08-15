@@ -1,1 +1,0 @@
-Age 27. From Winterhold, Skyrim. Imprisoned in the Imperial Dungeon for reckless spellcasting. Stoic.

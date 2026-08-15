@@ -162,10 +162,20 @@ def read_save(save_id: str = None) -> dict:
         bundle["meta"]["id"] = save_id
         bundle["meta"]["character_name"] = char_name
         bundle["meta"]["name"] = bundle["meta"].get("name") or char_name
+
+        # Auto convert legacy directory to single-file json and delete directory
+        try:
+            write_save(save_id, bundle)
+            shutil.rmtree(dir_path, ignore_errors=True)
+        except Exception as conv_err:
+            print(f"[read_save] Error migrating {dir_path} to single-file JSON: {conv_err}")
+
         return bundle
 
     # 3. Default fresh bundle if missing
-    return create_fresh_save_bundle(save_id)
+    bundle = create_fresh_save_bundle(save_id)
+    write_save(save_id, bundle)
+    return bundle
 
 
 def write_save(save_id: str, bundle: dict) -> None:

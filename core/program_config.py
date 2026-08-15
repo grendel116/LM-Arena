@@ -132,45 +132,24 @@ def load_dynamic_runtime_context() -> str:
     )
 
 def load_user_instructions() -> str:
-    """Reads the active user profile configuration from variables/saves/{active_user}/profile.md 
-    to set private relationship context.
-    """
+    """Reads the active user profile configuration from the save JSON bundle to set private relationship context."""
     from utils.program import get_active_user
-    from engine.save_manager import SAVES_DIR, create_save
+    from engine.save_manager import read_save
     active_profile = get_active_user()
 
-    save_path = SAVES_DIR / active_profile
-    profile_path = save_path / "profile.md"
-
-    if not save_path.exists():
-        try:
-            create_save(save_id=active_profile, user_profile_id=active_profile, character_name=active_profile.replace("_", " ").title())
-        except Exception as create_err:
-            print(f"Error creating default character save: {create_err}")
-
-    if not profile_path.exists():
-        eternal_path = SAVES_DIR / "eternal_champion" / "profile.md"
-        if eternal_path.exists():
-            try:
-                shutil.copy(eternal_path, profile_path)
-                print(f">>> Automatically copied {eternal_path} to {profile_path}")
-            except Exception as copy_err:
-                print(f"Error copying default profile: {copy_err}")
-        else:
-            try:
-                save_path.mkdir(parents=True, exist_ok=True)
-                with open(profile_path, "w", encoding="utf-8") as f:
-                    f.write("# ETERNAL CHAMPION\n- An adventurer imprisoned in the Imperial Dungeon.\n")
-                print(f">>> Automatically created default {profile_path}")
-            except Exception as e:
-                print(f"Error creating default {profile_path}: {e}")
-
     try:
-        with open(profile_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{content}\n"
+        bundle = read_save(active_profile)
+        content = bundle.get("profile", "").strip()
+        if not content:
+            meta = bundle.get("meta", {})
+            char_name = meta.get("character_name", "Eternal Champion")
+            race = meta.get("race", "Nord")
+            char_class = meta.get("class", "Mage")
+            gender = meta.get("gender", "Male")
+            content = f"# {char_name.upper()}\n- Race: {race}\n- Class: {char_class}\n- Gender: {gender}\n- Description: A brave adventurer.\n"
+        return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{content}\n"
     except Exception as e:
-        print(f"Failed to read user instructions from {profile_path}: {e}")
+        print(f"Failed to read user instructions: {e}")
         fallback_msg = (
             "# ETERNAL CHAMPION\n"
             "- An adventurer imprisoned in the Imperial Dungeon.\n"

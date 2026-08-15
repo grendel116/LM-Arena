@@ -2997,20 +2997,14 @@ def update_character_profile():
         sync_save_meta(save_id)
         
         if new_name:
-            from engine.save_manager import SAVES_DIR
-            profile_path = SAVES_DIR / save_id / "profile.md"
-            if profile_path.exists():
-                try:
-                    with open(profile_path, "r", encoding="utf-8") as f:
-                        content = f.read()
-                    lines = content.splitlines()
-                    if lines and lines[0].startswith("#"):
-                        lines[0] = f"# {new_name.upper()}"
-                        content = "\n".join(lines)
-                        with open(profile_path, "w", encoding="utf-8") as f:
-                            f.write(content)
-                except Exception as sync_err:
-                    print(f"Error syncing profile name: {sync_err}")
+            from engine.save_manager import read_save, write_save
+            bundle = read_save(save_id)
+            profile_text = bundle.get("profile", "")
+            lines = profile_text.splitlines()
+            if lines and lines[0].startswith("#"):
+                lines[0] = f"# {new_name.upper()}"
+                bundle["profile"] = "\n".join(lines)
+                write_save(save_id, bundle)
         
         return jsonify({
             "status": "success",
@@ -3421,27 +3415,14 @@ def save_user_profile():
             return jsonify({"error": "Invalid profile name"}), 400
             
         from utils.program import get_active_user
-        from engine.save_manager import SAVES_DIR, create_save, sync_save_meta
-        from engine.character import load_character, save_character, update_character_identity
+        from engine.save_manager import read_save, write_save, create_save
+        from engine.character import update_character_identity
         
-        save_path = SAVES_DIR / profile_id
         display_name = name or extract_profile_display_name(profile_id, content)
+        bundle = read_save(profile_id)
+        bundle["profile"] = content
         
-        if not save_path.exists():
-            create_save(
-                save_id=profile_id,
-                user_profile_id=profile_id,
-                character_name=display_name,
-                race=race or "Nord",
-                gender=gender or "Male",
-                character_class=character_class or "Mage"
-            )
-            
-        profile_path = save_path / "profile.md"
-        with open(profile_path, "w", encoding="utf-8") as f:
-            f.write(content)
-                
-        sheet = load_character(profile_id)
+        sheet = bundle.get("character", {})
         sheet = update_character_identity(
             sheet=sheet,
             name=display_name,
@@ -3449,8 +3430,18 @@ def save_user_profile():
             gender=gender,
             character_class=character_class
         )
-        save_character(profile_id, sheet)
-        sync_save_meta(profile_id)
+        bundle["character"] = sheet
+        bundle.setdefault("meta", {})
+        bundle["meta"]["character_name"] = display_name
+        bundle["meta"]["name"] = display_name
+        if race:
+            bundle["meta"]["race"] = race
+        if gender:
+            bundle["meta"]["gender"] = gender
+        if character_class:
+            bundle["meta"]["class"] = character_class
+
+        write_save(profile_id, bundle)
             
         # Read active profile
         active_user = get_active_user()
@@ -3473,14 +3464,12 @@ def delete_user_profile():
             return jsonify({"error": "Missing profile_id"}), 400
             
         from utils.program import get_active_user, set_active_user
-        from engine.save_manager import SAVES_DIR, delete_save, set_active_save_id
+        from engine.save_manager import delete_save, set_active_save_id
         
-        save_path = SAVES_DIR / profile_id
-        if not save_path.exists():
-            return jsonify({"error": f"Profile '{profile_id}' does not exist"}), 404
-            
-        # Delete associated save bound to this player profile permanently (or reset if eternal_champion)
-        delete_save(profile_id, force_delete=True)
+        # Delete single-file save bound to this player profile
+        deleted = delete_save(profile_id, force_delete=True)
+        if not deleted:
+            return jsonify({"error": f"Save '{profile_id}' does not exist"}), 404
 
         # If the deleted profile was active, switch active profile and save back to "eternal_champion"
         active_user = get_active_user()

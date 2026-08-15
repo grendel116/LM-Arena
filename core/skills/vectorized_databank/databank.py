@@ -21,72 +21,35 @@ def get_embedding_model():
 
 class DataBankManager:
     def __init__(self, db_dir=None):
-        if db_dir is None:
-            from engine.save_manager import get_active_save_id, get_save_directory
-            save_id = get_active_save_id()
-            db_dir = get_save_directory(save_id)
-        
-        os.makedirs(db_dir, exist_ok=True)
-        self.db_path = os.path.join(db_dir, "databank.json")
-        self.memories_path = os.path.join(db_dir, "memories.json")
-
-        # Migration from legacy program directory if save directory databank does not exist
-        if not os.path.exists(self.db_path):
-            try:
-                base_core = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                from utils.program import get_active_program
-                legacy_dir = os.path.join(base_core, "programs", get_active_program())
-                legacy_db = os.path.join(legacy_dir, "databank.json")
-                if os.path.exists(legacy_db):
-                    import shutil
-                    shutil.copy2(legacy_db, self.db_path)
-            except Exception as _e:
-                print(f"[DATABANK MIGRATION ERROR] Failed to copy legacy databank: {_e}", flush=True)
-
-        if not os.path.exists(self.memories_path):
-            try:
-                base_core = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                from utils.program import get_active_program
-                legacy_dir = os.path.join(base_core, "programs", get_active_program())
-                legacy_mem = os.path.join(legacy_dir, "memories.json")
-                if os.path.exists(legacy_mem):
-                    import shutil
-                    shutil.copy2(legacy_mem, self.memories_path)
-            except Exception as _e:
-                print(f"[DATABANK MIGRATION ERROR] Failed to copy legacy memories: {_e}", flush=True)
-        
-        # Migration from legacy journal.json to memories.json
-        legacy_journal_path = os.path.join(db_dir, "journal.json")
-        if os.path.exists(legacy_journal_path) and not os.path.exists(self.memories_path):
-            try:
-                os.rename(legacy_journal_path, self.memories_path)
-                print(f"[DATABANK MIGRATION] Renamed legacy {legacy_journal_path} to {self.memories_path}", flush=True)
-            except Exception as e:
-                print(f"[DATABANK MIGRATION ERROR] Failed to rename legacy journal: {e}", flush=True)
-                
-        self._init_db()
-
-    def _init_db(self):
-        if not os.path.exists(self.db_path):
-            self._save_data(self.db_path, {"documents": [], "chunks": []})
-        if not os.path.exists(self.memories_path):
-            self._save_data(self.memories_path, {"documents": [], "chunks": []})
+        from engine.save_manager import get_active_save_id
+        self.save_id = get_active_save_id()
+        self.db_path = "databank"
+        self.memories_path = "memories"
 
     def _load_data(self, path):
         try:
-            if os.path.exists(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+            from engine.save_manager import read_save, get_active_save_id
+            bundle = read_save(self.save_id or get_active_save_id())
+            key = "memories" if "memories" in str(path) else "databank"
+            val = bundle.get(key)
+            if isinstance(val, dict):
+                return val
+            if isinstance(val, list):
+                return {"documents": val, "chunks": []}
         except Exception as e:
-            print(f"Error loading JSON file at {path}: {e}")
+            print(f"Error loading databank data: {e}")
         return {"documents": [], "chunks": []}
 
     def _save_data(self, path, data):
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            from engine.save_manager import read_save, write_save, get_active_save_id
+            save_id = self.save_id or get_active_save_id()
+            bundle = read_save(save_id)
+            key = "memories" if "memories" in str(path) else "databank"
+            bundle[key] = data
+            write_save(save_id, bundle)
         except Exception as e:
-            print(f"Error saving JSON file to {path}: {e}")
+            print(f"Error saving databank data: {e}")
 
     def clean_html(self, html_content: str) -> str:
         """Parses HTML and extracts clean readable text, removing boilerplate markup."""
