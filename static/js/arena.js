@@ -8706,9 +8706,9 @@ function switchDataBankTab(tab) {
     const descriptor = document.getElementById('databank-descriptor');
 
     const descriptors = {
-        upload: "Upload documents (TXT, MD, HTML, PDF) to ingest lore or guides into the vectorized databank.",
-        memories: "Manage keyword-triggered memory journals and long-term character memories.",
-        lorebooks: "Import and manage interactive lorebooks and World Info files (.json) for dynamic context insertion."
+        upload: "Companion backstory, documents, and personal lore (Follower-linked).",
+        memories: "Keyword-triggered journals and compacted memories linked to this game save.",
+        lorebooks: "Global world info, game setting lore, and mechanics encyclopedia shared across saves."
     };
 
     if (descriptor && descriptors[tab]) {
