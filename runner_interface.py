@@ -335,7 +335,7 @@ _ARENA_DIRECTIVE_PROMPT = (
     "- CHECKS: Player actions requiring skill use [arena_request_skill_check], end at moment of tension. NPC/monster rolls use [arena_roll_check] or [arena_roll_combat].\n"
     "- FOLLOWERS: [arena_recruit_follower] only for permanent combat companions with earned trust. Temporary escorts stay in narrative only.\n"
     "- NPCS: Use authentic Elder Scrolls racial naming conventions (Latinate Imperials, Nordic Nords, Dunmeri Dark Elves, Altmeri High Elves, Anglo-Norman Bretons, Arabic Redguards, gro-/gra- Orcs, Jel Argonians, Ta'agra Khajiit).\n"
-    "- NARRATIVE: Sensory outcomes, no raw formulas. End on atmosphere or speech. No questions or choices to {{user}}.\n"
+    "- NARRATIVE: Sensory outcomes, no raw formulas. No questions or choices to {{user}}.\n"
     "- LORE: Weave <recalled_journals>, <knowledge_base>, and [WORLD INFO] seamlessly into narration.\n"
 )
 

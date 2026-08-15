@@ -188,7 +188,7 @@ def get_compiled_instructions() -> str:
         "- Use separate lines and clear paragraphs for narration and dialogue.\n"
         "- Narration: *italics*, present tense. Dialogue: plain text without quotes.\n"
         "- Gritty, kinetic atmosphere with anthropological depth and distinct character voices.\n"
-        "- End on atmosphere or speech. Do not end with questions, choices, or mirrored clauses.\n"
+        "- Do not end with questions, choices, or mirrored clauses.\n"
     )
 
     base += global_formatting
