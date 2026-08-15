@@ -832,18 +832,6 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             except Exception as se:
                 print(f"[skills] Retrieval error: {se}")
 
-        # 6. Active Player Character Sheet, Vitals & Inventory Context
-        try:
-            from engine.save_manager import get_active_save_id
-            from engine.character import load_character, get_character_context
-            active_save_id = get_active_save_id()
-            sheet = load_character(active_save_id)
-            char_ctx = get_character_context(sheet)
-            if char_ctx:
-                context_parts.append(f"<player_character>\n{char_ctx}\n</player_character>")
-        except Exception as ce:
-            print(f"[character_context] Injection error: {ce}")
-
         # Append injected context to the system prompt
         if context_parts:
             context_content = "\n\n" + "\n\n".join(context_parts)
@@ -868,32 +856,72 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
         openai_messages = _merge_consecutive_messages(openai_messages + raw_messages)
 
-        # Inject Player Mods / post_history_instructions verbatim after the chat history
+        # Inject Unified Player Character Status & World State verbatim after the chat history
         try:
             from utils.program import get_active_user
-            from engine.save_manager import SAVES_DIR
+            from engine.save_manager import get_active_save_id
+            from engine.world_engine import load_world_state
+            from engine.character import load_character, get_character_context
             active_user = get_active_user()
-            mods_path = os.path.join(SAVES_DIR, active_user, "profile_mods.txt")
-            post_history_inst = ""
-            if os.path.exists(mods_path):
-                with open(mods_path, "r", encoding="utf-8") as mf:
-                    post_history_inst = mf.read().strip()
-            
-            if post_history_inst:
-                found_user = False
-                for m in reversed(openai_messages):
-                    if m["role"] == "user":
-                        if isinstance(m["content"], str):
-                            m["content"] += f"\n\n{post_history_inst}"
-                        else:
-                            m["content"].append({"type": "text", "text": f"\n\n{post_history_inst}"})
-                        found_user = True
-                        break
-                if not found_user and openai_messages:
-                    openai_messages[0]["content"] += f"\n\n[Player Preferences / Directives]:\n{post_history_inst}"
-        except Exception as e:
-            print(f"Error loading player mods / post-history instructions: {e}", flush=True)
+            active_save_id = get_active_save_id()
+            sheet = load_character(active_save_id)
+            char_ctx = get_character_context(sheet) if sheet else ""
 
+            # Format current active world state anchor
+            world = load_world_state(active_user)
+            t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+            hour = t_date.get("hour", 6)
+            
+            if 5 <= hour < 7:
+                period = "Dawn"
+            elif 7 <= hour < 12:
+                period = "Morning"
+            elif 12 <= hour < 14:
+                period = "Midday"
+            elif 14 <= hour < 18:
+                period = "Afternoon"
+            elif 18 <= hour < 20:
+                period = "Dusk"
+            elif 20 <= hour < 23:
+                period = "Evening"
+            else:
+                period = "Night"
+                
+            disp_hour = hour % 12
+            if disp_hour == 0:
+                disp_hour = 12
+            am_pm = "AM" if hour < 12 else "PM"
+            time_display = f"{disp_hour}:00 {am_pm} ({period})"
+            
+            prov = world.get("current_province", "Cyrodiil")
+            loc = world.get("current_location", "Imperial Dungeon")
+            day = t_date.get("day", 1)
+            month = t_date.get("month", "Morning Star")
+            year = t_date.get("year", 389)
+            q_stage = world.get("quest_stage", 10)
+            
+            state_tag = f'<!-- state: province="{prov}", location="{loc}", date="{day} {month}, 3E {year}", hour={hour}, time="{time_display}", quest_stage={q_stage} -->'
+            
+            post_blocks = []
+            if char_ctx:
+                post_blocks.append(f"<player_character>\n{char_ctx}\n</player_character>")
+            post_blocks.append(state_tag)
+            
+            full_post_injection = "\n\n".join(post_blocks)
+            
+            found_user = False
+            for m in reversed(openai_messages):
+                if m["role"] == "user":
+                    if isinstance(m["content"], str):
+                        m["content"] += f"\n\n{full_post_injection}"
+                    else:
+                        m["content"].append({"type": "text", "text": f"\n\n{full_post_injection}"})
+                    found_user = True
+                    break
+            if not found_user and openai_messages:
+                openai_messages[0]["content"] += f"\n\n[Current Player & World State]:\n{full_post_injection}"
+        except Exception as e:
+            print(f"Error compiling unified player status / world state in post history: {e}", flush=True)
 
         return openai_messages
 

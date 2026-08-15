@@ -3339,8 +3339,6 @@ function populateProfileEditor() {
 
     if (nameInput) nameInput.value = prof.name;
     if (contentTextarea) contentTextarea.value = prof.content;
-    const modsTextarea = document.getElementById('user-profile-mods');
-    if (modsTextarea) modsTextarea.value = prof.mods || '';
 
     // Populate Character Trinity (Gender, Race, Class) from profile data
     const genderSelect = document.getElementById('user-profile-gender-select');
@@ -3436,10 +3434,6 @@ async function saveActiveUserProfile() {
             }
         }
 
-        // Save markdown content and mods
-        const modsTextarea = document.getElementById('user-profile-mods');
-        const modsContent = modsTextarea ? modsTextarea.value : '';
-
         const genderSelect = document.getElementById('user-profile-gender-select');
         const raceSelect = document.getElementById('user-profile-race-select');
         const classSelect = document.getElementById('user-profile-class-select');
@@ -3453,7 +3447,6 @@ async function saveActiveUserProfile() {
             body: JSON.stringify({
                 profile_id: profileId,
                 content: content,
-                mods: modsContent,
                 gender: charGender,
                 race: charRace,
                 class: charClass,

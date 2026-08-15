@@ -921,7 +921,7 @@ def generate_impersonated_message(session_id, user_profile, model):
         "You MUST write in the first-person, impersonating the user's active character.\n\n"
         "MESSAGE FORMAT & STYLE RULES (MANDATORY):\n"
         "- Narration: Use *italics* for narrative.\n"
-        "- Dialogue: Use plain text without quotation marks. Use **bold** sparingly.\n"
+        "- Dialogue: Use plain text without quotation marks.\n"
         "- Style: Use short words and precise phrasing with linear progression.\n"
         "- Do NOT use contrasting parallels, or stylistic symmetry.\n"
         "- Keep the suggestion short, succinct, and immediately actionable for the next turn."
@@ -1059,7 +1059,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
         f"Strictly align the narration with the roll outcome (degree: {roll_res['degree']}, outcome: {'Success' if roll_res['success'] else 'Failure'}).\n"
         "Formatting rules:\n"
         "- Narration: Use *italics* for narrative.\n"
-        "- Dialogue: Use plain text without quotation marks. Use **bold** sparingly.\n"
+        "- Dialogue: Use plain text without quotation marks.\n"
         "- Output ONLY 1 sentence of narration."
     )
 
@@ -3235,7 +3235,6 @@ def list_user_profiles():
             if item.is_dir():
                 profile_name = item.name
                 profile_path = item / "profile.md"
-                mods_path = item / "profile_mods.txt"
                 
                 # Auto create profile.md if missing
                 meta = sync_save_meta(profile_name) or {}
@@ -3254,16 +3253,11 @@ def list_user_profiles():
                 try:
                     with open(profile_path, "r", encoding="utf-8") as pf:
                         content = pf.read()
-                    mods = ""
-                    if mods_path.exists():
-                        with open(mods_path, "r", encoding="utf-8") as mf:
-                            mods = mf.read()
                             
                     profiles.append({
                         "id": profile_name,
                         "name": extract_profile_display_name(profile_name, content),
                         "content": content,
-                        "mods": mods,
                         "gender": meta.get("gender", "Male"),
                         "race": meta.get("race", "Nord"),
                         "class": meta.get("class", "Mage"),
@@ -3283,7 +3277,6 @@ def list_user_profiles():
                 "id": "eternal_champion",
                 "name": "Eternal Champion",
                 "content": content,
-                "mods": "",
                 "gender": meta.get("gender", "Male"),
                 "race": meta.get("race", "Nord"),
                 "class": meta.get("class", "Battlemage"),
@@ -3330,7 +3323,6 @@ def save_user_profile():
         data = request.get_json(silent=True) or {}
         profile_id = data.get("profile_id")
         content = data.get("content")
-        mods = data.get("mods")
         
         gender = data.get("gender")
         race = data.get("race")
@@ -3371,11 +3363,6 @@ def save_user_profile():
         profile_path = save_path / "profile.md"
         with open(profile_path, "w", encoding="utf-8") as f:
             f.write(content)
-            
-        if mods is not None:
-            mods_path = save_path / "profile_mods.txt"
-            with open(mods_path, "w", encoding="utf-8") as mf:
-                mf.write(mods)
                 
         sheet = load_character(profile_id)
         sheet = update_character_identity(

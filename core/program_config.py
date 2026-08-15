@@ -204,7 +204,7 @@ def get_compiled_instructions() -> str:
         "\n\n# MESSAGE FORMAT (MANDATORY)\n"
         "- Use separate lines and clear paragraphs for narration and dialogue.\n"
         "- Narration: Use *italics* and present tense.\n"
-        "- Dialogue: Use plain text without quotation marks. Use **bold** sparingly.\n"
+        "- Dialogue: Use plain text without quotation marks.\n"
         "- Choices: Do not end turns with questions or options.\n"
         "- Characters: Give each character a distinct personality and voice.\n"
         "- Plot: Introduce narrative friction and develop scenes steadily.\n"
