@@ -3405,8 +3405,6 @@ def save_user_profile():
         
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
-        if profile_id == "eternal_champion":
-            return jsonify({"error": "Eternal Champion is a protected profile and cannot be edited"}), 400
         if content is None:
             return jsonify({"error": "Missing content"}), 400
         
@@ -3431,7 +3429,8 @@ def save_user_profile():
             name=display_name,
             race=race,
             gender=gender,
-            character_class=character_class
+            character_class=character_class,
+            reset_vitals=True
         )
         bundle["character"] = sheet
         bundle.setdefault("meta", {})
@@ -3492,56 +3491,48 @@ def rename_user_profile():
     try:
         data = request.get_json(silent=True) or {}
         old_profile_id = data.get("old_profile_id")
-        new_name = data.get("new_profile_name")
+        new_name = (data.get("new_profile_name") or "").strip()
         
         if not old_profile_id or not new_name:
             return jsonify({"error": "Missing old_profile_id or new_profile_name"}), 400
             
-        if old_profile_id == "eternal_champion":
-            return jsonify({"error": "Cannot rename the default 'eternal_champion' profile"}), 400
-            
-        new_profile_id = new_name.strip().replace(' ', '_').lower()
-        new_profile_id = re.sub(r'[^a-zA-Z0-9_\-]', '', new_profile_id)
-        new_profile_id = re.sub(r'_+', '_', new_profile_id)
-        
-        if not new_profile_id:
-            return jsonify({"error": "Invalid new profile name"}), 400
-            
-        if new_profile_id == "eternal_champion":
-            return jsonify({"error": "Cannot rename a profile to 'eternal_champion'"}), 400
-            
-        if old_profile_id == new_profile_id:
-            return jsonify({"status": "success", "profile_id": new_profile_id})
-            
-        from engine.save_manager import SAVES_DIR, sync_save_meta, set_active_save_id
+        from engine.save_manager import SAVES_DIR, read_save, write_save, set_active_save_id, sync_save_meta
         from utils.program import get_active_user, set_active_user
         
-        old_save_path = SAVES_DIR / old_profile_id
-        new_save_path = SAVES_DIR / new_profile_id
-        
-        if not old_save_path.exists():
-            return jsonify({"error": f"Profile '{old_profile_id}' does not exist"}), 404
+        old_file = SAVES_DIR / f"{old_profile_id}.json"
+        if not old_file.exists():
+            return jsonify({"error": f"Save '{old_profile_id}' does not exist"}), 404
             
-        if new_save_path.exists():
-            return jsonify({"error": f"Profile '{new_profile_id}' already exists"}), 400
-            
-        # Rename save directory if exists to enforce unified mapping
-        try:
-            os.rename(old_save_path, new_save_path)
-            sync_save_meta(new_profile_id)
-        except Exception as save_err:
-            return jsonify({"error": f"Error renaming save directory: {save_err}"}), 500
+        # Determine new save ID preserving slot suffix if present
+        clean_prefix = "".join(c for c in new_name.lower().replace(" ", "_").replace("-", "_") if c.isalnum() or c == "_")
+        clean_prefix = re.sub(r'_+', '_', clean_prefix).strip('_') or "hero"
         
-        # Check active user
+        slot_match = re.search(r'_(\d{3,})$', old_profile_id)
+        slot_suffix = f"_{slot_match.group(1)}" if slot_match else ""
+        new_save_id = f"{clean_prefix}{slot_suffix}" if slot_suffix else clean_prefix
+        
+        bundle = read_save(old_profile_id)
+        bundle.setdefault("meta", {})
+        bundle["meta"]["character_name"] = new_name
+        bundle["meta"]["name"] = new_name
+        if "character" in bundle and isinstance(bundle["character"], dict):
+            bundle["character"]["name"] = new_name
+            
+        write_save(new_save_id, bundle)
+        
+        if new_save_id != old_profile_id and old_file.exists():
+            old_file.unlink(missing_ok=True)
+            
+        sync_save_meta(new_save_id)
+        
+        # If the renamed save was active, update active pointers
         active_user = get_active_user()
-                
-        # If the renamed profile was active, update and reload
         if old_profile_id == active_user:
-            set_active_user(new_profile_id)
-            set_active_save_id(new_profile_id)
+            set_active_user(new_save_id)
+            set_active_save_id(new_save_id)
             reload_program_state()
                 
-        return jsonify({"status": "success", "profile_id": new_profile_id})
+        return jsonify({"status": "success", "profile_id": new_save_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

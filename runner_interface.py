@@ -1305,7 +1305,37 @@ class BaseProgramRunner:
         except Exception as e:
             print(f"[DISTILLATION] Error generating local distillation: {e}", flush=True)
             
-        return "Distillation failed due to connection error."
+def _get_tool_dedup_keys(norm_name: str, kwargs: dict, pos_args: list = None) -> set:
+    keys = set()
+    kwargs = kwargs or {}
+    pos_args = pos_args or []
+    
+    primary_val = (
+        kwargs.get('skill_name') or
+        kwargs.get('attribute_name') or
+        kwargs.get('item_name') or
+        kwargs.get('item') or
+        kwargs.get('target_name') or
+        kwargs.get('target') or
+        kwargs.get('spell_name') or
+        kwargs.get('spell') or
+        kwargs.get('effect_name') or
+        kwargs.get('condition_name') or
+        kwargs.get('amount') or
+        (pos_args[0] if pos_args else None)
+    )
+    
+    if primary_val is not None:
+        p_str = str(primary_val).strip().lower()
+        keys.add((norm_name, p_str))
+        
+    sorted_str = ",".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
+    keys.add((norm_name, sorted_str.lower()))
+    
+    if norm_name in ('arena_request_skill_check', 'request_skill_check'):
+        keys.add((norm_name, 'skill_check_generic'))
+        
+    return keys
 
     async def _execute_local_llm_loop(
         self,
@@ -1316,12 +1346,56 @@ class BaseProgramRunner:
         rag_context: str,
         memory_context: str,
         new_message_text: str,
-        invocation_id: str
+        invocation_id: str,
+        existing_tool_calls: list = None
     ) -> tuple:
         bot_response_text = ""
         tool_calls = []
         seen_tool_calls = set()  # tracks (tool_name, key_arg) to block duplicates
         accumulated_prefix = ""
+        
+        if existing_tool_calls:
+            # Build map of responses for calls
+            responses_map = {}
+            for tc in existing_tool_calls:
+                if tc.get('type') == 'response':
+                    call_id = tc.get('id')
+                    if call_id:
+                        responses_map[call_id] = tc.get('response')
+
+            executed_hints = []
+            for tc in existing_tool_calls:
+                if tc.get('type') == 'call':
+                    t_name = tc.get('name', '')
+                    norm_name = _normalize_tool_name(t_name)
+                    t_args = tc.get('args', {})
+                    for k in _get_tool_dedup_keys(norm_name, t_args):
+                        seen_tool_calls.add(k)
+
+                    call_id = tc.get('id')
+                    res_val = responses_map.get(call_id)
+                    args_str = ", ".join(f"{k}={v}" for k, v in t_args.items())
+                    
+                    if res_val is not None:
+                        if isinstance(res_val, dict):
+                            if 'hit' in res_val or 'damage_dealt' in res_val:
+                                hit_str = "Hit" if res_val.get('hit') else "Miss"
+                                res_summary = f"{hit_str} ({res_val.get('damage_dealt', 0)} dmg)"
+                            elif 'total' in res_val and 'success' in res_val:
+                                succ_str = "Success" if res_val.get('success') else "Failure"
+                                res_summary = f"{succ_str} ({res_val.get('total')})"
+                            else:
+                                res_summary = str(res_val)
+                        else:
+                            res_summary = str(res_val)
+                        executed_hints.append(f"- {t_name}({args_str}) -> {res_summary}")
+                    else:
+                        executed_hints.append(f"- {t_name}({args_str})")
+            
+            if executed_hints:
+                action_summary = "\n".join(executed_hints)
+                turn_note = f"\n[RESOLVED ACTIONS THIS TURN:\n{action_summary}\nDo NOT repeat tool calls. Narrate these actions and outcomes directly in your response.]\n"
+                rag_context = (rag_context + turn_note) if rag_context else turn_note
         
         # Check if remote cloud server is configured for offloading
         remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
@@ -1643,14 +1717,15 @@ class BaseProgramRunner:
                         
                         normalized_name = _normalize_tool_name(t_name)
                         parsed_args = _parse_emulated_tool_call(normalized_name, a_str)
-                        key_arg = str(list(parsed_args["kwargs"].values())[0]) if parsed_args["kwargs"] else (str(parsed_args["args"][0]) if parsed_args["args"] else "")
-                        dedup_key = (normalized_name, key_arg)
+                        dedup_keys = _get_tool_dedup_keys(normalized_name, parsed_args["kwargs"], parsed_args.get("args", []))
                         
-                        if dedup_key in seen_tool_calls:
+                        is_duplicate = any(k in seen_tool_calls for k in dedup_keys)
+                        if is_duplicate:
                             output = f"[Skipped: '{normalized_name}' with this input was already called. Use a different query or URL.]"
                             results.append((normalized_name, parsed_args["kwargs"], output))
                             continue
-                        seen_tool_calls.add(dedup_key)
+                        for k in dedup_keys:
+                            seen_tool_calls.add(k)
                         
                         parsed_args, output = _execute_emulated_tool(t_name, a_str)
                         results.append((normalized_name, parsed_args["kwargs"], output))
@@ -1680,9 +1755,14 @@ class BaseProgramRunner:
         bot_response_text = self._ensure_images_are_embedded(bot_response_text)
         from engine.world_engine import extract_hidden_state_footer
         bot_response_text, _ = extract_hidden_state_footer(bot_response_text, {})
-        bot_response_text = re.sub(r'<!--[\s\S]*?-->', '', bot_response_text).strip()
-        if isinstance(session_id, str) and session_id.endswith('_voice'):
-            bot_response_text = strip_narration(bot_response_text)
+        if existing_tool_calls:
+            existing_ids = {tc.get('id') for tc in existing_tool_calls if tc.get('id')}
+            merged = list(existing_tool_calls)
+            for tc in tool_calls:
+                if tc.get('id') not in existing_ids:
+                    merged.append(tc)
+            tool_calls = merged
+
         adapter.save()
         return bot_response_text, tool_calls
 
@@ -2304,7 +2384,7 @@ class OpenSourceRunner(BaseProgramRunner):
                 chat_history.append(self._normalize_message(msg))
             return chat_history
 
-    async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None) -> tuple:
+    async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None, existing_tool_calls: list = None) -> tuple:
         with self._lock:
             # Always reload from disk to prevent cache desynchronization
             self._load_session_from_disk(session_id)
@@ -2320,12 +2400,13 @@ class OpenSourceRunner(BaseProgramRunner):
                     image_mime=image_mime,
                     model=model,
                     media_path=media_path,
-                    msg_id=msg_id
+                    msg_id=msg_id,
+                    existing_tool_calls=existing_tool_calls
                 )
             finally:
                 self._save_session_to_disk(session_id)
 
-    async def _run_async_internal(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None) -> tuple:
+    async def _run_async_internal(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None, existing_tool_calls: list = None) -> tuple:
         # Resolve effective model upfront to eliminate double-dispatch latency
         from utils.local_llm_manager import check_status
         has_offload_kw = bool(new_message_text and ("/cloud" in new_message_text.lower() or "/offload" in new_message_text.lower()))
@@ -2409,7 +2490,8 @@ class OpenSourceRunner(BaseProgramRunner):
                 rag_context=rag_context,
                 memory_context=memory_context,
                 new_message_text=new_message_text,
-                invocation_id=""
+                invocation_id="",
+                existing_tool_calls=existing_tool_calls
             )
             await adapter.compact_history(model)
             
@@ -2439,17 +2521,20 @@ class OpenSourceRunner(BaseProgramRunner):
                 image_mime=image_mime,
                 model=remote_model,
                 media_path=media_path,
-                msg_id=msg_id
+                msg_id=msg_id,
+                existing_tool_calls=existing_tool_calls
             )
+        except Exception as e:
+            print(f"Error in OpenSourceRunner execution loop: {e}", flush=True)
+            raise e
  
     async def edit_turn(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False) -> tuple:
-        if session_id not in self.sessions_history:
+        return await self.edit_or_reroll_message_async(session_id=session_id, msg_id=msg_id, new_text=new_text, model=model, force_offload=force_offload)
+
+    async def edit_or_reroll_message_async(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False) -> tuple:
+        with self._lock:
             self._load_session_from_disk(session_id)
-            
-        if session_id not in self.sessions_history:
-            raise ValueError("Session not found")
-        
-        history = self.sessions_history[session_id]
+            history = self.sessions_history.get(session_id, [])
         
         user_idx = -1
         for i, ev in enumerate(history):
@@ -2492,6 +2577,11 @@ class OpenSourceRunner(BaseProgramRunner):
             else:
                 media_path = url_str
                 
+        # Collect prior tool calls from the assistant response being rerolled
+        prior_tool_calls = []
+        if user_idx + 1 < len(history):
+            prior_tool_calls = history[user_idx + 1].get('tool_calls', [])
+
         # Truncate history (narrative only)
         history = history[:user_idx]
         self.sessions_history[session_id] = history
@@ -2505,9 +2595,9 @@ class OpenSourceRunner(BaseProgramRunner):
             remote_model = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
             model = remote_model
 
-        # Re-run turn
+        # Re-run turn passing existing_tool_calls to prevent duplication and inform narrative
         new_input = new_text if new_text is not None else orig_msg.get('text', '')
-        res = await self.run_async(session_id, new_input, image_data=img_data, image_mime=img_mime, model=model, media_path=media_path, msg_id=msg_id)
+        res = await self.run_async(session_id, new_input, image_data=img_data, image_mime=img_mime, model=model, media_path=media_path, msg_id=msg_id, existing_tool_calls=prior_tool_calls)
         
         # Save to disk
         self._save_session_to_disk(session_id)

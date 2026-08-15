@@ -3445,7 +3445,7 @@ function renderUserProfilesList() {
 
         const nameDiv = document.createElement('div');
         nameDiv.style.cssText = 'font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px;';
-        nameDiv.innerText = prof.name;
+        nameDiv.innerText = prof.character_name || prof.name || 'Eternal Champion';
 
         if (isActive) {
             const activeBadge = document.createElement('span');
@@ -3456,60 +3456,61 @@ function renderUserProfilesList() {
 
         info.appendChild(nameDiv);
 
+        // Format slot display (e.g. "[Save1]" or "[Save2]")
+        const slotMatch = prof.id.match(/_(\d+)$/);
+        const slotLabel = slotMatch ? `Save${slotMatch[1]}` : 'Save1';
+
         const idDiv = document.createElement('div');
         idDiv.style.cssText = 'font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 2px;';
-        idDiv.innerText = `Level ${prof.level || 1} ${prof.race || 'Nord'} ${prof.class || 'Mage'} (${prof.id})`;
+        idDiv.innerText = `Level ${prof.level || 1} ${prof.race || 'Nord'} ${prof.class || 'Mage'} [${slotLabel}]`;
         info.appendChild(idDiv);
 
         leftArea.appendChild(info);
         card.appendChild(leftArea);
 
         // Right side action area (matching program profile rows)
-        const isProtectedProfile = prof.id.startsWith('eternal_champion');
         const rightArea = document.createElement('div');
         rightArea.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: auto;';
 
-        if (!isProtectedProfile) {
-            // Add Edit Settings button on each editable profile row
-            const editBtn = document.createElement('button');
-            editBtn.className = 'action-icon-btn';
-            editBtn.innerHTML = `
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-            `;
-            editBtn.title = 'Edit Character Profile';
-            editBtn.style.width = '26px';
-            editBtn.style.height = '26px';
-            editBtn.style.borderRadius = '6px';
-            editBtn.style.flexShrink = '0';
-            editBtn.onclick = (e) => {
-                e.stopPropagation();
-                openUserProfileEditor(prof.id);
-            };
-            rightArea.appendChild(editBtn);
+        // Add Edit Settings button on each save row
+        const editBtn = document.createElement('button');
+        editBtn.className = 'action-icon-btn';
+        editBtn.innerHTML = `
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+        `;
+        editBtn.title = 'Edit Character / Save Info';
+        editBtn.style.width = '26px';
+        editBtn.style.height = '26px';
+        editBtn.style.borderRadius = '6px';
+        editBtn.style.flexShrink = '0';
+        editBtn.onclick = (e) => {
+            e.stopPropagation();
+            openUserProfileEditor(prof.id);
+        };
+        rightArea.appendChild(editBtn);
 
-            // Add Delete button on user profile rows
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'action-icon-btn';
-            deleteBtn.innerHTML = `
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-            `;
-            deleteBtn.title = 'Delete Save';
-            deleteBtn.style.width = '26px';
-            deleteBtn.style.height = '26px';
-            deleteBtn.style.borderRadius = '6px';
-            deleteBtn.style.flexShrink = '0';
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                deleteUserProfileById(prof.id);
-            };
-            rightArea.appendChild(deleteBtn);
-        }
+        // Add Delete button on save row
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'action-icon-btn';
+        deleteBtn.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        `;
+        deleteBtn.title = 'Delete Save';
+        deleteBtn.style.width = '26px';
+        deleteBtn.style.height = '26px';
+        deleteBtn.style.borderRadius = '6px';
+        deleteBtn.style.flexShrink = '0';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteUserProfileById(prof.id);
+        };
+        rightArea.appendChild(deleteBtn);
 
         card.appendChild(rightArea);
         container.appendChild(card);
@@ -3571,7 +3572,7 @@ function populateProfileEditor() {
 
     if (!prof) return;
 
-    if (nameInput) nameInput.value = prof.name;
+    if (nameInput) nameInput.value = prof.character_name || prof.name;
     if (contentTextarea) contentTextarea.value = prof.content;
 
     // Populate Character Trinity (Gender, Race, Class) from profile data
@@ -3591,7 +3592,7 @@ function populateProfileEditor() {
     }
 
     if (deleteBtn) {
-        deleteBtn.style.display = (selectedEditingProfileId && selectedEditingProfileId !== 'eternal_champion') ? 'inline-block' : 'none';
+        deleteBtn.style.display = selectedEditingProfileId ? 'inline-block' : 'none';
     }
 }
 
@@ -3636,15 +3637,6 @@ async function saveActiveUserProfile() {
     }
 
     // Sync header title in markdown content
-    const lines = content.split('\n');
-    if (lines.length > 0 && lines[0].startsWith('#')) {
-        lines[0] = `# ${newName}`;
-        content = lines.join('\n');
-    } else {
-        content = `# ${newName}\n` + content;
-    }
-    textarea.value = content;
-
     if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.textContent = "Saving...";
@@ -3654,7 +3646,7 @@ async function saveActiveUserProfile() {
         const prof = userProfiles.find(p => p.id === profileId);
 
         // If the user changed the name, call rename API first
-        if (prof && prof.name !== newName && profileId !== 'eternal_champion') {
+        if (prof && prof.character_name !== newName && prof.name !== newName) {
             const renameRes = await fetch('/api/user_profiles/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3726,27 +3718,17 @@ async function saveActiveUserProfile() {
 
 // --- createNewUserProfile ---
 async function createNewUserProfile() {
-    const timestamp = Date.now();
-    const sanitizedId = `prof_${timestamp}`;
-    const defaultName = "New Hero";
-    const content = `# ${defaultName}\n- Describe your hero persona, background, and roleplay details here.\n`;
-
     try {
-        const res = await fetch('/api/user_profiles/save', {
+        const res = await fetch('/api/saves/new', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile_id: sanitizedId, content: content })
+            body: JSON.stringify({ character_name: "Eternal Champion", race: "Nord", class: "Mage", gender: "Male" })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
-        const selRes = await fetch('/api/user_profiles/select', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile_id: sanitizedId })
-        });
-
-        selectedEditingProfileId = sanitizedId;
+        const newId = data.save ? data.save.id : 'eternal_champion_001';
+        selectedEditingProfileId = newId;
 
         const messagesList = document.getElementById('messages-list');
         if (messagesList) {
@@ -3755,9 +3737,9 @@ async function createNewUserProfile() {
         }
 
         await loadUserProfiles();
-        openUserProfileEditor(sanitizedId);
+        openUserProfileEditor(newId);
     } catch (e) {
-        showCustomAlert("Error", e.message || "Failed to create profile.");
+        showCustomAlert("Error", e.message || "Failed to create character.");
     }
 }
 
@@ -5708,7 +5690,7 @@ function renderMessage(msg, isLive = false) {
                 editBtn.onclick = () => startEditMessage(editBtn);
                 actions.appendChild(editBtn);
             } else if (role === 'program' && !text.startsWith("Hello, " + getUserDisplayName())) {
-                if (!isMsgTransient) {
+                if (!isMsgTransient && !isImageOnly && item.type === 'text') {
                     const rerollBtn = document.createElement('button');
                     rerollBtn.className = 'action-icon-btn';
                     rerollBtn.title = 'Reroll response (cloud)';
@@ -5731,19 +5713,19 @@ function renderMessage(msg, isLive = false) {
                     `;
                     editBtn.onclick = () => startEditMessage(editBtn);
                     actions.appendChild(editBtn);
-                }
 
-                const speakBtn = document.createElement('button');
-                speakBtn.className = 'action-icon-btn speak-btn';
-                speakBtn.title = 'Speak message (TTS)';
-                speakBtn.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                    </svg>
-                `;
-                speakBtn.onclick = () => speakMessage(speakBtn);
-                actions.appendChild(speakBtn);
+                    const speakBtn = document.createElement('button');
+                    speakBtn.className = 'action-icon-btn speak-btn';
+                    speakBtn.title = 'Speak message (TTS)';
+                    speakBtn.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                    `;
+                    speakBtn.onclick = () => speakMessage(speakBtn);
+                    actions.appendChild(speakBtn);
+                }
             }
         }
 
@@ -7212,6 +7194,65 @@ async function deleteCurrentImage(event) {
                         currentGalleryIndex = galleryImages.length - 1;
                     }
                     updateModalImage();
+                }
+            } else {
+                let errMsg = "Unknown error";
+                try {
+                    const data = await response.json();
+                    errMsg = data.error || errMsg;
+                } catch (e) {}
+                showCustomAlert("Error Deleting Image", "Error deleting image: " + errMsg);
+            }
+        } catch (err) {
+            console.error("Failed to delete image:", err);
+            showCustomAlert("Error Deleting Image", "Failed to delete image due to network error.");
+        }
+    });
+}
+
+// --- deleteSpecificImage (from chat bubble action) ---
+async function deleteSpecificImage(imageSrc, bubbleElement) {
+    if (!imageSrc) return;
+    if (imageSrc.includes('profile.svg') || imageSrc.includes('profile.png')) return;
+    
+    showCustomConfirm("Delete Image", "Are you sure you want to permanently delete this image from this conversation and the server?", async () => {
+        try {
+            const response = await fetch('/delete_image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    image_url: imageSrc
+                })
+            });
+            
+            if (response.ok) {
+                // Replace image with placeholder in DOM
+                const allImgs = document.querySelectorAll('img');
+                allImgs.forEach(img => {
+                    if (img.id === 'modal-img') return;
+                    if (getRelativePath(img.src) === imageSrc || img.src.includes(imageSrc)) {
+                        const parent = img.parentElement;
+                        if (parent) {
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'deleted-image-placeholder';
+                            placeholder.innerHTML = `
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; display: inline-block; vertical-align: middle;">
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34"></path>
+                                    <circle cx="12" cy="13" r="4"></circle>
+                                </svg>
+                                <span>[Portrait Deleted]</span>
+                            `;
+                            parent.replaceChild(placeholder, img);
+                        }
+                    }
+                });
+                
+                // Hide actions on deleted image bubble
+                if (bubbleElement) {
+                    const act = bubbleElement.querySelector('.message-actions');
+                    if (act) act.style.display = 'none';
                 }
             } else {
                 let errMsg = "Unknown error";

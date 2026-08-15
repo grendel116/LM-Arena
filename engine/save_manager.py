@@ -62,6 +62,34 @@ def set_active_save_id(save_id: str) -> None:
         json.dump({"active_save_id": save_id}, f, indent=2)
 
 
+def sync_save_meta(save_id: str) -> dict:
+    """Read save bundle and update metadata in single-file JSON."""
+    bundle = read_save(save_id)
+    char = bundle.get("character", {})
+    world = bundle.get("world", {})
+    
+    meta = bundle.setdefault("meta", {})
+    meta["id"] = save_id
+    if char:
+        meta["character_name"] = char.get("name", meta.get("character_name", "Hero"))
+        meta["name"] = meta.get("name") or meta["character_name"]
+        meta["race"] = char.get("race", "Nord")
+        meta["gender"] = char.get("gender", "Male")
+        meta["class"] = char.get("class", "Mage")
+        meta["level"] = char.get("level", 1)
+        meta["gold"] = char.get("gold", 0)
+    if world:
+        meta["current_province"] = world.get("current_province", "Cyrodiil")
+        meta["current_location"] = world.get("current_location", "Imperial Dungeon")
+        meta["quest_stage"] = world.get("quest_stage", 10)
+        t_date = world.get("tamrielic_date", {})
+        if t_date:
+            meta["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Morning Star')}, 3E {t_date.get('year', 389)}"
+    meta["updated_at"] = datetime.now().isoformat()
+    write_save(save_id, bundle)
+    return meta
+
+
 def get_save_path(save_id: str = None) -> Path:
     """Return path to save file or legacy directory."""
     if not save_id:
@@ -276,7 +304,7 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
     bundle = {
         "meta": {
             "id": save_id,
-            "name": f"{character_name} 001",
+            "name": character_name,
             "character_name": character_name,
             "race": race,
             "gender": gender,
@@ -301,39 +329,43 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
 
 
 def save_game(character_name: str = None, save_id: str = None) -> dict:
-    """Save the active state as the next sequential playername_001.json file."""
+    """Save the active state, using playername.json first and appending sequential numbers if existing."""
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
     current_bundle = read_save(get_active_save_id())
     
     char = current_bundle.get("character", {})
     raw_name = character_name or char.get("name") or current_bundle.get("meta", {}).get("character_name") or "hero"
     
-    # Strip existing numeric suffixes (e.g., ' 001', ' 003', '_001') to prevent compounding names
-    base_char_name = re.sub(r'[\s_]+\d{3,}$', '', raw_name).strip()
+    # Strip existing numeric suffixes (e.g., ' 001', ' 2', '_2') to prevent compounding names
+    base_char_name = re.sub(r'[\s_]+\d+$', '', raw_name).strip()
     if not base_char_name:
         base_char_name = "Hero"
         
     clean_prefix = _get_clean_name(base_char_name)
 
     if not save_id:
-        max_idx = 0
-        pattern = re.compile(rf"^{re.escape(clean_prefix)}_(\d{{3,}})$", re.IGNORECASE)
-        
-        for item in SAVES_DIR.glob("*.json"):
-            match = pattern.match(item.stem)
-            if match:
-                try:
-                    idx = int(match.group(1))
-                    if idx > max_idx:
-                        max_idx = idx
-                except ValueError:
-                    pass
-                    
-        next_idx = max_idx + 1
-        save_id = f"{clean_prefix}_{next_idx:03d}"
-        display_name = f"{base_char_name} {next_idx:03d}"
+        base_file = SAVES_DIR / f"{clean_prefix}.json"
+        if not base_file.exists():
+            save_id = clean_prefix
+            display_name = base_char_name
+        else:
+            max_idx = 1
+            pattern = re.compile(rf"^{re.escape(clean_prefix)}_(\d+)$", re.IGNORECASE)
+            for item in SAVES_DIR.glob("*.json"):
+                match = pattern.match(item.stem)
+                if match:
+                    try:
+                        idx = int(match.group(1))
+                        if idx > max_idx:
+                            max_idx = idx
+                    except ValueError:
+                        pass
+                        
+            next_idx = max_idx + 1
+            save_id = f"{clean_prefix}_{next_idx}"
+            display_name = base_char_name
     else:
-        display_name = save_id.replace("_", " ").title()
+        display_name = base_char_name
 
     current_bundle.setdefault("meta", {})
     current_bundle["meta"]["id"] = save_id
@@ -357,12 +389,28 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
 
 
 def create_save(name: str = None, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage", user_profile_id: str = None, save_id: str = None) -> dict:
-    """Create a new character and write playername_001.json."""
+    """Create a new character save, writing playername.json or appending numbers if existing."""
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
     clean_prefix = _get_clean_name(character_name)
     
     if not save_id:
-        save_id = f"{clean_prefix}_001"
+        base_file = SAVES_DIR / f"{clean_prefix}.json"
+        if not base_file.exists():
+            save_id = clean_prefix
+        else:
+            max_idx = 1
+            pattern = re.compile(rf"^{re.escape(clean_prefix)}_(\d+)$", re.IGNORECASE)
+            for item in SAVES_DIR.glob("*.json"):
+                match = pattern.match(item.stem)
+                if match:
+                    try:
+                        idx = int(match.group(1))
+                        if idx > max_idx:
+                            max_idx = idx
+                    except ValueError:
+                        pass
+            next_idx = max_idx + 1
+            save_id = f"{clean_prefix}_{next_idx}"
         
     bundle = create_fresh_save_bundle(
         save_id=save_id,

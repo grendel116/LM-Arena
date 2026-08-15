@@ -23,10 +23,7 @@ variables/*
 !variables/banned_words.json
 !variables/saves/
 variables/saves/*
-!variables/saves/eternal_champion/
-!variables/saves/eternal_champion/**
-variables/user_profiles/*
-!variables/user_profiles/champion.md
+!variables/saves/eternal_champion.json
 
 # Ignore all companion profiles under core/programs except the default Arena guide
 core/programs/*

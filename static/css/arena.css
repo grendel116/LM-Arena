@@ -1956,11 +1956,11 @@ header {
 }
 
 .message-row.program-row .message-actions {
-    bottom: -12px;
+    bottom: 4px;
     right: 12px;
     top: auto;
     left: auto;
-    transform: translateY(-4px);
+    transform: translateY(0);
 }
 
 .message:hover .message-actions {
