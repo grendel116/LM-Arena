@@ -8164,6 +8164,128 @@ function closeQuestLog() {
     document.getElementById('quest-modal').style.display = 'none';
 }
 
+// --- Map Pan & Zoom Variables ---
+let mapZoom = 1.0;
+let mapPanX = 0;
+let mapPanY = 0;
+let isMapPanning = false;
+let mapStartX = 0;
+let mapStartY = 0;
+
+function updateTamrielMapTransform() {
+    const layer = document.getElementById('tamriel-map-layer');
+    const zoomDisplay = document.getElementById('tamriel-map-zoom-level');
+    if (layer) {
+        layer.style.transform = `translate(${mapPanX}px, ${mapPanY}px) scale(${mapZoom})`;
+    }
+    if (zoomDisplay) {
+        zoomDisplay.textContent = `${Math.round(mapZoom * 100)}%`;
+    }
+}
+
+function tamrielMapZoomIn() {
+    mapZoom = Math.min(mapZoom * 1.3, 5.0);
+    updateTamrielMapTransform();
+}
+
+function tamrielMapZoomOut() {
+    mapZoom = Math.max(mapZoom / 1.3, 0.6);
+    updateTamrielMapTransform();
+}
+
+function tamrielMapReset() {
+    mapZoom = 1.0;
+    mapPanX = 0;
+    mapPanY = 0;
+    updateTamrielMapTransform();
+}
+
+function initTamrielMapPanZoom() {
+    const viewport = document.getElementById('tamriel-map-viewport');
+    if (!viewport || viewport.dataset.panZoomInit) return;
+    viewport.dataset.panZoomInit = "true";
+
+    // Mouse Wheel Zoom centered on cursor
+    viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+        const newZoom = Math.min(Math.max(mapZoom * zoomFactor, 0.6), 5.0);
+
+        mapPanX = mouseX - (mouseX - mapPanX) * (newZoom / mapZoom);
+        mapPanY = mouseY - (mouseY - mapPanY) * (newZoom / mapZoom);
+        mapZoom = newZoom;
+
+        updateTamrielMapTransform();
+    }, { passive: false });
+
+    // Mouse Down (Drag Start)
+    viewport.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isMapPanning = true;
+        mapStartX = e.clientX - mapPanX;
+        mapStartY = e.clientY - mapPanY;
+        viewport.style.cursor = 'grabbing';
+    });
+
+    // Mouse Move (Pan)
+    window.addEventListener('mousemove', (e) => {
+        if (!isMapPanning) return;
+        mapPanX = e.clientX - mapStartX;
+        mapPanY = e.clientY - mapStartY;
+        updateTamrielMapTransform();
+    });
+
+    // Mouse Up (Drag End)
+    window.addEventListener('mouseup', () => {
+        if (isMapPanning) {
+            isMapPanning = false;
+            const vp = document.getElementById('tamriel-map-viewport');
+            if (vp) vp.style.cursor = 'grab';
+        }
+    });
+
+    // Touch Support for Mobile
+    let touchStartDist = 0;
+    viewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            isMapPanning = true;
+            mapStartX = e.touches[0].clientX - mapPanX;
+            mapStartY = e.touches[0].clientY - mapPanY;
+        } else if (e.touches.length === 2) {
+            isMapPanning = false;
+            touchStartDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+        }
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+        if (isMapPanning && e.touches.length === 1) {
+            mapPanX = e.touches[0].clientX - mapStartX;
+            mapPanY = e.touches[0].clientY - mapStartY;
+            updateTamrielMapTransform();
+        } else if (e.touches.length === 2 && touchStartDist > 0) {
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const factor = dist / touchStartDist;
+            mapZoom = Math.min(Math.max(mapZoom * (factor > 1 ? 1.04 : 0.96), 0.6), 5.0);
+            updateTamrielMapTransform();
+        }
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', () => {
+        isMapPanning = false;
+        touchStartDist = 0;
+    });
+}
+
 // --- switchQuestModalTab ---
 function switchQuestModalTab(tabName) {
     const journalTabBtn = document.getElementById('quest-tab-btn-journal');
@@ -8184,6 +8306,8 @@ function switchQuestModalTab(tabName) {
 
         journalContent.style.display = 'none';
         mapContent.style.display = 'block';
+
+        initTamrielMapPanZoom();
     } else {
         journalTabBtn.style.background = 'rgba(255, 255, 255, 0.08)';
         journalTabBtn.style.color = 'var(--primary-accent)';
@@ -8197,6 +8321,7 @@ function switchQuestModalTab(tabName) {
         mapContent.style.display = 'none';
     }
 }
+
 
 
 // --- loadQuests ---
