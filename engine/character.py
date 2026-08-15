@@ -157,30 +157,32 @@ def is_two_handed_item(item: dict) -> bool:
 
 def get_item_category(item: dict) -> str:
     """Determine the equip category/slot for an item."""
-    explicit_slot = item.get("slot")
+    explicit_slot = item.get("slot") or item.get("equipped_slot")
     if explicit_slot:
         return explicit_slot.lower()
     item_type = item.get("type", "").lower()
     name = item.get("name", "").lower()
     
-    if "torch" in name or "lantern" in name or item_type in ["torch", "light"]:
+    if item_type in ["torch", "light"] or "torch" in name or "lantern" in name:
         return "torch"
-    if "shield" in name or item_type == "shield":
+    if item_type == "shield" or any(s in name for s in ["shield", "targe", "buckler"]):
         return "shield"
-    if item_type in ["weapon", "2h_weapon"] or any(w in name for w in ["dagger", "sword", "blade", "mace", "axe", "staff", "bow"]):
-        return "weapon"
-    if item_type in ["armor", "robes"] or any(a in name for a in ["robe", "robes", "cuirass", "mail", "armor", "tunic", "leather"]):
-        return "armor"
-    if item_type in ["head", "helmet", "hood"] or any(h in name for h in ["helm", "helmet", "hood", "circlet", "cap", "crown"]):
-        return "head"
-    if item_type in ["hands", "gauntlets", "gloves"] or any(g in name for g in ["gauntlet", "glove", "bracer"]):
-        return "hands"
-    if item_type in ["feet", "boots", "shoes"] or any(b in name for b in ["boot", "shoe", "greave"]):
+    if item_type in ["feet", "boots", "shoes"] or any(b in name for b in ["boot", "shoe", "greave", "sandal", "sabaton", "footwear", "slipper"]):
         return "feet"
-    if item_type in ["neck", "amulet"] or any(n in name for n in ["amulet", "necklace", "pendant", "talisman"]):
+    if item_type in ["head", "helmet", "hood"] or any(h in name for h in ["helm", "helmet", "hood", "circlet", "cap", "crown", "cowl", "coif", "diadem", "mask", "visor", "tiara"]):
+        return "head"
+    if item_type in ["hands", "gauntlets", "gloves"] or any(g in name for g in ["gauntlet", "glove", "bracer", "mitt", "vambrace", "handwrap"]):
+        return "hands"
+    if item_type in ["neck", "amulet"] or any(n in name for n in ["amulet", "necklace", "pendant", "talisman", "choker"]):
         return "neck"
     if item_type in ["ring"] or "ring" in name:
         return "ring"
+    if item_type in ["weapon", "2h_weapon", "1h_weapon"] or any(w in name for w in ["dagger", "sword", "blade", "mace", "axe", "staff", "bow", "hammer", "halberd", "spear", "club", "wand", "katana", "scimitar"]):
+        return "weapon"
+    if item_type in ["body", "chest", "torso", "cuirass", "robes", "apparel"] or any(a in name for a in ["robe", "cuirass", "mail", "tunic", "hauberk", "breastplate", "doublet", "vest", "jerkin", "chestpiece", "rags", "clothes", "clothing", "harness", "gambeson", "cloak", "cape", "mantle", "pauldron"]):
+        return "armor"
+    if item_type == "armor" or "armor" in name:
+        return "armor"
     return EQUIP_SLOTS.get(item_type, "")
 
 # ── Context injection ─────────────────────────────────────────────────────────
