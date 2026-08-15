@@ -2384,19 +2384,12 @@ class OpenSourceRunner(BaseProgramRunner):
             user_msg_id = f"{prefix}{uuid.uuid4().hex}"
         else:
             user_msg_id = msg_id
-        from utils.program import get_active_user
-        from engine.world_engine import load_world_state, create_state_snapshot
-        from engine.character import load_character
-        active_u = get_active_user()
-        user_snapshot = create_state_snapshot(load_world_state(active_u), load_character(active_u))
-
         user_msg = {
             'id': user_msg_id,
             'role': 'user',
             'text': new_message_text,
             'image_url': media_path if media_path else (f"data:{image_mime};base64,{image_data}" if image_data else None),
-            'timestamp': time.time(),
-            'state_snapshot': user_snapshot
+            'timestamp': time.time()
         }
         self.sessions_history[session_id].append(user_msg)
         self._save_session_to_disk(session_id)
