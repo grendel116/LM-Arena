@@ -7282,7 +7282,7 @@ function activateSkillCheckUI(checkData) {
 
     if (userInput) {
         userInput.disabled = true;
-        userInput.placeholder = `Skill Check Required: ${checkData.skill_name || 'Action'} (DC ${checkData.dc || 15})`;
+        userInput.placeholder = `${checkData.skill_name || 'Action'} (DC ${checkData.dc || 15})`;
         userInput.classList.add('user-input-frozen');
     }
 
