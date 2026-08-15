@@ -6869,7 +6869,15 @@ async function deleteTurnFromMessage(button) {
             const data = await response.json();
             if (data.status === 'success') {
                 const row = (bubble || voiceCallRow).closest('.message-row') || voiceCallRow;
-                if (row) row.remove();
+                if (row) {
+                    let next = row.nextElementSibling;
+                    while (next) {
+                        let toRemove = next;
+                        next = next.nextElementSibling;
+                        toRemove.remove();
+                    }
+                    row.remove();
+                }
                 evaluateLatestMessageForSkillCheck();
                 if (typeof fetchCharacterStatus === 'function') {
                     fetchCharacterStatus();

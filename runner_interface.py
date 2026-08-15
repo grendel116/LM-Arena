@@ -2655,14 +2655,19 @@ class OpenSourceRunner(BaseProgramRunner):
             real_history = self.sessions_history[session_id]
             for i, msg in enumerate(real_history):
                 if msg.get('id') == msg_id:
-                    if msg.get('tool_calls'):
-                        try:
-                            from utils.program import get_active_user
-                            from engine.character import rollback_tool_effects
-                            rollback_tool_effects(get_active_user(), msg['tool_calls'])
-                        except Exception as rb_err:
-                            print(f"[delete_message_at] Error rolling back tool effects: {rb_err}", flush=True)
-                    del real_history[i]
+                    discarded_turns = real_history[i:]
+                    try:
+                        from utils.program import get_active_user
+                        from engine.character import rollback_tool_effects
+                        active_user = get_active_user()
+                        for turn in discarded_turns:
+                            if turn.get('tool_calls'):
+                                rollback_tool_effects(active_user, turn['tool_calls'])
+                    except Exception as rb_err:
+                        print(f"[delete_message_at] Error rolling back tool effects: {rb_err}", flush=True)
+                    
+                    real_history = real_history[:i]
+                    self.sessions_history[session_id] = real_history
                     self._save_session_to_disk(session_id)
                     try:
                         from utils.program import get_active_user
