@@ -920,8 +920,8 @@ def generate_impersonated_message(session_id, user_profile, model):
         "You are an assistant that auto-generates the User's next message/action in the roleplay.\n"
         "You MUST write in the first-person, impersonating the user's active character.\n\n"
         "MESSAGE FORMAT & STYLE RULES (MANDATORY):\n"
-        "- Narration & Action: Use *italics* and present tense to describe physical actions, maneuvers, or movement (e.g., *I raise my torch and peer into the shadow*).\n"
-        "- Dialogue: Use plain text without quotation marks. Use **bold** for emphasis (e.g., **Stand back!** I will handle this creature).\n"
+        "- Narration: Use *italics* for narrative.\n"
+        "- Dialogue: Use plain text without quotation marks. Use **bold** sparingly.\n"
         "- Style: Use short words and precise phrasing with linear progression.\n"
         "- Do NOT use contrasting parallels, or stylistic symmetry.\n"
         "- Keep the suggestion short, succinct, and immediately actionable for the next turn."
@@ -1058,9 +1058,9 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
         f"Generate exactly 1 concise in character narrative sentence describing the physical action or reaction.\n"
         f"Strictly align the narration with the roll outcome (degree: {roll_res['degree']}, outcome: {'Success' if roll_res['success'] else 'Failure'}).\n"
         "Formatting rules:\n"
-        "- Use *italics* for physical actions and maneuvers (e.g., *I step forward with my weapon drawn*).\n"
-        "- If dialogue is spoken, use plain text without quotation marks.\n"
-        "- Output ONLY 1 sentence of narration. Do NOT write multiple sentences. Do NOT output commentary, prefixes, or headers."
+        "- Narration: Use *italics* for narrative.\n"
+        "- Dialogue: Use plain text without quotation marks. Use **bold** sparingly.\n"
+        "- Output ONLY 1 sentence of narration."
     )
 
     if is_flat_roll:
