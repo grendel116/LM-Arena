@@ -433,9 +433,20 @@ def serve_sound(filename):
 @app.route('/images/<path:filename>')
 @requires_auth
 def serve_image(filename):
-    active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
+    root_images_dir = os.path.join(base_dir, 'images')
+    if os.path.exists(os.path.join(root_images_dir, filename)):
+        return send_from_directory(root_images_dir, filename)
+
+    try:
+        from utils.program import get_active_program
+        active_program = get_active_program()
+    except Exception:
+        active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
     program_dir = os.path.join('core', 'programs', active_program)
-    return send_from_directory(program_dir, filename)
+    if os.path.exists(os.path.join(program_dir, filename)):
+        return send_from_directory(program_dir, filename)
+    return send_from_directory(root_images_dir, filename)
+
 
 @app.route('/api/get_image_prompt', methods=['GET'])
 @requires_auth
