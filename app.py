@@ -139,11 +139,12 @@ init_runner()
 
 
 def reload_program_state():
-    """Reload program config, reinitialize the runner, and clear session caches."""
+    """Reload program config, reinitialize the runner, and sync active save session."""
     from core import program_config
     importlib.reload(program_config)
     init_runner()
-    runner.sessions_history.clear()
+    if hasattr(runner, '_load_session_from_disk'):
+        runner._load_session_from_disk('default')
 
 
 def load_theme(program_id):

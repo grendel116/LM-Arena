@@ -331,8 +331,18 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
 def save_game(character_name: str = None, save_id: str = None) -> dict:
     """Save the active state, using playername.json first and appending sequential numbers if existing."""
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
-    current_bundle = read_save(get_active_save_id())
+    active_id = save_id or get_active_save_id()
+    current_bundle = read_save(active_id)
     
+    try:
+        from runner_interface import get_runner
+        runner = get_runner()
+        if hasattr(runner, "sessions_history") and "default" in runner.sessions_history:
+            if runner.sessions_history["default"]:
+                current_bundle["history"] = runner.sessions_history["default"]
+    except Exception as e:
+        print(f"[save_game] Error syncing history into save bundle: {e}")
+
     char = current_bundle.get("character", {})
     raw_name = character_name or char.get("name") or current_bundle.get("meta", {}).get("character_name") or "hero"
     
