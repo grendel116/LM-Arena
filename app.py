@@ -674,13 +674,7 @@ You must return a valid JSON object matching the following schema:
 def history():
     session_id = request.args.get('session_id', 'default')
     try:
-        async def fetch_history_data():
-            hist = await runner.get_history(session_id)
-            inv = await runner._get_inversion_mode(session_id, history=hist)
-            return hist, inv
-
-        chat_history, inversion_mode = asyncio.run(fetch_history_data())
-        
+        chat_history = asyncio.run(runner.get_history(session_id))
         state_info = extract_mood(chat_history)
         
         from core.program_config import program_name, get_program_greeting
@@ -692,7 +686,6 @@ def history():
         return jsonify({
             'history': chat_history,
             'state': state_info,
-            'inversion_active': inversion_mode,
             'character_name': program_name,
             'active_program': active_program,
             'theme': theme,
