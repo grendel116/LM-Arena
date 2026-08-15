@@ -362,6 +362,22 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
                     snapshot["quest_stage"] = int(val)
                 except Exception:
                     pass
+            elif key == "hour":
+                try:
+                    snapshot.setdefault("date", {})["hour"] = int(val) % 24
+                except Exception:
+                    pass
+            elif key in ("time", "time_of_day"):
+                t_val = str(val).lower().strip()
+                t_map = {
+                    "dawn": 6, "pre-dawn": 5, "predawn": 5,
+                    "morning": 8, "early morning": 6,
+                    "noon": 12, "midday": 12, "afternoon": 14,
+                    "dusk": 18, "sunset": 18, "evening": 19,
+                    "night": 22, "midnight": 0
+                }
+                if t_val in t_map:
+                    snapshot.setdefault("date", {})["hour"] = t_map[t_val]
             elif key in ("hours", "time_advance", "advance_hours"):
                 try:
                     hrs = int(val)
@@ -371,6 +387,7 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
                         snapshot["date"] = temp_state["date"]
                 except Exception:
                     pass
+
             elif key in ("hp", "hp_current"):
                 try:
                     snapshot.setdefault("vitals", {})["hp"] = int(val)
