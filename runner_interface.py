@@ -2137,28 +2137,23 @@ class OpenSourceRunner(BaseProgramRunner):
     def _save_session_to_disk(self, session_id: str):
         with self._lock:
             try:
+                from engine.save_manager import get_active_save_id, read_save, write_save
+                save_id = get_active_save_id()
                 history = self.sessions_history.get(session_id, [])
-                inversion_state = self.sessions_inversion_state.get(session_id, copy.deepcopy(_DEFAULT_INVERSION_STATE))
-                data = {
-                    "messages": history,
-                    "inversion_state": inversion_state
-                }
-                with open(self._get_session_path(session_id), "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False, default=lambda o: None if o is Ellipsis else str(o))
+                bundle = read_save(save_id)
+                bundle["history"] = history
+                write_save(save_id, bundle)
             except Exception as e:
                 print(f"Error saving OS session {session_id} to disk: {e}")
 
     def _load_session_from_disk(self, session_id: str):
         with self._lock:
-            path = self._get_session_path(session_id)
-            if not os.path.exists(path):
-                return False
             try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                
-                self.sessions_history[session_id] = data["messages"]
-                self.sessions_inversion_state[session_id] = data.get("inversion_state", copy.deepcopy(_DEFAULT_INVERSION_STATE))
+                from engine.save_manager import get_active_save_id, read_save
+                save_id = get_active_save_id()
+                bundle = read_save(save_id)
+                self.sessions_history[session_id] = bundle.get("history", [])
+                self.sessions_inversion_state[session_id] = copy.deepcopy(_DEFAULT_INVERSION_STATE)
                 return True
             except Exception as e:
                 print(f"Error loading OS session {session_id} from disk: {e}")
@@ -2497,28 +2492,10 @@ class OpenSourceRunner(BaseProgramRunner):
             else:
                 media_path = url_str
                 
-        # Rollback tool mutations for all turns being truncated/discarded
-        discarded_turns = history[user_idx:]
-        try:
-            from utils.program import get_active_user
-            from engine.character import rollback_tool_effects
-            active_user = get_active_user()
-            for turn in discarded_turns:
-                if turn.get('tool_calls'):
-                    rollback_tool_effects(active_user, turn['tool_calls'])
-        except Exception as rb_err:
-            print(f"[edit_turn] Error rolling back tool effects: {rb_err}", flush=True)
-
-        # Truncate history
+        # Truncate history (narrative only)
         history = history[:user_idx]
         self.sessions_history[session_id] = history
         self._save_session_to_disk(session_id)
-        try:
-            from utils.program import get_active_user
-            from engine.world_engine import sync_world_state_from_history
-            sync_world_state_from_history(get_active_user(), history)
-        except Exception as sync_err:
-            print(f"[edit_turn] Error syncing world state from history: {sync_err}", flush=True)
 
         
         # If offline or forcing offload, override model with remote model upfront
@@ -2648,26 +2625,9 @@ class OpenSourceRunner(BaseProgramRunner):
             real_history = self.sessions_history[session_id]
             for i, msg in enumerate(real_history):
                 if msg.get('id') == msg_id:
-                    discarded_turns = real_history[i:]
-                    try:
-                        from utils.program import get_active_user
-                        from engine.character import rollback_tool_effects
-                        active_user = get_active_user()
-                        for turn in discarded_turns:
-                            if turn.get('tool_calls'):
-                                rollback_tool_effects(active_user, turn['tool_calls'])
-                    except Exception as rb_err:
-                        print(f"[delete_message_at] Error rolling back tool effects: {rb_err}", flush=True)
-                    
                     real_history = real_history[:i]
                     self.sessions_history[session_id] = real_history
                     self._save_session_to_disk(session_id)
-                    try:
-                        from utils.program import get_active_user
-                        from engine.world_engine import sync_world_state_from_history
-                        sync_world_state_from_history(get_active_user(), real_history)
-                    except Exception as sync_err:
-                        print(f"[delete_message_at] Error syncing world state from history: {sync_err}", flush=True)
                     return True
             return False
 

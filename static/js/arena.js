@@ -3516,6 +3516,30 @@ function renderUserProfilesList() {
     });
 }
 
+// --- saveActiveGameSlot ---
+async function saveActiveGameSlot() {
+    try {
+        const response = await fetch('/api/saves/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await response.json();
+        if (data.status === 'success') {
+            showCustomAlert("Save Game", `Game saved as ${data.save.id}!`);
+            await loadUserProfiles();
+            if (typeof fetchCharacterStatus === 'function') {
+                fetchCharacterStatus();
+            }
+        } else {
+            showCustomAlert("Save Error", data.error || "Failed to save game.");
+        }
+    } catch (err) {
+        console.error("Error saving game:", err);
+        showCustomAlert("Error", "Could not connect to the server to save game.");
+    }
+}
+
 // --- openUserProfileEditor ---
 function openUserProfileEditor(profileId) {
     selectedEditingProfileId = profileId;
@@ -5659,22 +5683,7 @@ function renderMessage(msg, isLive = false) {
                 actions.appendChild(tsSpan);
             }
 
-            // Image-only messages: only show delete
-            if (isImageOnly && item.type !== 'text') {
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'action-icon-btn';
-                deleteBtn.title = 'Delete image from history';
-                deleteBtn.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                    </svg>
-                `;
-                deleteBtn.onclick = () => deleteTurnFromMessage(deleteBtn);
-                actions.appendChild(deleteBtn);
-            } else if (role === 'user') {
+            if (role === 'user') {
                 const reuseBtn = document.createElement('button');
                 reuseBtn.className = 'action-icon-btn';
                 reuseBtn.title = 'Resend prompt (local)';
@@ -5698,36 +5707,8 @@ function renderMessage(msg, isLive = false) {
                 `;
                 editBtn.onclick = () => startEditMessage(editBtn);
                 actions.appendChild(editBtn);
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'action-icon-btn';
-                deleteBtn.title = 'Delete message from history';
-                deleteBtn.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                    </svg>
-                `;
-                deleteBtn.onclick = () => deleteTurnFromMessage(deleteBtn);
-                actions.appendChild(deleteBtn);
             } else if (role === 'program' && !text.startsWith("Hello, " + getUserDisplayName())) {
-                if (isMsgTransient) {
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'action-icon-btn';
-                    deleteBtn.title = 'Delete message from history';
-                    deleteBtn.innerHTML = `
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                    `;
-                    deleteBtn.onclick = () => deleteTurnFromMessage(deleteBtn);
-                    actions.appendChild(deleteBtn);
-                } else {
+                if (!isMsgTransient) {
                     const rerollBtn = document.createElement('button');
                     rerollBtn.className = 'action-icon-btn';
                     rerollBtn.title = 'Reroll response (cloud)';
@@ -5750,33 +5731,19 @@ function renderMessage(msg, isLive = false) {
                     `;
                     editBtn.onclick = () => startEditMessage(editBtn);
                     actions.appendChild(editBtn);
-
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'action-icon-btn';
-                    deleteBtn.title = 'Delete message from history';
-                    deleteBtn.innerHTML = `
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                    `;
-                    deleteBtn.onclick = () => deleteTurnFromMessage(deleteBtn);
-                    actions.appendChild(deleteBtn);
-
-                    const speakBtn = document.createElement('button');
-                    speakBtn.className = 'action-icon-btn speak-btn';
-                    speakBtn.title = 'Speak message (TTS)';
-                    speakBtn.innerHTML = `
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                    `;
-                    speakBtn.onclick = () => speakMessage(speakBtn);
-                    actions.appendChild(speakBtn);
                 }
+
+                const speakBtn = document.createElement('button');
+                speakBtn.className = 'action-icon-btn speak-btn';
+                speakBtn.title = 'Speak message (TTS)';
+                speakBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                `;
+                speakBtn.onclick = () => speakMessage(speakBtn);
+                actions.appendChild(speakBtn);
             }
         }
 

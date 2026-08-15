@@ -19,28 +19,38 @@ def _get_save_path(character_name: str) -> Path:
     return BASE_DIR / "variables" / "saves" / slot / "world_state.json"
 
 def load_world_state(character_name: str) -> dict:
-    """Loads the world state JSON for the given character."""
-    path = _get_save_path(character_name)
-    if not path.exists():
-        default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
-        if default_world_path.exists():
-            try:
-                with open(default_world_path, "r", encoding="utf-8") as f:
-                    state = json.load(f)
-                save_world_state(character_name, state)
-                return state
-            except Exception:
-                pass
-        return {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    """Loads the world state for the active save slot."""
+    slot = _normalize_save_slot(character_name)
+    try:
+        from engine.save_manager import read_save
+        bundle = read_save(slot)
+        state = bundle.get("world", {})
+        if state:
+            return state
+    except Exception:
+        pass
+
+    default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
+    if default_world_path.exists():
+        try:
+            with open(default_world_path, "r", encoding="utf-8") as f:
+                state = json.load(f)
+            save_world_state(character_name, state)
+            return state
+        except Exception:
+            pass
+    return {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
 
 def save_world_state(character_name: str, state: dict) -> None:
-    """Saves the world state dict to JSON."""
-    path = _get_save_path(character_name)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=4)
+    """Saves the world state dict to the save file."""
+    slot = _normalize_save_slot(character_name)
+    try:
+        from engine.save_manager import read_save, write_save
+        bundle = read_save(slot)
+        bundle["world"] = state
+        write_save(slot, bundle)
+    except Exception as e:
+        print(f"[save_world_state] Error persisting world state to {slot}: {e}")
 
 TAMRIEL_GEOGRAPHY = {
     "High Rock": {
@@ -481,32 +491,8 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
 
 
 def sync_world_state_from_history(character_name: str, history: list) -> dict:
-    """Recomputes world location, calendar date, and quest stage deterministically from active history turns."""
-    from engine.quest_tracker import load_quest_stages, advance_stage
-
-    if not history:
-        default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
-        if default_world_path.exists():
-            try:
-                with open(default_world_path, "r", encoding="utf-8") as f:
-                    state = json.load(f)
-            except Exception:
-                state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
-        else:
-            state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
-        save_world_state(character_name, state)
-        return state
-
-    # Check if the latest message has a state_snapshot
-    latest_snapshot = None
-    for msg in reversed(history):
-        if msg.get("state_snapshot"):
-            latest_snapshot = msg["state_snapshot"]
-            break
-
-    if latest_snapshot:
-        apply_state_snapshot(character_name, latest_snapshot)
-        return load_world_state(character_name)
+    """Returns the active world state for the character."""
+    return load_world_state(character_name)
 
     # Fallback to walking tool calls in history
     default_world_path = BASE_DIR / "core" / "world" / "world_state.json"

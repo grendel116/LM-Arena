@@ -3053,6 +3053,23 @@ def get_saves():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/saves/save', methods=['POST'])
+@requires_auth
+def save_active_game():
+    try:
+        from engine.save_manager import save_game
+        meta = save_game()
+        if hasattr(runner, 'sessions_history'):
+            runner.sessions_history.clear()
+        reload_program_state()
+        return jsonify({
+            "status": "success",
+            "save": meta
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/saves/new', methods=['POST'])
 @requires_auth
 def create_new_save():
@@ -3068,6 +3085,7 @@ def create_new_save():
         )
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
+        reload_program_state()
         return jsonify({
             "status": "success",
             "save": meta
@@ -3090,6 +3108,7 @@ def load_existing_save():
         
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
+        reload_program_state()
             
         return jsonify({
             "status": "success",
@@ -3113,6 +3132,7 @@ def delete_existing_save():
         
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
+        reload_program_state()
             
         return jsonify({
             "status": "success",
@@ -3327,69 +3347,32 @@ def extract_profile_display_name(profile_id: str, content: str) -> str:
 @requires_auth
 def list_user_profiles():
     try:
-        from engine.save_manager import SAVES_DIR, sync_save_meta, create_save
+        from engine.save_manager import list_saves, get_active_save_id, create_save
         from utils.program import get_active_user
-        if not SAVES_DIR.exists():
-            SAVES_DIR.mkdir(parents=True, exist_ok=True)
         
-        # Get active user profile
-        active_user = get_active_user()
+        saves = list_saves()
+        if not saves:
+            create_save(save_id="eternal_champion_001")
+            saves = list_saves()
+            
+        active_id = get_active_save_id()
         
         profiles = []
-        
-        for item in SAVES_DIR.iterdir():
-            if item.is_dir():
-                profile_name = item.name
-                profile_path = item / "profile.md"
-                
-                # Auto create profile.md if missing
-                meta = sync_save_meta(profile_name) or {}
-                if not profile_path.exists():
-                    try:
-                        char_name = meta.get("character_name", profile_name.replace("_", " ").title())
-                        race = meta.get("race", "Nord")
-                        char_class = meta.get("class", "Mage")
-                        gender = meta.get("gender", "Male")
-                        default_content = f"# {char_name.upper()}\n- Race: {race}\n- Class: {char_class}\n- Gender: {gender}\n- Description: A brave adventurer.\n"
-                        with open(profile_path, "w", encoding="utf-8") as f:
-                            f.write(default_content)
-                    except Exception as e:
-                        print(f"Error auto creating profile.md for {profile_name}: {e}")
-                
-                try:
-                    with open(profile_path, "r", encoding="utf-8") as pf:
-                        content = pf.read()
-                            
-                    profiles.append({
-                        "id": profile_name,
-                        "name": extract_profile_display_name(profile_name, content),
-                        "content": content,
-                        "gender": meta.get("gender", "Male"),
-                        "race": meta.get("race", "Nord"),
-                        "class": meta.get("class", "Mage"),
-                        "level": meta.get("level", 1)
-                    })
-                except Exception as e:
-                    print(f"Error reading profile {profile_name}: {e}")
-        
-        # Ensure at least "eternal_champion" is present
-        if not profiles:
-            create_save(save_id="eternal_champion", user_profile_id="eternal_champion")
-            meta = sync_save_meta("eternal_champion") or {}
-            profile_path = SAVES_DIR / "eternal_champion" / "profile.md"
-            with open(profile_path, "r", encoding="utf-8") as pf:
-                content = pf.read()
+        for s in saves:
             profiles.append({
-                "id": "eternal_champion",
-                "name": "Eternal Champion",
-                "content": content,
-                "gender": meta.get("gender", "Male"),
-                "race": meta.get("race", "Nord"),
-                "class": meta.get("class", "Battlemage"),
-                "level": meta.get("level", 1)
+                "id": s["id"],
+                "name": s.get("name") or s.get("character_name", s["id"]),
+                "character_name": s.get("character_name", s["id"]),
+                "content": f"# {s.get('character_name', s['id'])}\n- Race: {s.get('race', 'Nord')}\n- Class: {s.get('class', 'Mage')}\n",
+                "gender": s.get("gender", "Male"),
+                "race": s.get("race", "Nord"),
+                "class": s.get("class", "Mage"),
+                "level": s.get("level", 1),
+                "gold": s.get("gold", 0),
+                "location": s.get("current_location", "Imperial Dungeon")
             })
 
-        return jsonify({"profiles": profiles, "active": active_user})
+        return jsonify({"profiles": profiles, "active": active_id})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -3402,20 +3385,8 @@ def select_user_profile():
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
         
-        from utils.program import set_active_user
-        from engine.save_manager import SAVES_DIR, load_save
-        
-        save_path = SAVES_DIR / profile_id
-        if not save_path.exists():
-            return jsonify({"error": f"Profile '{profile_id}' does not exist"}), 404
-        
-        # Update active user profile settings
-        set_active_user(profile_id)
-
-        # Sync active save game locked to this player character profile
+        from engine.save_manager import load_save
         load_save(profile_id)
-        
-        # Re-initialize the program config module and runner
         reload_program_state()
             
         return jsonify({"status": "success", "active": profile_id})

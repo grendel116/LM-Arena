@@ -75,19 +75,19 @@ def _normalize_save_slot(character_name: str) -> str:
 
 
 def load_character(character_name: str) -> dict:
-    """Load and return the character sheet for the given save slot."""
+    """Load and return the character sheet for the active save slot."""
     slot = _normalize_save_slot(character_name)
-    path = SAVES_DIR / slot / "character_sheet.json"
-    if not path.exists():
-        import copy
-        new_sheet = copy.deepcopy(DEFAULT_SHEET)
-        new_sheet["name"] = character_name.replace("_", " ").title() if character_name else "Eternal Champion"
-        save_character(slot, new_sheet)
-        return new_sheet
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            sheet = json.load(f)
-            
+        from engine.save_manager import read_save
+        bundle = read_save(slot)
+        sheet = bundle.get("character", {})
+        if not sheet:
+            import copy
+            sheet = copy.deepcopy(DEFAULT_SHEET)
+            sheet["name"] = character_name.replace("_", " ").title() if character_name else "Eternal Champion"
+            save_character(slot, sheet)
+            return sheet
+
         # Seamless migration: SP -> MP and Stamina
         d = sheet.setdefault("derived", {})
         if "sp_current" in d and "mp_current" not in d:
@@ -106,12 +106,15 @@ def load_character(character_name: str) -> dict:
 
 
 def save_character(character_name: str, sheet: dict) -> None:
-    """Persist the character sheet to disk."""
+    """Persist the character sheet to the save file."""
     slot = _normalize_save_slot(character_name)
-    path = SAVES_DIR / slot / "character_sheet.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(sheet, f, indent=4, ensure_ascii=False)
+    try:
+        from engine.save_manager import read_save, write_save
+        bundle = read_save(slot)
+        bundle["character"] = sheet
+        write_save(slot, bundle)
+    except Exception as e:
+        print(f"[save_character] Error persisting character sheet to {slot}: {e}")
 
 
 # ── Equipment Slots & Categorization ──────────────────────────────────────────
