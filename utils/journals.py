@@ -12,6 +12,16 @@ def _get_journals_path(program_id: str = None) -> str:
     return os.path.join(PROGRAMS_DIR, program_id, "journals.json")
 
 def get_journal_entries(program_id: str = None) -> list:
+    try:
+        from engine.save_manager import get_active_save_id, read_save
+        bundle = read_save(get_active_save_id())
+        entries = bundle.get("databank", []) or bundle.get("journals", [])
+        if isinstance(entries, list):
+            return entries
+        if isinstance(entries, dict):
+            return entries.get("documents", [])
+    except Exception as e:
+        print(f"Error loading journals from save bundle: {e}")
     path = _get_journals_path(program_id)
     if not os.path.exists(path):
         return []
@@ -23,9 +33,17 @@ def get_journal_entries(program_id: str = None) -> list:
         return []
 
 def save_journal_entries(entries: list, program_id: str = None):
+    try:
+        from engine.save_manager import get_active_save_id, read_save, write_save
+        save_id = get_active_save_id()
+        bundle = read_save(save_id)
+        bundle["databank"] = entries
+        bundle["journals"] = entries
+        write_save(save_id, bundle)
+    except Exception as e:
+        print(f"Error saving journals to save bundle: {e}")
     path = _get_journals_path(program_id)
     try:
-        # Ensure parent folder exists
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(entries, f, indent=2, ensure_ascii=False)

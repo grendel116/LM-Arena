@@ -4201,7 +4201,7 @@ async function deleteAssistant(assistantId, name) {
                 const data = await res.json();
                 if (data.status === 'success') {
                     showCustomAlert("Deleted", `Program <strong>${name}</strong> has been deleted.`);
-                    if (data.switched_to === 'sebile' || activeProgram === assistantId) {
+                    if (data.switched_to === 'sebile' || (typeof activeProgram !== 'undefined' && activeProgram === assistantId)) {
                         selectAssistant('sebile');
                     } else {
                         const listRes = await fetch('/api/programs');
@@ -4389,7 +4389,7 @@ async function saveProgramProfile() {
 }
 
 async function loadProgramJournals() {
-    const progId = currentEditingProgramId || activeProgram;
+    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
     if (!progId) return;
     const journalsContainer = document.getElementById('program-journals-list');
     const memoriesContainer = document.getElementById('program-memories-list');
@@ -9675,6 +9675,7 @@ let lastInteractionTime = Date.now();
 let hasTriggeredProactive = false;
 let proactiveAbortController = null;
 let activeProgramName = "";
+let activeProgram = "ria_silmane";
 let availableModels = [];
 let connectionStatus = { remote_configured: false, gemini_configured: false, local_online: false };
 let modelInitPromise = null;
