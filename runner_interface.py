@@ -172,6 +172,39 @@ def _normalize_tool_name(tool_name: str) -> str:
     return tool_name
 
 
+def _get_tool_dedup_keys(norm_name: str, kwargs: dict, pos_args: list = None) -> set:
+    keys = set()
+    kwargs = kwargs or {}
+    pos_args = pos_args or []
+    
+    primary_val = (
+        kwargs.get('skill_name') or
+        kwargs.get('attribute_name') or
+        kwargs.get('item_name') or
+        kwargs.get('item') or
+        kwargs.get('target_name') or
+        kwargs.get('target') or
+        kwargs.get('spell_name') or
+        kwargs.get('spell') or
+        kwargs.get('effect_name') or
+        kwargs.get('condition_name') or
+        kwargs.get('amount') or
+        (pos_args[0] if pos_args else None)
+    )
+    
+    if primary_val is not None:
+        p_str = str(primary_val).strip().lower()
+        keys.add((norm_name, p_str))
+        
+    sorted_str = ",".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
+    keys.add((norm_name, sorted_str.lower()))
+    
+    if norm_name in ('arena_request_skill_check', 'request_skill_check'):
+        keys.add((norm_name, 'skill_check_generic'))
+        
+    return keys
+
+
 def _execute_emulated_tool(tool_name: str, args_str: str) -> tuple[dict, str]:
     """Parses and executes an emulated tool call, returning parsed arguments and execution output."""
     normalized_name = _normalize_tool_name(tool_name)
@@ -1304,38 +1337,7 @@ class BaseProgramRunner:
                 return re.sub(r'(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', _text, flags=re.IGNORECASE).strip()
         except Exception as e:
             print(f"[DISTILLATION] Error generating local distillation: {e}", flush=True)
-            
-def _get_tool_dedup_keys(norm_name: str, kwargs: dict, pos_args: list = None) -> set:
-    keys = set()
-    kwargs = kwargs or {}
-    pos_args = pos_args or []
-    
-    primary_val = (
-        kwargs.get('skill_name') or
-        kwargs.get('attribute_name') or
-        kwargs.get('item_name') or
-        kwargs.get('item') or
-        kwargs.get('target_name') or
-        kwargs.get('target') or
-        kwargs.get('spell_name') or
-        kwargs.get('spell') or
-        kwargs.get('effect_name') or
-        kwargs.get('condition_name') or
-        kwargs.get('amount') or
-        (pos_args[0] if pos_args else None)
-    )
-    
-    if primary_val is not None:
-        p_str = str(primary_val).strip().lower()
-        keys.add((norm_name, p_str))
-        
-    sorted_str = ",".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
-    keys.add((norm_name, sorted_str.lower()))
-    
-    if norm_name in ('arena_request_skill_check', 'request_skill_check'):
-        keys.add((norm_name, 'skill_check_generic'))
-        
-    return keys
+
 
     async def _execute_local_llm_loop(
         self,
