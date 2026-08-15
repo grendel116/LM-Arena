@@ -792,15 +792,17 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                     src = args.get("source", "restored")
                     sheet = add_effect(sheet, effect_name, dur, src)
                     modified = True
-            elif t_name == "arena_advance_stage":
+            elif t_name in ("arena_advance_stage", "arena_set_quest_stage", "arena_set_location", "arena_travel"):
                 try:
-                    from engine.quest import load_world_state, save_world_state
+                    from engine.world_engine import load_world_state, save_world_state
                     ws = load_world_state(character_name)
-                    if ws.get("stage", 0) > 0:
-                        ws["stage"] -= 1
-                        save_world_state(character_name, ws)
+                    if t_name in ("arena_advance_stage", "arena_set_quest_stage"):
+                        if ws.get("quest_stage", 10) > 10:
+                            ws["quest_stage"] = max(10, ws["quest_stage"] - 10)
+                            save_world_state(character_name, ws)
                 except Exception as q_err:
-                    print(f"[rollback_tool_effects] Error rolling back quest stage: {q_err}", flush=True)
+                    print(f"[rollback_tool_effects] Error rolling back quest/world state: {q_err}", flush=True)
+
                     
         if modified:
             save_character(character_name, sheet)

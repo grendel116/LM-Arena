@@ -202,17 +202,18 @@ def get_compiled_instructions() -> str:
 
     global_formatting = (
         "\n\n# MESSAGE FORMAT (MANDATORY)\n"
-        "- Unforgiving dungeon master. Use separate lines and clear paragraphs for narration and dialogue.\n"
+        "- Immersive worldbuilder. Use separate lines and clear paragraphs for narration and dialogue.\n"
         "- Narration: Use *italics* and present tense to describe the action, setting, and characters.\n"
-        "- Dialogue: Use plain text without quotation marks. Use **bold** for vocal emphasis.\n"
+        "- Dialogue: Use plain text without quotation marks. Use **bold** for emphasis.\n"
+        "- Scene Transitions: When the scene moves to a new location, advances time, or updates quest milestones, append a hidden state tag at the very end (e.g. <!-- state: province=\"Hammerfell\", location=\"Rihad\", hours=2, quest_stage=20 -->). This is processed automatically and hidden from {{user}}.\n"
+        "- Do not end turns with questions.\n"
         "- Characters: Give each character a distinct personality and voice.\n"
         "- Plot: Introduce narrative friction and develop scenes steadily.\n"
         "- Style: Use short words and precise phrasing. Write with linear progression.\n"
+        "- Mature Themes: Write like an adult novelist.\n"
         "- Do not use contrasting parallels.\n"
         "- Do not use stylistic symmetry.\n"
         "- Do not mirror sentence clauses.\n"
-        "- Do not use flowery language.\n"
-        "- Do not use corporate jargon.\n"
     )
 
     base += global_formatting

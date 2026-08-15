@@ -2392,15 +2392,21 @@ def cite_scripture(tradition: str = "all", topic: str = "") -> str:
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine.mechanics import roll_check, roll_combat, roll_initiative, roll_skill, sorcerer_absorb
-from engine.world_engine import load_world_state, save_world_state, get_location_context, travel, advance_time, set_flag, discover_location
-from engine.quest_tracker import load_quest_stages, get_stage_context_injection, check_stage_conditions, advance_stage
+from engine.mechanics import roll_check, roll_combat, roll_initiative, roll_skill, sorcerer_absorb, request_skill_check
+from engine.world_engine import load_world_state, save_world_state, get_location_context, travel, advance_time, set_flag, discover_location, set_location
+from engine.quest_tracker import load_quest_stages, get_stage_context_injection, check_stage_conditions, advance_stage, advance_quest_stage
 from engine.spellmaker import evaluate_spell, get_school_for_effect
+
+@track_tool_activity
+def arena_request_skill_check(skill_name: str, attribute_name: str, dc: int, reason: str = ""):
+    """Request an interactive skill or attribute check from the player character when the narrative requires active player reaction. Triggers player dice roll."""
+    return request_skill_check(skill_name, attribute_name, dc, reason)
 
 @track_tool_activity
 def arena_roll_check(attribute_name, attribute_value, dc, advantage=False, disadvantage=False):
     """Roll a d20 attribute check for the current scene. Results appear as a collapsible tool call. The LLM narrates only the outcome, never the numbers."""
     return roll_check(attribute_name, attribute_value, dc, advantage, disadvantage)
+
 
 @track_tool_activity
 def arena_roll_combat(attacker_name, attacker_strength, attacker_agility, attacker_class_archetype, weapon_name, weapon_damage_tier, weapon_attribute, target_name, target_agility):
@@ -2453,21 +2459,27 @@ def arena_get_location(character_name):
     return get_location_context(world_state, provinces, cities, dungeons)
 
 @track_tool_activity
+def arena_set_location(character_name, province, location_name, advance_hours=0):
+    """Directly sets the character's active location and province (e.g. exiting a shift gate, entering a dungeon or city)."""
+    return set_location(character_name, province, location_name, advance_hours)
+
+@track_tool_activity
 def arena_travel(character_name, destination_province, destination_city):
     """Travel to a new province and city. Updates world state and advances time."""
     world_state = load_world_state(character_name)
-    travel_summary = travel(world_state, destination_province, destination_city)
+    world_state, travel_summary = travel(world_state, destination_province, destination_city)
     save_world_state(character_name, world_state)
     return travel_summary
 
 @track_tool_activity
-def arena_advance_stage(character_name):
-    """Check if the current quest stage conditions are met and advance if so."""
-    world_state = load_world_state(character_name)
-    stages = load_quest_stages()
-    fired = advance_stage(world_state, stages)
-    save_world_state(character_name, world_state)
-    return fired
+def arena_advance_stage(character_name, target_stage=None):
+    """Advances the main quest stage to the next chapter upon milestone completion."""
+    return advance_quest_stage(character_name, target_stage)
+
+@track_tool_activity
+def arena_set_quest_stage(character_name, stage_number):
+    """Directly sets the main quest stage number for the character."""
+    return advance_quest_stage(character_name, target_stage=int(stage_number))
 
 @track_tool_activity
 def arena_recruit_follower(follower_name, follower_race="Imperial", follower_class="Adventurer", persona_description=""):

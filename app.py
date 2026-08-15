@@ -910,10 +910,10 @@ def generate_impersonated_message(session_id, user_profile, model):
         "You MUST write in the first-person, impersonating the user's active character.\n\n"
         "MESSAGE FORMAT & STYLE RULES (MANDATORY):\n"
         "- Narration & Action: Use *italics* and present tense to describe physical actions, maneuvers, or movement (e.g., *I raise my torch and peer into the shadow*).\n"
-        "- Dialogue: Use plain text without quotation marks. Use **bold** for vocal emphasis (e.g., Stand back! I will handle this creature).\n"
+        "- Dialogue: Use plain text without quotation marks. Use **bold** for emphasis (e.g., **Stand back!** I will handle this creature).\n"
         "- Style: Use short words and precise phrasing with linear progression.\n"
-        "- Do NOT use flowery language, corporate jargon, contrasting parallels, or stylistic symmetry.\n"
-        "- Keep the suggestion succinct, direct, and immediately actionable for the next turn."
+        "- Do NOT use contrasting parallels, or stylistic symmetry.\n"
+        "- Keep the suggestion short, succinct, and immediately actionable for the next turn."
     )
     
     from core.program_config import load_user_instructions, replace_placeholders
@@ -978,6 +978,142 @@ def generate_user_message():
     except Exception as e:
         print(f"Error generating impersonated user message: {e}")
         return jsonify({'error': str(e)}), 500
+
+def generate_player_skill_check_action(session_id, skill_name, attribute_name, dc, reason, model, is_flat_roll=False):
+    import random
+    from utils.program import get_active_user
+    from engine.character import load_character, get_character_context
+    from engine.mechanics import roll_check
+
+    active_user = get_active_user()
+    sheet = load_character(active_user)
+    attributes = sheet.get("attributes", {})
+
+    if is_flat_roll:
+        roll_val = random.randint(1, 20)
+        if roll_val == 20:
+            degree = "critical"
+        elif roll_val == 1:
+            degree = "fumble"
+        elif roll_val >= 10:
+            degree = "success"
+        else:
+            degree = "failure"
+        roll_res = {
+            "roll": roll_val,
+            "modifier": 0,
+            "total": roll_val,
+            "dc": 10,
+            "degree": degree,
+            "success": roll_val >= 10
+        }
+        attr_val = 50
+        dc_val = 10
+    else:
+        attr_val = 50
+        for k, v in attributes.items():
+            if k.lower() == str(attribute_name).strip().lower():
+                try:
+                    attr_val = int(v)
+                except Exception:
+                    attr_val = 50
+                break
+
+        try:
+            dc_val = int(dc)
+        except Exception:
+            dc_val = 15
+
+        roll_res = roll_check(attribute_name, attr_val, dc_val)
+
+    chat_history = asyncio.run(runner.get_history(session_id))
+    temperature = load_temperature()
+
+    recent_history = chat_history[-6:] if len(chat_history) > 6 else chat_history
+    history_text = ""
+    for msg in recent_history:
+        role = "User" if msg.get('role') == 'user' else "Program"
+        history_text += f"{role}: {msg.get('text', '')}\n"
+
+    char_context = ""
+    try:
+        char_context = get_character_context(sheet)
+    except Exception as e:
+        print(f"Error getting character context for skill check: {e}")
+
+    system_instruction = (
+        "You generate the User character's immediate next action in the roleplay.\n"
+        "Write in the first person, impersonating the user's active character.\n"
+        f"Generate exactly 1 concise in character narrative sentence describing the physical action or reaction.\n"
+        f"Strictly align the narration with the roll outcome (degree: {roll_res['degree']}, outcome: {'Success' if roll_res['success'] else 'Failure'}).\n"
+        "Formatting rules:\n"
+        "- Use *italics* for physical actions and maneuvers (e.g., *I step forward with my weapon drawn*).\n"
+        "- If dialogue is spoken, use plain text without quotation marks.\n"
+        "- Output ONLY 1 sentence of narration. Do NOT write multiple sentences. Do NOT output commentary, prefixes, or headers."
+    )
+
+    if is_flat_roll:
+        prompt = (
+            f"### CHARACTER CONTEXT\n"
+            f"{char_context}\n\n"
+            f"### FLAT ACTION ROLL CONTEXT\n"
+            f"- Flat d20 Roll: {roll_res['roll']} (Outcome: {roll_res['degree'].upper()})\n\n"
+            f"### RECENT CHAT HISTORY\n"
+            f"{history_text}\n\n"
+            f"Generate a single in character narrative sentence describing the character's immediate action reflecting this {roll_res['degree']} outcome:"
+        )
+    else:
+        prompt = (
+            f"### CHARACTER CONTEXT\n"
+            f"{char_context}\n\n"
+            f"### SKILL CHECK CONTEXT\n"
+            f"- Skill: {skill_name}\n"
+            f"- Attribute: {attribute_name} (Value: {attr_val}, Modifier: {'+' if roll_res['modifier'] >= 0 else ''}{roll_res['modifier']})\n"
+            f"- Difficulty Class: DC {dc_val}\n"
+            f"- Roll Result: d20 rolled {roll_res['roll']} + {roll_res['modifier']} = {roll_res['total']} vs DC {dc_val}\n"
+            f"- Degree: {roll_res['degree'].upper()} ({'Success' if roll_res['success'] else 'Failure'})\n"
+            f"- Context: {reason}\n\n"
+            f"### RECENT CHAT HISTORY\n"
+            f"{history_text}\n\n"
+            f"Generate a single in character narrative sentence describing the character's immediate action reflecting this {roll_res['degree']} outcome:"
+        )
+
+    action_text = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
+    action_text = action_text.strip().replace('"', '')
+
+    # Return pure narrative action without visible bracketed roll formulas
+    formatted_message = action_text
+
+    return {
+        "roll_res": roll_res,
+        "action_text": action_text,
+        "formatted_message": formatted_message
+    }
+
+@app.route('/api/execute_player_skill_check', methods=['POST'])
+@requires_auth
+def execute_player_skill_check():
+    session_id = request.json.get('session_id', 'default')
+    skill_name = request.json.get('skill_name', 'Agility')
+    attribute_name = request.json.get('attribute_name', 'Agility')
+    dc = request.json.get('dc', 15)
+    reason = request.json.get('reason', '')
+    model = request.json.get('model')
+    is_flat_roll = request.json.get('is_flat_roll', False)
+
+    try:
+        res = generate_player_skill_check_action(session_id, skill_name, attribute_name, dc, reason, model, is_flat_roll=is_flat_roll)
+        return jsonify({
+            'status': 'success',
+            'roll_res': res['roll_res'],
+            'action_text': res['action_text'],
+            'formatted_message': res['formatted_message']
+        })
+    except Exception as e:
+        print(f"Error executing player skill check: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/update_message', methods=['POST'])
 @requires_auth
@@ -2109,11 +2245,10 @@ def delete_memory():
 def list_quests():
     try:
         from utils.program import get_active_program, get_active_user
-        from engine.world_engine import load_world_state
-        from engine.quest_tracker import load_quest_stages, get_current_stage
+        from engine.quest_tracker import load_quest_stages, get_current_stage, sync_quest_stage_with_location
 
         user = get_active_user()
-        world_state = load_world_state(user)
+        world_state = sync_quest_stage_with_location(user)
         current_stage_num = world_state.get("quest_stage", 10)
         stages = load_quest_stages()
         current_stage = get_current_stage(current_stage_num, stages)
@@ -2125,8 +2260,9 @@ def list_quests():
             quests.append({
                 "id": f"main_quest_stage_{current_stage_num}",
                 "title": f"Main Quest: {current_stage.get('label', 'Escape the Imperial Dungeon')}",
+                "stage_number": current_stage_num,
                 "objectives": current_stage.get("objectives", []),
-                "due": "Current Chapter",
+                "due": "Active Chapter",
                 "location": f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}",
                 "is_main_quest": True
             })
@@ -2141,11 +2277,13 @@ def list_quests():
                     quests.extend(comp_quests)
                 
         return jsonify({
-            "quests": quests
+            "quests": quests,
+            "quest_stage": current_stage_num
         })
     except Exception as e:
         print(f"Error loading quests: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/quests/<quest_id>/delete', methods=['POST'])
 @requires_auth

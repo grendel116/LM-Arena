@@ -583,6 +583,99 @@ header {
     margin-left: 8px;
 }
 
+/* Permanent Dice Button (Always available, pulsing glow when skill check active) */
+.dice-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 7px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+    margin-left: -4px;
+    margin-right: 0px;
+    position: relative;
+    user-select: none;
+    opacity: 0.7;
+}
+
+.dice-btn:hover {
+    opacity: 1;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.12);
+    transform: scale(1.05);
+}
+
+.dice-btn:active {
+    transform: scale(0.95);
+}
+
+
+.dice-btn.skill-check-active {
+    opacity: 1;
+    cursor: pointer;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.18);
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+    animation: radialDicePulse 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dice-btn.skill-check-active:hover {
+    background: rgba(245, 158, 11, 0.28);
+    border-color: #f59e0b;
+    color: #fef08a;
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.7);
+    transform: scale(1.08);
+}
+
+.dice-btn.skill-check-active:active {
+    transform: scale(0.95);
+}
+
+@keyframes radialDicePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.75), 0 0 8px rgba(245, 158, 11, 0.5);
+    }
+    70% {
+        box-shadow: 0 0 0 13px rgba(245, 158, 11, 0), 0 0 16px rgba(245, 158, 11, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0), 0 0 8px rgba(245, 158, 11, 0.5);
+    }
+}
+
+.dice-btn.rolling {
+    opacity: 1;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.5);
+    pointer-events: none;
+}
+
+.dice-btn.rolling svg {
+    animation: diceSpin 0.65s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95);
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6));
+}
+
+@keyframes diceSpin {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.15);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+
 /* Attach button icon */
 .attach-btn {
     background: transparent;
@@ -607,6 +700,7 @@ header {
 #image-input {
     display: none;
 }
+
 
 
 

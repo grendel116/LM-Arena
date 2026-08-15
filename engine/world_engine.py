@@ -205,7 +205,40 @@ def set_flag(state: dict, flag_name: str, value) -> dict:
     state["world_flags"][flag_name] = value
     return state
 
+def set_location(character_name: str, province: str, location_name: str, advance_hours: int = 0) -> dict:
+    """Sets the character's active location and province directly, discovering them in world state."""
+    world_state = load_world_state(character_name)
+    prev_province = world_state.get("current_province", "Cyrodiil")
+    prev_location = world_state.get("current_location", "Imperial Dungeon")
+
+    world_state["current_province"] = province
+    world_state["current_location"] = location_name
+
+    if "provinces_visited" not in world_state:
+        world_state["provinces_visited"] = []
+    if province not in world_state["provinces_visited"]:
+        world_state["provinces_visited"].append(province)
+
+    if "cities_discovered" not in world_state:
+        world_state["cities_discovered"] = []
+    if location_name not in world_state["cities_discovered"]:
+        world_state["cities_discovered"].append(location_name)
+
+    if advance_hours > 0:
+        world_state = advance_time(world_state, advance_hours)
+
+    save_world_state(character_name, world_state)
+    return {
+        "status": "success",
+        "previous_province": prev_province,
+        "previous_location": prev_location,
+        "current_province": province,
+        "current_location": location_name,
+        "world_state": world_state
+    }
+
 def discover_location(state: dict, location_type: str, location_name: str) -> dict:
+
     """Adds a city or dungeon to the discovered list."""
     if location_type == "city":
         if "cities_discovered" not in state:
@@ -218,3 +251,242 @@ def discover_location(state: dict, location_type: str, location_name: str) -> di
         if location_name not in state["dungeons_cleared"]:
             state["dungeons_cleared"].append(location_name)
     return state
+
+
+import copy
+
+def create_state_snapshot(world_state: dict, character_sheet: dict = None) -> dict:
+    """Creates a compact snapshot of location, date/time, quest, and vitals."""
+    date = world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+    derived = (character_sheet or {}).get("derived", {})
+    return {
+        "province": world_state.get("current_province", "Cyrodiil"),
+        "location": world_state.get("current_location", "Imperial Dungeon"),
+        "date": {
+            "day": date.get("day", 1),
+            "month": date.get("month", "Morning Star"),
+            "year": date.get("year", 389),
+            "hour": date.get("hour", 6),
+            "era": date.get("era", "Third Era")
+        },
+        "quest_stage": world_state.get("quest_stage", 10),
+        "world_flags": dict(world_state.get("world_flags", {})),
+        "vitals": {
+            "hp": derived.get("hp_current", 30),
+            "hp_max": derived.get("hp_max", 30),
+            "mp": derived.get("mp_current", 162),
+            "mp_max": derived.get("mp_max", 162),
+            "stamina": derived.get("stamina_current", 60),
+            "stamina_max": derived.get("stamina_max", 60),
+            "gold": (character_sheet or {}).get("gold", 0)
+        }
+    }
+
+def apply_state_snapshot(character_name: str, snapshot: dict) -> None:
+    """Restores world state and character vitals from a snapshot."""
+    if not snapshot or not isinstance(snapshot, dict):
+        return
+
+    world_state = load_world_state(character_name)
+    if "province" in snapshot:
+        world_state["current_province"] = snapshot["province"]
+    if "location" in snapshot:
+        world_state["current_location"] = snapshot["location"]
+    if "date" in snapshot:
+        world_state["date"] = snapshot["date"]
+        world_state["tamrielic_date"] = snapshot["date"]
+    if "quest_stage" in snapshot:
+        world_state["quest_stage"] = snapshot["quest_stage"]
+    if "world_flags" in snapshot:
+        world_state["world_flags"] = snapshot["world_flags"]
+
+    if "provinces_visited" not in world_state:
+        world_state["provinces_visited"] = []
+    p = world_state.get("current_province")
+    if p and p not in world_state["provinces_visited"]:
+        world_state["provinces_visited"].append(p)
+
+    if "cities_discovered" not in world_state:
+        world_state["cities_discovered"] = []
+    loc = world_state.get("current_location")
+    if loc and loc not in world_state["cities_discovered"]:
+        world_state["cities_discovered"].append(loc)
+
+    save_world_state(character_name, world_state)
+
+    vitals = snapshot.get("vitals")
+    if vitals:
+        try:
+            from engine.character import load_character, save_character
+            sheet = load_character(character_name)
+            derived = sheet.setdefault("derived", {})
+            if "hp" in vitals:
+                derived["hp_current"] = vitals["hp"]
+            if "hp_max" in vitals:
+                derived["hp_max"] = vitals["hp_max"]
+            if "mp" in vitals:
+                derived["mp_current"] = vitals["mp"]
+            if "mp_max" in vitals:
+                derived["mp_max"] = vitals["mp_max"]
+            if "stamina" in vitals:
+                derived["stamina_current"] = vitals["stamina"]
+            if "stamina_max" in vitals:
+                derived["stamina_max"] = vitals["stamina_max"]
+            if "gold" in vitals:
+                sheet["gold"] = vitals["gold"]
+            save_character(character_name, sheet)
+        except Exception as e:
+            print(f"[apply_state_snapshot] Error applying character vitals: {e}")
+
+def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str, dict]:
+    """Extracts and strips hidden state comments from text, updating the snapshot."""
+    if not text:
+        return text, current_snapshot
+
+    import re
+    snapshot = copy.deepcopy(current_snapshot) if current_snapshot else {}
+    pattern = r'<!--\s*state:\s*(.*?)\s*-->'
+    match = re.search(pattern, text, flags=re.IGNORECASE | re.DOTALL)
+    if match:
+        raw_params = match.group(1)
+        kv_pattern = r'(\w+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s,;]+))'
+        for kv in re.finditer(kv_pattern, raw_params):
+            key = kv.group(1).lower()
+            val = kv.group(2) if kv.group(2) is not None else (kv.group(3) if kv.group(3) is not None else kv.group(4))
+            if key == "province":
+                snapshot["province"] = str(val).strip()
+            elif key == "location":
+                snapshot["location"] = str(val).strip()
+            elif key in ("quest_stage", "stage"):
+                try:
+                    snapshot["quest_stage"] = int(val)
+                except Exception:
+                    pass
+            elif key in ("hours", "time_advance", "advance_hours"):
+                try:
+                    hrs = int(val)
+                    if "date" in snapshot:
+                        temp_state = {"date": snapshot["date"]}
+                        temp_state = advance_time(temp_state, hrs)
+                        snapshot["date"] = temp_state["date"]
+                except Exception:
+                    pass
+            elif key in ("hp", "hp_current"):
+                try:
+                    snapshot.setdefault("vitals", {})["hp"] = int(val)
+                except Exception:
+                    pass
+            elif key in ("mp", "mp_current"):
+                try:
+                    snapshot.setdefault("vitals", {})["mp"] = int(val)
+                except Exception:
+                    pass
+            elif key in ("stamina", "sp"):
+                try:
+                    snapshot.setdefault("vitals", {})["stamina"] = int(val)
+                except Exception:
+                    pass
+            elif key == "gold":
+                try:
+                    snapshot.setdefault("vitals", {})["gold"] = int(val)
+                except Exception:
+                    pass
+
+        cleaned_text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.DOTALL).rstrip()
+        return cleaned_text, snapshot
+
+    return text, snapshot
+
+def sync_world_state_from_history(character_name: str, history: list) -> dict:
+    """Recomputes world location, calendar date, and quest stage deterministically from active history turns."""
+    from engine.quest_tracker import load_quest_stages, advance_stage
+
+    if not history:
+        default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
+        if default_world_path.exists():
+            try:
+                with open(default_world_path, "r", encoding="utf-8") as f:
+                    state = json.load(f)
+            except Exception:
+                state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
+        else:
+            state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
+        save_world_state(character_name, state)
+        return state
+
+    # Check if the latest message has a state_snapshot
+    latest_snapshot = None
+    for msg in reversed(history):
+        if msg.get("state_snapshot"):
+            latest_snapshot = msg["state_snapshot"]
+            break
+
+    if latest_snapshot:
+        apply_state_snapshot(character_name, latest_snapshot)
+        return load_world_state(character_name)
+
+    # Fallback to walking tool calls in history
+    default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
+    if default_world_path.exists():
+        try:
+            with open(default_world_path, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        except Exception:
+            state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
+    else:
+        state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
+
+    stages = load_quest_stages()
+
+    for msg in history:
+        tool_calls = msg.get("tool_calls", [])
+        for tc in tool_calls:
+            if not isinstance(tc, dict):
+                continue
+            t_name = tc.get("name", "")
+            args = tc.get("args", {})
+            if not isinstance(args, dict):
+                continue
+
+            if t_name == "arena_set_location":
+                prov = args.get("province")
+                loc = args.get("location_name")
+                if prov:
+                    state["current_province"] = prov
+                    if "provinces_visited" not in state:
+                        state["provinces_visited"] = []
+                    if prov not in state["provinces_visited"]:
+                        state["provinces_visited"].append(prov)
+                if loc:
+                    state["current_location"] = loc
+                    if "cities_discovered" not in state:
+                        state["cities_discovered"] = []
+                    if loc not in state["cities_discovered"]:
+                        state["cities_discovered"].append(loc)
+                adv_hrs = int(args.get("advance_hours", 0)) if args.get("advance_hours") is not None else 0
+                if adv_hrs > 0:
+                    state = advance_time(state, adv_hrs)
+
+            elif t_name == "arena_travel":
+                prov = args.get("destination_province")
+                city = args.get("destination_city")
+                if prov and city:
+                    state, _ = travel(state, prov, city)
+
+            elif t_name == "arena_advance_stage":
+                target_stage = args.get("target_stage")
+                if target_stage is not None:
+                    state["quest_stage"] = int(target_stage)
+                else:
+                    state, _ = advance_stage(state, stages)
+
+            elif t_name == "arena_set_quest_stage":
+                st = args.get("stage_number")
+                if st is not None:
+                    state["quest_stage"] = int(st)
+
+    save_world_state(character_name, state)
+    return state
+
+
+

@@ -239,3 +239,16 @@ def sorcerer_absorb(intelligence: int, willpower: int, incoming_spell_tier: int)
         "absorbed": absorbed,
         "spell_tier": incoming_spell_tier
     }
+
+def request_skill_check(skill_name: str, attribute_name: str, dc: int, reason: str = "") -> dict:
+    """
+    Structures a skill check request for the player character.
+    """
+    return {
+        "status": "skill_check_required",
+        "skill_name": str(skill_name).strip(),
+        "attribute_name": str(attribute_name).strip(),
+        "dc": int(dc),
+        "reason": str(reason).strip()
+    }
+

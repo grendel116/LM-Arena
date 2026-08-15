@@ -8,20 +8,25 @@ triggers: roll, check, d20, lock, pick, lockpick, picklock, door, chest, stealth
 
 # ATTRIBUTE & SKILL CHECK PROTOCOLS
 
-When the player attempts risky physical maneuvers, rogue actions, social influence, or magic crafting:
+When the narrative requires an action or reaction with skill:
 
-## 1. Skill Tests (Lockpicking, Stealth, Athletics)
-- When picking a lock, sneaking past guards, jumping a chasm, or haggling:
-  `[arena_roll_skill(skill_name="...", attribute_name="...", attribute_value=..., dc=...)]`
+## 1. Player Skill Checks (Active Player Reactions)
+- When the player character attempts a risky maneuver, stealth action, lockpicking, athletic feat, or social check:
+  `[arena_request_skill_check(skill_name="...", attribute_name="...", dc=..., reason="...")]`
+- This tool freezes the input area and prompts the player to roll their glowing D20 dice directly.
 - Standard Difficulty Classes (DC):
   - Easy: DC 10
   - Standard: DC 15
   - Challenging: DC 20
   - Legendary: DC 25
 
-## 2. Raw Attribute Checks
-- For brute force strength tests, agility reflexes, endurance against poison, willpower resisting mind spells, or sheer luck:
+## 2. NPC & Monster Checks (DM Rolls)
+- When an NPC or monster attempts a check or saving throw:
   `[arena_roll_check(attribute_name="...", attribute_value=..., dc=...)]`
+  or
+  `[arena_roll_skill(skill_name="...", attribute_name="...", attribute_value=..., dc=...)]`
+- The DM rolls directly only for NPCs, creatures, and environmental occurrences.
+
 
 ## 3. Sorcerer Spell Absorption
 - When an enemy spell is cast at a Sorcerer class player:

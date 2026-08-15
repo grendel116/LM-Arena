@@ -318,35 +318,21 @@ def strip_narration(text: str) -> str:
 
 
 _ARENA_DIRECTIVE_PROMPT = (
-    "\n\n# ARENA RPG MECHANICS & TOOLS\n"
-    "To mutate character state or arbitrate checks, output the exact tool tag. The system will intercept it, update the character sheet, and return the result.\n\n"
-    "Available RPG & Mechanics Tools:\n"
-    "1. `[arena_spend_magicka(character_name=\"{{user}}\", amount=...)]` - Deduct Magicka (MP) when casting any spell based on its spell point cost.\n"
-    "2. `[arena_spend_stamina(character_name=\"{{user}}\", amount=...)]` - Deduct Stamina for physical exertion (sprinting, dodging, power strikes: 5-15 Stamina).\n"
-    "3. `[arena_take_damage(character_name=\"{{user}}\", amount=...)]` - Inflict combat or trap damage to player HP.\n"
-    "4. `[arena_heal(character_name=\"{{user}}\", amount=...)]` - Restore player HP from rest or healing.\n"
-    "5. `[arena_restore_magicka(character_name=\"{{user}}\", amount=...)]` - Restore player MP from potions or spell absorption.\n"
-    "6. `[arena_restore_stamina(character_name=\"{{user}}\", amount=...)]` - Restore player Stamina.\n"
-    "7. `[arena_rest(character_name=\"{{user}}\", hours=8, safe=True)]` - Rest to restore HP/MP/Stamina (safe=True at inns, safe=False in dungeons).\n"
-    "8. `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` - Add found/looted item to player sheet (types: weapon, 2h_weapon, armor, torch, shield, potion, scroll, misc).\n"
-    "9. `[arena_remove_item(character_name=\"{{user}}\", item_name=\"...\", quantity=1)]` - Remove consumed or destroyed item.\n"
-    "10. `[arena_drop_item(character_name=\"{{user}}\", item_name=\"...\", quantity=1)]` - Drop an item onto the ground in the current location.\n"
-    "11. `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` - Award looted gold or quest bounty.\n"
-    "12. `[arena_spend_gold(character_name=\"{{user}}\", amount=...)]` - Deduct spent gold for goods or fees.\n"
-    "13. `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` - Resolve combat attack check.\n"
-    "14. `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` - Roll d20 check for Strength, Agility, Willpower, Intelligence, etc.\n"
-    "15. `[arena_roll_skill(skill_name=\"...\", attribute_name=\"...\", attribute_value=..., dc=...)]` - Roll skill check (e.g. lockpicking, stealth, mercantile).\n"
-    "16. `[arena_advance_stage(character_name=\"{{user}}\")]` - Advance Main Quest stage upon milestone completion.\n"
-    "17. `[arena_travel(character_name=\"{{user}}\", destination_province=\"...\", destination_city=\"...\")]` - Travel between Tamriel provinces/cities.\n"
-    "18. `[generate_local_image(prompt=\"...\")]` - Generate a character portrait/scene via ComfyUI (comma-separated tags).\n"
-    "19. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate environment/creature visual art.\n"
-    "20. `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` - Recruit an NPC into your party as an active follower when they agree to join or follow you narratively.\n\n"
+    "\n\n# ARENA RPG MECHANICS & STORYTELLING DIRECTIVES\n"
+    "Maintain immersive, atmospheric storytelling. For state transitions, use hidden state tags. For dice checks or character recruitment, use mechanics tools.\n\n"
+    "Available RPG Tools:\n"
+    "1. `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` - Demand an active skill or attribute check from the player character (e.g. stealth, lockpicking, agility dodge, persuasion, athletic leap). Freezes input and triggers the player dice roll.\n"
+    "2. `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` - Resolve combat attack check for monsters/NPCs.\n"
+    "3. `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` - Roll d20 check for Strength, Agility, Willpower, Intelligence, etc. (NPCs and monsters only).\n"
+    "4. `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` - Recruit a key NPC into your party as an active companion persona.\n"
+    "5. `[generate_local_image(prompt=\"...\")]` - Generate a character portrait/scene via ComfyUI (comma-separated tags).\n"
+    "6. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate environment/creature visual art.\n"
+    "7. `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` - Add found/looted item to player sheet.\n"
+    "8. `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` - Award looted gold or quest bounty.\n\n"
     "Mandatory Gameplay Rules:\n"
-    "- SPELLCASTING: Whenever the player casts or channels any spell, incantation, or magical power from their grimoire or imagination, YOU MUST CALL `[arena_spend_magicka(character_name=\"{{user}}\", amount=...)]` with the spell's MP cost in the same turn.\n"
-    "- EXERTION: Whenever the player performs heavy exertion (sprinting, leaping chasms, dodging, power attacks), call `[arena_spend_stamina(character_name=\"{{user}}\", amount=...)]`.\n"
-    "- COMBAT & DAMAGE: Call `[arena_roll_combat]` on attacks, and call `[arena_take_damage]` when enemies hit the player.\n"
-    "- LOOT & INVENTORY: Call `[arena_add_item]` or `[arena_add_gold]` whenever items or coins are discovered or awarded.\n"
-    "- FOLLOWER RECRUITMENT VS ESCORTS: Reserve `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` ONLY for main character companions who possess high affinity, deep trust, or hired combat readiness to fight alongside the player long term. For civilian escorts, VIPs, or temporary quest targets, describe them traveling alongside the player in narrative text WITHOUT calling `[arena_recruit_follower]`.\n"
+    "- SCENE & WORLD TRANSITIONS: When traveling, entering dungeons, reaching cities, advancing time, or reaching quest milestones, append a hidden state comment at the very end of your turn: <!-- state: province=\"...\", location=\"...\", hours=..., quest_stage=... -->. This updates the player map and journal seamlessly.\n"
+    "- SKILL CHECKS & ROLLS: Execute rolls directly only for non player characters, monsters, and environmental checks using [arena_roll_check] or [arena_roll_combat]. When the narrative calls for the player character to react with skill (picking a lock, sneaking past guards, dodging a trap, persuading an NPC, jumping a chasm), call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]. End narration at the moment of tension before the player outcome.\n"
+    "- FOLLOWER RECRUITMENT VS ESCORTS: Reserve `[arena_recruit_follower]` ONLY for main character companions who possess high affinity, deep trust, or hired combat readiness to fight alongside the player long term. For civilian escorts, VIPs, or temporary quest targets, describe them traveling alongside the player in narrative text WITHOUT calling `[arena_recruit_follower]`.\n"
     "- NPC NAMING CONVENTIONS: When introducing new NPCs, merchants, guards, outlaws, rulers, or quest givers, YOU MUST USE authentic Elder Scrolls names by race (referencing Oblivion, Morrowind, Skyrim, and Arena lore):\n"
     "  * Imperials: Latinate names (e.g. Caius Cosades, Lex, Amantius Allectus, Valeria Motierre, Decimus Caro).\n"
     "  * Nords: Scandinavian names with clan titles/patronymics (e.g. Jauffre, Thoronir, Ysolda, Iron-Hand, Battle-Born).\n"
@@ -357,7 +343,7 @@ _ARENA_DIRECTIVE_PROMPT = (
     "  * Orcs: Guttural names with gro-/gra- clan prefixes (e.g. Agronak gro-Malog, Mazoga gra-Abrak).\n"
     "  * Argonians: Jel names or translated titles (e.g. Dar-Ma, Ocheeva, Runs-With-Swamps, City-Swimmer).\n"
     "  * Khajiit: Ta'agra names with honorific prefixes (e.g. M'aiq the Liar, S'drassa, J'skar, Ri'Zakar).\n"
-    "- NARRATIVE: Output tool tags alongside your narrative text. Describe the visceral sensory outcome without quoting raw formulas.\n"
+    "- NARRATIVE: Describe visceral sensory outcomes without quoting raw formulas. Conclude each passage naturally on atmospheric details or character speech. Do not end turns with questions or prompt choices to {{user}}.\n"
     "\n# FOLLOWER KNOWLEDGE & LORE\n"
     "When <recalled_journals>, <knowledge_base>, or [WORLD INFO] context appears, incorporate the lore seamlessly into the world narration.\n"
 )
@@ -913,7 +899,24 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
     def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str, intermediate: bool = False):
         from utils.program_mood import extract_and_strip_mood
-        _, mood_details = extract_and_strip_mood(text)
+        from utils.program import get_active_user
+        from engine.world_engine import (
+            load_world_state,
+            create_state_snapshot,
+            apply_state_snapshot,
+            extract_hidden_state_footer
+        )
+        from engine.character import load_character
+
+        active_user = get_active_user()
+        world_state = load_world_state(active_user)
+        character_sheet = load_character(active_user)
+        current_snapshot = create_state_snapshot(world_state, character_sheet)
+
+        cleaned_text, updated_snapshot = extract_hidden_state_footer(text, current_snapshot)
+        apply_state_snapshot(active_user, updated_snapshot)
+
+        _, mood_details = extract_and_strip_mood(cleaned_text)
         winning_mode = self.runner_obj._winning_mode_cache.get(self.session_id, "")
         
         if mood_details:
@@ -922,13 +925,14 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             
         history = self.runner_obj.sessions_history[self.session_id]
         if history and history[-1]['role'] == 'program':
-            history[-1]['text'] = text
+            history[-1]['text'] = cleaned_text
             history[-1]['tool_calls'] = tool_calls_data
             history[-1]['inversion_active'] = winning_mode
             history[-1]['mood'] = mood_details
+            history[-1]['state_snapshot'] = updated_snapshot
             return history[-1]
             
-        is_img_msg = text and text.strip().startswith("![") and text.strip().endswith(")")
+        is_img_msg = cleaned_text and cleaned_text.strip().startswith("![") and cleaned_text.strip().endswith(")")
         if intermediate:
             prefix = "itm_"
         elif is_img_msg:
@@ -938,14 +942,16 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         bot_msg = {
             'id': f"{prefix}{uuid.uuid4().hex}",
             'role': 'program',
-            'text': text,
+            'text': cleaned_text,
             'tool_calls': tool_calls_data,
             'timestamp': time.time(),
             'inversion_active': winning_mode,
-            'mood': mood_details
+            'mood': mood_details,
+            'state_snapshot': updated_snapshot
         }
         history.append(bot_msg)
         return bot_msg
+
 
     def append_tool_events(self, results: list, invocation_id: str):
         for idx, (t_name, t_args, t_output) in enumerate(results):
@@ -1394,8 +1400,8 @@ class BaseProgramRunner:
                         "generate_imagen", "generate_general_image",
                         "apply_comfy_workflow", "add_journal_entry",
                         "arena_roll_check", "arena_roll_combat", "arena_roll_initiative",
-                        "arena_roll_skill", "arena_sorcerer_absorb", "arena_get_location",
-                        "arena_travel", "arena_advance_stage", "arena_create_spell",
+                        "arena_roll_skill", "arena_request_skill_check", "arena_sorcerer_absorb", "arena_get_location",
+                        "arena_set_location", "arena_travel", "arena_advance_stage", "arena_set_quest_stage", "arena_create_spell",
                         "arena_take_damage", "arena_heal", "arena_spend_magicka",
                         "arena_spend_spell_points", "arena_restore_magicka",
                         "arena_spend_stamina", "arena_restore_stamina", "arena_rest",
@@ -1526,10 +1532,14 @@ class BaseProgramRunner:
                 
         adapter.post_process_thoughts(invocation_id)
         bot_response_text = self._ensure_images_are_embedded(bot_response_text)
+        from engine.world_engine import extract_hidden_state_footer
+        bot_response_text, _ = extract_hidden_state_footer(bot_response_text, {})
+        bot_response_text = re.sub(r'<!--[\s\S]*?-->', '', bot_response_text).strip()
         if isinstance(session_id, str) and session_id.endswith('_voice'):
             bot_response_text = strip_narration(bot_response_text)
         adapter.save()
         return bot_response_text, tool_calls
+
 
     @property
     def sessions_dir(self) -> str:
@@ -2228,15 +2238,23 @@ class OpenSourceRunner(BaseProgramRunner):
             user_msg_id = f"{prefix}{uuid.uuid4().hex}"
         else:
             user_msg_id = msg_id
+        from utils.program import get_active_user
+        from engine.world_engine import load_world_state, create_state_snapshot
+        from engine.character import load_character
+        active_u = get_active_user()
+        user_snapshot = create_state_snapshot(load_world_state(active_u), load_character(active_u))
+
         user_msg = {
             'id': user_msg_id,
             'role': 'user',
             'text': new_message_text,
             'image_url': media_path if media_path else (f"data:{image_mime};base64,{image_data}" if image_data else None),
-            'timestamp': time.time()
+            'timestamp': time.time(),
+            'state_snapshot': user_snapshot
         }
         self.sessions_history[session_id].append(user_msg)
         self._save_session_to_disk(session_id)
+
         
         # Build vector query from recent conversation context (SillyTavern style)
         history = self.sessions_history.get(session_id, [])
@@ -2353,6 +2371,13 @@ class OpenSourceRunner(BaseProgramRunner):
         history = history[:user_idx]
         self.sessions_history[session_id] = history
         self._save_session_to_disk(session_id)
+        try:
+            from utils.program import get_active_user
+            from engine.world_engine import sync_world_state_from_history
+            sync_world_state_from_history(get_active_user(), history)
+        except Exception as sync_err:
+            print(f"[edit_turn] Error syncing world state from history: {sync_err}", flush=True)
+
         
         # If offline or forcing offload, override model with remote model upfront
         from utils.local_llm_manager import check_status
@@ -2490,6 +2515,12 @@ class OpenSourceRunner(BaseProgramRunner):
                             print(f"[delete_message_at] Error rolling back tool effects: {rb_err}", flush=True)
                     del real_history[i]
                     self._save_session_to_disk(session_id)
+                    try:
+                        from utils.program import get_active_user
+                        from engine.world_engine import sync_world_state_from_history
+                        sync_world_state_from_history(get_active_user(), real_history)
+                    except Exception as sync_err:
+                        print(f"[delete_message_at] Error syncing world state from history: {sync_err}", flush=True)
                     return True
             return False
 

@@ -2162,6 +2162,20 @@ function closeInventoryModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function formatTamrielicTime(hour) {
+    if (hour === undefined || hour === null) return "";
+    const h = parseInt(hour, 10) % 24;
+    const period = h >= 12 ? "PM" : "AM";
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    let timeOfDay = "Morning";
+    if (h >= 5 && h < 7) timeOfDay = "Dawn";
+    else if (h >= 7 && h < 12) timeOfDay = "Morning";
+    else if (h >= 12 && h < 17) timeOfDay = "Afternoon";
+    else if (h >= 17 && h < 20) timeOfDay = "Dusk";
+    else if (h >= 20 || h < 5) timeOfDay = "Night";
+    return `${displayHour}:00 ${period} (${timeOfDay})`;
+}
+
 function renderCharacterStatusModal(data) {
     if (!data || !data.character) return;
     const char = data.character;
@@ -2182,9 +2196,12 @@ function renderCharacterStatusModal(data) {
 
     const dateEl = document.getElementById('modal-char-date');
     if (dateEl) {
-        const tDate = world.tamrielic_date || { day: 1, month: "Morning Star", year: 389, era: "Third Era" };
-        dateEl.textContent = `${tDate.day} ${tDate.month}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}`;
+        const tDate = world.date || world.tamrielic_date || { day: 1, month: "Morning Star", year: 389, hour: 6 };
+        const timeStr = tDate.hour !== undefined ? ` • ${formatTamrielicTime(tDate.hour)}` : "";
+        dateEl.textContent = `${tDate.day || 1} ${tDate.month || 'Morning Star'}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}${timeStr}`;
     }
+
+
 
     // HP, MP & Stamina
     const hpCurrent = d.hp_current !== undefined ? d.hp_current : 28;
@@ -4511,6 +4528,26 @@ async function loadHistory() {
             (data.history || []).forEach(msg => {
                 renderMessage(msg);
             });
+
+            // Check if latest message is a pending player skill check
+            const historyList = data.history || [];
+            if (historyList.length > 0) {
+                const lastMsg = historyList[historyList.length - 1];
+                if (lastMsg && (lastMsg.role === 'program' || lastMsg.role === 'assistant')) {
+                    const toolCalls = lastMsg.tool_calls || [];
+                    const skillCheckCall = toolCalls.find(tc => {
+                        const name = tc.name || (tc.function && tc.function.name) || '';
+                        return name === 'arena_request_skill_check';
+                    });
+                    if (skillCheckCall) {
+                        let args = skillCheckCall.args || (skillCheckCall.function && skillCheckCall.function.arguments) || {};
+                        if (typeof args === 'string') {
+                            try { args = JSON.parse(args); } catch (e) { args = {}; }
+                        }
+                        activateSkillCheckUI(args);
+                    }
+                }
+            }
         } else {
             // History is empty! Wait for model initialization and health checks to complete if they haven't yet
             if (modelInitPromise) {
@@ -5543,6 +5580,7 @@ function renderMessage(msg, isLive = false) {
             }
 
             if (actualResponse) {
+                actualResponse = actualResponse.replace(/<!--[\s\S]*?-->/g, '').trim();
                 const textDiv = document.createElement('div');
                 textDiv.className = 'message-text';
                 if (role === 'program' || role === 'user') {
@@ -5812,7 +5850,8 @@ function postProcessMessageHTML(element) {
 
 // --- triggerFileInput ---
 function triggerFileInput() {
-    imageInput.click();
+    const input = document.getElementById('image-input') || imageInput;
+    if (input) input.click();
 }
 
 // --- handleFileSelect ---
@@ -5875,11 +5914,13 @@ function clearAttachment() {
     attachedBase64 = null;
     attachedMime = null;
     attachedMediaPath = null;
-    imageInput.value = '';
+    const input = document.getElementById('image-input') || imageInput;
+    if (input) input.value = '';
     previewArea.style.display = 'none';
     previewImg.src = '';
     previewImg.style.display = 'none';
     const previewVideo = document.getElementById('preview-video');
+
     if (previewVideo) {
         previewVideo.src = '';
         previewVideo.style.display = 'none';
@@ -5893,8 +5934,20 @@ function handleSuccessReload(data) {
         if (typeof fetchCharacterStatus === 'function') {
             fetchCharacterStatus();
         }
+        const skillCheckCall = data.tool_calls.find(tc => {
+            const name = tc.name || (tc.function && tc.function.name) || '';
+            return name === 'arena_request_skill_check';
+        });
+        if (skillCheckCall) {
+            let args = skillCheckCall.args || (skillCheckCall.function && skillCheckCall.function.arguments) || {};
+            if (typeof args === 'string') {
+                try { args = JSON.parse(args); } catch (e) { args = {}; }
+            }
+            activateSkillCheckUI(args);
+        }
     }
 }
+
 
 // --- handleToolReloadOrRecovery ---
 function handleToolReloadOrRecovery() {
@@ -6048,8 +6101,10 @@ async function sendMessage() {
         handleToolReloadOrRecovery();
     } finally {
         setGenerating(false);
-        userInput.disabled = false;
-        userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        if (!activePlayerSkillCheck) {
+            userInput.disabled = false;
+            userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        }
         updateInputGlow();
         stopToolPolling();
         if (heartElement) {
@@ -6239,7 +6294,7 @@ function cancelMessageEdit(bubble) {
 
 // --- saveMessageEdit ---
 async function saveMessageEdit(bubble, newText) {
-    const trimmedText = newText.trim();
+    let trimmedText = newText.trim();
     const hasImage = bubble.querySelector('img') !== null;
     
     if (!trimmedText && !hasImage) {
@@ -6283,15 +6338,17 @@ async function saveMessageEdit(bubble, newText) {
     
     const textDiv = bubble.querySelector('.message-text');
     if (trimmedText) {
-        let parsedHtml = trimmedText;
+        const cleanDisplay = trimmedText.replace(/<!--[\s\S]*?-->/g, '').trim();
+        let parsedHtml = cleanDisplay;
         if (typeof marked !== 'undefined' && marked.parse) {
             try {
-                parsedHtml = marked.parse(trimmedText);
+                parsedHtml = marked.parse(cleanDisplay);
             } catch (me) {
                 console.error("Marked parsing error:", me);
             }
         }
         textDiv.innerHTML = parsedHtml;
+
         if (typeof hljs !== 'undefined' && hljs.highlightElement) {
             textDiv.querySelectorAll('pre code').forEach((block) => {
                 try {
@@ -6595,6 +6652,10 @@ async function deleteTurnFromMessage(button) {
                 if (typeof fetchCharacterStatus === 'function') {
                     fetchCharacterStatus();
                 }
+                if (typeof loadQuests === 'function') {
+                    loadQuests();
+                }
+
             } else if (data.error) {
                 showCustomAlert("Delete Failed", data.error);
             }
@@ -7202,6 +7263,188 @@ async function autoGenerateUserMessage() {
         userInput.placeholder = "Ask " + (activeProgramName || "Program");
     }
 }
+
+// --- Player Skill Check System ---
+let activePlayerSkillCheck = null;
+
+function activateSkillCheckUI(checkData) {
+    if (!checkData) return;
+    activePlayerSkillCheck = checkData;
+
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (diceBtn) {
+        diceBtn.classList.add('skill-check-active');
+        const skill = checkData.skill_name || "Skill";
+        const attr = checkData.attribute_name || "Agility";
+        const dc = checkData.dc || 15;
+        diceBtn.title = `Roll ${skill} Check (${attr} DC ${dc}) — Click to React`;
+    }
+
+    if (userInput) {
+        userInput.disabled = true;
+        userInput.placeholder = `Skill Check Required: ${checkData.skill_name || 'Action'} (DC ${checkData.dc || 15})`;
+        userInput.classList.add('user-input-frozen');
+    }
+
+    const autoGenBtn = document.getElementById('auto-generate-user-btn');
+    if (autoGenBtn) {
+        autoGenBtn.disabled = true;
+        autoGenBtn.style.opacity = '0.25';
+        autoGenBtn.style.pointerEvents = 'none';
+    }
+
+    const portraitBtn = document.getElementById('generate-portrait-btn');
+    if (portraitBtn) {
+        portraitBtn.disabled = true;
+        portraitBtn.style.opacity = '0.25';
+        portraitBtn.style.pointerEvents = 'none';
+    }
+
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.25';
+        sendBtn.style.pointerEvents = 'none';
+    }
+}
+
+function resetSkillCheckUI() {
+    activePlayerSkillCheck = null;
+
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (diceBtn) {
+        diceBtn.classList.remove('skill-check-active');
+        diceBtn.title = "Roll Action (D20)";
+    }
+
+    if (userInput) {
+        userInput.disabled = false;
+        userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        userInput.classList.remove('user-input-frozen');
+    }
+
+    const autoGenBtn = document.getElementById('auto-generate-user-btn');
+    if (autoGenBtn) {
+        autoGenBtn.disabled = false;
+        autoGenBtn.style.opacity = '';
+        autoGenBtn.style.pointerEvents = '';
+    }
+
+    const portraitBtn = document.getElementById('generate-portrait-btn');
+    if (portraitBtn) {
+        portraitBtn.disabled = false;
+        portraitBtn.style.opacity = '';
+        portraitBtn.style.pointerEvents = '';
+    }
+
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '';
+        sendBtn.style.pointerEvents = '';
+    }
+}
+
+function getDiceIconSvg() {
+    return `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect>
+            <circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>
+            <circle cx="16" cy="8" r="1.2" fill="currentColor"></circle>
+            <circle cx="12" cy="12" r="1.2" fill="currentColor"></circle>
+            <circle cx="8" cy="16" r="1.2" fill="currentColor"></circle>
+            <circle cx="16" cy="16" r="1.2" fill="currentColor"></circle>
+        </svg>
+    `;
+}
+
+async function handleDiceButtonClick() {
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (!diceBtn || isGenerating) {
+        return;
+    }
+    await resolvePlayerSkillCheck();
+}
+
+async function resolvePlayerSkillCheck() {
+    const checkData = activePlayerSkillCheck ? { ...activePlayerSkillCheck } : null;
+    const isFlat = !checkData;
+    const diceBtn = document.getElementById('dice-skill-btn');
+
+    if (diceBtn) {
+        diceBtn.classList.remove('skill-check-active');
+        diceBtn.classList.add('rolling');
+        diceBtn.innerHTML = getDiceIconSvg();
+    }
+
+    try {
+        const payload = isFlat ? {
+            session_id: sessionId,
+            model: selectedModel,
+            is_flat_roll: true
+        } : {
+            session_id: sessionId,
+            skill_name: checkData.skill_name || 'Agility',
+            attribute_name: checkData.attribute_name || 'Agility',
+            dc: checkData.dc || 15,
+            reason: checkData.reason || '',
+            model: selectedModel,
+            is_flat_roll: false
+        };
+
+        const response = await fetch('/api/execute_player_skill_check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (data.formatted_message) {
+            userInput.value = data.formatted_message;
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight) + 'px';
+
+            // Keep text area locked so roll results cannot be accidentally typed over
+            userInput.disabled = true;
+            userInput.classList.remove('user-input-frozen');
+
+            // Reset dice button state
+            if (diceBtn) {
+                diceBtn.classList.remove('skill-check-active');
+                diceBtn.title = "Roll Action (D20)";
+            }
+
+            // Unlock and highlight the send button so the user can send when ready
+            const sendBtn = document.querySelector('.send-btn');
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = '';
+                sendBtn.style.pointerEvents = '';
+                sendBtn.focus();
+            }
+
+            activePlayerSkillCheck = null;
+            updateInputGlow();
+        } else if (data.error) {
+            showCustomAlert("Skill Check Failed", data.error);
+            resetSkillCheckUI();
+        }
+    } catch (err) {
+        console.error("Error executing player skill check:", err);
+        showCustomAlert("Error", "Could not execute skill check.");
+        resetSkillCheckUI();
+    } finally {
+        if (diceBtn) {
+            diceBtn.classList.remove('rolling');
+            diceBtn.style.pointerEvents = '';
+            diceBtn.innerHTML = getDiceIconSvg();
+        }
+    }
+}
+
+
+
+
 
 // --- regenerateImage ---
 async function regenerateImage(buttonElement, oldImageUrl, prompt) {
@@ -7898,7 +8141,10 @@ async function loadQuests() {
         
         container.innerHTML = quests.map(quest => {
             const objectivesHtml = (quest.objectives || []).map(obj => 
-                `<li style="margin-bottom: 6px; color: var(--text-main); font-size: 0.84rem; line-height: 1.4;">${obj}</li>`
+                `<li style="margin-bottom: 8px; color: var(--text-main); font-size: 0.84rem; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid rgba(251, 191, 36, 0.6); border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: rgba(251, 191, 36, 0.08);"></span>
+                    <span>${obj}</span>
+                </li>`
             ).join('');
             
             return `
@@ -7909,16 +8155,17 @@ async function loadQuests() {
                     </div>
                     <div style="display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap;">
                         ${quest.location ? `<div><strong style="color: var(--text-muted);">Location:</strong> <span style="color: var(--text-main);">${quest.location}</span></div>` : ''}
-                        ${quest.due ? `<div><strong style="color: var(--text-muted);">Target:</strong> <span style="color: var(--text-main);">${quest.due}</span></div>` : ''}
+                        ${quest.due ? `<div><strong style="color: var(--text-muted);">Status:</strong> <span style="color: var(--text-main);">${quest.due}</span></div>` : ''}
                     </div>
                     <div style="margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
-                        <ul style="margin: 6px 0 0 18px; padding: 0; list-style-type: square;">
+                        <ul style="margin: 6px 0 0 0; padding: 0; list-style: none;">
                             ${objectivesHtml}
                         </ul>
                     </div>
                 </div>
             `;
         }).join('');
+
     } catch (e) {
         console.error("Error loading quests:", e);
         container.innerHTML = `<p style="color: #fca5a5; font-size: 0.85rem; text-align: center; margin: 20px 0;">Failed to load quests.</p>`;
