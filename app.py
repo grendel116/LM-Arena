@@ -3145,7 +3145,8 @@ def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id
             
             if sid in runner.sessions_history:
                 history = runner.sessions_history[sid]
-                for msg in history:
+                if history:
+                    msg = history[-1]
                     if msg.get('state_snapshot'):
                         msg['state_snapshot']['inventory'] = copy.deepcopy(character_sheet.get('inventory', []))
                         if 'derived' in character_sheet:
