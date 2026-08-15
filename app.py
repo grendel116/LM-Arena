@@ -3216,13 +3216,13 @@ def remove_character_item_route():
             return jsonify({"error": "Missing item_name"}), 400
             
         from engine.save_manager import get_active_save_id
-        from engine.character import load_character, save_character, drop_item
+        from engine.character import load_character, save_character, remove_item
         
         save_id = get_active_save_id()
         sheet = load_character(save_id)
         
-        sheet, removed = drop_item(sheet, item_name, quantity)
-        if not removed:
+        sheet, success = remove_item(sheet, item_name, quantity)
+        if not success:
             return jsonify({"error": f"Item '{item_name}' not found in inventory."}), 404
             
         save_character(save_id, sheet)
@@ -3231,9 +3231,9 @@ def remove_character_item_route():
         return jsonify({
             "status": "success",
             "character": sheet,
-            "removed": removed,
-            "dropped": removed,
-            "message": f"Removed {removed.get('quantity', 1)}x {removed['name']}"
+            "removed": {"name": item_name, "quantity": quantity},
+            "dropped": {"name": item_name, "quantity": quantity},
+            "message": f"Removed {quantity}x {item_name}"
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

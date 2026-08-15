@@ -1,8 +1,9 @@
 {
   "banned_words": {
     "dismantle": "break",
-    "ozone": "copper edge",
+    "ozone": "electricity",
     "possess": "have",
-    "musk": "aroma"
+    "musk": "aroma",
+    "musky": "musty"
   }
 }

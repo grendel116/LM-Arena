@@ -6,6 +6,10 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 BESTIARY_PATH = BASE_DIR / "core" / "world" / "bestiary.json"
 
+# Global Damage Multipliers
+INCOMING_DAMAGE_MULTIPLIER = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "3.0"))
+OUTGOING_DAMAGE_MULTIPLIER = float(os.getenv("OUTGOING_DAMAGE_MULTIPLIER", "0.75"))
+
 _BESTIARY_CACHE = None
 
 def load_bestiary() -> dict:
@@ -165,13 +169,61 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
             
         # Monster on-hit status effects (when monster attacks player)
         special_traits = monster_data.get("special_traits", [])
-        if "paralysis_on_hit_25" in special_traits and random.random() < 0.25:
-            status_effect = "paralysed"
-        elif "disease_chance_15" in special_traits and random.random() < 0.15:
-            status_effect = "diseased"
-        elif "poison_venom_25" in special_traits and random.random() < 0.25:
-            status_effect = "poisoned"
-            
+        for trait in special_traits:
+            t = trait.lower()
+            if "disease" in t or "rabies" in t or "rot" in t:
+                chance = 0.20
+                if "chance_" in t:
+                    try: chance = int(t.split("chance_")[1]) / 100.0
+                    except: pass
+                if random.random() < chance:
+                    status_effect = "diseased"
+                    break
+            elif "poison" in t or "venom" in t:
+                chance = 0.25
+                if "bite_" in t:
+                    try: chance = int(t.split("bite_")[1]) / 100.0
+                    except: pass
+                elif "venom_" in t:
+                    try: chance = int(t.split("venom_")[1]) / 100.0
+                    except: pass
+                elif "chance_" in t:
+                    try: chance = int(t.split("chance_")[1]) / 100.0
+                    except: pass
+                if random.random() < chance:
+                    status_effect = "poisoned"
+                    break
+            elif "paralysis" in t or "paralyze" in t:
+                chance = 0.25
+                if "hit_" in t:
+                    try: chance = int(t.split("hit_")[1]) / 100.0
+                    except: pass
+                elif "chance_" in t:
+                    try: chance = int(t.split("chance_")[1]) / 100.0
+                    except: pass
+                if random.random() < chance:
+                    status_effect = "paralysed"
+                    break
+
+        # Apply incoming (3x) and outgoing (0.75x) difficulty scaling
+        import os
+        inc_mult = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "3.0"))
+        out_mult = float(os.getenv("OUTGOING_DAMAGE_MULTIPLIER", "0.75"))
+        
+        is_player_target = target.get("is_player", False) or target_name.lower() in ["player", "user", "{{user}}", "dovres malven", "eternal champion"] or not attacker.get("is_player", False)
+        mult = inc_mult if is_player_target else out_mult
+        damage_dealt = max(1, int(round(damage_dealt * mult)))
+
+        if is_player_target and status_effect:
+            try:
+                from engine.character import load_character, save_character, add_effect, add_condition
+                sheet = load_character(target_name)
+                add_condition(sheet, status_effect)
+                add_effect(sheet, {"name": status_effect.capitalize(), "duration_turns": 5, "source": f"{target_name}"})
+                save_character(target_name, sheet)
+            except Exception as e:
+                print(f"[roll_combat] Error applying status effect to character sheet: {e}", flush=True)
+
     elif hit and immune:
         damage_narrative = "ineffective (weapon passed through harmlessly)"
         damage_dealt = 0

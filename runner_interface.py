@@ -845,9 +845,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         )
         if is_image_request:
             image_inst = (
-                "\n\n[CRITICAL IMAGE DIRECTIVE: The user requested an image render of the current scene. "
+                "\n\n[CRITICAL IMAGE DIRECTIVE: The user requested an image of the active companion. "
                 "You must ONLY output the image generation tool call tag: `[generate_local_image(prompt=\"...\")]` "
-                "or `[generate_imagen(prompt=\"...\")]` depicting the visual scene. "
+                "or `[generate_imagen(prompt=\"...\")]` depicting an image of the active companion character. "
                 "Do NOT write any story narrative or dialogue. "
                 "Do NOT advance the plot. "
                 "Do NOT call any gameplay mechanics tools or add/remove items. "
@@ -906,6 +906,15 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             post_blocks = []
             if char_ctx:
                 post_blocks.append(f"<player_character>\n{char_ctx}\n</player_character>")
+            if sheet and sheet.get("derived", {}).get("hp_current", 1) <= 0:
+                game_over_inst = (
+                    "\n\n[CRITICAL GAME OVER DIRECTIVE: The player character's health has reached 0 (DEAD). "
+                    "You MUST narrate the fatal strike and perishing of the hero in visceral detail. "
+                    "Declare a definitive GAME OVER state. "
+                    "Do NOT allow the player to survive, take further actions, or recover. "
+                    "Conclude the narrative with their tragic perishing in Tamriel.]"
+                )
+                post_blocks.append(game_over_inst)
             post_blocks.append(state_tag)
             
             full_post_injection = "\n\n".join(post_blocks)
@@ -1517,7 +1526,7 @@ class BaseProgramRunner:
                         "arena_spend_spell_points", "arena_restore_magicka",
                         "arena_spend_stamina", "arena_restore_stamina", "arena_rest",
                         "arena_add_gold", "arena_spend_gold", "arena_add_item",
-                        "arena_remove_item", "arena_drop_item", "arena_learn_spell", "arena_add_effect",
+                        "arena_remove_item", "arena_learn_spell", "arena_add_effect",
                         "arena_remove_effect", "arena_add_experience", "arena_get_character_context",
                         "arena_recruit_follower"
                     }
@@ -1557,7 +1566,7 @@ class BaseProgramRunner:
                     "arena_spend_spell_points", "arena_restore_magicka",
                     "arena_spend_stamina", "arena_restore_stamina", "arena_rest",
                     "arena_add_gold", "arena_spend_gold", "arena_add_item",
-                    "arena_remove_item", "arena_drop_item", "arena_learn_spell",
+                    "arena_remove_item", "arena_learn_spell",
                     "arena_add_effect", "arena_remove_effect", "arena_add_experience",
                     "arena_set_location", "arena_travel", "arena_advance_stage",
                     "arena_set_quest_stage", "arena_recruit_follower",

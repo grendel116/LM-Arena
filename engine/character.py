@@ -798,6 +798,13 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
     try:
         sheet = load_character(character_name)
         modified = False
+
+        # Build response lookup: call_id -> parsed response string
+        response_map = {}
+        for tc in tool_calls:
+            if isinstance(tc, dict) and tc.get("type") == "response" and tc.get("id"):
+                response_map[tc["id"]] = tc.get("response", "")
+
         for tc in tool_calls:
             if not isinstance(tc, dict):
                 continue
@@ -807,9 +814,32 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
             args = tc.get("args", {})
             if not isinstance(args, dict):
                 continue
-                
-            amount = int(args.get("amount", 0)) if args.get("amount") is not None else 0
-            
+            call_id = tc.get("id", "")
+
+            # Extract quantity / amount using parameter aliases
+            amount = 0
+            for key in ("amount", "damage_amount", "damage", "heal_amount", "healing",
+                        "mp_amount", "stamina_amount", "gold_amount", "xp_amount", "cost"):
+                if args.get(key) is not None:
+                    try:
+                        amount = int(args[key])
+                        break
+                    except (ValueError, TypeError):
+                        pass
+
+            # Parse the matching response entry for this call
+            res_dict = {}
+            res_str = response_map.get(call_id, "")
+            if res_str:
+                try:
+                    import ast
+                    res_dict = ast.literal_eval(res_str) if isinstance(res_str, str) and res_str.strip().startswith("{") else {}
+                except Exception:
+                    try:
+                        res_dict = json.loads(res_str) if isinstance(res_str, str) else {}
+                    except Exception:
+                        res_dict = {}
+
             if t_name in ("arena_spend_magicka", "arena_spend_spell_points"):
                 restore_magicka(sheet, amount)
                 modified = True
@@ -823,11 +853,40 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                 spend_stamina(sheet, amount)
                 modified = True
             elif t_name == "arena_take_damage":
-                heal(sheet, amount)
+                actual_dmg = res_dict.get("damage_inflicted")
+                if actual_dmg is not None:
+                    actual_dmg = int(actual_dmg)
+                else:
+                    from engine.mechanics import INCOMING_DAMAGE_MULTIPLIER
+                    actual_dmg = max(1, int(round(amount * INCOMING_DAMAGE_MULTIPLIER))) if amount > 0 else 0
+                heal(sheet, actual_dmg)
                 modified = True
+            elif t_name == "arena_roll_combat":
+                if res_dict.get("damage_dealt"):
+                    target_name = str(res_dict.get("target_name", "")).lower()
+                    is_player = (
+                        target_name in ["player", "user", character_name.lower()]
+                        or res_dict.get("is_player", False)
+                    )
+                    dmg = int(res_dict.get("damage_dealt", 0))
+                    if is_player and dmg > 0:
+                        heal(sheet, dmg)
+                        modified = True
             elif t_name == "arena_heal":
                 take_damage(sheet, amount)
                 modified = True
+            elif t_name == "arena_rest":
+                # Restore pre-rest vitals from the response snapshot
+                d = sheet["derived"]
+                if "hp_before" in res_dict:
+                    d["hp_current"] = int(res_dict["hp_before"])
+                    modified = True
+                if "mp_before" in res_dict:
+                    d["mp_current"] = int(res_dict["mp_before"])
+                    modified = True
+                if "stamina_before" in res_dict:
+                    d["stamina_current"] = int(res_dict["stamina_before"])
+                    modified = True
             elif t_name == "arena_spend_gold":
                 add_gold(sheet, amount)
                 modified = True
@@ -840,7 +899,7 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                 if item_name:
                     remove_item(sheet, item_name, qty)
                     modified = True
-            elif t_name in ("arena_remove_item", "arena_drop_item"):
+            elif t_name == "arena_remove_item":
                 item_name = args.get("item_name")
                 qty = int(args.get("quantity", 1))
                 item_type = args.get("item_type", "misc")
@@ -848,9 +907,15 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                     add_item(sheet, {"name": item_name, "type": item_type, "quantity": qty})
                     modified = True
             elif t_name in ("arena_add_experience", "arena_add_xp"):
-                amount = int(args.get("amount", 0)) if args.get("amount") is not None else 0
                 if amount > 0:
                     sheet["experience"] = max(0, sheet.get("experience", 0) - amount)
+                    # Revert level-up bonuses if the response indicates leveling occurred
+                    if res_dict.get("leveled_up"):
+                        sheet["level"] = max(1, sheet.get("level", 1) - 1)
+                        sheet["derived"]["hp_max"] = max(1, sheet["derived"].get("hp_max", 28) - 4)
+                        sheet["derived"]["hp_current"] = min(sheet["derived"]["hp_current"], sheet["derived"]["hp_max"])
+                        if "sp_max" in sheet["derived"]:
+                            sheet["derived"]["sp_max"] = max(1, sheet["derived"].get("sp_max", 42) - 6)
                     modified = True
             elif t_name == "arena_learn_spell":
                 spell_name = args.get("spell_name")
@@ -867,7 +932,7 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                 if effect_name:
                     dur = int(args.get("duration_turns", 3))
                     src = args.get("source", "restored")
-                    sheet = add_effect(sheet, effect_name, dur, src)
+                    sheet = add_effect(sheet, {"name": effect_name, "duration_turns": dur, "source": src})
                     modified = True
             elif t_name in ("arena_advance_stage", "arena_set_quest_stage", "arena_set_location", "arena_travel"):
                 try:

@@ -94,9 +94,9 @@
     },
     {
       "uid": 4011,
-      "key": ["death", "defeat", "unconscious", "captured"],
+      "key": ["death", "defeat", "zero health", "dead"],
       "secondary_key": [],
-      "content": "Reaching zero health does not cause instant death. You fall unconscious or become captured. This provides narrative flexibility regarding failure.",
+      "content": "Reaching zero health causes instant character death and triggers a GAME OVER state. Narrate the fatal blow and death of the hero in vivid detail. Do not allow the hero to survive or recover.",
       "enabled": true,
       "priority": 10,
       "probability": 100

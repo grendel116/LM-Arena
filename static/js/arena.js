@@ -76,7 +76,7 @@ async function renderTamrielMap() {
     const curLocation = world.current_location || 'Imperial Dungeon';
 
     if (headerLoc) {
-        headerLoc.innerHTML = `📍 <strong>Current Position:</strong> ${curLocation}, <span style="color: var(--arena-gold);">${curProvince}</span>`;
+        headerLoc.innerHTML = `<strong>Current Position:</strong> ${curLocation}, <span style="color: var(--arena-gold);">${curProvince}</span>`;
     }
 
     if (!selectedProvinceName) selectedProvinceName = curProvince;
@@ -235,8 +235,8 @@ const safeSessionStorage = {
 
 const appConfig = window.__ARENA_CONFIG || {};
 const localIp = appConfig.localIp || "127.0.0.1";
-const chatContainer = document.getElementById('chat-container');
-const userInput = document.getElementById('user-input');
+let chatContainer = document.getElementById('chat-container');
+let userInput = document.getElementById('user-input');
 let programWelcomeMessage = null;
 
 function replacePlaceholders(text) {
@@ -2094,32 +2094,38 @@ function updatePlayerHeartState(char, world) {
         color = '#64748b'; // Slate gray (fallen)
         glow = 'rgba(100, 116, 139, 0.4)';
         speed = '4.0s';
-        statusText = 'Player Status: Incapacitated';
+        statusText = 'Player Status: Fallen (GAME OVER)';
         heartElement.classList.remove('jiggling');
-    } else if (isAfflicted) {
-        color = '#22c55e'; // Sickly green (poison/disease)
-        glow = 'rgba(34, 197, 94, 0.7)';
-        speed = '0.9s';
-        statusText = `Player Status: Afflicted (${char.conditions.join(', ')}) - ${hpCurrent}/${hpMax} HP`;
-        heartElement.classList.remove('jiggling');
-    } else if (hpPct <= 25) {
-        color = '#dc2626'; // Deep pulsing red (critical)
-        glow = 'rgba(220, 38, 38, 0.9)';
-        speed = '0.5s';
-        statusText = `Player Status: Critical Health! (${hpCurrent}/${hpMax} HP)`;
-        heartElement.classList.add('jiggling');
-    } else if (hpPct <= 60) {
-        color = '#f87171'; // Soft wounded red
-        glow = 'rgba(248, 113, 113, 0.7)';
-        speed = '1.2s';
-        statusText = `Player Status: Wounded (${hpCurrent}/${hpMax} HP)`;
-        heartElement.classList.remove('jiggling');
+        triggerGameOverState();
     } else {
-        color = '#ef4444'; // Classic Vibrant Crimson Red
-        glow = 'rgba(239, 68, 68, 0.6)';
-        speed = '2.0s';
-        statusText = `Player Status: Healthy (${hpCurrent}/${hpMax} HP)`;
-        heartElement.classList.remove('jiggling');
+        if (typeof isGameOverState !== 'undefined' && isGameOverState) {
+            clearGameOverState();
+        }
+        if (isAfflicted) {
+            color = '#22c55e'; // Sickly green (poison/disease)
+            glow = 'rgba(34, 197, 94, 0.7)';
+            speed = '0.9s';
+            statusText = `Player Status: Afflicted (${char.conditions.join(', ')}) - ${hpCurrent}/${hpMax} HP`;
+            heartElement.classList.remove('jiggling');
+        } else if (hpPct <= 25) {
+            color = '#dc2626'; // Deep pulsing red (critical)
+            glow = 'rgba(220, 38, 38, 0.9)';
+            speed = '0.5s';
+            statusText = `Player Status: Critical Health! (${hpCurrent}/${hpMax} HP)`;
+            heartElement.classList.add('jiggling');
+        } else if (hpPct <= 60) {
+            color = '#f87171'; // Soft wounded red
+            glow = 'rgba(248, 113, 113, 0.7)';
+            speed = '1.2s';
+            statusText = `Player Status: Wounded (${hpCurrent}/${hpMax} HP)`;
+            heartElement.classList.remove('jiggling');
+        } else {
+            color = '#ef4444'; // Classic Vibrant Crimson Red
+            glow = 'rgba(239, 68, 68, 0.6)';
+            speed = '2.0s';
+            statusText = `Player Status: Healthy (${hpCurrent}/${hpMax} HP)`;
+            heartElement.classList.remove('jiggling');
+        }
     }
 
     heartElement.style.setProperty('--heart-color', color);
@@ -2127,6 +2133,92 @@ function updatePlayerHeartState(char, world) {
     heartElement.style.setProperty('--heart-speed', speed);
     heartElement.style.setProperty('--heart-speed-active', '0.6s');
     heartElement.title = `${statusText} — Click to view character sheet`;
+}
+
+let isGameOverState = false;
+
+function triggerGameOverState() {
+    isGameOverState = true;
+    
+    const inputEl = document.getElementById('user-input');
+    if (inputEl) {
+        inputEl.disabled = true;
+        inputEl.placeholder = "...";
+        inputEl.classList.add('user-input-frozen');
+    }
+    
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.25';
+        sendBtn.style.pointerEvents = 'none';
+    }
+
+    const autoGenBtn = document.getElementById('auto-generate-user-btn');
+    if (autoGenBtn) {
+        autoGenBtn.disabled = true;
+        autoGenBtn.style.opacity = '0.25';
+        autoGenBtn.style.pointerEvents = 'none';
+    }
+
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (diceBtn) {
+        diceBtn.disabled = true;
+        diceBtn.style.opacity = '0.25';
+        diceBtn.style.pointerEvents = 'none';
+    }
+
+    let banner = document.getElementById('game-over-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'game-over-banner';
+        banner.className = 'game-over-overlay';
+        banner.innerHTML = `
+            <div class="game-over-card">
+                <div class="game-over-skull">💀</div>
+                <h2 class="game-over-title">GAME OVER</h2>
+            </div>
+        `;
+        const container = document.getElementById('chat-container');
+        if (container) {
+            container.appendChild(banner);
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+}
+
+function clearGameOverState() {
+    isGameOverState = false;
+    const banner = document.getElementById('game-over-banner');
+    if (banner) banner.remove();
+
+    const inputEl = document.getElementById('user-input');
+    if (inputEl) {
+        inputEl.disabled = false;
+        inputEl.placeholder = "Ask " + (activeProgramName || "Program");
+        inputEl.classList.remove('user-input-frozen');
+    }
+
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '';
+        sendBtn.style.pointerEvents = '';
+    }
+
+    const autoGenBtn = document.getElementById('auto-generate-user-btn');
+    if (autoGenBtn) {
+        autoGenBtn.disabled = false;
+        autoGenBtn.style.opacity = '';
+        autoGenBtn.style.pointerEvents = '';
+    }
+
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (diceBtn) {
+        diceBtn.disabled = false;
+        diceBtn.style.opacity = '';
+        diceBtn.style.pointerEvents = '';
+    }
 }
 
 function updateHeartState() {
@@ -2240,7 +2332,7 @@ function renderCharacterStatusModal(data) {
     const invGoldEl = document.getElementById('inventory-gold-display');
     if (invGoldEl) {
         const currentGold = char.gold !== undefined ? char.gold : 0;
-        invGoldEl.innerHTML = `<span>${currentGold} Gold</span><button class="action-icon-btn" onclick="promptModifyGold()" title="Edit Gold" style="width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; margin-left: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></button>`;
+        invGoldEl.innerHTML = `<span onclick="promptModifyGold()" title="Edit Gold" style="cursor: pointer; user-select: none; transition: transform 0.15s ease; display: inline-flex; align-items: center; justify-content: center; margin-right: 6px; line-height: 1; vertical-align: middle;" onmouseenter="this.style.transform='scale(1.25)'" onmouseleave="this.style.transform='scale(1.0)'">🪙</span><span style="line-height: 1; display: inline-flex; align-items: center;">${currentGold} Gold</span>`;
     }
 
     const xpEl = document.getElementById('modal-char-xp');
@@ -4594,10 +4686,12 @@ function showWelcomeMessage() {
 
 // --- loadHistory ---
 async function loadHistory() {
-    // Temporarily disable smooth scroll on history load
-    chatContainer.classList.remove('smooth-scroll');
-
     try {
+        const container = document.getElementById('chat-container');
+        if (container) {
+            container.classList.remove('smooth-scroll');
+        }
+
         // If the session ID came from localStorage, verify it still exists on the server.
         // If it is missing, default to 'default'.
         if (!sessionFromUrl && sessionId !== 'default') {
@@ -4648,7 +4742,10 @@ async function loadHistory() {
                 userInput.placeholder = "Ask " + data.character_name;
             }
         }
-        chatContainer.innerHTML = '';
+        
+        if (container) {
+            container.innerHTML = '';
+        }
         if (data.history && data.history.length > 0) {
             // Remove welcome message or onboarding card
             const welcome = document.getElementById('welcome-message');
@@ -4695,15 +4792,17 @@ async function loadHistory() {
         fetchCharacterStatus();
 
         // Restore scroll position
-        const savedScrollPos = safeSessionStorage.getItem('chat_scroll_pos');
-        const wasAtBottom = safeSessionStorage.getItem('chat_was_at_bottom');
+        if (container) {
+            const savedScrollPos = safeSessionStorage.getItem('chat_scroll_pos');
+            const wasAtBottom = safeSessionStorage.getItem('chat_was_at_bottom');
 
-        if (wasAtBottom === 'true' || wasAtBottom === null) {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            isAtBottom = true;
-        } else if (savedScrollPos) {
-            chatContainer.scrollTop = parseInt(savedScrollPos, 10);
-            isAtBottom = false;
+            if (wasAtBottom === 'true' || wasAtBottom === null) {
+                container.scrollTop = container.scrollHeight;
+                isAtBottom = true;
+            } else if (savedScrollPos) {
+                container.scrollTop = parseInt(savedScrollPos, 10);
+                isAtBottom = false;
+            }
         }
     } catch (error) {
         console.error("Error loading chat history:", error);
@@ -4724,7 +4823,10 @@ async function loadHistory() {
     } finally {
         // Re-enable smooth scroll after a brief delay to avoid animating the initial position
         setTimeout(() => {
-            chatContainer.classList.add('smooth-scroll');
+            const container = document.getElementById('chat-container');
+            if (container) {
+                container.classList.add('smooth-scroll');
+            }
         }, 50);
         hideLoadingOverlay();
         if (typeof startSSE === 'function') {
@@ -4735,10 +4837,12 @@ async function loadHistory() {
 
 function hideLoadingOverlay() {
     const overlay = document.getElementById('chat-loading-overlay');
-    if (overlay) {
+    if (overlay && !overlay.classList.contains('fade-out')) {
         overlay.classList.add('fade-out');
         setTimeout(() => {
-            overlay.remove();
+            if (overlay && overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
         }, 400);
     }
 }
@@ -5862,6 +5966,7 @@ function renderMessage(msg, isLive = false) {
     row.appendChild(bubblesContainer);
     chatContainer.appendChild(row);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    evaluateLatestMessageForSkillCheck();
 
     if (role === 'program' && isLive && ttsAutoSpeak) {
         setTimeout(() => {
@@ -7319,9 +7424,9 @@ function handleSwipeGesture() {
 async function generatePortraitPrompt() {
     if (isGenerating) return;
     if (useImagenMode) {
-        userInput.value = "[GENERATE_IMAGEN: Render a visual illustration of the current scene or character using Google Imagen. Do not narrate new story events or call mechanics tools.]";
+        userInput.value = "[GENERATE_IMAGEN: Render an image of the active companion using Google Imagen. Do not narrate new story events or call mechanics tools.]";
     } else {
-        userInput.value = "[GENERATE_IMAGE: Render a visual illustration of the current scene/character. Do not narrate new story events or call mechanics tools.]";
+        userInput.value = "[GENERATE_IMAGE: Render an image of the active companion. Do not narrate new story events or call mechanics tools.]";
     }
     await sendMessage();
 }
@@ -7427,15 +7532,19 @@ function activateSkillCheckUI(checkData) {
 
 function evaluateLatestMessageForSkillCheck() {
     if (!chatContainer) return;
-    const programRows = Array.from(chatContainer.querySelectorAll('.message-row.program-row'));
-    if (programRows.length === 0) {
+    const allRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)'));
+    if (allRows.length === 0) {
         resetSkillCheckUI();
         return;
     }
     
-    const lastRow = programRows[programRows.length - 1];
-    const toolCallsStr = lastRow ? lastRow.dataset.toolCalls : null;
-    
+    const lastRow = allRows[allRows.length - 1];
+    if (!lastRow || !lastRow.classList.contains('program-row')) {
+        resetSkillCheckUI();
+        return;
+    }
+
+    const toolCallsStr = lastRow.dataset.toolCalls;
     if (toolCallsStr) {
         try {
             const toolCalls = JSON.parse(toolCallsStr);
