@@ -12,11 +12,20 @@ def load_quest_stages() -> list:
         return json.load(f)
 
 def get_current_stage(stage_number: int, stages: list) -> dict:
-    """Returns the stage dict for the given stage number."""
+    """Returns the stage dict for the given stage number or highest preceding active stage."""
+    if not stages:
+        return {}
     for s in stages:
         if s.get("stage") == stage_number:
             return s
-    return {}
+    active_stage = None
+    for s in sorted(stages, key=lambda x: x.get("stage", 0)):
+        if s.get("stage", 0) <= stage_number:
+            active_stage = s
+        else:
+            break
+    return active_stage or stages[0]
+
 
 def get_stage_context_injection(state: dict, stages: list) -> str:
     """Returns the context_injection string for the current quest stage."""

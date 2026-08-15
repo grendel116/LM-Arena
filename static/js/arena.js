@@ -8292,10 +8292,13 @@ function switchQuestModalTab(tabName) {
     const mapTabBtn = document.getElementById('quest-tab-btn-map');
     const journalContent = document.getElementById('quest-tab-content-journal');
     const mapContent = document.getElementById('quest-tab-content-map');
+    const modalCard = document.querySelector('#quest-modal .modal-card');
 
     if (!journalTabBtn || !mapTabBtn || !journalContent || !mapContent) return;
 
     if (tabName === 'map') {
+        if (modalCard) modalCard.style.maxWidth = '820px';
+
         mapTabBtn.style.background = 'rgba(255, 255, 255, 0.08)';
         mapTabBtn.style.color = 'var(--primary-accent)';
         mapTabBtn.style.borderColor = 'var(--primary-accent)';
@@ -8309,6 +8312,8 @@ function switchQuestModalTab(tabName) {
 
         initTamrielMapPanZoom();
     } else {
+        if (modalCard) modalCard.style.maxWidth = '580px';
+
         journalTabBtn.style.background = 'rgba(255, 255, 255, 0.08)';
         journalTabBtn.style.color = 'var(--primary-accent)';
         journalTabBtn.style.borderColor = 'var(--primary-accent)';
@@ -8321,6 +8326,7 @@ function switchQuestModalTab(tabName) {
         mapContent.style.display = 'none';
     }
 }
+
 
 
 
