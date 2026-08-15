@@ -142,19 +142,13 @@ def load_user_instructions() -> str:
         content = bundle.get("profile", "").strip()
         if not content:
             meta = bundle.get("meta", {})
-            char_name = meta.get("character_name", "Eternal Champion")
             race = meta.get("race", "Nord")
-            char_class = meta.get("class", "Mage")
-            gender = meta.get("gender", "Male")
-            content = f"# {char_name.upper()}\n- Race: {race}\n- Class: {char_class}\n- Gender: {gender}\n- Description: A brave adventurer.\n"
+            content = f"A {race} from Skyrim."
         return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{content}\n"
     except Exception as e:
         print(f"Failed to read user instructions: {e}")
-        fallback_msg = (
-            "# ETERNAL CHAMPION\n"
-            "- An adventurer imprisoned in the Imperial Dungeon.\n"
-        )
-        return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{fallback_msg}"
+        fallback_msg = "A Nord from Skyrim."
+        return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{fallback_msg}\n"
 
 
 

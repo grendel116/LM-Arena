@@ -3353,11 +3353,14 @@ def list_user_profiles():
         
         profiles = []
         for s in saves:
+            from engine.save_manager import read_save
+            bundle = read_save(s["id"])
+            profile_text = bundle.get("profile") or f"A {s.get('race', 'Nord')} from Skyrim."
             profiles.append({
                 "id": s["id"],
                 "name": s.get("name") or s.get("character_name", s["id"]),
                 "character_name": s.get("character_name", s["id"]),
-                "content": f"# {s.get('character_name', s['id'])}\n- Race: {s.get('race', 'Nord')}\n- Class: {s.get('class', 'Mage')}\n",
+                "content": profile_text,
                 "gender": s.get("gender", "Male"),
                 "race": s.get("race", "Nord"),
                 "class": s.get("class", "Mage"),

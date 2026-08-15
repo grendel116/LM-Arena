@@ -258,7 +258,20 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
         }
     ]
 
-    profile_content = f"# {character_name.upper()}\n- Race: {race}\n- Class: {character_class}\n- Gender: {gender}\n- Description: A brave adventurer.\n"
+    RACE_HOMELANDS = {
+        "Nord": "Skyrim",
+        "Dark Elf": "Morrowind",
+        "Wood Elf": "Valenwood",
+        "High Elf": "Summerset Isle",
+        "Redguard": "Hammerfell",
+        "Breton": "High Rock",
+        "Khajiit": "Elsweyr",
+        "Argonian": "Black Marsh",
+        "Imperial": "Cyrodiil",
+        "Orc": "Orsinium"
+    }
+    homeland = RACE_HOMELANDS.get(race, "Skyrim")
+    profile_content = f"A {race} from {homeland}."
 
     bundle = {
         "meta": {
