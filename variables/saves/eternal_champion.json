@@ -4,7 +4,7 @@
     "name": "Eternal Champion",
     "user_profile_id": "eternal_champion",
     "created_at": "2026-08-13T21:36:23.946625",
-    "updated_at": "2026-08-15T06:17:24.026881",
+    "updated_at": "2026-08-15T07:24:49.099025",
     "character_name": "Eternal Champion",
     "race": "Nord",
     "gender": "Male",
@@ -13,7 +13,7 @@
     "gold": 0,
     "current_province": "Cyrodiil",
     "current_location": "Imperial Dungeon",
-    "quest_stage": 10,
+    "quest_stage": 15,
     "tamrielic_date": "1 Morning Star, 3E 389"
   },
   "character": {
@@ -90,7 +90,7 @@
     },
     "current_province": "Cyrodiil",
     "current_location": "Imperial Dungeon",
-    "quest_stage": 10,
+    "quest_stage": 15,
     "fragments_collected": [],
     "provinces_visited": [
       "Cyrodiil"
@@ -101,7 +101,7 @@
     "world_flags": {
       "shift_gate_answered": false,
       "ria_vision_1_seen": false,
-      "province_travel_unlocked": false,
+      "province_travel_unlocked": true,
       "staff_assembled": false
     },
     "weather": {

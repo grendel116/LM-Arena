@@ -2472,14 +2472,28 @@ def arena_travel(character_name, destination_province, destination_city):
     return travel_summary
 
 @track_tool_activity
-def arena_advance_stage(character_name, target_stage=None):
+def arena_advance_stage(character_name=None, target_stage=None, *args, **kwargs):
     """Advances the main quest stage to the next chapter upon milestone completion."""
-    return advance_quest_stage(character_name, target_stage)
+    stage = target_stage or kwargs.get("next_stage") or kwargs.get("stage") or kwargs.get("stage_number") or kwargs.get("new_stage")
+    if stage is not None:
+        try:
+            stage = int(stage)
+        except (ValueError, TypeError):
+            stage = None
+    char_name = character_name if isinstance(character_name, str) and not character_name.isdigit() else "Eternal Champion"
+    return advance_quest_stage(char_name, stage)
 
 @track_tool_activity
-def arena_set_quest_stage(character_name, stage_number):
+def arena_set_quest_stage(character_name=None, stage_number=None, *args, **kwargs):
     """Directly sets the main quest stage number for the character."""
-    return advance_quest_stage(character_name, target_stage=int(stage_number))
+    stage = stage_number or kwargs.get("stage") or kwargs.get("target_stage") or kwargs.get("next_stage") or kwargs.get("new_stage")
+    if stage is not None:
+        try:
+            stage = int(stage)
+        except (ValueError, TypeError):
+            stage = None
+    char_name = character_name if isinstance(character_name, str) and not character_name.isdigit() else "Eternal Champion"
+    return advance_quest_stage(char_name, target_stage=stage)
 
 @track_tool_activity
 def arena_recruit_follower(follower_name, follower_race="Imperial", follower_class="Adventurer", persona_description=""):
