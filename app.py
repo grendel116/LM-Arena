@@ -3123,38 +3123,44 @@ def delete_existing_save():
 
 
 def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id: str = None):
-    """Synchronizes updated inventory, vitals, and spells to the latest history turn state snapshot."""
+    """Synchronizes updated inventory, vitals, and spells to history state snapshots across active session aliases."""
     try:
         from runner_interface import get_runner
+        from engine.save_manager import get_active_save_id
         import copy
         
         runner = get_runner()
-        if not session_id:
-            session_id = 'default'
+        save_id = get_active_save_id()
         
-        # Ensure the session is loaded from disk
-        if session_id not in runner.sessions_history:
-            runner._load_session_from_disk(session_id)
-        
-        if session_id in runner.sessions_history:
-            history = runner.sessions_history[session_id]
-            for msg in reversed(history):
-                if msg.get('state_snapshot'):
-                    msg['state_snapshot']['inventory'] = copy.deepcopy(character_sheet.get('inventory', []))
-                    if 'derived' in character_sheet:
-                        derived = character_sheet['derived']
-                        vitals = msg['state_snapshot'].setdefault('vitals', {})
-                        vitals['hp'] = derived.get('hp_current', vitals.get('hp', 30))
-                        vitals['hp_max'] = derived.get('hp_max', vitals.get('hp_max', 30))
-                        vitals['mp'] = derived.get('mp_current', vitals.get('mp_current', 162))
-                        vitals['mp_max'] = derived.get('mp_max', vitals.get('mp_max', 162))
-                        vitals['stamina'] = derived.get('stamina_current', vitals.get('stamina', 60))
-                        vitals['stamina_max'] = derived.get('stamina_max', vitals.get('stamina_max', 60))
-                        vitals['gold'] = character_sheet.get('gold', vitals.get('gold', 0))
-                    if 'spells' in character_sheet:
-                        msg['state_snapshot']['spells'] = copy.deepcopy(character_sheet.get('spells', []))
-                    break
-            runner._save_session_to_disk(session_id)
+        target_session_ids = set()
+        if session_id:
+            target_session_ids.add(session_id)
+        target_session_ids.add('default')
+        if save_id:
+            target_session_ids.add(save_id)
+            
+        for sid in target_session_ids:
+            if sid not in runner.sessions_history:
+                runner._load_session_from_disk(sid)
+            
+            if sid in runner.sessions_history:
+                history = runner.sessions_history[sid]
+                for msg in history:
+                    if msg.get('state_snapshot'):
+                        msg['state_snapshot']['inventory'] = copy.deepcopy(character_sheet.get('inventory', []))
+                        if 'derived' in character_sheet:
+                            derived = character_sheet['derived']
+                            vitals = msg['state_snapshot'].setdefault('vitals', {})
+                            vitals['hp'] = derived.get('hp_current', vitals.get('hp', 30))
+                            vitals['hp_max'] = derived.get('hp_max', vitals.get('hp_max', 30))
+                            vitals['mp'] = derived.get('mp_current', vitals.get('mp_current', 162))
+                            vitals['mp_max'] = derived.get('mp_max', vitals.get('mp_max', 162))
+                            vitals['stamina'] = derived.get('stamina_current', vitals.get('stamina', 60))
+                            vitals['stamina_max'] = derived.get('stamina_max', vitals.get('stamina_max', 60))
+                            vitals['gold'] = character_sheet.get('gold', vitals.get('gold', 0))
+                        if 'spells' in character_sheet:
+                            msg['state_snapshot']['spells'] = copy.deepcopy(character_sheet.get('spells', []))
+                runner._save_session_to_disk(sid)
     except Exception as e:
         print(f"[Snapshot Sync Warning] {e}", flush=True)
 
@@ -3228,6 +3234,74 @@ def remove_character_item_route():
             "removed": removed,
             "dropped": removed,
             "message": f"Removed {removed.get('quantity', 1)}x {removed['name']}"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/character/spell/remove', methods=['POST'])
+@app.route('/api/character/forget_spell', methods=['POST'])
+@requires_auth
+def remove_character_spell_route():
+    try:
+        data = request.get_json(silent=True) or {}
+        spell_name = data.get("spell_name")
+        req_session_id = data.get("session_id", "default")
+        
+        if not spell_name:
+            return jsonify({"error": "Missing spell_name"}), 400
+            
+        from engine.save_manager import get_active_save_id
+        from engine.character import load_character, save_character, forget_spell
+        
+        save_id = get_active_save_id()
+        sheet = load_character(save_id)
+        
+        sheet = forget_spell(sheet, spell_name)
+        save_character(save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_session_id)
+        
+        return jsonify({
+            "status": "success",
+            "character": sheet,
+            "removed_spell": spell_name,
+            "message": f"Removed spell '{spell_name}'"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/character/gold/modify', methods=['POST'])
+@app.route('/api/character/gold/remove', methods=['POST'])
+@requires_auth
+def modify_character_gold_route():
+    try:
+        data = request.get_json(silent=True) or {}
+        amount = int(data.get("amount", 0))
+        action = data.get("action", "remove")
+        req_session_id = data.get("session_id", "default")
+        
+        from engine.save_manager import get_active_save_id
+        from engine.character import load_character, save_character, spend_gold, add_gold
+        
+        save_id = get_active_save_id()
+        sheet = load_character(save_id)
+        
+        if action == "set":
+            sheet["gold"] = max(0, amount)
+        elif action == "add":
+            sheet = add_gold(sheet, amount)
+        else:
+            sheet = spend_gold(sheet, amount)
+            
+        save_character(save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_session_id)
+        
+        return jsonify({
+            "status": "success",
+            "character": sheet,
+            "gold": sheet.get("gold", 0),
+            "message": f"Updated gold balance to {sheet.get('gold', 0)}"
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

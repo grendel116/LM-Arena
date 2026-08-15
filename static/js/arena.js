@@ -1243,8 +1243,8 @@ function evaluateSceneBGM(text, locationContext) {
         return;
     }
 
-    // 19. Character Origins / Creation / Status
-    if (combined.includes("character creation") || combined.includes("hail") || combined.includes("where dost thou hail")) {
+    // 19. Shopping & Merchants
+    if (combined.includes("shopping") || combined.includes("shop") || combined.includes("merchant") || combined.includes("store") || combined.includes("vendor") || combined.includes("trader") || combined.includes("market") || combined.includes("bazaar") || combined.includes("buying") || combined.includes("selling")) {
         playBGMTrack("Where Dost Thou Hail.mp3");
         return;
     }
@@ -2138,7 +2138,6 @@ function triggerHeartBurst() {
 }
 
 function openStatusModal() {
-    playBGMTrack("Where Dost Thou Hail.mp3");
     fetchCharacterStatus().then(() => {
         const modal = document.getElementById('status-modal');
         if (modal) modal.style.display = 'flex';
@@ -2239,7 +2238,10 @@ function renderCharacterStatusModal(data) {
     if (goldEl) goldEl.textContent = `${char.gold !== undefined ? char.gold : 75}`;
 
     const invGoldEl = document.getElementById('inventory-gold-display');
-    if (invGoldEl) invGoldEl.textContent = `${char.gold !== undefined ? char.gold : 0} Gold`;
+    if (invGoldEl) {
+        const currentGold = char.gold !== undefined ? char.gold : 0;
+        invGoldEl.innerHTML = `<span>${currentGold} Gold</span><button class="action-icon-btn" onclick="promptModifyGold()" title="Edit Gold" style="width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; margin-left: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></button>`;
+    }
 
     const xpEl = document.getElementById('modal-char-xp');
     if (xpEl) xpEl.textContent = `${char.experience || 0}`;
@@ -2297,7 +2299,7 @@ function renderCharacterStatusModal(data) {
                 const typeLower = (item.type || '').toLowerCase();
                 const isTorch = nameLower.includes('torch') || nameLower.includes('lantern') || typeLower === 'torch' || typeLower === 'light';
                 const isJewelry = nameLower.includes('ring') || nameLower.includes('amulet') || nameLower.includes('necklace') || typeLower === 'ring' || typeLower === 'neck';
-                const canEquip = isTorch || isJewelry || ['weapon', '2h_weapon', 'armor', 'robes', 'shield', 'head', 'helmet', 'hood', 'hands', 'feet', 'boots', 'apparel'].includes(typeLower) || nameLower.includes('dagger') || nameLower.includes('sword') || nameLower.includes('staff') || nameLower.includes('bow') || nameLower.includes('robe') || nameLower.includes('cuirass') || nameLower.includes('boot') || nameLower.includes('shoe') || nameLower.includes('greave') || nameLower.includes('glove') || nameLower.includes('gauntlet') || nameLower.includes('bracer') || nameLower.includes('helm') || nameLower.includes('hood') || nameLower.includes('cap') || nameLower.includes('armor') || nameLower.includes('tunic') || nameLower.includes('mail');
+                const canEquip = isTorch || isJewelry || ['weapon', '2h_weapon', 'armor', 'robes', 'shield', 'head', 'helmet', 'hood', 'hands', 'feet', 'boots', 'apparel', 'cloak', 'cape', 'mantle', 'back'].includes(typeLower) || nameLower.includes('dagger') || nameLower.includes('sword') || nameLower.includes('staff') || nameLower.includes('bow') || nameLower.includes('robe') || nameLower.includes('cuirass') || nameLower.includes('boot') || nameLower.includes('shoe') || nameLower.includes('greave') || nameLower.includes('glove') || nameLower.includes('gauntlet') || nameLower.includes('bracer') || nameLower.includes('helm') || nameLower.includes('hood') || nameLower.includes('cap') || nameLower.includes('armor') || nameLower.includes('tunic') || nameLower.includes('mail') || nameLower.includes('cloak') || nameLower.includes('cape') || nameLower.includes('mantle') || nameLower.includes('back');
                 
                 itemRow.style.cssText = `display: inline-flex; align-items: center; gap: 6px; background: ${isEq ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255,255,255,0.04)'}; border: 1px solid ${isEq ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 4px 6px 4px 10px; transition: all 0.15s ease;`;
                 
@@ -2339,9 +2341,9 @@ function renderCharacterStatusModal(data) {
                     </svg>
                 `;
                 removeBtn.onmouseover = () => {
-                    removeBtn.style.color = '#ef4444';
-                    removeBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                    removeBtn.style.background = 'rgba(239, 68, 68, 0.12)';
+                    removeBtn.style.color = '#fff';
+                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                    removeBtn.style.background = 'rgba(255, 255, 255, 0.12)';
                 };
                 removeBtn.onmouseout = () => {
                     removeBtn.style.color = 'var(--text-muted)';
@@ -2371,8 +2373,37 @@ function renderCharacterStatusModal(data) {
         } else {
             spells.forEach(spell => {
                 const badge = document.createElement('span');
-                badge.style.cssText = 'font-size: 0.8rem; padding: 4px 10px; border-radius: 8px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); display: inline-flex; align-items: center; gap: 4px;';
-                badge.textContent = `${spell.name} (${spell.school || 'Magic'}) • ${spell.sp_cost || 4} SP`;
+                badge.style.cssText = 'font-size: 0.8rem; padding: 4px 6px 4px 10px; border-radius: 8px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); display: inline-flex; align-items: center; gap: 6px;';
+                
+                const spellText = document.createElement('span');
+                spellText.textContent = `${spell.name} (${spell.school || 'Magic'}) • ${spell.mp_cost || spell.sp_cost || 4} MP`;
+                badge.appendChild(spellText);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'action-icon-btn';
+                removeBtn.title = `Forget ${spell.name}`;
+                removeBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
+                removeBtn.innerHTML = `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                `;
+                removeBtn.onmouseover = () => {
+                    removeBtn.style.color = '#fff';
+                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                    removeBtn.style.background = 'rgba(255, 255, 255, 0.12)';
+                };
+                removeBtn.onmouseout = () => {
+                    removeBtn.style.color = 'var(--text-muted)';
+                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    removeBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                };
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    removeSpellFromCharacter(spell.name);
+                };
+                badge.appendChild(removeBtn);
                 spellsContainer.appendChild(badge);
             });
         }
@@ -2484,6 +2515,102 @@ async function executeRemoveItem(itemName) {
             showCustomAlert('Removal Error', e.message);
         }
     }
+}
+
+async function removeSpellFromCharacter(spellName) {
+    try {
+        const res = await fetch('/api/character/spell/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ spell_name: spellName, session_id: sessionId })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        await fetchCharacterStatus();
+    } catch (e) {
+        console.error('Error removing spell:', e);
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Spell Removal Error', e.message);
+        }
+    }
+}
+
+async function modifyCharacterGold(amount, action = 'remove') {
+    try {
+        const res = await fetch('/api/character/gold/modify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amount, action: action, session_id: sessionId })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        await fetchCharacterStatus();
+    } catch (e) {
+        console.error('Error modifying gold:', e);
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Gold Modification Error', e.message);
+        }
+    }
+}
+
+function openGoldEditModal() {
+    let modal = document.getElementById('gold-edit-modal');
+    const currentGold = currentCharacterData && currentCharacterData.character ? (currentCharacterData.character.gold || 0) : 0;
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'gold-edit-modal';
+        modal.className = 'modal';
+        modal.onclick = closeGoldEditModal;
+        
+        modal.innerHTML = `
+            <div class="modal-card" style="max-width: 260px; width: 90%; text-align: left; align-items: stretch; padding: 18px;" onclick="event.stopPropagation()">
+                <form onsubmit="event.preventDefault(); submitGoldEditModal();" style="display: flex; flex-direction: column; gap: 14px; margin: 0;">
+                    <input type="number" id="gold-modal-input" min="0" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 1rem; outline: none; box-shadow: none;" onfocus="this.style.borderColor='rgba(255,255,255,0.3)'; this.style.boxShadow='none';" />
+
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                        <button type="button" onclick="closeGoldEditModal()" class="onboarding-btn" style="padding: 7px 14px; font-size: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-muted);">
+                            Cancel
+                        </button>
+                        <button type="submit" class="onboarding-btn" style="padding: 7px 18px; font-size: 0.8rem;">
+                            Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    const inputEl = document.getElementById('gold-modal-input');
+    if (inputEl) inputEl.value = currentGold;
+
+    modal.style.display = 'flex';
+    
+    if (inputEl) {
+        setTimeout(() => {
+            inputEl.focus();
+            inputEl.select();
+        }, 50);
+    }
+}
+
+function closeGoldEditModal() {
+    const modal = document.getElementById('gold-edit-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitGoldEditModal() {
+    const inputEl = document.getElementById('gold-modal-input');
+    if (!inputEl) return;
+    const val = parseInt(inputEl.value, 10);
+    if (isNaN(val) || val < 0) return;
+    closeGoldEditModal();
+    await modifyCharacterGold(val, 'set');
+}
+
+function promptModifyGold() {
+    openGoldEditModal();
 }
 
 
@@ -4535,24 +4662,7 @@ async function loadHistory() {
             });
 
             // Check if latest message is a pending player skill check
-            const historyList = data.history || [];
-            if (historyList.length > 0) {
-                const lastMsg = historyList[historyList.length - 1];
-                if (lastMsg && (lastMsg.role === 'program' || lastMsg.role === 'assistant')) {
-                    const toolCalls = lastMsg.tool_calls || [];
-                    const skillCheckCall = toolCalls.find(tc => {
-                        const name = tc.name || (tc.function && tc.function.name) || '';
-                        return name === 'arena_request_skill_check';
-                    });
-                    if (skillCheckCall) {
-                        let args = skillCheckCall.args || (skillCheckCall.function && skillCheckCall.function.arguments) || {};
-                        if (typeof args === 'string') {
-                            try { args = JSON.parse(args); } catch (e) { args = {}; }
-                        }
-                        activateSkillCheckUI(args);
-                    }
-                }
-            }
+            evaluateLatestMessageForSkillCheck();
         } else {
             // History is empty! Wait for model initialization and health checks to complete if they haven't yet
             if (modelInitPromise) {
@@ -6209,6 +6319,7 @@ function truncateChatAfter(row) {
         next = next.nextElementSibling;
         toRemove.remove();
     }
+    evaluateLatestMessageForSkillCheck();
 }
 
 // --- startEditMessage ---
@@ -6654,6 +6765,7 @@ async function deleteTurnFromMessage(button) {
             if (data.status === 'success') {
                 const row = (bubble || voiceCallRow).closest('.message-row') || voiceCallRow;
                 if (row) row.remove();
+                evaluateLatestMessageForSkillCheck();
                 if (typeof fetchCharacterStatus === 'function') {
                     fetchCharacterStatus();
                 }
@@ -7311,6 +7423,38 @@ function activateSkillCheckUI(checkData) {
         sendBtn.style.opacity = '0.25';
         sendBtn.style.pointerEvents = 'none';
     }
+}
+
+function evaluateLatestMessageForSkillCheck() {
+    if (!chatContainer) return;
+    const programRows = Array.from(chatContainer.querySelectorAll('.message-row.program-row'));
+    if (programRows.length === 0) {
+        resetSkillCheckUI();
+        return;
+    }
+    
+    const lastRow = programRows[programRows.length - 1];
+    const toolCallsStr = lastRow ? lastRow.dataset.toolCalls : null;
+    
+    if (toolCallsStr) {
+        try {
+            const toolCalls = JSON.parse(toolCallsStr);
+            const skillCheckCall = toolCalls.find(tc => {
+                const name = tc.name || (tc.function && tc.function.name) || '';
+                return name === 'arena_request_skill_check';
+            });
+            if (skillCheckCall) {
+                let args = skillCheckCall.args || (skillCheckCall.function && skillCheckCall.function.arguments) || {};
+                if (typeof args === 'string') {
+                    try { args = JSON.parse(args); } catch (e) { args = {}; }
+                }
+                activateSkillCheckUI(args);
+                return;
+            }
+        } catch (e) {}
+    }
+    
+    resetSkillCheckUI();
 }
 
 function resetSkillCheckUI() {

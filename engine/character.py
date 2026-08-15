@@ -138,9 +138,10 @@ EQUIP_SLOTS = {
     "amulet": "neck",
     "necklace": "neck",
     "ring": "ring",
-    "cloak": "cloak",
-    "cape": "cloak",
-    "mantle": "cloak"
+    "cloak": "back",
+    "cape": "back",
+    "mantle": "back",
+    "back": "back"
 }
 
 TWO_HANDED_KEYWORDS = [
@@ -160,12 +161,16 @@ def is_two_handed_item(item: dict) -> bool:
 
 def get_item_category(item: dict) -> str:
     """Determine the equip category/slot for an item."""
+    name = item.get("name", "").lower()
+    item_type = item.get("type", "").lower()
+    
+    if item_type in ["cloak", "cape", "mantle", "back"] or any(c in name for c in ["cloak", "cape", "mantle"]):
+        return "back"
+
     explicit_slot = item.get("slot") or item.get("equipped_slot")
     if explicit_slot:
         return explicit_slot.lower()
-    item_type = item.get("type", "").lower()
-    name = item.get("name", "").lower()
-    
+        
     if item_type in ["torch", "light"] or "torch" in name or "lantern" in name:
         return "torch"
     if item_type == "shield" or any(s in name for s in ["shield", "targe", "buckler"]):
@@ -182,8 +187,6 @@ def get_item_category(item: dict) -> str:
         return "ring"
     if item_type in ["weapon", "2h_weapon", "1h_weapon"] or any(w in name for w in ["dagger", "sword", "blade", "mace", "axe", "staff", "bow", "hammer", "halberd", "spear", "club", "wand", "katana", "scimitar"]):
         return "weapon"
-    if item_type in ["cloak", "cape", "mantle"] or any(c in name for c in ["cloak", "cape", "mantle", "pauldron"]):
-        return "cloak"
     if item_type in ["body", "chest", "torso", "cuirass", "robes", "apparel"] or any(a in name for a in ["robe", "cuirass", "mail", "tunic", "hauberk", "breastplate", "doublet", "vest", "jerkin", "chestpiece", "rags", "clothes", "clothing", "harness", "gambeson"]):
         return "armor"
     if item_type == "armor" or "armor" in name:
@@ -524,14 +527,14 @@ def equip_item(sheet: dict, item_name: str) -> tuple[dict, bool]:
         target_item["equipped"] = True
         target_item["equipped_slot"] = "body"
 
-    # 4. Head / Hands / Feet / Neck / Cloak
-    elif category in ["head", "hands", "feet", "neck", "cloak"]:
+    # 4. Head / Hands / Feet / Neck / Back
+    elif category in ["head", "hands", "feet", "neck", "back", "cloak"]:
         for item in sheet["inventory"]:
             if item.get("equipped") and get_item_category(item) == category:
                 item["equipped"] = False
                 item.pop("equipped_slot", None)
         target_item["equipped"] = True
-        target_item["equipped_slot"] = category
+        target_item["equipped_slot"] = "back" if category in ["cloak", "back"] else category
 
     # 5. Rings (Max 2)
     elif category == "ring":
