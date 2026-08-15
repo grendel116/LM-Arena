@@ -3465,7 +3465,7 @@ function renderUserProfilesList() {
         card.appendChild(leftArea);
 
         // Right side action area (matching program profile rows)
-        const isProtectedProfile = prof.id === 'eternal_champion';
+        const isProtectedProfile = prof.id.startsWith('eternal_champion');
         const rightArea = document.createElement('div');
         rightArea.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: auto;';
 
@@ -3489,27 +3489,27 @@ function renderUserProfilesList() {
                 openUserProfileEditor(prof.id);
             };
             rightArea.appendChild(editBtn);
-        }
 
-        // Add Delete/Reset button on all profile rows
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'action-icon-btn';
-        deleteBtn.innerHTML = `
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-        `;
-        deleteBtn.title = isProtectedProfile ? 'Reset Character Progress' : 'Delete Character';
-        deleteBtn.style.width = '26px';
-        deleteBtn.style.height = '26px';
-        deleteBtn.style.borderRadius = '6px';
-        deleteBtn.style.flexShrink = '0';
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            deleteUserProfileById(prof.id);
-        };
-        rightArea.appendChild(deleteBtn);
+            // Add Delete button on user profile rows
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'action-icon-btn';
+            deleteBtn.innerHTML = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+            `;
+            deleteBtn.title = 'Delete Save';
+            deleteBtn.style.width = '26px';
+            deleteBtn.style.height = '26px';
+            deleteBtn.style.borderRadius = '6px';
+            deleteBtn.style.flexShrink = '0';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteUserProfileById(prof.id);
+            };
+            rightArea.appendChild(deleteBtn);
+        }
 
         card.appendChild(rightArea);
         container.appendChild(card);

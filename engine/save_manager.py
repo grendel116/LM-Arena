@@ -283,16 +283,21 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
     current_bundle = read_save(get_active_save_id())
     
     char = current_bundle.get("character", {})
-    target_char_name = character_name or char.get("name") or current_bundle.get("meta", {}).get("character_name") or "hero"
-    clean_prefix = _get_clean_name(target_char_name)
+    raw_name = character_name or char.get("name") or current_bundle.get("meta", {}).get("character_name") or "hero"
+    
+    # Strip existing numeric suffixes (e.g., ' 001', ' 003', '_001') to prevent compounding names
+    base_char_name = re.sub(r'[\s_]+\d{3,}$', '', raw_name).strip()
+    if not base_char_name:
+        base_char_name = "Hero"
+        
+    clean_prefix = _get_clean_name(base_char_name)
 
     if not save_id:
         max_idx = 0
         pattern = re.compile(rf"^{re.escape(clean_prefix)}_(\d{{3,}})$", re.IGNORECASE)
         
-        for item in SAVES_DIR.iterdir():
-            stem = item.stem if item.is_file() else item.name
-            match = pattern.match(stem)
+        for item in SAVES_DIR.glob("*.json"):
+            match = pattern.match(item.stem)
             if match:
                 try:
                     idx = int(match.group(1))
@@ -303,14 +308,16 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
                     
         next_idx = max_idx + 1
         save_id = f"{clean_prefix}_{next_idx:03d}"
-        display_name = f"{target_char_name} {next_idx:03d}"
+        display_name = f"{base_char_name} {next_idx:03d}"
     else:
         display_name = save_id.replace("_", " ").title()
 
     current_bundle.setdefault("meta", {})
     current_bundle["meta"]["id"] = save_id
     current_bundle["meta"]["name"] = display_name
-    current_bundle["meta"]["character_name"] = target_char_name
+    current_bundle["meta"]["character_name"] = base_char_name
+    if char:
+        char["name"] = base_char_name
     current_bundle["meta"]["updated_at"] = datetime.now().isoformat()
     if "created_at" not in current_bundle["meta"]:
         current_bundle["meta"]["created_at"] = datetime.now().isoformat()
