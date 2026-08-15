@@ -137,7 +137,10 @@ EQUIP_SLOTS = {
     "neck": "neck",
     "amulet": "neck",
     "necklace": "neck",
-    "ring": "ring"
+    "ring": "ring",
+    "cloak": "cloak",
+    "cape": "cloak",
+    "mantle": "cloak"
 }
 
 TWO_HANDED_KEYWORDS = [
@@ -179,7 +182,9 @@ def get_item_category(item: dict) -> str:
         return "ring"
     if item_type in ["weapon", "2h_weapon", "1h_weapon"] or any(w in name for w in ["dagger", "sword", "blade", "mace", "axe", "staff", "bow", "hammer", "halberd", "spear", "club", "wand", "katana", "scimitar"]):
         return "weapon"
-    if item_type in ["body", "chest", "torso", "cuirass", "robes", "apparel"] or any(a in name for a in ["robe", "cuirass", "mail", "tunic", "hauberk", "breastplate", "doublet", "vest", "jerkin", "chestpiece", "rags", "clothes", "clothing", "harness", "gambeson", "cloak", "cape", "mantle", "pauldron"]):
+    if item_type in ["cloak", "cape", "mantle"] or any(c in name for c in ["cloak", "cape", "mantle", "pauldron"]):
+        return "cloak"
+    if item_type in ["body", "chest", "torso", "cuirass", "robes", "apparel"] or any(a in name for a in ["robe", "cuirass", "mail", "tunic", "hauberk", "breastplate", "doublet", "vest", "jerkin", "chestpiece", "rags", "clothes", "clothing", "harness", "gambeson"]):
         return "armor"
     if item_type == "armor" or "armor" in name:
         return "armor"
@@ -278,6 +283,7 @@ def get_character_context(sheet: dict) -> str:
         f"Encumbrance: {cur_enc}/{max_enc} kg ({enc_status})\n"
         f"Equipped: {', '.join(equipped_parts) or 'none'}\n"
         f"Carried Inventory: {', '.join(inv_parts) or 'empty'}\n"
+        f"(Track changes: [arena_add_item] gained, [arena_remove_item] lost/given/used.)\n"
         f"Spells: {', '.join(spells) or 'none'}\n"
         f"Active Effects: {', '.join(effects)} | Conditions: {', '.join(conditions)}"
     )
@@ -518,8 +524,8 @@ def equip_item(sheet: dict, item_name: str) -> tuple[dict, bool]:
         target_item["equipped"] = True
         target_item["equipped_slot"] = "body"
 
-    # 4. Head / Hands / Feet / Neck
-    elif category in ["head", "hands", "feet", "neck"]:
+    # 4. Head / Hands / Feet / Neck / Cloak
+    elif category in ["head", "hands", "feet", "neck", "cloak"]:
         for item in sheet["inventory"]:
             if item.get("equipped") and get_item_category(item) == category:
                 item["equipped"] = False

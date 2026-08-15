@@ -917,14 +917,8 @@ def generate_impersonated_message(session_id, user_profile, model):
         history_text += f"{role}: {msg.get('text', '')}\n"
         
     system_instruction = (
-        "You are an assistant that auto-generates the User's next message/action in the roleplay.\n"
-        "You MUST write in the first-person, impersonating the user's active character.\n\n"
-        "MESSAGE FORMAT & STYLE RULES (MANDATORY):\n"
-        "- Narration: Use *italics* for narrative.\n"
-        "- Dialogue: Use plain text without quotation marks.\n"
-        "- Style: Use short words and precise phrasing with linear progression.\n"
-        "- Do NOT use contrasting parallels, or stylistic symmetry.\n"
-        "- Keep the suggestion short, succinct, and immediately actionable for the next turn."
+        "Auto-generate the User's next first-person action in the roleplay.\n"
+        "Format: *italics* narration, plain text dialogue. Short, actionable, in character."
     )
     
     from core.program_config import load_user_instructions, replace_placeholders
@@ -966,7 +960,7 @@ def generate_impersonated_message(session_id, user_profile, model):
         f"{replace_placeholders(full_profile_block)}\n\n"
         f"### RECENT CHAT HISTORY\n"
         f"{replace_placeholders(history_text)}\n\n"
-        f"Generate a succinct, first-person message/action for the User that stays in character, reflects their profile/vitals/inventory, and follows the mandatory formatting rules:"
+        f"Generate a succinct first-person action for the User, in character:"
     )
     
     # Delegate entirely to the runner's provider-agnostic generator
@@ -1053,14 +1047,8 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
         print(f"Error getting character context for skill check: {e}")
 
     system_instruction = (
-        "You generate the User character's immediate next action in the roleplay.\n"
-        "Write in the first person, impersonating the user's active character.\n"
-        f"Generate exactly 1 concise in character narrative sentence describing the physical action or reaction.\n"
-        f"Strictly align the narration with the roll outcome (degree: {roll_res['degree']}, outcome: {'Success' if roll_res['success'] else 'Failure'}).\n"
-        "Formatting rules:\n"
-        "- Narration: Use *italics* for narrative.\n"
-        "- Dialogue: Use plain text without quotation marks.\n"
-        "- Output ONLY 1 sentence of narration."
+        "Generate the User character's immediate reaction in first person.\n"
+        f"1 concise *italicized* narrative sentence matching the {roll_res['degree']} outcome."
     )
 
     if is_flat_roll:
@@ -3134,15 +3122,19 @@ def delete_existing_save():
         return jsonify({"error": str(e)}), 500
 
 
-def _sync_active_character_snapshot_to_history(character_sheet: dict):
+def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id: str = None):
     """Synchronizes updated inventory, vitals, and spells to the latest history turn state snapshot."""
     try:
         from runner_interface import get_runner
-        from engine.save_manager import get_active_save_id
         import copy
         
         runner = get_runner()
-        session_id = session.get('active_session_id', 'default')
+        if not session_id:
+            session_id = 'default'
+        
+        # Ensure the session is loaded from disk
+        if session_id not in runner.sessions_history:
+            runner._load_session_from_disk(session_id)
         
         if session_id in runner.sessions_history:
             history = runner.sessions_history[session_id]
@@ -3174,6 +3166,7 @@ def toggle_equip_item():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         should_equip = data.get("equip", True)
+        req_session_id = data.get("session_id", "default")
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
@@ -3191,7 +3184,7 @@ def toggle_equip_item():
             
         if success:
             save_character(save_id, sheet)
-            _sync_active_character_snapshot_to_history(sheet)
+            _sync_active_character_snapshot_to_history(sheet, req_session_id)
             
         return jsonify({
             "status": "success",
@@ -3211,6 +3204,7 @@ def remove_character_item_route():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         quantity = int(data.get("quantity", 1))
+        req_session_id = data.get("session_id", "default")
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
@@ -3226,7 +3220,7 @@ def remove_character_item_route():
             return jsonify({"error": f"Item '{item_name}' not found in inventory."}), 404
             
         save_character(save_id, sheet)
-        _sync_active_character_snapshot_to_history(sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_session_id)
         
         return jsonify({
             "status": "success",

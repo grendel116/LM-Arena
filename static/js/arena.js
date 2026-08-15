@@ -2447,7 +2447,7 @@ async function toggleItemEquip(itemName, currentEquipped) {
         const res = await fetch('/api/character/equip', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_name: itemName, equip: !currentEquipped })
+            body: JSON.stringify({ item_name: itemName, equip: !currentEquipped, session_id: sessionId })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -2473,7 +2473,7 @@ async function executeRemoveItem(itemName) {
         const res = await fetch('/api/character/remove', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_name: itemName, quantity: 1 })
+            body: JSON.stringify({ item_name: itemName, quantity: 1, session_id: sessionId })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);

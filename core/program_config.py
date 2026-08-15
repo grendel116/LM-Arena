@@ -124,28 +124,11 @@ def load_static_instructions() -> str:
 
 
 def load_dynamic_runtime_context() -> str:
-    """Compiles all dynamic, time-sensitive system data points for runtime grounding."""
+    """Compiles dynamic, time-sensitive system data points for runtime grounding."""
     now = datetime.datetime.now()
-    
-    temporal_block = (
-        "### SYSTEM TEMPORAL CONTEXT\n"
-        f"- Current Local Time: {now.strftime('%Y-%m-%d %I:%M %p')}\n"
-        f"- Current Day: {now.strftime('%A, %B %d, %Y')}\n"
-    )
-    
-    backend_mode = os.getenv("RUNNER_BACKEND", "opensource")
-    env_block = (
-        "### SYSTEM ENVIRONMENT CONTEXT\n"
-        f"- Active Engine Backend: {backend_mode}\n"
-        f"- Host OS: Windows\n"
-        f"- Active Python Executable: {sys.executable}\n"
-    )
-    
     return (
-        "\n\n# DYNAMIC RUNTIME CONTEXT\n"
-        "Use the following parameters to ground time-sensitive requests or environmental checks:\n\n"
-        f"{temporal_block}\n"
-        f"{env_block}"
+        "\n\n# RUNTIME CONTEXT\n"
+        f"Local Time: {now.strftime('%Y-%m-%d %I:%M %p')} ({now.strftime('%A')})\n"
     )
 
 def load_user_instructions() -> str:
@@ -201,17 +184,11 @@ def get_compiled_instructions() -> str:
     base = replace_placeholders(load_static_instructions() + load_user_instructions())
 
     global_formatting = (
-        "\n\n# MESSAGE FORMAT (MANDATORY)\n"
+        "\n\n# MESSAGE FORMAT\n"
         "- Use separate lines and clear paragraphs for narration and dialogue.\n"
-        "- Narration: Use *italics* and present tense.\n"
-        "- Dialogue: Use plain text without quotation marks.\n"
-        "- Choices: Do not end turns with questions or options.\n"
-        "- Characters: Give each character a distinct personality and voice.\n"
-        "- Plot: Introduce narrative friction and develop scenes steadily.\n"
-        "- Style: Use gritty, kinetic atmosphere and anthropological depth.\n"
-        "- Do not use contrasting parallels.\n"
-        "- Do not use stylistic symmetry.\n"
-        "- Do not mirror sentence clauses.\n"
+        "- Narration: *italics*, present tense. Dialogue: plain text without quotes.\n"
+        "- Gritty, kinetic atmosphere with anthropological depth and distinct character voices.\n"
+        "- End on atmosphere or speech. Do not end with questions, choices, or mirrored clauses.\n"
     )
 
     base += global_formatting
