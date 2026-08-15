@@ -2268,6 +2268,25 @@ function renderCharacterStatusModal(data) {
         const items = char.inventory || [];
         const itemCountEl = document.getElementById('inventory-item-count');
         if (itemCountEl) itemCountEl.textContent = `${items.length} ${items.length === 1 ? 'item' : 'items'}`;
+
+        const weight = d.encumbrance_current !== undefined ? d.encumbrance_current : 0.0;
+        const maxWeight = d.encumbrance_max !== undefined ? d.encumbrance_max : 100.0;
+        const isEncumbered = !!d.is_encumbered || weight > maxWeight;
+        const weightEl = document.getElementById('inventory-weight-display');
+        if (weightEl) {
+            weightEl.textContent = `${weight} / ${maxWeight} kg`;
+            if (isEncumbered) {
+                weightEl.style.color = '#ef4444';
+                weightEl.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                weightEl.style.background = 'rgba(239, 68, 68, 0.15)';
+                weightEl.textContent += ' (ENCUMBERED)';
+            } else {
+                weightEl.style.color = 'var(--text-muted)';
+                weightEl.style.borderColor = 'rgba(255,255,255,0.1)';
+                weightEl.style.background = 'rgba(255,255,255,0.06)';
+            }
+        }
+
         if (items.length === 0) {
             invContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">Empty — no items in your pack</span>';
         } else {
@@ -2299,13 +2318,15 @@ function renderCharacterStatusModal(data) {
                 }
                 
                 const qtyStr = item.quantity && item.quantity > 1 ? ` x${item.quantity}` : '';
+                const itemWtStr = item.weight ? ` (${item.weight} kg)` : '';
                 const slotLabel = item.equipped_slot ? item.equipped_slot.replace('_', ' ').toUpperCase() : 'EQUIPPED';
                 const tag = isEq ? `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: var(--primary-accent); color: #000; font-weight: 700;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
                 
                 const equipLabel = document.createElement('div');
                 equipLabel.style.cssText = `background: transparent; border: none; padding: 0; font-size: 0.82rem; color: ${isEq ? 'var(--primary-accent)' : '#fff'}; display: inline-flex; align-items: center; gap: 6px;`;
-                equipLabel.innerHTML = `<span>${item.name}${qtyStr}</span> ${tag}`;
+                equipLabel.innerHTML = `<span>${item.name}${qtyStr}${itemWtStr}</span> ${tag}`;
                 itemRow.appendChild(equipLabel);
+
 
                 const dropBtn = document.createElement('button');
                 dropBtn.className = 'action-icon-btn';

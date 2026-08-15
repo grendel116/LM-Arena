@@ -185,6 +185,58 @@ def get_item_category(item: dict) -> str:
         return "armor"
     return EQUIP_SLOTS.get(item_type, "")
 
+# ── Encumbrance & Weight ──────────────────────────────────────────────────────
+
+def get_item_weight(item: dict) -> float:
+    """Returns weight in kg for an item."""
+    if not item or not isinstance(item, dict):
+        return 1.0
+    if "weight" in item and item["weight"] is not None:
+        try:
+            return float(item["weight"])
+        except Exception:
+            pass
+    name = str(item.get("name", "")).lower()
+    cat = get_item_category(item)
+    if "2h" in str(item.get("type", "")).lower() or any(w in name for w in ["claymore", "battleaxe", "warhammer", "greatsword", "halberd"]):
+        return 8.0
+    if cat == "weapon":
+        return 3.0 if "dagger" not in name else 1.0
+    if cat == "armor":
+        if any(r in name for r in ["rags", "cloth", "robe", "tunic", "shirt"]):
+            return 1.0
+        if any(h in name for h in ["plate", "ebony", "iron", "steel", "daedric"]):
+            return 15.0
+        return 6.0
+    if cat == "shield":
+        return 4.0
+    if cat in ["head", "feet", "hands"]:
+        return 2.0
+    if cat in ["ring", "neck"]:
+        return 0.1
+    if any(p in name for p in ["potion", "scroll", "food", "bread", "apple", "meat", "torch"]):
+        return 0.5
+    if any(k in name for k in ["key", "lockpick", "gem", "ruby"]):
+        return 0.1
+    return 1.0
+
+def calculate_inventory_weight(inventory: list) -> float:
+    """Calculates total weight of carried inventory."""
+    if not inventory or not isinstance(inventory, list):
+        return 0.0
+    total = 0.0
+    for it in inventory:
+        if isinstance(it, dict):
+            qty = it.get("quantity", 1)
+            total += get_item_weight(it) * (int(qty) if qty and str(qty).isdigit() else 1)
+    return round(total, 1)
+
+def calculate_max_encumbrance(sheet: dict) -> float:
+    """Calculates max carry capacity from strength (Strength * 2.0 kg)."""
+    attrs = sheet.get("attributes", {})
+    str_val = attrs.get("strength", 50)
+    return round(float(str_val) * 2.0, 1)
+
 # ── Context injection ─────────────────────────────────────────────────────────
 
 def get_character_context(sheet: dict) -> str:
@@ -198,11 +250,13 @@ def get_character_context(sheet: dict) -> str:
     for i in sheet.get("inventory", []):
         qty = i.get("quantity", 1)
         qty_str = f" x{qty}" if qty > 1 else ""
+        wt = get_item_weight(i)
+        wt_str = f" ({wt} kg)"
         if i.get("equipped"):
             slot = i.get("equipped_slot", "").replace("_", " ").title()
-            slot_str = f" ({slot})" if slot else ""
+            slot_str = f" [{slot}]" if slot else ""
             equipped_parts.append(f"{i['name']}{qty_str}{slot_str}")
-        inv_parts.append(f"{i['name']}{qty_str}")
+        inv_parts.append(f"{i['name']}{qty_str}{wt_str}")
             
     effects = [e["name"] for e in sheet.get("active_effects", [])] or ["none"]
     conditions = sheet.get("conditions", []) or ["none"]
@@ -213,15 +267,21 @@ def get_character_context(sheet: dict) -> str:
     stm_cur = d.get("stamina_current", 50)
     stm_max = d.get("stamina_max", 50)
 
+    cur_enc = round(calculate_inventory_weight(sheet.get("inventory", [])), 1)
+    max_enc = calculate_max_encumbrance(sheet)
+    enc_status = "Encumbered (Slowed)" if cur_enc > max_enc else "Light"
+
     return (
         f"[CHARACTER STATUS]\n"
         f"Name: {sheet.get('name', 'Eternal Champion')} | {sheet.get('race', 'Nord')} {sheet.get('class', 'Mage')} | Level {sheet.get('level', 1)}\n"
         f"Vitals: HP {d.get('hp_current', 28)}/{d.get('hp_max', 28)} | MP {mp_cur}/{mp_max} | Stamina {stm_cur}/{stm_max} | Armor {d.get('armor_rating', 4)} | Gold {sheet.get('gold', 0)}\n"
+        f"Encumbrance: {cur_enc}/{max_enc} kg ({enc_status})\n"
         f"Equipped: {', '.join(equipped_parts) or 'none'}\n"
         f"Carried Inventory: {', '.join(inv_parts) or 'empty'}\n"
         f"Spells: {', '.join(spells) or 'none'}\n"
         f"Active Effects: {', '.join(effects)} | Conditions: {', '.join(conditions)}"
     )
+
 
 
 # ── Vitals & Resource Restoration ─────────────────────────────────────────────
@@ -702,6 +762,13 @@ def update_character_identity(sheet: dict, name: str = None, race: str = None, g
     else:
         d["stamina_current"] = min(stamina_base, max(0, d["stamina_current"]))
     
+    # Encumbrance
+    max_carry = calculate_max_encumbrance(sheet)
+    curr_weight = calculate_inventory_weight(sheet.get("inventory", []))
+    d["encumbrance_max"] = max_carry
+    d["encumbrance_current"] = curr_weight
+    d["is_encumbered"] = curr_weight > max_carry
+
     # Configure starting spells if empty
     if "spells" not in sheet or not sheet["spells"]:
         if cls_key in ("mage", "sorcerer", "battlemage", "spellsword", "nightblade"):
@@ -712,6 +779,7 @@ def update_character_identity(sheet: dict, name: str = None, race: str = None, g
             sheet["spells"] = []
             
     return sheet
+
 
 
 def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
