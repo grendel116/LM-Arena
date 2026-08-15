@@ -8155,6 +8155,7 @@ function closeDataBank() {
 // --- openQuestLog ---
 async function openQuestLog() {
     document.getElementById('quest-modal').style.display = 'flex';
+    switchQuestModalTab('journal');
     await loadQuests();
 }
 
@@ -8162,6 +8163,41 @@ async function openQuestLog() {
 function closeQuestLog() {
     document.getElementById('quest-modal').style.display = 'none';
 }
+
+// --- switchQuestModalTab ---
+function switchQuestModalTab(tabName) {
+    const journalTabBtn = document.getElementById('quest-tab-btn-journal');
+    const mapTabBtn = document.getElementById('quest-tab-btn-map');
+    const journalContent = document.getElementById('quest-tab-content-journal');
+    const mapContent = document.getElementById('quest-tab-content-map');
+
+    if (!journalTabBtn || !mapTabBtn || !journalContent || !mapContent) return;
+
+    if (tabName === 'map') {
+        mapTabBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+        mapTabBtn.style.color = 'var(--primary-accent)';
+        mapTabBtn.style.borderColor = 'var(--primary-accent)';
+
+        journalTabBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+        journalTabBtn.style.color = 'var(--text-muted)';
+        journalTabBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+        journalContent.style.display = 'none';
+        mapContent.style.display = 'block';
+    } else {
+        journalTabBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+        journalTabBtn.style.color = 'var(--primary-accent)';
+        journalTabBtn.style.borderColor = 'var(--primary-accent)';
+
+        mapTabBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+        mapTabBtn.style.color = 'var(--text-muted)';
+        mapTabBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+        journalContent.style.display = 'block';
+        mapContent.style.display = 'none';
+    }
+}
+
 
 // --- loadQuests ---
 async function loadQuests() {
