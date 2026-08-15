@@ -327,9 +327,12 @@ _ARENA_DIRECTIVE_PROMPT = (
     "4. `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` - Recruit a key NPC into your party as an active companion persona.\n"
     "5. `[generate_local_image(prompt=\"...\")]` - Generate a character portrait/scene via ComfyUI (comma-separated tags).\n"
     "6. `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` - Generate environment/creature visual art.\n"
-    "7. `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` - Add found/looted item to player sheet.\n"
-    "8. `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` - Award looted gold or quest bounty.\n\n"
+    "7. `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` - Add found, looted, or purchased items to the player sheet.\n"
+    "8. `[arena_remove_item(character_name=\"{{user}}\", item_name=\"...\", quantity=1)]` - Remove consumed, sold, dropped, destroyed, or lost items from the player sheet.\n"
+    "9. `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` - Award looted gold or quest bounty.\n"
+    "10. `[arena_spend_gold(character_name=\"{{user}}\", amount=...)]` - Deduct gold spent on purchases, bribes, or tavern services.\n\n"
     "Mandatory Gameplay Rules:\n"
+    "- INVENTORY & ECONOMY: When the player acquires items, call `[arena_add_item]` (item_type: weapon, armor, potion, scroll, ingredient, apparel, misc). When the player eats, consumes, drinks, sells, discards, or loses an item narratively, call `[arena_remove_item]`. When spending or gaining coin, call `[arena_spend_gold]` or `[arena_add_gold]`. Alternatively, specify `add_item=\"...\"`, `remove_item=\"...\"`, or `gold=...` inside the hidden state comment.\n"
     "- SCENE & WORLD TRANSITIONS: When traveling, entering dungeons, reaching cities, advancing time, or reaching quest milestones, append a hidden state comment at the very end of your turn: <!-- state: province=\"...\", location=\"...\", hours=..., quest_stage=... -->. This updates the player map and journal seamlessly.\n"
     "- SKILL CHECKS & ROLLS: Execute rolls directly only for non player characters, monsters, and environmental checks using [arena_roll_check] or [arena_roll_combat]. When the narrative calls for the player character to react with skill (picking a lock, sneaking past guards, dodging a trap, persuading an NPC, jumping a chasm), call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]. End narration at the moment of tension before the player outcome.\n"
     "- FOLLOWER RECRUITMENT VS ESCORTS: Reserve `[arena_recruit_follower]` ONLY for main character companions who possess high affinity, deep trust, or hired combat readiness to fight alongside the player long term. For civilian escorts, VIPs, or temporary quest targets, describe them traveling alongside the player in narrative text WITHOUT calling `[arena_recruit_follower]`.\n"
@@ -582,11 +585,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         user_msg_indices = [idx for idx, msg in enumerate(history) if msg.get('role') == 'user' and not msg.get('compacted')]
         
         if force:
-            keep_turns = 3
+            keep_turns = 2
         else:
-            if len(user_msg_indices) < 12:
-                return
-            keep_turns = 5
+            keep_turns = 4
             
         if len(user_msg_indices) <= keep_turns:
             return
@@ -595,8 +596,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         
         # Extract turns before cutoff to summarize
         historical_turns = history[:cutoff_idx]
+        uncompacted_historical_turns = [msg for msg in historical_turns if not msg.get('compacted')]
         text_to_summarize = ""
-        for msg in historical_turns:
+        for msg in uncompacted_historical_turns:
             if msg.get('role') not in ('user', 'program'):
                 continue
             role = "User" if msg.get('role') == 'user' else "Program"
@@ -637,6 +639,16 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 source_type="chat_history"
             )
             db.prune_chat_histories(self.session_id, keep_limit=3)
+            
+            # Check if Slot 1 (the oldest consolidated chronicle) exceeds size threshold for distillation
+            priors = db.get_prior_chat_histories(self.session_id, limit=3)
+            if len(priors) == 3:
+                oldest_doc = priors[-1]
+                if len(oldest_doc.get("text", "")) > 1200:
+                    distilled_chronicle = await self.runner_obj._distill_epic_chronicle(oldest_doc["text"], active_model)
+                    if distilled_chronicle and not distilled_chronicle.startswith("Distillation failed"):
+                        db.update_memory_document(oldest_doc["name"], distilled_chronicle)
+                        print(f"[COMPACTION OS] Distilled historical chronicle in '{oldest_doc['name']}' to {len(distilled_chronicle)} chars.", flush=True)
             print(f"[COMPACTION OS] Ingested history to vector database.", flush=True)
         except Exception as e:
             print(f"[COMPACTION OS ERROR] Failed to ingest: {e}", flush=True)
@@ -1172,22 +1184,23 @@ class BaseProgramRunner:
             program_name = "Program"
             
         prompt = (
-            "You are a compaction assistant.\n"
-            f"Summarize the chat history between {user_name} and {program_name}.\n"
+            "You are a progressive memory compaction assistant for a roleplay adventure.\n"
+            f"Summarize the NEW chapter of events between {user_name} and {program_name}.\n"
             f"Always refer to the user as '{user_name}' and the program as '{program_name}'. Use their names for all references.\n"
-            "Extract facts, preferences, instructions, file changes, and project details.\n"
-            "Write a concise content string of up to 300 characters.\n\n"
+            "Extract new key developments, decisions, inventory/quest changes, locations reached, and relationship milestones.\n"
+            "Write a concise narrative summary (2-3 sentences, up to 500 characters).\n"
+            "Focus STRICTLY on the new developments in the recent chat history and do NOT repeat details already recorded in prior memories.\n\n"
         )
 
         if prior_memories:
-            prompt += "Excerpts of prior memories:\n"
+            prompt += "Excerpts of prior memory chapters:\n"
             for pm in prior_memories:
                 prompt += f"{pm}\n\n"
-            prompt += "Reference the prior memories to keep the summary coherent with the context.\n\n"
+            prompt += "Ensure the new summary advances the timeline without repeating the prior memory chapters above.\n\n"
             
         prompt += (
-            f"NEW CHAT HISTORY TO SUMMARIZE:\n{text_to_summarize}\n\n"
-            "SUMMARY:"
+            f"NEW CHAT HISTORY TO SUMMARIZE (NEW CHAPTER):\n{text_to_summarize}\n\n"
+            "INCREMENTAL SUMMARY:"
         )
         
         if is_remote_configured:
@@ -1236,6 +1249,66 @@ class BaseProgramRunner:
             print(f"Error generating local summary: {e}", flush=True)
         return "Memory compaction summary generation failed due to connection error."
 
+    async def _distill_epic_chronicle(self, text_to_distill: str, active_model: str) -> str:
+        """Condenses an extended multi-chapter historical chronicle into a high-level epic summary."""
+        from utils.program import get_active_user, get_active_program
+        user_name = get_active_user() or "The Player"
+        program_name = get_active_program() or "Program"
+        
+        prompt = (
+            f"You are the campaign chronicler for an ongoing Elder Scrolls adventure starring {user_name} and {program_name}.\n"
+            "The following text is the accumulated chronicle of earlier story chapters.\n"
+            f"Condense these events into a single cohesive, high-level historical narrative (2-3 concise paragraphs, up to 900 characters).\n"
+            "Retain major quest milestones, key character relationships, acquired artifacts, and major provincial journeys.\n\n"
+            f"ACCUMULATED CHRONICLE TO DISTILL:\n{text_to_distill}\n\n"
+            "DISTILLED HISTORICAL CHRONICLE:"
+        )
+        
+        is_remote_configured = _is_remote_configured()
+        remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
+        remote_key = os.getenv("REMOTE_API_KEY")
+        
+        if is_remote_configured:
+            try:
+                target_model = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite")
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {remote_key}"
+                }
+                payload = {
+                    "model": target_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                    "max_tokens": 1024
+                }
+                response = await self._post_llm_request(remote_cloud_url, payload, headers, timeout=60.0)
+                if response.status_code == 200:
+                    res_json = response.json()
+                    _text = res_json['choices'][0]['message'].get('content', '').strip()
+                    return re.sub(r'(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', _text, flags=re.IGNORECASE).strip()
+            except Exception as e:
+                print(f"[DISTILLATION] Error generating remote distillation: {e}", flush=True)
+                
+        payload = {
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "max_tokens": 1024
+        }
+        target_model = active_model if (active_model and active_model != 'local-llm') else os.getenv("LOCAL_MODEL_NAME")
+        if target_model:
+            payload["model"] = target_model
+            
+        try:
+            response = await self._post_llm_request(REMOTE_SERVER_URL, payload, get_remote_server_headers(), timeout=60.0)
+            if response.status_code == 200:
+                res_json = response.json()
+                _text = res_json['choices'][0]['message'].get('content', '').strip()
+                return re.sub(r'(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', _text, flags=re.IGNORECASE).strip()
+        except Exception as e:
+            print(f"[DISTILLATION] Error generating local distillation: {e}", flush=True)
+            
+        return "Distillation failed due to connection error."
+
     async def _execute_local_llm_loop(
         self,
         session_id: str,
@@ -1250,6 +1323,7 @@ class BaseProgramRunner:
         bot_response_text = ""
         tool_calls = []
         seen_tool_calls = set()  # tracks (tool_name, key_arg) to block duplicates
+        accumulated_prefix = ""
         
         # Check if remote cloud server is configured for offloading
         remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
@@ -1344,6 +1418,26 @@ class BaseProgramRunner:
                     finish_reason = choice.get('finish_reason', '')
                     if not bot_response_text and str(finish_reason).upper() in ('SAFETY', 'RECITATION', 'BLOCK'):
                         bot_response_text = "*[Cloud Model Refusal: The remote safety filter blocked generation for this prompt. Modify prompt keywords or use the local model.]*"
+                    
+                    # If local model truncated prematurely due to context exhaustion (finish_reason length with short response)
+                    is_premature_truncation = (
+                        not is_cloud
+                        and str(finish_reason).lower() in ('length', 'context_length')
+                        and len(bot_response_text.strip().split()) < 120
+                    )
+                    if is_premature_truncation and hasattr(adapter, 'compact_history'):
+                        print(f"[COMPACTION] Local model truncated due to context exhaustion (finish_reason={finish_reason}). Triggering emergency compaction...", flush=True)
+                        await adapter.compact_history(target_model, force=True)
+                        openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
+                        payload["messages"] = openai_messages
+                        print("[COMPACTION] Retrying request with compacted history...", flush=True)
+                        response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+                        if response.status_code == 200:
+                            res_json = response.json()
+                            choice = res_json.get('choices', [{}])[0]
+                            bot_response_text = choice.get('message', {}).get('content') or ''
+                            finish_reason = choice.get('finish_reason', '')
+                    
                     print(f"[LLM CONTENT PREVIEW] finish_reason={finish_reason}, preview={repr(bot_response_text[:120])}", flush=True)
                     from variables import is_thinking_enabled
                     if not is_thinking_enabled(is_cloud):
@@ -1467,13 +1561,23 @@ class BaseProgramRunner:
 
             executed_calls_count = len([tc for tc in tool_calls if tc.get('type') == 'call'])
             if matches and executed_calls_count < 10:
-                # Check for image generation tool
+                # Single-turn tools are purely passive state mutations, user roll prompts, or media embeds
+                single_turn_tools = {
+                    "arena_request_skill_check",
+                    "arena_take_damage", "arena_heal", "arena_spend_magicka",
+                    "arena_spend_spell_points", "arena_restore_magicka",
+                    "arena_spend_stamina", "arena_restore_stamina", "arena_rest",
+                    "arena_add_gold", "arena_spend_gold", "arena_add_item",
+                    "arena_remove_item", "arena_drop_item", "arena_learn_spell",
+                    "arena_add_effect", "arena_remove_effect", "arena_add_experience",
+                    "arena_set_location", "arena_travel", "arena_advance_stage",
+                    "arena_set_quest_stage", "arena_recruit_follower",
+                    "add_quest", "add_journal_entry", "generate_local_image",
+                    "generate_program_portrait", "generate_imagen", "generate_general_image",
+                    "apply_comfy_workflow"
+                }
                 is_all_single_turn = all(
-                    m.group(1).startswith("arena_") or _normalize_tool_name(m.group(1)) in {
-                        "add_quest", "add_journal_entry", "generate_local_image", 
-                        "generate_program_portrait", "generate_imagen", "generate_general_image", 
-                        "apply_comfy_workflow"
-                    }
+                    _normalize_tool_name(m.group(1)) in single_turn_tools
                     for m in matches
                 )
                 if is_all_single_turn:
@@ -1513,6 +1617,12 @@ class BaseProgramRunner:
                     clean_response = re.sub(r'\n{3,}', '\n\n', clean_response).strip()
                     clean_response = self._ensure_images_are_embedded(clean_response)
                     
+                    if accumulated_prefix and not clean_response.startswith(accumulated_prefix):
+                        if clean_response:
+                            clean_response = f"{accumulated_prefix} {clean_response}".strip()
+                        else:
+                            clean_response = accumulated_prefix
+
                     tool_calls.extend(t_calls)
                     adapter.append_assistant_message(clean_response, t_calls, invocation_id)
                     bot_response_text = clean_response
@@ -1520,6 +1630,11 @@ class BaseProgramRunner:
                 else:
                     first_match_start = min(m.start() for m in matches)
                     text_before = bot_response_text[:first_match_start].strip()
+                    if text_before:
+                        if accumulated_prefix:
+                            accumulated_prefix = f"{accumulated_prefix} {text_before}".strip()
+                        else:
+                            accumulated_prefix = text_before
                     
                     results = []
                     for m_tool in matches:
@@ -1553,6 +1668,11 @@ class BaseProgramRunner:
             else:
                 if matches:
                     bot_response_text = re.sub(r'\[\w+\(.*?\)\]', '', bot_response_text).strip()
+                if accumulated_prefix and not bot_response_text.startswith(accumulated_prefix):
+                    if bot_response_text:
+                        bot_response_text = f"{accumulated_prefix} {bot_response_text}".strip()
+                    else:
+                        bot_response_text = accumulated_prefix
                 if isinstance(session_id, str) and session_id.endswith('_voice'):
                     bot_response_text = strip_narration(bot_response_text)
                 adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
@@ -2292,6 +2412,9 @@ class OpenSourceRunner(BaseProgramRunner):
         
         adapter = OsHistoryAdapter(self, session_id, file_path_resolved, image_data, image_mime)
         try:
+            if not is_cloud:
+                await adapter.compact_history(model)
+
             res = await self._execute_local_llm_loop(
                 session_id=session_id,
                 adapter=adapter,

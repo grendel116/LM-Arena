@@ -3134,6 +3134,39 @@ def delete_existing_save():
         return jsonify({"error": str(e)}), 500
 
 
+def _sync_active_character_snapshot_to_history(character_sheet: dict):
+    """Synchronizes updated inventory, vitals, and spells to the latest history turn state snapshot."""
+    try:
+        from runner_interface import get_runner
+        from engine.save_manager import get_active_save_id
+        import copy
+        
+        runner = get_runner()
+        session_id = session.get('active_session_id', 'default')
+        
+        if session_id in runner.sessions_history:
+            history = runner.sessions_history[session_id]
+            for msg in reversed(history):
+                if msg.get('state_snapshot'):
+                    msg['state_snapshot']['inventory'] = copy.deepcopy(character_sheet.get('inventory', []))
+                    if 'derived' in character_sheet:
+                        derived = character_sheet['derived']
+                        vitals = msg['state_snapshot'].setdefault('vitals', {})
+                        vitals['hp'] = derived.get('hp_current', vitals.get('hp', 30))
+                        vitals['hp_max'] = derived.get('hp_max', vitals.get('hp_max', 30))
+                        vitals['mp'] = derived.get('mp_current', vitals.get('mp_current', 162))
+                        vitals['mp_max'] = derived.get('mp_max', vitals.get('mp_max', 162))
+                        vitals['stamina'] = derived.get('stamina_current', vitals.get('stamina', 60))
+                        vitals['stamina_max'] = derived.get('stamina_max', vitals.get('stamina_max', 60))
+                        vitals['gold'] = character_sheet.get('gold', vitals.get('gold', 0))
+                    if 'spells' in character_sheet:
+                        msg['state_snapshot']['spells'] = copy.deepcopy(character_sheet.get('spells', []))
+                    break
+            runner._save_session_to_disk(session_id)
+    except Exception as e:
+        print(f"[Snapshot Sync Warning] {e}", flush=True)
+
+
 @app.route('/api/character/equip', methods=['POST'])
 @requires_auth
 def toggle_equip_item():
@@ -3158,6 +3191,7 @@ def toggle_equip_item():
             
         if success:
             save_character(save_id, sheet)
+            _sync_active_character_snapshot_to_history(sheet)
             
         return jsonify({
             "status": "success",
@@ -3169,9 +3203,10 @@ def toggle_equip_item():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/character/remove', methods=['POST'])
 @app.route('/api/character/drop', methods=['POST'])
 @requires_auth
-def drop_character_item_route():
+def remove_character_item_route():
     try:
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
@@ -3186,17 +3221,19 @@ def drop_character_item_route():
         save_id = get_active_save_id()
         sheet = load_character(save_id)
         
-        sheet, dropped = drop_item(sheet, item_name, quantity)
-        if not dropped:
+        sheet, removed = drop_item(sheet, item_name, quantity)
+        if not removed:
             return jsonify({"error": f"Item '{item_name}' not found in inventory."}), 404
             
         save_character(save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet)
         
         return jsonify({
             "status": "success",
             "character": sheet,
-            "dropped": dropped,
-            "message": f"Dropped {dropped.get('quantity', 1)}x {dropped['name']}"
+            "removed": removed,
+            "dropped": removed,
+            "message": f"Removed {removed.get('quantity', 1)}x {removed['name']}"
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

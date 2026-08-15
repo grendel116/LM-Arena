@@ -2328,33 +2328,31 @@ function renderCharacterStatusModal(data) {
                 itemRow.appendChild(equipLabel);
 
 
-                const dropBtn = document.createElement('button');
-                dropBtn.className = 'action-icon-btn';
-                dropBtn.title = `Drop ${item.name}`;
-                dropBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
-                dropBtn.innerHTML = `
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'action-icon-btn';
+                removeBtn.title = `Remove ${item.name}`;
+                removeBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
+                removeBtn.innerHTML = `
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
-                        <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"></path>
-                        <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
-                        <path d="M18 8a2 2 0 0 1 2 2v4a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
                 `;
-                dropBtn.onmouseover = () => {
-                    dropBtn.style.color = 'var(--primary-accent)';
-                    dropBtn.style.borderColor = 'rgba(245, 158, 11, 0.35)';
-                    dropBtn.style.background = 'rgba(245, 158, 11, 0.12)';
+                removeBtn.onmouseover = () => {
+                    removeBtn.style.color = '#ef4444';
+                    removeBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                    removeBtn.style.background = 'rgba(239, 68, 68, 0.12)';
                 };
-                dropBtn.onmouseout = () => {
-                    dropBtn.style.color = 'var(--text-muted)';
-                    dropBtn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                    dropBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                removeBtn.onmouseout = () => {
+                    removeBtn.style.color = 'var(--text-muted)';
+                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    removeBtn.style.background = 'rgba(255, 255, 255, 0.05)';
                 };
-                dropBtn.onclick = (e) => {
+                removeBtn.onclick = (e) => {
                     e.stopPropagation();
-                    dropItemFromInventory(item.name);
+                    removeItemFromInventory(item.name);
                 };
-                itemRow.appendChild(dropBtn);
+                itemRow.appendChild(removeBtn);
 
                 invContainer.appendChild(itemRow);
             });
@@ -2462,21 +2460,17 @@ async function toggleItemEquip(itemName, currentEquipped) {
     }
 }
 
-async function dropItemFromInventory(itemName) {
-    if (typeof showCustomConfirm === 'function') {
-        showCustomConfirm("Drop Item", `Are you sure you want to drop ${itemName} onto the ground?`, async () => {
-            await executeDropItem(itemName);
-        });
-    } else {
-        if (confirm(`Drop ${itemName} onto the ground?`)) {
-            await executeDropItem(itemName);
-        }
-    }
+async function removeItemFromInventory(itemName) {
+    await executeRemoveItem(itemName);
 }
 
-async function executeDropItem(itemName) {
+async function dropItemFromInventory(itemName) {
+    await executeRemoveItem(itemName);
+}
+
+async function executeRemoveItem(itemName) {
     try {
-        const res = await fetch('/api/character/drop', {
+        const res = await fetch('/api/character/remove', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ item_name: itemName, quantity: 1 })
@@ -2484,13 +2478,10 @@ async function executeDropItem(itemName) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         await fetchCharacterStatus();
-        if (typeof showCustomAlert === 'function') {
-            showCustomAlert('Item Dropped', `You dropped ${itemName} onto the ground.`);
-        }
     } catch (e) {
-        console.error('Error dropping item:', e);
+        console.error('Error removing item:', e);
         if (typeof showCustomAlert === 'function') {
-            showCustomAlert('Drop Error', e.message);
+            showCustomAlert('Removal Error', e.message);
         }
     }
 }
@@ -9631,7 +9622,7 @@ function showThoughtBubbleOverlay(text) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px; display: inline-block; vertical-align: -1px;">
                     <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26C17.81 13.47 19 11.38 19 9a7 7 0 0 0-7-7z"></path>
                 </svg>
-                <span>Gameplay Tip & Lore</span>
+                <span>Tip</span>
             </div>
             <div class="message-text" style="font-style: italic; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
                 ${text}
