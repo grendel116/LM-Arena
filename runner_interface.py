@@ -2239,6 +2239,10 @@ class OpenSourceRunner(BaseProgramRunner):
                 print(f"Error loading OS session {session_id} from disk: {e}")
                 return False
 
+    async def _get_inversion_mode(self, session_id: str, history: list = None) -> str:
+        state = self.sessions_inversion_state.setdefault(session_id, copy.deepcopy(_DEFAULT_INVERSION_STATE))
+        return state.get("active_inversion", "")
+
     def _consolidate_tools(self, tool_calls: list) -> list:
         """Pairs tool call + response entries by call_id into summaries."""
         if not tool_calls:
