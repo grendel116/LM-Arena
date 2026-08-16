@@ -4668,7 +4668,7 @@ function renderOpeningLoreCard() {
             <div class="opening-lore-divider"></div>
             <div class="opening-lore-body">
                 <p>For centuries different factions battled in petty wars and border conflicts, until in 2E 896 Tiber Septim crushed all who opposed him and proclaimed himself Emperor. Still, the bitter years of war had their effect. The name Tamriel — Elvish for <em>&ldquo;Dawn's Beauty&rdquo;</em> — seldom fell from anguished lips and was soon forgotten. In a place where life and death were different sides of the same coin, tossed every day, the people began calling the land of their sorrow the Arena.</p>
-                <p>Now, 492 years after Tiber Septim brought peace, a new shadow falls. The Emperor Uriel Septim VII celebrates his forty-third birthday. But jealous hearts desire the throne and plot his downfall.</p>
+                <p>492 years after Tiber Septim brought peace, a shadow fell. The Emperor Uriel Septim VII celebrated his forty third birthday, but jealous hearts desired the throne and plotted his downfall.</p>
                 <p>Uriel Septim VII stood with Talin, captain of the Imperial Guard, summoned to the throne room by Jagar Tharn on rumors of treachery. But Tharn betrayed the Emperor. He took the throne and wasted no time. The Emperor's Guard were twisted into loyal servants, and the Imperial Wizard settled into his stolen crown.</p>
                 <p class="opening-lore-climax">It is said that hope flies on death's wings. Prepare then — for as the Elder Scrolls foretold, it is here that your adventure begins.</p>
             </div>
