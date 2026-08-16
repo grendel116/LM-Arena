@@ -882,7 +882,7 @@ def edit():
         from runner_interface import cancelled_sessions
         cancelled_sessions.discard(session_id)
 
-def generate_impersonated_message(session_id, user_profile, model):
+def generate_impersonated_message(session_id, user_profile, model, user_input=""):
     # Retrieve history
     chat_history = asyncio.run(runner.get_history(session_id))
     
@@ -894,11 +894,6 @@ def generate_impersonated_message(session_id, user_profile, model):
     for msg in recent_history:
         role = "User" if msg.get('role') == 'user' else "Program"
         history_text += f"{role}: {msg.get('text', '')}\n"
-        
-    system_instruction = (
-        "Auto-generate the User's next first-person action in the roleplay.\n"
-        "Format: *Italics* narration. Dialogue is plain text, without quotation marks. Short, actionable, in character."
-    )
     
     from core.program_config import load_user_instructions, replace_placeholders
     from utils.program import get_active_user
@@ -934,13 +929,33 @@ def generate_impersonated_message(session_id, user_profile, model):
     if not full_profile_block.strip():
         full_profile_block = "Character: Eternal Champion, Adventurer in Tamriel."
 
-    prompt = (
-        f"### USER CHARACTER PROFILE & STATUS\n"
-        f"{replace_placeholders(full_profile_block)}\n\n"
-        f"### RECENT CHAT HISTORY\n"
-        f"{replace_placeholders(history_text)}\n\n"
-        f"Generate a succinct first-person action for the User, in character:"
-    )
+    seed_text = (user_input or "").strip()
+    if seed_text:
+        system_instruction = (
+            "Expand the draft action into the player first person action in the roleplay.\n"
+            "Format: Use *Italics* for narration. Render dialogue as plain text without quotation marks. Keep actions expressive and in character."
+        )
+        prompt = (
+            f"### USER CHARACTER PROFILE & STATUS\n"
+            f"{replace_placeholders(full_profile_block)}\n\n"
+            f"### RECENT CHAT HISTORY\n"
+            f"{replace_placeholders(history_text)}\n\n"
+            f"### USER DRAFT CONCEPT\n"
+            f"{replace_placeholders(seed_text)}\n\n"
+            f"Expand on the draft concept above into a complete first person action for the character:"
+        )
+    else:
+        system_instruction = (
+            "Generate the player next first person action in the roleplay.\n"
+            "Format: Use *Italics* for narration. Render dialogue as plain text without quotation marks. Keep actions actionable and in character."
+        )
+        prompt = (
+            f"### USER CHARACTER PROFILE & STATUS\n"
+            f"{replace_placeholders(full_profile_block)}\n\n"
+            f"### RECENT CHAT HISTORY\n"
+            f"{replace_placeholders(history_text)}\n\n"
+            f"Generate a succinct first person action for the character:"
+        )
     
     # Delegate entirely to the runner's provider-agnostic generator
     try:
@@ -955,9 +970,10 @@ def generate_user_message():
     session_id = request.json.get('session_id', 'default')
     model = request.json.get('model')
     user_profile = request.json.get('user_profile', '').strip()
+    user_input = request.json.get('current_input', request.json.get('user_input', '')).strip()
         
     try:
-        generated_msg = generate_impersonated_message(session_id, user_profile, model)
+        generated_msg = generate_impersonated_message(session_id, user_profile, model, user_input=user_input)
         return jsonify({'status': 'success', 'message': generated_msg})
     except Exception as e:
         print(f"Error generating impersonated user message: {e}")

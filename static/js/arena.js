@@ -7493,6 +7493,8 @@ async function autoGenerateUserMessage() {
     const btn = document.getElementById('auto-generate-user-btn');
     if (!btn || btn.disabled) return;
     
+    const currentInput = userInput ? userInput.value : '';
+
     btn.disabled = true;
     btn.style.opacity = '0.5';
     btn.title = "Generating impersonated message...";
@@ -7515,7 +7517,8 @@ async function autoGenerateUserMessage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: sessionId,
-                model: selectedModel
+                model: selectedModel,
+                current_input: currentInput
             })
         });
         
