@@ -767,7 +767,6 @@ def chat():
         response_text = sanitize_response(response_text, session_id, program_msg_id)
 
         chat_history = asyncio.run(runner.get_history(session_id))
-        inversion_mode = asyncio.run(runner._get_inversion_mode(session_id, history=chat_history))
         
         # Align timestamp with stored program message
         program_timestamp = None
@@ -780,7 +779,6 @@ def chat():
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
-            'inversion_active': inversion_mode,
             'timestamp': program_timestamp or time.time(),
             'duration': duration,
             'user_msg_id': user_msg_id,
@@ -794,7 +792,6 @@ def chat():
             'response': '*(Generation cancelled)*',
             'tool_calls': [],
             'state': None,
-            'inversion_active': '',
             'timestamp': time.time(),
             'duration': round(time.time() - start_time, 1)
         })
@@ -844,7 +841,6 @@ def edit():
         response_text = sanitize_response(response_text, session_id, program_msg_id)
 
         chat_history = asyncio.run(runner.get_history(session_id))
-        inversion_mode = asyncio.run(runner._get_inversion_mode(session_id, history=chat_history))
 
         # Align timestamp with stored program message
         program_timestamp = None
@@ -857,7 +853,6 @@ def edit():
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
-            'inversion_active': inversion_mode,
             'timestamp': program_timestamp or time.time(),
             'duration': duration,
             'user_msg_id': user_msg_id,
@@ -871,7 +866,6 @@ def edit():
             'response': '*(Generation cancelled)*',
             'tool_calls': [],
             'state': None,
-            'inversion_active': '',
             'timestamp': time.time(),
             'duration': round(time.time() - start_time, 1)
         })

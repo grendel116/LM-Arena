@@ -996,7 +996,6 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         if history and history[-1]['role'] == 'program':
             history[-1]['text'] = cleaned_text
             history[-1]['tool_calls'] = tool_calls_data
-            history[-1]['inversion_active'] = winning_mode
             history[-1].pop('state_snapshot', None)
             return history[-1]
             
@@ -1012,8 +1011,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             'role': 'program',
             'text': cleaned_text,
             'tool_calls': tool_calls_data,
-            'timestamp': time.time(),
-            'inversion_active': winning_mode
+            'timestamp': time.time()
         }
         history.append(bot_msg)
         return bot_msg
@@ -1352,14 +1350,9 @@ class BaseProgramRunner:
         accumulated_prefix = ""
 
         def _get_merged_tool_calls(calls):
-            if not existing_tool_calls:
-                return calls
-            existing_ids = {tc.get('id') for tc in existing_tool_calls if tc.get('id')}
-            merged = list(existing_tool_calls)
-            for tc in calls:
-                if tc.get('id') not in existing_ids:
-                    merged.append(tc)
-            return merged
+            if existing_tool_calls:
+                return list(existing_tool_calls)
+            return calls
         
         if existing_tool_calls:
             # Build map of responses for calls
@@ -1403,7 +1396,7 @@ class BaseProgramRunner:
                 action_summary = "\n".join(executed_hints)
                 turn_note = (
                     f"\n[RESOLVED ACTIONS THIS TURN:\n{action_summary}\n"
-                    f"Do NOT call these tools again. Renarrate the turn incorporating these exact actions and outcomes directly into your narrative response.]\n"
+                    f"Do NOT call these tools again or emit any tool tags. The outcomes above are final and already executed. Renarrate the turn incorporating these exact outcomes directly into your narrative response.]\n"
                 )
                 rag_context = (rag_context + turn_note) if rag_context else turn_note
         
@@ -1578,6 +1571,32 @@ class BaseProgramRunner:
                 
             # Convert JSON tool calls if any
             bot_response_text = _convert_json_tool_calls_to_tags(bot_response_text)
+
+            if existing_tool_calls:
+                # Persistent tool calls mode: the actions for this turn were already executed and resolved.
+                # Strip all tool call tags from the generated text, keep existing_tool_calls intact,
+                # and do not execute any new tools.
+                clean_response = re.sub(r'\[\w+\(.*?\)\]', '', bot_response_text)
+                clean_response = re.sub(r'[ \t]+', ' ', clean_response)
+                clean_response = re.sub(r'\n{3,}', '\n\n', clean_response).strip()
+
+                # Ensure any generated image from the turn remains embedded in narrative
+                for tc in existing_tool_calls:
+                    if tc.get('type') == 'response':
+                        resp = str(tc.get('response', ''))
+                        if resp.startswith("![") and resp.endswith(")"):
+                            if resp not in clean_response:
+                                clean_response = f"{clean_response}\n\n{resp}".strip()
+
+                if accumulated_prefix and not clean_response.startswith(accumulated_prefix):
+                    clean_response = f"{accumulated_prefix} {clean_response}".strip()
+                if isinstance(session_id, str) and session_id.endswith('_voice'):
+                    clean_response = strip_narration(clean_response)
+
+                tool_calls = list(existing_tool_calls)
+                adapter.append_assistant_message(clean_response, tool_calls, invocation_id)
+                bot_response_text = clean_response
+                break
 
             # Find all tool calls
             matches = list(re.finditer(r'\[(\w+)\((.*?)\)\]', bot_response_text))
@@ -2365,7 +2384,6 @@ class OpenSourceRunner(BaseProgramRunner):
             'tool_summary': tool_summary,
             'tool_calls': msg.get('tool_calls', []),
             'timestamp': msg.get('timestamp'),
-            'inversion_active': msg.get('inversion_active', ''),
             'editable': role in ('user', 'program'),
             'deletable': True,
         }
@@ -2387,8 +2405,7 @@ class OpenSourceRunner(BaseProgramRunner):
                             'id': f"first_mes_{_uuid.uuid4().hex}",
                             'role': 'program',
                             'text': greeting,
-                            'tool_calls': [],
-                            'inversion_active': ''
+                            'tool_calls': []
                         })
                         self._save_session_to_disk(session_id)
                 except Exception as _e:
@@ -2941,9 +2958,6 @@ class OpenSourceRunner(BaseProgramRunner):
                 'tool_calls': [],
                 'timestamp': time.time()
             }
-            if role != "user":
-                winning_mode = await self._get_inversion_mode(session_id)
-                new_msg['inversion_active'] = winning_mode
             history.append(new_msg)
             self._save_session_to_disk(session_id)
             return True

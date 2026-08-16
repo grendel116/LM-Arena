@@ -2026,9 +2026,9 @@ let _lastTrackedVitals = {
     itemNames: []
 };
 
-function updateUserMessageResourceBars(targetBubble = null) {
-    const bubbles = targetBubble ? [targetBubble] : Array.from(document.querySelectorAll('.message.user:not(.image-message)'));
-    if (!bubbles || bubbles.length === 0) return;
+function updateInputResourceBars() {
+    const barContainer = document.getElementById('input-resource-bars');
+    if (!barContainer) return;
 
     const curHp = _lastTrackedVitals.hp !== null ? _lastTrackedVitals.hp : 28;
     const curHpMax = _lastTrackedVitals.hpMax || 28;
@@ -2037,71 +2037,58 @@ function updateUserMessageResourceBars(targetBubble = null) {
     const curSp = _lastTrackedVitals.stamina !== null ? _lastTrackedVitals.stamina : 50;
     const curSpMax = _lastTrackedVitals.staminaMax || 50;
 
-    bubbles.forEach(bubble => {
-        let barContainer = bubble.querySelector('.user-resource-bars');
-        if (!barContainer) {
-            barContainer = document.createElement('div');
-            barContainer.className = 'user-resource-bars';
-            bubble.appendChild(barContainer);
-        }
+    const hpPct = Math.max(0, Math.min(100, (curHp / (curHpMax || 1)) * 100));
+    const mpPct = Math.max(0, Math.min(100, (curMp / (curMpMax || 1)) * 100));
+    const spPct = Math.max(0, Math.min(100, (curSp / (curSpMax || 1)) * 100));
 
-        const hpVal = bubble.dataset.hp ? parseFloat(bubble.dataset.hp) : curHp;
-        const hpMaxVal = bubble.dataset.hpMax ? parseFloat(bubble.dataset.hpMax) : curHpMax;
-        const mpVal = bubble.dataset.mp ? parseFloat(bubble.dataset.mp) : curMp;
-        const mpMaxVal = bubble.dataset.mpMax ? parseFloat(bubble.dataset.mpMax) : curMpMax;
-        const spVal = bubble.dataset.stamina ? parseFloat(bubble.dataset.stamina) : curSp;
-        const spMaxVal = bubble.dataset.staminaMax ? parseFloat(bubble.dataset.staminaMax) : curSpMax;
+    let mpBar = barContainer.querySelector('.resource-bar.magicka');
+    let hpBar = barContainer.querySelector('.resource-bar.health');
+    let spBar = barContainer.querySelector('.resource-bar.stamina');
 
-        const hpPct = Math.max(0, Math.min(100, (hpVal / (hpMaxVal || 1)) * 100));
-        const mpPct = Math.max(0, Math.min(100, (mpVal / (mpMaxVal || 1)) * 100));
-        const spPct = Math.max(0, Math.min(100, (spVal / (spMaxVal || 1)) * 100));
-
+    if (!mpBar || !hpBar || !spBar) {
         barContainer.innerHTML = `
-            <div class="resource-bar magicka" title="Magicka: ${Math.round(mpVal)} / ${Math.round(mpMaxVal)}">
+            <div class="resource-bar magicka" title="Magicka: ${Math.round(curMp)} / ${Math.round(curMpMax)}">
                 <div class="resource-bar-track">
                     <div class="resource-bar-fill magicka" style="width: ${mpPct}%;"></div>
                 </div>
             </div>
-            <div class="resource-bar health" title="Health: ${Math.round(hpVal)} / ${Math.round(hpMaxVal)}">
+            <div class="resource-bar health" title="Health: ${Math.round(curHp)} / ${Math.round(curHpMax)}">
                 <div class="resource-bar-track">
                     <div class="resource-bar-fill health" style="width: ${hpPct}%;"></div>
                 </div>
             </div>
-            <div class="resource-bar stamina" title="Stamina: ${Math.round(spVal)} / ${Math.round(spMaxVal)}">
+            <div class="resource-bar stamina" title="Stamina: ${Math.round(curSp)} / ${Math.round(curSpMax)}">
                 <div class="resource-bar-track">
                     <div class="resource-bar-fill stamina" style="width: ${spPct}%;"></div>
                 </div>
             </div>
         `;
-    });
+    } else {
+        mpBar.title = `Magicka: ${Math.round(curMp)} / ${Math.round(curMpMax)}`;
+        const mpFill = mpBar.querySelector('.resource-bar-fill');
+        if (mpFill) mpFill.style.width = `${mpPct}%`;
+
+        hpBar.title = `Health: ${Math.round(curHp)} / ${Math.round(curHpMax)}`;
+        const hpFill = hpBar.querySelector('.resource-bar-fill');
+        if (hpFill) hpFill.style.width = `${hpPct}%`;
+
+        spBar.title = `Stamina: ${Math.round(curSp)} / ${Math.round(curSpMax)}`;
+        const spFill = spBar.querySelector('.resource-bar-fill');
+        if (spFill) spFill.style.width = `${spPct}%`;
+    }
 }
 
-function getLastUserBubbleElement() {
-    if (!chatContainer) return null;
-    const userRows = chatContainer.querySelectorAll('.message-row.user-row, .user-row');
-    if (userRows.length > 0) {
-        const lastRow = userRows[userRows.length - 1];
-        const bubble = lastRow.querySelector('.message.user');
-        if (bubble) return bubble;
-    }
-    const userBubbles = chatContainer.querySelectorAll('.message.user');
-    if (userBubbles.length > 0) {
-        return userBubbles[userBubbles.length - 1];
-    }
-    return null;
-}
-
-function triggerBubblePulse(pulseType) {
+function triggerInputPulse(pulseType) {
     if (!pulseType) return;
-    const userBubble = getLastUserBubbleElement();
-    if (!userBubble) return;
+    const inputWrapper = document.querySelector('.input-wrapper');
+    if (!inputWrapper) return;
 
-    const pulseClass = `bubble-pulse-${pulseType}`;
-    userBubble.classList.remove(pulseClass);
-    void userBubble.offsetWidth;
-    userBubble.classList.add(pulseClass);
+    const pulseClass = `input-pulse-${pulseType}`;
+    inputWrapper.classList.remove(pulseClass);
+    void inputWrapper.offsetWidth;
+    inputWrapper.classList.add(pulseClass);
     setTimeout(() => {
-        userBubble.classList.remove(pulseClass);
+        inputWrapper.classList.remove(pulseClass);
     }, 850);
 }
 
@@ -2124,12 +2111,14 @@ function updatePlayerHeartState(char, world) {
     const hpCurrent = d.hp_current !== undefined ? d.hp_current : 28;
     const hpMax = d.hp_max || 28;
     const mpCurrent = d.mp_current !== undefined ? d.mp_current : (d.sp_current !== undefined ? d.sp_current : 42);
+    const mpMax = d.mp_max || (d.sp_max !== undefined ? d.sp_max : 42);
     const staminaCurrent = d.stamina_current !== undefined ? d.stamina_current : 50;
+    const staminaMax = d.stamina_max || 50;
     const goldCurrent = char.gold !== undefined ? char.gold : 0;
     const inventory = char.inventory || [];
     const currentItemCount = inventory.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-    // Trigger subtle outline glow pulse on resource changes
+    // Trigger input wrapper glow pulse on resource changes
     if (_lastTrackedVitals.hp !== null) {
         const dHp = hpCurrent - _lastTrackedVitals.hp;
         const dMp = mpCurrent - _lastTrackedVitals.mp;
@@ -2138,11 +2127,11 @@ function updatePlayerHeartState(char, world) {
         const dItems = (_lastTrackedVitals.itemCount !== null) ? (currentItemCount - _lastTrackedVitals.itemCount) : 0;
 
         if (dHp !== 0) {
-            triggerBubblePulse(dHp > 0 ? 'hp-up' : 'hp-down');
+            triggerInputPulse(dHp > 0 ? 'hp-up' : 'hp-down');
         } else if (dMp !== 0) {
-            triggerBubblePulse('mp');
+            triggerInputPulse('mp');
         } else if (dStamina !== 0) {
-            triggerBubblePulse('sp');
+            triggerInputPulse('sp');
         }
         
         if (dItems !== 0) {
@@ -2153,14 +2142,14 @@ function updatePlayerHeartState(char, world) {
     _lastTrackedVitals.hp = hpCurrent;
     _lastTrackedVitals.hpMax = hpMax;
     _lastTrackedVitals.mp = mpCurrent;
-    _lastTrackedVitals.mpMax = d.mp_max || (d.sp_max !== undefined ? d.sp_max : 42);
+    _lastTrackedVitals.mpMax = mpMax;
     _lastTrackedVitals.stamina = staminaCurrent;
-    _lastTrackedVitals.staminaMax = d.stamina_max || 50;
+    _lastTrackedVitals.staminaMax = staminaMax;
     _lastTrackedVitals.gold = goldCurrent;
     _lastTrackedVitals.itemCount = currentItemCount;
     _lastTrackedVitals.itemNames = inventory.map(it => it.name);
 
-    updateUserMessageResourceBars();
+    updateInputResourceBars();
 
     const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
     const conditions = (char.conditions || []).map(c => c.toLowerCase());
@@ -5613,7 +5602,6 @@ function normalizeChatResponse(data) {
         tool_calls: toolCalls,
         timestamp: data.timestamp,
         duration: data.duration,
-        inversion_active: data.inversion_active || '',
         editable: true,
         deletable: true
     };
@@ -5852,25 +5840,6 @@ function renderMessage(msg, isLive = false) {
         bubble.dataset.msgId = msgId;
         if (isMsgTransient) {
             bubble.dataset.isTransient = "true";
-        }
-
-        if (role === 'user' && !isImageOnly) {
-            if (msg.vitals) {
-                bubble.dataset.hp = msg.vitals.hp;
-                bubble.dataset.hpMax = msg.vitals.hp_max || msg.vitals.hpMax;
-                bubble.dataset.mp = msg.vitals.mp;
-                bubble.dataset.mpMax = msg.vitals.mp_max || msg.vitals.mpMax;
-                bubble.dataset.stamina = msg.vitals.stamina;
-                bubble.dataset.staminaMax = msg.vitals.stamina_max || msg.vitals.staminaMax;
-            } else if (_lastTrackedVitals.hp !== null) {
-                bubble.dataset.hp = _lastTrackedVitals.hp;
-                bubble.dataset.hpMax = _lastTrackedVitals.hpMax || 28;
-                bubble.dataset.mp = _lastTrackedVitals.mp;
-                bubble.dataset.mpMax = _lastTrackedVitals.mpMax || 42;
-                bubble.dataset.stamina = _lastTrackedVitals.stamina;
-                bubble.dataset.staminaMax = _lastTrackedVitals.staminaMax || 50;
-            }
-            updateUserMessageResourceBars(bubble);
         }
 
         const shouldAddStandardActions = (item.type === 'text') || (bubblesToCreate.length === 1);
@@ -10236,6 +10205,7 @@ setInterval(async () => {
 function initMainApp() {
     updateProfileImages();
     loadHistory();
+    fetchCharacterStatus();
 }
 if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', initMainApp);
