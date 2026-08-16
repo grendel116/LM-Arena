@@ -1836,13 +1836,9 @@ class BaseProgramRunner:
 
 
     @property
-    def sessions_dir(self) -> str:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        from utils.program import get_active_user
-        active_user = get_active_user()
-        path = os.path.join(base_dir, "variables", "saves", active_user, "sessions")
-        os.makedirs(path, exist_ok=True)
-        return path
+    def saves_dir(self) -> str:
+        from engine.save_manager import SAVES_DIR
+        return str(SAVES_DIR)
 
     async def get_history(self, session_id: str) -> list:
         """Retrieves formatted chat history for the session."""
@@ -1988,22 +1984,16 @@ class BaseProgramRunner:
         if hasattr(self, 'sessions_history'):  # OpenSourceRunner
             history = self.sessions_history.get(src_session_id, [])
             if not history:
-                safe_id = "".join(c for c in src_session_id if c.isalnum() or c in "-_")
-                path = os.path.join(self.sessions_dir, f"{safe_id}.json")
-                if os.path.exists(path):
-                    try:
-                        with open(path, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                        if isinstance(data, dict) and "messages" in data:
-                            history = data["messages"]
-                        else:
-                            history = data
-                    except Exception:
-                        pass
+                try:
+                    from engine.save_manager import get_active_save_id, read_save
+                    bundle = read_save(get_active_save_id())
+                    history = bundle.get("history", [])
+                except Exception:
+                    pass
             for msg in history:
                 if msg.get('role') != 'voice-call':
                     role = "User" if msg.get('role') == 'user' else program_name
-                    text = msg.get('text', '')
+                    text = msg.get('text', '') or msg.get('content', '') or ''
                     if text.strip():
                         recent_turns.append((role, text.strip()))
         else:  # GoogleAdkRunner
@@ -2263,46 +2253,39 @@ class OpenSourceRunner(BaseProgramRunner):
                     raise e
 
 
-    def _get_session_path(self, session_id: str) -> str:
-        safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
-        try:
-            from engine.save_manager import get_active_save_id, SAVES_DIR
-            active_save = get_active_save_id()
-            
-            specific_save_file = SAVES_DIR / safe_id / "history.json"
-            if specific_save_file.exists():
-                return str(specific_save_file)
-                
-            active_save_file = SAVES_DIR / active_save / "history.json"
-            if active_save_file.exists() or active_save_file.parent.exists():
-                return str(active_save_file)
-        except Exception:
-            pass
-        return os.path.join(self.sessions_dir, f"{safe_id}.json")
+    def _get_session_path(self, session_id: str = None) -> str:
+        from engine.save_manager import get_active_save_id, SAVES_DIR
+        save_id = session_id or get_active_save_id()
+        return str(SAVES_DIR / f"{save_id}.json")
 
-    def _save_session_to_disk(self, session_id: str):
+    def _save_session_to_disk(self, session_id: str = None):
         with self._lock:
             try:
                 from engine.save_manager import get_active_save_id, read_save, write_save
                 save_id = get_active_save_id()
-                history = self.sessions_history.get(session_id, [])
+                sid_key = session_id or save_id
+                history = self.sessions_history.get(sid_key, self.sessions_history.get('default', []))
                 bundle = read_save(save_id)
                 bundle["history"] = history
                 write_save(save_id, bundle)
             except Exception as e:
-                print(f"Error saving OS session {session_id} to disk: {e}")
+                print(f"Error saving save {session_id} to disk: {e}")
 
-    def _load_session_from_disk(self, session_id: str):
+    def _load_session_from_disk(self, session_id: str = None):
         with self._lock:
             try:
                 from engine.save_manager import get_active_save_id, read_save
                 save_id = get_active_save_id()
+                sid_key = session_id or save_id
                 bundle = read_save(save_id)
-                self.sessions_history[session_id] = bundle.get("history", [])
-                self.sessions_inversion_state[session_id] = copy.deepcopy(_DEFAULT_INVERSION_STATE)
+                history = bundle.get("history", [])
+                self.sessions_history[sid_key] = history
+                self.sessions_history['default'] = history
+                self.sessions_history[save_id] = history
+                self.sessions_inversion_state[sid_key] = copy.deepcopy(_DEFAULT_INVERSION_STATE)
                 return True
             except Exception as e:
-                print(f"Error loading OS session {session_id} from disk: {e}")
+                print(f"Error loading save {session_id} from disk: {e}")
                 return False
 
     async def _get_inversion_mode(self, session_id: str, history: list = None) -> str:

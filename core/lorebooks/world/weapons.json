@@ -1,0 +1,168 @@
+{
+  "name": "Weapons",
+  "description": "The Elder Scrolls Arena canonical weapon types, cultural origins, and martial descriptions",
+  "entries": [
+    {
+      "uid": 5000,
+      "key": ["staff", "quarterstaff", "walking staff"],
+      "secondary_key": ["blunt", "weapon"],
+      "content": "Staff: A sturdy wooden or metal-shod haft favored by traveling mages, monks, and hermits across Tamriel. While humble in appearance, in trained hands it delivers sweeping blows and serves as a natural conduit for channeling sorcery.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5001,
+      "key": ["dagger", "dirk", "knife"],
+      "secondary_key": ["blade", "short blade", "weapon"],
+      "content": "Dagger: A compact, double-edged thrusting blade easily concealed beneath cloaks and tunics. The universal sidearm of assassins, rogues, and common folk throughout the Empire.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5002,
+      "key": ["shortsword", "short sword"],
+      "secondary_key": ["blade", "one-handed", "weapon"],
+      "content": "Shortsword: A nimble, balanced cutting and thrusting blade. Prized by skirmishers and guardsmen for fighting in cramped dungeon corridors and narrow tavern hallways where longer blades would foul on the walls.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5003,
+      "key": ["broadsword", "broad sword"],
+      "secondary_key": ["blade", "one-handed", "weapon"],
+      "content": "Broadsword: A wide, heavy military blade designed for formidable slashing power against unarmored and lightly armored foes. A staple weapon among garrison troops and mercenaries.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5004,
+      "key": ["saber", "sabre", "scimitar"],
+      "secondary_key": ["blade", "curved blade", "weapon"],
+      "content": "Saber: A single-edged curved cavalry sword originating in Hammerfell and Elsweyr. Its curved geometry enables devastating draw-cuts and fluid, sweeping strikes in open terrain.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5005,
+      "key": ["longsword", "long sword"],
+      "secondary_key": ["blade", "one-handed", "weapon"],
+      "content": "Longsword: The archetypal knightly blade of High Rock and Cyrodiil. Straight, double-edged, and finely cross-guarded, offering an ideal balance between reach, defensive parrying, and lethal thrusting.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5006,
+      "key": ["claymore", "greatsword", "two-handed sword"],
+      "secondary_key": ["blade", "two-handed", "weapon"],
+      "content": "Claymore: A massive two-handed greatsword forged in the freezing highlands of Skyrim. Wielded with both hands, its sheer momentum can cleave through shields, splinter hafted weapons, and crush armored infantry.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5007,
+      "key": ["tanto"],
+      "secondary_key": ["blade", "akaviri", "weapon"],
+      "content": "Tanto: A traditional Akaviri single-edged dagger with a reinforced chisel point. Highly sought after by thieves and duelists for its ability to slide between overlapping armor scales.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5008,
+      "key": ["wakizashi"],
+      "secondary_key": ["blade", "akaviri", "weapon"],
+      "content": "Wakizashi: A medium Akaviri companion sword worn at the waist alongside the katana. Renowned for its razor edge, swift recovery, and deadly efficacy in close-quarters skirmishes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5009,
+      "key": ["katana"],
+      "secondary_key": ["blade", "akaviri", "weapon"],
+      "content": "Katana: An elegant curved Akaviri long blade folded by master smiths. Designed for lightning-fast drawing and precision cutting, it remains the hallmark weapon of elite Imperial Dragonguard and blade masters.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5010,
+      "key": ["dai-katana", "daikatana", "nodachi"],
+      "secondary_key": ["blade", "akaviri", "two-handed", "weapon"],
+      "content": "Dai-katana: An enormous two-handed Akaviri war sword with an elongated curved blade and two-handed hilt. It requires disciplined footwork and delivers tremendous kinetic cutting arcs across the battlefield.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5011,
+      "key": ["mace"],
+      "secondary_key": ["blunt", "one-handed", "weapon"],
+      "content": "Mace: A heavy flanged or spiked metal club. Designed specifically to shatter bone and concuss foes through heavy plate armor where edged weapons might glance harmlessly off.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5012,
+      "key": ["flail"],
+      "secondary_key": ["blunt", "one-handed", "weapon"],
+      "content": "Flail: A spiked metal ball attached to a sturdy haft by an iron chain. The swinging head wraps around enemy shields and parrying weapons to deliver unexpected crushing blows.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5013,
+      "key": ["war hammer", "warhammer"],
+      "secondary_key": ["blunt", "two-handed", "weapon"],
+      "content": "War hammer: A brutal two-handed pole hammer featuring a heavy crushing face backed by an armor-piercing spike. A single solid strike can cave in breastplates and stagger towering beasts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5014,
+      "key": ["war axe", "waraxe", "hand axe"],
+      "secondary_key": ["axe", "one-handed", "weapon"],
+      "content": "War axe: A single-handed cleaving weapon with a broad, curved iron or steel beard. Favored by Nord raiders and Redguard warriors for its aggressive chopping power and shield-hooking utility.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5015,
+      "key": ["battle axe", "battleaxe", "greataxe"],
+      "secondary_key": ["axe", "two-handed", "weapon"],
+      "content": "Battle axe: A massive two-handed executioner's war axe. The wide heavy head concentrates immense force into every swing, cleaving armor, wood, and flesh alike.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5016,
+      "key": ["short bow", "shortbow", "bow"],
+      "secondary_key": ["ranged", "two-handed", "weapon", "arrows"],
+      "content": "Short bow: A light recurve bow crafted from flexible yew or ash. Quick to draw and easy to maneuver in thick forests, subterranean caverns, and mounted combat.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5017,
+      "key": ["long bow", "longbow"],
+      "secondary_key": ["ranged", "two-handed", "weapon", "arrows"],
+      "content": "Long bow: A tall, powerful wooden bow with exceptional draw weight. Capable of launching heavy bodkin arrows across vast distances with enough velocity to pierce armor at long range.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

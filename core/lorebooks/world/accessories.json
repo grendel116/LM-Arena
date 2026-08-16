@@ -1,0 +1,51 @@
+{
+  "name": "Accessories",
+  "description": "Magical and mundane jewelry, amulets, rings, belts, and torcs in The Elder Scrolls: Arena",
+  "entries": [
+    {
+      "uid": 5300,
+      "key": ["amulet", "necklace", "medallion", "pendant"],
+      "secondary_key": ["jewelry", "accessory", "slot", "neck"],
+      "content": "Amulet: An enchanted neckpiece worn against the chest. Often set with cut gemstones or inscribed with arcane runes that bolster the wearer's inner fortitude, intellect, or spiritual resilience.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5301,
+      "key": ["ring", "finger ring", "band"],
+      "secondary_key": ["jewelry", "accessory", "slot", "ring"],
+      "content": "Ring: An enchanted finger band forged from precious metals. Enchanters frequently bind defensive wards, elemental protections, or spell triggers into their loops.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5302,
+      "key": ["belt", "girdle", "sash", "cinch"],
+      "secondary_key": ["accessory", "slot", "waist"],
+      "content": "Belt: A leather or metal-studded cinch worn about the waist. In addition to securing scabbards and pouches, enchanted girdles can ease the physical burden of heavy loads and fortify stamina.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5303,
+      "key": ["bracer", "bracers", "wristband", "wrist guard"],
+      "secondary_key": ["accessory", "slot", "wrist"],
+      "content": "Bracer: Forearm bands worn over the wrists. Favored by archers and duelists to steady their aim and deflect close-range weapon grazes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5304,
+      "key": ["torc", "torque", "neck ring"],
+      "secondary_key": ["jewelry", "accessory", "slot", "neck"],
+      "content": "Torc: An open-ended rigid metal neck ring favored in ancient Nord and Reachman tradition. Often imbued with primal warding enchantments that deflect hostile spells.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

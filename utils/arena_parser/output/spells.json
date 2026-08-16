@@ -1,0 +1,7578 @@
+[
+  {
+    "name": "Stamina",
+    "cost": 60,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Cure Disease"
+    ],
+    "effects_raw": [
+      "0x0c",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        15,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        3,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 0
+  },
+  {
+    "name": "Sanctuary",
+    "cost": 300,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Instakill"
+    ],
+    "effects_raw": [
+      "0x05",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0100",
+    "params": [
+      [
+        50,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "id": 1
+  },
+  {
+    "name": "Light",
+    "cost": 120,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Light"
+    ],
+    "effects_raw": [
+      "0x11",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        10,
+        0,
+        0
+      ]
+    ],
+    "id": 2
+  },
+  {
+    "name": "Wanderlight",
+    "cost": 150,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Light"
+    ],
+    "effects_raw": [
+      "0x11",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0080",
+    "params": [
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ]
+    ],
+    "id": 3
+  },
+  {
+    "name": "Wizard Lock",
+    "cost": 300,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Lock"
+    ],
+    "effects_raw": [
+      "0x12",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        20,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "id": 4
+  },
+  {
+    "name": "Orc Strength",
+    "cost": 125,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Floor"
+    ],
+    "effects_raw": [
+      "0x0b",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        15,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ]
+    ],
+    "id": 5
+  },
+  {
+    "name": "Wizard's Fire",
+    "cost": 187,
+    "target": "Projectile",
+    "element": "None",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        15,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        6,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 6
+  },
+  {
+    "name": "Shield",
+    "cost": 250,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Fear"
+    ],
+    "effects_raw": [
+      "0x02",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        15,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 7
+  },
+  {
+    "name": "Shock",
+    "cost": 225,
+    "target": "Touch",
+    "element": "Shock",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        35,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 8
+  },
+  {
+    "name": "Open",
+    "cost": 300,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Open Lock"
+    ],
+    "effects_raw": [
+      "0x13",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        20,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 9
+  },
+  {
+    "name": "Wizard Rend",
+    "cost": 740,
+    "target": "Touch",
+    "element": "Magic",
+    "effects": [
+      "Disease",
+      "Silence",
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x15",
+      "0x04"
+    ],
+    "sub_effects_raw": [
+      "0x02",
+      "0x00",
+      "0x02"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        5,
+        5,
+        1
+      ],
+      [
+        5,
+        5,
+        1
+      ],
+      [
+        1,
+        1,
+        15
+      ],
+      [
+        0,
+        0,
+        15
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        0
+      ]
+    ],
+    "id": 10
+  },
+  {
+    "name": "Strength Leech",
+    "cost": 225,
+    "target": "Projectile",
+    "element": "Frost",
+    "effects": [
+      "Cure Poison"
+    ],
+    "effects_raw": [
+      "0x0d",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "0x80",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        10,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ]
+    ],
+    "id": 11
+  },
+  {
+    "name": "Ice Bolt",
+    "cost": 367,
+    "target": "Projectile",
+    "element": "Fire",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        35,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 12
+  },
+  {
+    "name": "Heal",
+    "cost": 125,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Cure Disease"
+    ],
+    "effects_raw": [
+      "0x0c",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        15,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 13
+  },
+  {
+    "name": "Resist Fire",
+    "cost": 300,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Wall"
+    ],
+    "effects_raw": [
+      "0x0a",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        30,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "id": 14
+  },
+  {
+    "name": "Resist Cold",
+    "cost": 300,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Wall"
+    ],
+    "effects_raw": [
+      "0x0a",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        30,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "id": 15
+  },
+  {
+    "name": "Fireball",
+    "cost": 325,
+    "target": "Target",
+    "element": "None",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        0
+      ],
+      [
+        12,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 16
+  },
+  {
+    "name": "Earth Wall",
+    "cost": 400,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Fear"
+    ],
+    "effects_raw": [
+      "0x02",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 17
+  },
+  {
+    "name": "Levitate",
+    "cost": 50,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Damage HP instant"
+    ],
+    "effects_raw": [
+      "0x10",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 18
+  },
+  {
+    "name": "Witch's Curse",
+    "cost": 450,
+    "target": "Touch",
+    "element": "Frost",
+    "effects": [
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x03",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        30,
+        0,
+        0
+      ],
+      [
+        3,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "id": 19
+  },
+  {
+    "name": "Wyvern's Sting",
+    "cost": 525,
+    "target": "Projectile",
+    "element": "Frost",
+    "effects": [
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        30,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ]
+    ],
+    "id": 20
+  },
+  {
+    "name": "Cure Poison",
+    "cost": 350,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Paralyze"
+    ],
+    "effects_raw": [
+      "0x03",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        60,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 21
+  },
+  {
+    "name": "Force Bolt",
+    "cost": 1050,
+    "target": "Projectile",
+    "element": "Shock",
+    "effects": [
+      "Curse",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x02"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        10,
+        0,
+        10
+      ],
+      [
+        30,
+        0,
+        5
+      ],
+      [
+        1,
+        0,
+        1
+      ],
+      [
+        10,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "id": 22
+  },
+  {
+    "name": "Resist Shock",
+    "cost": 300,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Wall"
+    ],
+    "effects_raw": [
+      "0x0a",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x02",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        30,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "id": 23
+  },
+  {
+    "name": "Invisibility",
+    "cost": 150,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Fortify Attribute"
+    ],
+    "effects_raw": [
+      "0x0f",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 24
+  },
+  {
+    "name": "Gods' Fire",
+    "cost": 3750,
+    "target": "Projectile",
+    "element": "None",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        0,
+        0
+      ],
+      [
+        100,
+        0,
+        0
+      ],
+      [
+        100,
+        0,
+        0
+      ],
+      [
+        100,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 25
+  },
+  {
+    "name": "Ice Storm",
+    "cost": 487,
+    "target": "Target",
+    "element": "Fire",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        30,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 26
+  },
+  {
+    "name": "Force Wall",
+    "cost": 600,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Fear"
+    ],
+    "effects_raw": [
+      "0x02",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        50,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 27
+  },
+  {
+    "name": "Lightning",
+    "cost": 780,
+    "target": "Projectile",
+    "element": "Shock",
+    "effects": [
+      "Curse",
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0x04",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x01",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        30,
+        30,
+        0
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        5,
+        5,
+        0
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 28
+  },
+  {
+    "name": "Pitfalls",
+    "cost": 600,
+    "target": "255",
+    "element": "Magic",
+    "effects": [
+      "Damage HP over time"
+    ],
+    "effects_raw": [
+      "0x06",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        3,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 29
+  },
+  {
+    "name": "Wildfire",
+    "cost": 607,
+    "target": "Projectile",
+    "element": "None",
+    "effects": [
+      "Poison"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x01",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        15,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        15,
+        0
+      ]
+    ],
+    "id": 30
+  },
+  {
+    "name": "Silence",
+    "cost": 450,
+    "target": "Touch",
+    "element": "Magic",
+    "effects": [
+      "Silence"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x15",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        35,
+        0
+      ],
+      [
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "id": 31
+  },
+  {
+    "name": "Far Silence",
+    "cost": 675,
+    "target": "Projectile",
+    "element": "Magic",
+    "effects": [
+      "Silence"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x15",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        35,
+        0
+      ],
+      [
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "id": 32
+  },
+  {
+    "name": "Heal True",
+    "cost": 445,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Cure Disease"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x0c",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x01",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        25,
+        0
+      ],
+      [
+        0,
+        50,
+        0
+      ],
+      [
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 33
+  },
+  {
+    "name": "Passwall",
+    "cost": 600,
+    "target": "255",
+    "element": "Magic",
+    "effects": [
+      "Damage HP over time"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x06",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        3,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 34
+  },
+  {
+    "name": "Fire Storm",
+    "cost": 490,
+    "target": "Area",
+    "element": "None",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x04",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        10,
+        0
+      ],
+      [
+        0,
+        30,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 35
+  },
+  {
+    "name": "Spell Shield",
+    "cost": 400,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Teleport"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x18",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        50,
+        0
+      ],
+      [
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "id": 36
+  },
+  {
+    "name": "Free Action",
+    "cost": 260,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Paralyze"
+    ],
+    "effects_raw": [
+      "0x03",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x02",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 37
+  },
+  {
+    "name": "Resist Poison",
+    "cost": 550,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Wall"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x0a",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x04",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        50,
+        0
+      ],
+      [
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "id": 38
+  },
+  {
+    "name": "Lifesteal",
+    "cost": 675,
+    "target": "Projectile",
+    "element": "Magic",
+    "effects": [
+      "Cure Poison"
+    ],
+    "effects_raw": [
+      "0x0d",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "0x30",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        40,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ]
+    ],
+    "id": 39
+  },
+  {
+    "name": "Toxic Cloud",
+    "cost": 700,
+    "target": "Projectile",
+    "element": "Frost",
+    "effects": [
+      "Curse",
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0x04",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x01",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        25,
+        25,
+        0
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        5,
+        5,
+        0
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 40
+  },
+  {
+    "name": "Troll's Blood",
+    "cost": 450,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Repair"
+    ],
+    "effects_raw": [
+      "0x14",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        60,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 41
+  },
+  {
+    "name": "Medusa's Gaze",
+    "cost": 840,
+    "target": "Projectile",
+    "element": "Magic",
+    "effects": [
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x02",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        50,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ]
+    ],
+    "id": 42
+  },
+  {
+    "name": "Spell Drain",
+    "cost": 630,
+    "target": "Projectile",
+    "element": "Magic",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x04",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x02",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        50,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 43
+  },
+  {
+    "name": "Shalidor's Mirror",
+    "cost": 775,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Stamina (Fortify Stamina)"
+    ],
+    "effects_raw": [
+      "0xff",
+      "0x17",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        40,
+        0
+      ],
+      [
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ]
+    ],
+    "id": 44
+  },
+  {
+    "name": "Purify",
+    "cost": 2590,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Paralyze",
+      "Cure Disease",
+      "Instakill"
+    ],
+    "effects_raw": [
+      "0x03",
+      "0x0c",
+      "0x05"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x01",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        100,
+        100
+      ],
+      [
+        1,
+        100,
+        1
+      ],
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "id": 45
+  },
+  {
+    "name": "Chrysamere",
+    "cost": 4725,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Cure Disease",
+      "Stamina (Fortify Stamina)",
+      "Create Wall"
+    ],
+    "effects_raw": [
+      "0x0c",
+      "0x17",
+      "0x0a"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        100,
+        100
+      ],
+      [
+        100,
+        1,
+        1
+      ],
+      [
+        100,
+        1,
+        1
+      ],
+      [
+        100,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        1,
+        1
+      ]
+    ],
+    "id": 46
+  },
+  {
+    "name": "Ebony Blade",
+    "cost": 8125,
+    "target": "Projectile",
+    "element": "Magic",
+    "effects": [
+      "Cure Poison",
+      "Cure Poison",
+      "Silence"
+    ],
+    "effects_raw": [
+      "0x0d",
+      "0x0d",
+      "0x15"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x01",
+      "0xff"
+    ],
+    "affected_attributes": [
+      "0x30",
+      "0x31"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        100,
+        100
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        10,
+        10,
+        1
+      ]
+    ],
+    "id": 47
+  },
+  {
+    "name": "Spell Breaker",
+    "cost": 2230,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Paralyze",
+      "Stamina (Fortify Stamina)"
+    ],
+    "effects_raw": [
+      "0x03",
+      "0x17",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x02",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        100,
+        0
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        2,
+        0
+      ]
+    ],
+    "id": 48
+  },
+  {
+    "name": "Lord's Mail",
+    "cost": 2075,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Repair",
+      "Paralyze",
+      "Teleport"
+    ],
+    "effects_raw": [
+      "0x14",
+      "0x03",
+      "0x18"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x01",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        25,
+        100,
+        100
+      ],
+      [
+        5,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        60,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "id": 49
+  },
+  {
+    "name": "Auriel's Shield",
+    "cost": 3275,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Wall",
+      "Stamina (Fortify Stamina)",
+      "Fear"
+    ],
+    "effects_raw": [
+      "0x0a",
+      "0x17",
+      "0x02"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        80,
+        80,
+        50
+      ],
+      [
+        1,
+        1,
+        35
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        3,
+        3,
+        0
+      ]
+    ],
+    "id": 50
+  },
+  {
+    "name": "Staff of Magnus",
+    "cost": 2525,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Repair",
+      "Slow"
+    ],
+    "effects_raw": [
+      "0x14",
+      "0x16",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        10,
+        100,
+        0
+      ],
+      [
+        5,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        60,
+        1,
+        0
+      ],
+      [
+        0,
+        18,
+        0
+      ]
+    ],
+    "id": 51
+  },
+  {
+    "name": "Warlock's Ring",
+    "cost": 2840,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Floor",
+      "Cure Disease",
+      "Stamina (Fortify Stamina)"
+    ],
+    "effects_raw": [
+      "0x0b",
+      "0x0c",
+      "0x17"
+    ],
+    "sub_effects_raw": [
+      "0x04",
+      "0x01",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        50,
+        100
+      ],
+      [
+        1,
+        50,
+        1
+      ],
+      [
+        0,
+        1,
+        1
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        5,
+        0,
+        3
+      ]
+    ],
+    "id": 52
+  },
+  {
+    "name": "Volendrung",
+    "cost": 1620,
+    "target": "Touch",
+    "element": "Magic",
+    "effects": [
+      "Curse",
+      "Disease",
+      "HP Shield"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0x00",
+      "0x09"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x03",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        30,
+        100,
+        25
+      ],
+      [
+        30,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        1,
+        15
+      ]
+    ],
+    "id": 53
+  },
+  {
+    "name": "Ring of Phynaster",
+    "cost": 1800,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Create Wall",
+      "Create Wall",
+      "Teleport"
+    ],
+    "effects_raw": [
+      "0x0a",
+      "0x0a",
+      "0x18"
+    ],
+    "sub_effects_raw": [
+      "0x04",
+      "0x02",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        100,
+        100
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ]
+    ],
+    "id": 54
+  },
+  {
+    "name": "Ring of Khajiit",
+    "cost": 4490,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Instakill",
+      "Fortify Attribute",
+      "Create Floor"
+    ],
+    "effects_raw": [
+      "0x05",
+      "0x0f",
+      "0x0b"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x04"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        1,
+        100
+      ],
+      [
+        1,
+        3,
+        1
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        2
+      ],
+      [
+        3,
+        0,
+        5
+      ]
+    ],
+    "id": 55
+  },
+  {
+    "name": "Ebony Mail",
+    "cost": 2420,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Teleport",
+      "Create Wall",
+      "Fear"
+    ],
+    "effects_raw": [
+      "0x18",
+      "0x0a",
+      "0x02"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        100,
+        80
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        5,
+        5,
+        0
+      ]
+    ],
+    "id": 56
+  },
+  {
+    "name": "Auriel's Bow",
+    "cost": 4487,
+    "target": "Projectile",
+    "element": "Magic",
+    "effects": [
+      "Curse",
+      "Curse",
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0x04",
+      "0x04"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x01",
+      "0x02"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        50,
+        50,
+        50
+      ],
+      [
+        50,
+        50,
+        50
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        1,
+        1
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 57
+  },
+  {
+    "name": "Necromancer's Amulet",
+    "cost": 1825,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Slow",
+      "Create Floor",
+      "Repair"
+    ],
+    "effects_raw": [
+      "0x16",
+      "0x0b",
+      "0x14"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x01",
+      "0xff"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        100,
+        50,
+        1
+      ],
+      [
+        1,
+        1,
+        5
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        30
+      ],
+      [
+        3,
+        5,
+        0
+      ]
+    ],
+    "id": 58
+  },
+  {
+    "name": "Cause Disease",
+    "cost": 975,
+    "target": "Projectile",
+    "element": "Frost",
+    "effects": [
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        25,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        6,
+        0,
+        0
+      ]
+    ],
+    "id": 59
+  },
+  {
+    "name": "Cure Disease",
+    "cost": 375,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Paralyze"
+    ],
+    "effects_raw": [
+      "0x03",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        50,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 60
+  },
+  {
+    "name": "Fire Dart",
+    "cost": 82,
+    "target": "Projectile",
+    "element": "None",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        3,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 61
+  },
+  {
+    "name": "Light Heal",
+    "cost": 70,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Cure Disease"
+    ],
+    "effects_raw": [
+      "0x0c",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        4,
+        0,
+        0
+      ],
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 62
+  },
+  {
+    "name": "Spell Drain",
+    "cost": 180,
+    "target": "Projectile",
+    "element": "Magic",
+    "effects": [
+      "Curse"
+    ],
+    "effects_raw": [
+      "0x04",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x02",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        5,
+        0,
+        0
+      ],
+      [
+        10,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 63
+  },
+  {
+    "name": "",
+    "cost": 1000,
+    "target": "Self",
+    "element": "5",
+    "effects": [
+      "Fear"
+    ],
+    "effects_raw": [
+      "0x02",
+      "0xff",
+      "0xff"
+    ],
+    "sub_effects_raw": [
+      "0x01",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        10,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 64
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 65
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 66
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 67
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 68
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 69
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 70
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 71
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 72
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 73
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 74
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 75
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 76
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 77
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 78
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 79
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 80
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 81
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 82
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 83
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 84
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 85
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 86
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 87
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 88
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 89
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 90
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 91
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 92
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 93
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 94
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 95
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 96
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 97
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 98
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 99
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 100
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 101
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 102
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 103
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 104
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 105
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 106
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 107
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 108
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 109
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 110
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 111
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 112
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 113
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 114
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 115
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 116
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 117
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 118
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 119
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 120
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 121
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 122
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 123
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 124
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 125
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 126
+  },
+  {
+    "name": "",
+    "cost": 0,
+    "target": "Self",
+    "element": "None",
+    "effects": [
+      "Disease",
+      "Disease",
+      "Disease"
+    ],
+    "effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "sub_effects_raw": [
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "affected_attributes": [
+      "Strength",
+      "Strength",
+      "Strength"
+    ],
+    "flags": "0x0000",
+    "params": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "id": 127
+  }
+]

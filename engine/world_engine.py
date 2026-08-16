@@ -163,20 +163,97 @@ def travel(state: dict, destination_province: str, destination_city: str) -> dic
         "destination_region": dest_geo.get("region", "Tamriel")
     }
 
-def advance_time(state: dict, hours: int) -> dict:
-    """Advances the Tamrielic calendar by the given hours."""
-    months = [
-        ("Morning Star", 31), ("Sun's Dawn", 28), ("First Seed", 31),
-        ("Rain's Hand", 30), ("Second Seed", 31), ("Midyear", 30),
-        ("Sun's Height", 31), ("Last Seed", 31), ("Hearthfire", 30),
-        ("Frostfall", 31), ("Sun's Dusk", 30), ("Evening Star", 31)
-    ]
+# Canonical 12 Tamrielic Months (each 30 days, 360-day calendar year)
+TAMRIELIC_MONTHS = [
+    "Morning Star", "Sun's Dawn", "First Seed", "Rain's Hand",
+    "Second Seed", "Midyear", "Sun's Height", "Last Seed",
+    "Hearthfire", "Frostfall", "Sun's Dusk", "Evening Star"
+]
+
+CANONICAL_HOLIDAYS = {
+    (1, "Morning Star"): "New Life Festival",
+    (2, "Morning Star"): "Scour Day",
+    (16, "Sun's Dawn"): "Heart's Day",
+    (7, "First Seed"): "First Planting",
+    (28, "Rain's Hand"): "Jester's Day",
+    (7, "Second Seed"): "Second Planting",
+    (16, "Midyear"): "Midyear Celebration",
+    (10, "Sun's Height"): "Merchant's Festival",
+    (27, "Last Seed"): "Harvest's End",
+    (3, "Hearthfire"): "Tales and Tallows",
+    (13, "Frostfall"): "Witches' Festival",
+    (20, "Sun's Dusk"): "South Wall's Day",
+    (15, "Evening Star"): "North Wind's Prayer",
+    (18, "Evening Star"): "Baranth Do",
+    (30, "Evening Star"): "Old Life Festival"
+}
+
+def get_time_of_day_label(hour: int) -> str:
+    """Returns the canonical 7-bracket time of day name from Arena."""
+    h = hour % 24
+    if 0 <= h < 3:
+        return "Midnight"
+    elif 3 <= h < 6:
+        return "Night"
+    elif 6 <= h < 9:
+        return "Early Morning"
+    elif 9 <= h < 12:
+        return "Morning"
+    elif 12 <= h < 18:
+        return "Afternoon"
+    elif 18 <= h < 21:
+        return "Evening"
+    else:
+        return "Late Evening"
+
+def get_holiday(day: int, month: str) -> str | None:
+    """Returns holiday name if the date matches a canonical Tamrielic festival."""
+    return CANONICAL_HOLIDAYS.get((day, month))
+
+def generate_weather(province: str = "Cyrodiil", month: str = "Hearthfire") -> str:
+    """Generates authentic regional Tamrielic weather based on province climate and season."""
+    prov = (province or "Cyrodiil").lower()
+    m = (month or "Hearthfire").lower()
+    is_winter = m in ["frostfall", "sun's dusk", "evening star", "morning star", "sun's dawn"]
+    is_summer = m in ["second seed", "midyear", "sun's height", "last seed"]
     
+    if "skyrim" in prov:
+        if is_winter:
+            return random.choices(["Blizzard", "Heavy Snowfall", "Freezing Mist", "Overcast Snow", "Clear and Frigid"], weights=[25, 35, 15, 15, 10])[0]
+        else:
+            return random.choices(["Chilly Rain", "Overcast", "Clear Skies", "Mountain Fog", "Light Flurries"], weights=[25, 30, 25, 15, 5])[0]
+    elif "hammerfell" in prov or "elsweyr" in prov:
+        if is_summer:
+            return random.choices(["Blazing Sun", "Heatwave", "Dust Storm", "Clear Skies", "Dry Winds"], weights=[40, 25, 15, 15, 5])[0]
+        else:
+            return random.choices(["Clear Skies", "Cool Desert Breeze", "Overcast", "Sudden Flash Rain"], weights=[50, 30, 15, 5])[0]
+    elif "black marsh" in prov or "valenwood" in prov:
+        if is_summer:
+            return random.choices(["Tropical Downpour", "Humid Thunderstorm", "Dense Fog", "Warm Drizzle", "Muggy Overcast"], weights=[30, 25, 20, 15, 10])[0]
+        else:
+            return random.choices(["Swamp Mist", "Steady Rain", "Overcast", "Clearing Skies"], weights=[35, 30, 25, 10])[0]
+    elif "morrowind" in prov:
+        return random.choices(["Ash Haze", "Overcast", "Acidic Rain", "Clear Skies", "Sulfur Fog"], weights=[30, 25, 20, 15, 10])[0]
+    elif "high rock" in prov:
+        if is_winter:
+            return random.choices(["Cold Rain", "Sleet", "Overcast", "Coastal Fog", "Snow Flurries"], weights=[30, 25, 20, 15, 10])[0]
+        else:
+            return random.choices(["Coastal Fog", "Gentle Rain", "Clear Skies", "Overcast"], weights=[35, 25, 25, 15])[0]
+    else:  # Cyrodiil & Summerset Isle (Temperate / Island)
+        if is_winter:
+            return random.choices(["Cold Drizzle", "Overcast", "Crisp Clear Skies", "Morning Frost Fog"], weights=[35, 30, 20, 15])[0]
+        elif is_summer:
+            return random.choices(["Warm Clear Skies", "Gentle Breeze", "Summer Thunderstorm", "Scattered Clouds"], weights=[45, 25, 15, 15])[0]
+        else:
+            return random.choices(["Overcast", "Passing Rain", "Clear Skies", "Autumn Mist"], weights=[35, 30, 25, 10])[0]
+
+def advance_time(state: dict, hours: int) -> dict:
+    """Advances the canonical Tamrielic calendar (30 days/month, 12 months/year) and updates weather."""
     if "date" not in state:
-        state["date"] = {"day": 1, "month": "Morning Star", "year": 389, "hour": 0}
+        state["date"] = {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
         
     date = state["date"]
-    date["hour"] = date.get("hour", 0) + hours
+    date["hour"] = date.get("hour", 6) + hours
     
     days_to_add = date["hour"] // 24
     date["hour"] %= 24
@@ -184,22 +261,22 @@ def advance_time(state: dict, hours: int) -> dict:
     date["day"] = date.get("day", 1) + days_to_add
     
     current_month_idx = 0
-    for i, (m, d) in enumerate(months):
-        if m == date["month"]:
-            current_month_idx = i
-            break
-            
-    while True:
-        days_in_month = months[current_month_idx][1]
-        if date["day"] <= days_in_month:
-            break
-        date["day"] -= days_in_month
+    if date.get("month") in TAMRIELIC_MONTHS:
+        current_month_idx = TAMRIELIC_MONTHS.index(date["month"])
+        
+    while date["day"] > 30:
+        date["day"] -= 30
         current_month_idx += 1
         if current_month_idx >= 12:
             current_month_idx = 0
             date["year"] = date.get("year", 389) + 1
             
-    date["month"] = months[current_month_idx][0]
+    date["month"] = TAMRIELIC_MONTHS[current_month_idx]
+    
+    # Update dynamic weather if hours progressed significantly
+    if hours >= 4 or "weather" not in state:
+        state["weather"] = generate_weather(state.get("current_province", "Cyrodiil"), date["month"])
+        
     return state
 
 def set_flag(state: dict, flag_name: str, value) -> dict:

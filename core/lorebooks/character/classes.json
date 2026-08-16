@@ -1,39 +1,165 @@
 {
   "name": "Classes",
-  "description": "Character classes and archetypes",
+  "description": "The eighteen canonical character classes, martial philosophies, and traditions of Tamriel in The Elder Scrolls: Arena",
   "entries": [
     {
-      "uid": 3001,
-      "key": ["warrior", "knight", "ranger", "archer", "monk", "barbarian"],
-      "secondary_key": [],
-      "content": "The Warrior archetype relies on physical might. They favor Strength and Endurance. They gain advantage regarding physical attack rolls. They eschew magical studies.",
+      "uid": 1001,
+      "key": ["warrior", "fighter", "soldier"],
+      "secondary_key": ["class", "martial"],
+      "content": "Warrior: The foundational martial discipline of Tamriel. Unflinching masters of hand-to-hand combat, heavy melee weaponry, and tactical physical prowess. Warriors form the vanguard of legions and mercenary bands across the Empire.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
-      "uid": 3002,
-      "key": ["mage", "healer", "battlemage", "spellsword", "nightblade"],
-      "secondary_key": [],
-      "content": "The Mage archetype wields arcane forces. They favor Intelligence and Willpower. They receive advantage on spell casting rolls. Their playstyle requires managing spell points.",
+      "uid": 1002,
+      "key": ["knight", "paladin", "cavalier"],
+      "secondary_key": ["class", "martial", "chivalry"],
+      "content": "Knight: Noble martial champions bound by ancient chivalric vows, feudal duty, and supreme mastery of heavy plate and shield defense. Knights excel in parrying devastating blows and leading troops with commanding presence.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
-      "uid": 3003,
-      "key": ["sorcerer"],
-      "secondary_key": [],
-      "content": "Sorcerers possess a unique magical curse. They cannot regenerate spell points through rest. They rely entirely upon Spell Absorption to regain power. They are formidable anti mages.",
+      "uid": 1003,
+      "key": ["barbarian", "berserker"],
+      "secondary_key": ["class", "martial", "rage"],
+      "content": "Barbarian: Fierce warriors hailing from the untamed highlands of Skyrim and the harsh badlands of Hammerfell. Relying on raw physical endurance, terrifying speed, and devastating two-handed weapons, they fight with unbridled battle frenzy.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
-      "uid": 3004,
-      "key": ["thief", "burglar", "assassin", "rogue", "acrobat", "bard"],
-      "secondary_key": [],
-      "content": "The Thief archetype excels in stealth. They favor Agility and Speed. They gain advantage on attack rolls when striking from surprise. They utilize finesse over brute force.",
+      "uid": 1004,
+      "key": ["ranger", "woodlander", "scout"],
+      "secondary_key": ["class", "wilderness", "survival"],
+      "content": "Ranger: Hardened trackers and wilderness survivalists at home in ancient forests and mountain passes. Skilled in stealth, archery, and long blade fencing, rangers navigate perilous terrain and track prey with uncanny intuition.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1005,
+      "key": ["archer", "marksman", "bowman"],
+      "secondary_key": ["class", "ranged", "archery"],
+      "content": "Archer: Dedicated masters of the bow capable of picking off targets with lethal precision at extreme distances. In close quarters, archers rely on agile footwork and evasive tactics to outdistance their foes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1006,
+      "key": ["monk", "martial artist", "ascetic"],
+      "secondary_key": ["class", "unarmed", "discipline"],
+      "content": "Monk: Ascetic martial artists who channel spiritual discipline and rigorous body conditioning into deadly unarmed combat. Unencumbered by heavy steel, their strikes fracture bone while their inner focus deflects hostile intent.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1007,
+      "key": ["mage", "wizard", "sorcerer-king"],
+      "secondary_key": ["class", "magic", "arcane"],
+      "content": "Mage: Scholarly practitioners of the arcane arts schooled in the mysteries of the Mages Guild. Devoted to understanding the fundamental forces of Destruction, Mysticism, Alteration, and Illusion to shape reality to their will.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1008,
+      "key": ["sorcerer", "arcane conduit"],
+      "secondary_key": ["class", "magic", "absorption"],
+      "content": "Sorcerer: Gifted arcanists endowed with immense internal reservoirs of magical potential and the rare ability to absorb incoming hostile spells into their own power, turning an enemy's sorcery into fuel for counter-strikes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1009,
+      "key": ["healer", "cleric", "priest"],
+      "secondary_key": ["class", "magic", "restoration"],
+      "content": "Healer: Devout practitioners of divine and restorative arts dedicated to purifying plagues, mending mortal trauma, and shielding allies against corrupting undead influences while defending themselves with blunt staves and maces.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1010,
+      "key": ["battlemage", "warmage"],
+      "secondary_key": ["class", "hybrid", "warfare"],
+      "content": "Battlemage: Imperial shock-casters trained at the Battlespire to blend devastating elemental destruction with martial weapon mastery. They serve as terrifying artillery and vanguard captains in Imperial campaigns.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1011,
+      "key": ["spellsword", "spell-blade"],
+      "secondary_key": ["class", "hybrid", "blade"],
+      "content": "Spellsword: Versatile combatants who fluidly weave swordplay with destructive and defensive sorcery. A spellsword parries with steel in one hand while hurling firebolts and healing wards with the other.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1012,
+      "key": ["nightblade", "shadowmage"],
+      "secondary_key": ["class", "magic", "stealth"],
+      "content": "Nightblade: Covert operatives who blend the stealth and dagger work of thieves with the deceptive magic of Illusion and Alteration, cloaking themselves in shadows and manipulating minds to execute clandestine objectives.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1013,
+      "key": ["thief", "pickpocket", "cutpurse"],
+      "secondary_key": ["class", "stealth", "subterfuge"],
+      "content": "Thief: Masters of stealth, lockpicking, and sleight of hand operating in the shadows of city alleys and ancient tombs. Thieves avoid direct confrontations, preferring stealthy infiltration and silent takedowns.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1014,
+      "key": ["burglar", "cat burglar"],
+      "secondary_key": ["class", "stealth", "infiltration"],
+      "content": "Burglar: Specialized infiltrators renowned for their agility, architectural intuition, and ability to bypass mechanical locks and bypass traps to retrieve guarded treasures from high-security vaults.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1015,
+      "key": ["assassin", "killer", "shadowblade"],
+      "secondary_key": ["class", "stealth", "lethal"],
+      "content": "Assassin: Lethal contract killers trained in anatomy, concealment, and venomcraft. Patient and unforgiving, assassins strike from complete surprise where a single poisoned blade ends the target before alarms can sound.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1016,
+      "key": ["rogue", "swashbuckler", "scoundrel"],
+      "secondary_key": ["class", "stealth", "finesse"],
+      "content": "Rogue: Dashing and adaptable skirmishers equally comfortable in courtly intrigue, underworld bargaining, and fluid sword duels. Rogues combine charm, quick reflexes, and opportunistic martial flair.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1017,
+      "key": ["acrobat", "tumbler", "gymnast"],
+      "secondary_key": ["class", "agility", "finesse"],
+      "content": "Acrobat: Incredibly nimble athletes whose extraordinary balance, leaping ability, and reflexes allow them to traverse treacherous rooftops, dodge incoming blows with ease, and disorient foes in combat.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1018,
+      "key": ["bard", "minstrel", "skald", "troubadour"],
+      "secondary_key": ["class", "social", "lore"],
+      "content": "Bard: Wandering storytellers, historians, and loremasters. Well-versed in songs of ancient heroes, illusion magic, and interpersonal charm, bards disarm hostiles with honeyed words and inspire allies in the direst moments.",
       "enabled": true,
       "priority": 10,
       "probability": 100

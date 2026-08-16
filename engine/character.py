@@ -7,6 +7,7 @@ All mutation functions return the updated sheet — callers must save explicitly
 
 import json
 import os
+import re
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -242,6 +243,89 @@ def calculate_max_encumbrance(sheet: dict) -> float:
     attrs = sheet.get("attributes", {})
     str_val = attrs.get("strength", 50)
     return round(float(str_val) * 2.0, 1)
+
+def calculate_armor_rating(sheet: dict) -> int:
+    """
+    Calculates total Armor Rating (AC) from all equipped items and agility modifier.
+    Arena base unarmored AC starts at 0, improved by equipped armor, shields, and material modifiers.
+    """
+    if not sheet:
+        return 0
+    attrs = sheet.get("attributes", {})
+    agility = attrs.get("agility", 50)
+    agil_mod = max(-5, min(10, (agility - 50) // 10))
+    
+    total_ac = max(0, agil_mod)
+    
+    for item in sheet.get("inventory", []):
+        if not item.get("equipped"):
+            continue
+        name = item.get("name", "").lower()
+        cat = get_item_category(item)
+        
+        # Check material bonus
+        mat_bonus = 0
+        for mat, bonus in [("ebony", 5), ("adamantium", 4), ("mithril", 3), ("dwarven", 2), ("elven", 1)]:
+            if mat in name:
+                mat_bonus = bonus
+                break
+                
+        # Armor piece values
+        if cat in ["armor", "body"]:
+            if any(p in name for p in ["plate", "cuirass", "breastplate", "carapace"]):
+                total_ac += 6 + mat_bonus
+            elif any(c in name for c in ["chain", "hauberk", "ringmail", "mail"]):
+                total_ac += 4 + (mat_bonus // 2)
+            elif any(l in name for l in ["leather", "hide", "studded"]):
+                total_ac += 2
+            elif any(r in name for r in ["robes", "tunic", "rags", "cloth"]):
+                total_ac += 0
+            else:
+                total_ac += 3 + mat_bonus
+        elif cat == "head":
+            base = 3 if any(h in name for h in ["plate", "helm", "helmet"]) else (2 if any(c in name for c in ["chain", "coif"]) else 1)
+            total_ac += base + mat_bonus
+        elif cat in ["shoulders", "pauldron", "pauldrons"]:
+            base = 4 if "plate" in name else (2 if "chain" in name else 1)
+            total_ac += base + mat_bonus
+        elif cat == "hands":
+            base = 2 if any(g in name for g in ["plate", "gauntlet"]) else 1
+            total_ac += base + mat_bonus
+        elif cat in ["legs", "greaves"]:
+            base = 4 if any(p in name for p in ["plate", "greave"]) else (2.5 if "chain" in name else 1)
+            total_ac += int(base) + mat_bonus
+        elif cat in ["feet", "boots"]:
+            base = 2 if any(b in name for b in ["plate", "sabaton", "boot"]) else 1
+            total_ac += base + mat_bonus
+        elif cat == "shield":
+            if "tower" in name:
+                total_ac += 4 + mat_bonus
+            elif "kite" in name:
+                total_ac += 3 + mat_bonus
+            elif "round" in name:
+                total_ac += 2 + mat_bonus
+            elif "buckler" in name:
+                total_ac += 1 + mat_bonus
+            else:
+                total_ac += 2 + mat_bonus
+        elif cat in ["ring", "neck"]:
+            if any(w in name for w in ["armor", "protection", "ward", "shielding"]):
+                total_ac += 2
+
+    return int(total_ac)
+
+def recalculate_derived_stats(sheet: dict) -> dict:
+    """Updates encumbrance, carried weight, and armor rating based on inventory state."""
+    if not sheet:
+        return sheet
+    d = sheet.setdefault("derived", {})
+    max_enc = calculate_max_encumbrance(sheet)
+    cur_enc = calculate_inventory_weight(sheet.get("inventory", []))
+    d["encumbrance_max"] = max_enc
+    d["encumbrance_current"] = cur_enc
+    d["is_encumbered"] = cur_enc > max_enc
+    d["armor_rating"] = calculate_armor_rating(sheet)
+    return sheet
 
 # ── Context injection ─────────────────────────────────────────────────────────
 
@@ -623,6 +707,7 @@ def equip_item(sheet: dict, item_name: str) -> tuple[dict, bool]:
         target_item["equipped"] = True
         target_item["equipped_slot"] = "ring"
 
+    recalculate_derived_stats(sheet)
     return sheet, True
 
 
@@ -632,6 +717,7 @@ def unequip_item(sheet: dict, item_name: str) -> tuple[dict, bool]:
         if item["name"].lower() == item_name.lower():
             item["equipped"] = False
             item.pop("equipped_slot", None)
+            recalculate_derived_stats(sheet)
             return sheet, True
     return sheet, False
 
@@ -655,6 +741,8 @@ def drop_item(sheet: dict, item_name: str, quantity: int = 1) -> tuple[dict, dic
                 dropped = inventory.pop(i)
             break
             
+    if dropped:
+        recalculate_derived_stats(sheet)
     return sheet, dropped
 
 

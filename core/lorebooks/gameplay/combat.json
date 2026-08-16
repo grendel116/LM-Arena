@@ -6,7 +6,7 @@
       "uid": 4001,
       "key": ["d20", "roll", "check", "modifier"],
       "secondary_key": [],
-      "content": "All action checks utilize a d20 system. You add your attribute modifier to the roll. The modifier equals your attribute minus fifty, divided by ten, rounded.",
+      "content": "All action checks utilize a d20 system. You add your attribute modifier to the roll. The modifier equals your attribute minus fifty, divided by ten, rounded. Agility to-hit bonus and Strength damage bonus follow dedicated combat progressions.",
       "enabled": true,
       "priority": 10,
       "probability": 100
@@ -24,7 +24,7 @@
       "uid": 4003,
       "key": ["attack", "melee", "ranged", "strike"],
       "secondary_key": [],
-      "content": "Attack rolls use specific attributes. Melee attacks add your Strength modifier. Ranged attacks use your Agility modifier. You roll against the target Defense DC.",
+      "content": "Attack rolls use specific attributes. Melee attacks add your Strength or Agility modifier. Ranged attacks use your Agility modifier. You roll against the target Defense DC (10 + target Agility to-hit modifier).",
       "enabled": true,
       "priority": 10,
       "probability": 100
@@ -33,7 +33,7 @@
       "uid": 4004,
       "key": ["defense", "armor", "dodge"],
       "secondary_key": [],
-      "content": "Your Defense DC represents your evasion. It equals ten plus your Agility modifier. Armor provides damage reduction rather than increasing defense.",
+      "content": "Your Defense DC represents evasion and agility. Armor protects against lethal strikes and reduces incoming physical harm according to material quality and coverage.",
       "enabled": true,
       "priority": 10,
       "probability": 100
@@ -42,7 +42,7 @@
       "uid": 4005,
       "key": ["hit", "graze", "solid", "devastating"],
       "secondary_key": [],
-      "content": "Hit outcomes scale by the success margin. A graze causes partial damage. A solid hit deals regular damage. A devastating blow inflicts massive harm.",
+      "content": "Hit outcomes scale by the success margin. A graze causes partial damage. A solid hit deals regular base weapon damage plus Strength bonus. A devastating blow inflicts massive harm with bonus damage.",
       "enabled": true,
       "priority": 10,
       "probability": 100
@@ -51,7 +51,7 @@
       "uid": 4006,
       "key": ["critical", "fumble", "natural"],
       "secondary_key": [],
-      "content": "A natural twenty always constitutes a critical success. A natural one represents a critical fumble. Fumbles introduce catastrophic narrative complications.",
+      "content": "A natural twenty always constitutes a critical success dealing double base damage plus bonus. A natural one represents a critical fumble, introducing catastrophic narrative complications.",
       "enabled": true,
       "priority": 10,
       "probability": 100
@@ -67,33 +67,51 @@
     },
     {
       "uid": 4008,
-      "key": ["poisoned", "poison"],
+      "key": ["weapon damage", "weapons", "blade", "bow"],
       "secondary_key": [],
-      "content": "Poison inflicts ongoing narrative damage. The victim suffers debilitating pain each turn. They must seek a cure immediately.",
+      "content": "Arena weapons have canonical base damage profiles: Daggers (1-6), Shortswords/Staffs/Short Bows (2-8), Broadswords/Longswords/Katanas/Sabers (3-12), Long Bows (3-10), Claymores/Battleaxes/Warhammers (3-16), Dai-katanas (4-16).",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4009,
-      "key": ["paralysed", "paralysis"],
+      "key": ["material", "mithril", "ebony", "elven", "dwarven", "adamantium", "silver"],
       "secondary_key": [],
-      "content": "Paralysis freezes the victim completely. They must skip their turn entirely. They become highly vulnerable regarding incoming attacks.",
+      "content": "Weapon and armor materials alter combat effectiveness: Iron/Steel (1.0x baseline), Silver (1.0x, strikes incorporeal undead), Elven (1.25x damage, light), Dwarven/Mithril (1.5x damage, superior durability), Adamantium/Ebony (2.0x damage, legendary lethality).",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4010,
-      "key": ["diseased", "disease"],
+      "key": ["poisoned", "poison"],
       "secondary_key": [],
-      "content": "Diseases apply lingering penalties. The victim suffers reduced attribute scores. Temple healers can remove these afflictions.",
+      "content": "Poison inflicts ongoing narrative damage. The victim suffers debilitating pain and health loss each turn until treated or cured.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4011,
+      "key": ["paralysed", "paralysis"],
+      "secondary_key": [],
+      "content": "Paralysis freezes the victim completely. They must skip their turn entirely and become highly vulnerable to incoming attacks.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4012,
+      "key": ["diseased", "disease"],
+      "secondary_key": [],
+      "content": "Diseases apply lingering penalties, deteriorating primary attributes (Strength, Agility, Speed, Endurance) each round. Temple healers and cure spells are required.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4013,
       "key": ["death", "defeat", "zero health", "dead"],
       "secondary_key": [],
       "content": "Reaching zero health causes instant character death and triggers a GAME OVER state. Narrate the fatal blow and death of the hero in vivid detail. Do not allow the hero to survive or recover.",

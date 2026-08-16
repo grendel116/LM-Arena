@@ -1,0 +1,78 @@
+{
+  "name": "Alchemy",
+  "description": "Standard alchemical potions, elixirs, and restorative draughts in The Elder Scrolls: Arena",
+  "entries": [
+    {
+      "uid": 5400,
+      "key": ["potion of healing", "heal true", "healing potion", "health potion"],
+      "secondary_key": ["potion", "consumable", "alchemy"],
+      "content": "Potion of Healing (Heal True): A restorative crimson draught brewed from mountain herbs and restorative reagents that rapidly knits torn flesh, seals wounds, and revives the drinker from near death.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5401,
+      "key": ["potion of restore power", "mana potion", "magicka potion", "restore power"],
+      "secondary_key": ["potion", "consumable", "alchemy"],
+      "content": "Potion of Restore Power: A luminous azure elixir brewed from void salts and moonshade that instantly replenishes drained magicka reserves and clears magical exhaustion.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5402,
+      "key": ["potion of cure poison", "cure poison", "antidote"],
+      "secondary_key": ["potion", "consumable", "alchemy"],
+      "content": "Potion of Cure Poison: A bitter herbal tonic that neutralizes venoms, spider toxins, and paralysis agents coursing through the bloodstream.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5403,
+      "key": ["potion of cure disease", "cure disease", "panacea"],
+      "secondary_key": ["potion", "consumable", "alchemy"],
+      "content": "Potion of Cure Disease: A consecrated tincture that purges necrotic rot, crypt fever, and foul contagions contracted from subterranean beasts and the undead.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5404,
+      "key": ["potion of invisibility", "invisibility potion", "shadow draught"],
+      "secondary_key": ["potion", "consumable", "alchemy"],
+      "content": "Potion of Invisibility: A shimmering draught that temporarily cloaks the imbiber completely from mortal sight and perception until a hostile action breaks the veil.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5405,
+      "key": ["potion of resist fire", "fire resistance potion", "potion of resist cold", "potion of resist shock"],
+      "secondary_key": ["potion", "consumable", "alchemy", "resistance"],
+      "content": "Elemental Resistance Potions: Alchemical distillations that coat the skin and aura in an elemental buffer, drastically blunting the trauma of hostile flames, freezing blizzards, or electrical shocks.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5406,
+      "key": ["potion of levitation", "levitation potion"],
+      "secondary_key": ["potion", "consumable", "alchemy"],
+      "content": "Potion of Levitation: An effervescent potion that momentarily negates the pull of gravity, allowing the drinker to step over pits, chasms, and floor traps safely.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5407,
+      "key": ["potion of stamina", "stamina potion", "vigor draught"],
+      "secondary_key": ["potion", "consumable", "alchemy"],
+      "content": "Potion of Stamina: An invigorating emerald tonic that banishes physical fatigue and immediately restores the user's vitality, breath, and fighting vigor.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

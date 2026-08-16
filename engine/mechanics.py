@@ -4,45 +4,124 @@ import random
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-BESTIARY_PATH = BASE_DIR / "core" / "world" / "bestiary.json"
+ENTITIES_PATH = BASE_DIR / "core" / "world" / "entities.json"
 
-# Global Damage Multipliers
-INCOMING_DAMAGE_MULTIPLIER = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "3.0"))
-OUTGOING_DAMAGE_MULTIPLIER = float(os.getenv("OUTGOING_DAMAGE_MULTIPLIER", "0.75"))
+# Global Damage Multipliers (Default 1.0 for authentic balance; configurable via .env)
+INCOMING_DAMAGE_MULTIPLIER = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "1.0"))
+OUTGOING_DAMAGE_MULTIPLIER = float(os.getenv("OUTGOING_DAMAGE_MULTIPLIER", "1.0"))
 
-_BESTIARY_CACHE = None
+_ENTITIES_CACHE = None
 
-def load_bestiary() -> dict:
-    global _BESTIARY_CACHE
-    if _BESTIARY_CACHE is not None:
-        return _BESTIARY_CACHE
-    if os.path.exists(BESTIARY_PATH):
+def load_entities() -> dict:
+    """Loads pure mechanical entity definitions from core/world/entities.json."""
+    global _ENTITIES_CACHE
+    if _ENTITIES_CACHE is not None:
+        return _ENTITIES_CACHE
+    if os.path.exists(ENTITIES_PATH):
         try:
-            with open(BESTIARY_PATH, "r", encoding="utf-8") as f:
-                _BESTIARY_CACHE = json.load(f).get("monsters", {})
-                return _BESTIARY_CACHE
+            with open(ENTITIES_PATH, "r", encoding="utf-8") as f:
+                _ENTITIES_CACHE = json.load(f)
+                return _ENTITIES_CACHE
         except Exception as e:
-            print(f"[Bestiary] Error loading bestiary: {e}")
+            print(f"[Entities] Error loading entities: {e}")
     return {}
+
+# Alias for backward compatibility
+load_bestiary = load_entities
 
 def get_monster(name_or_key: str) -> dict:
-    """Find a monster template by key or substring match."""
-    bestiary = load_bestiary()
+    """Find a monster/entity mechanical template by key, alias, or substring match."""
+    entities = load_entities()
     if not name_or_key:
         return {}
-    clean_key = name_or_key.lower().replace(" ", "_").replace("-", "_")
-    if clean_key in bestiary:
-        return bestiary[clean_key]
     
-    # Substring search
-    for k, v in bestiary.items():
-        if k in clean_key or clean_key in k or v.get("name", "").lower() in name_or_key.lower():
-            return v
+    clean_target = name_or_key.lower().strip()
+    
+    # Direct dictionary key lookup
+    if clean_target in entities:
+        ent = dict(entities[clean_target])
+        ent["base_agility"] = ent.get("agility", 50)
+        return ent
+    
+    # Alias / name / substring lookup
+    for k, v in entities.items():
+        aliases = [a.lower() for a in v.get("aliases", [])]
+        name = v.get("name", "").lower()
+        if clean_target == k or clean_target == name or clean_target in aliases or any(a in clean_target for a in aliases):
+            ent = dict(v)
+            ent["base_agility"] = ent.get("agility", 50)
+            return ent
+            
     return {}
+
+# Authentic Arena Weapon Base Damage Ranges (from ExeData / ArenaWeaponUtils)
+ARENA_WEAPONS = {
+    "fists": (1, 2),
+    "staff": (2, 8),
+    "dagger": (1, 6),
+    "shortsword": (2, 8),
+    "broadsword": (3, 12),
+    "saber": (2, 12),
+    "longsword": (3, 12),
+    "claymore": (3, 16),
+    "tanto": (1, 8),
+    "wakizashi": (2, 10),
+    "katana": (3, 12),
+    "dai-katana": (4, 16),
+    "mace": (3, 10),
+    "flail": (2, 12),
+    "war hammer": (3, 16),
+    "warhammer": (3, 16),
+    "war axe": (2, 12),
+    "battle axe": (3, 16),
+    "battleaxe": (3, 16),
+    "short bow": (2, 8),
+    "shortbow": (2, 8),
+    "long bow": (3, 10),
+    "longbow": (3, 10)
+}
+
+# Authentic Arena Material Multipliers (from ItemMaterialLibrary)
+MATERIAL_MULTIPLIERS = {
+    "iron": 1.0,
+    "steel": 1.0,
+    "silver": 1.0,
+    "elven": 1.25,
+    "dwarven": 1.5,
+    "mithril": 1.5,
+    "adamantium": 2.0,
+    "ebony": 2.0,
+    "daedric": 2.0,
+    "glass": 1.5
+}
+
+def calculate_damage_bonus(strength: int) -> int:
+    """Arena formula: calculateDamageBonus."""
+    if strength <= 43:
+        return 0
+    return (strength - 48) // 5
+
+def calculate_to_hit_bonus(agility: int) -> int:
+    """Arena formula: calculateBonusToHit."""
+    if agility <= 45:
+        return -1
+    elif agility <= 46:
+        return 0
+    return (agility - 50) // 5
+
+def calculate_magic_defense_bonus(willpower: int) -> int:
+    """Arena formula: calculateMagicDefenseBonus."""
+    if willpower <= 38:
+        return -2
+    elif willpower <= 41:
+        return -1
+    elif willpower <= 46:
+        return 0
+    return (willpower - 46) // 9
 
 def get_modifier(attribute_value: int) -> int:
     """
-    Returns the attribute modifier.
+    Returns general attribute modifier.
     Arena attributes are 0-100, centered at 50.
     """
     return round((attribute_value - 50) / 10)
@@ -51,7 +130,10 @@ def roll_check(attribute_name: str, attribute_value: int, dc: int, advantage: bo
     """
     Rolls a d20 plus modifier against a DC.
     """
-    modifier = get_modifier(attribute_value)
+    if attribute_name.lower() == "agility":
+        modifier = calculate_to_hit_bonus(attribute_value)
+    else:
+        modifier = get_modifier(attribute_value)
     
     roll1 = random.randint(1, 20)
     roll2 = random.randint(1, 20)
@@ -90,9 +172,10 @@ def roll_check(attribute_name: str, attribute_value: int, dc: int, advantage: bo
 
 def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
     """
-    Attack resolution with authentic Arena dice pools, weapon damage, material immunities, and monster HP tracking.
+    Attack resolution combining d20 degree-of-success narrative flow with authentic Arena weapon damage,
+    material scaling, STR bonuses, and status tracking.
     """
-    attr_name = weapon.get("attribute_used", "strength")
+    attr_name = weapon.get("attribute_used", "strength").lower()
     attr_value = attacker.get(attr_name, 50)
     
     # Look up bestiary template if target matches a known creature
@@ -100,7 +183,7 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
     monster_data = get_monster(target_name) if not target.get("is_player") else {}
     
     target_agility = target.get("agility") or monster_data.get("base_agility", 50)
-    defense_dc = 10 + get_modifier(target_agility)
+    defense_dc = 10 + calculate_to_hit_bonus(target_agility)
     
     # Low stamina / fatigue penalty
     attacker_stamina = attacker.get("stamina_current")
@@ -130,9 +213,10 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
     damage_dealt = 0
     status_effect = None
     
+    weapon_name = weapon.get("name", "Fists").lower()
     weapon_material = weapon.get("material", "iron").lower()
     weapon_tier = weapon.get("damage_tier", 1)
-    is_magic_attack = weapon.get("is_magic", False) or "magic" in weapon.get("name", "").lower()
+    is_magic_attack = weapon.get("is_magic", False) or "magic" in weapon_name
     
     # Check weapon material immunities (Ghosts, Wraiths, Vampires, Liches, Atronachs require Silver/Magic)
     target_immunities = monster_data.get("immunities", [])
@@ -142,30 +226,49 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
             immune = True
             
     if hit and not immune:
-        # Base damage dice calculation by weapon tier
-        tier_dice = {
-            1: (1, 4),   # Dagger / Club
-            2: (1, 8),   # Shortsword / Mace
-            3: (1, 10),  # Broadsword / War Axe
-            4: (2, 8),   # Claymore / Battleaxe
-            5: (3, 8)    # Artifact / Masterwork
-        }
-        num_dice, die_faces = tier_dice.get(weapon_tier, (1, 6))
-        base_dmg = sum(random.randint(1, die_faces) for _ in range(num_dice))
-        attr_bonus = max(0, get_modifier(attr_value))
+        # 1. Determine authentic weapon base damage range
+        matched_range = None
+        for w_key, (w_min, w_max) in ARENA_WEAPONS.items():
+            if w_key in weapon_name:
+                matched_range = (w_min, w_max)
+                break
         
+        if matched_range:
+            w_min, w_max = matched_range
+            base_dmg = random.randint(w_min, w_max)
+        else:
+            # Fallback to tier dice if specific weapon name not recognized
+            tier_dice = {
+                1: (1, 6),   # Dagger / Fists
+                2: (2, 8),   # Shortsword / Mace
+                3: (3, 12),  # Broadsword / War Axe
+                4: (3, 16),  # Claymore / Battleaxe
+                5: (4, 20)   # Artifact / Masterwork
+            }
+            d_min, d_max = tier_dice.get(weapon_tier, (1, 6))
+            base_dmg = random.randint(d_min, d_max)
+
+        # 2. Apply Material Multiplier
+        mat_mult = MATERIAL_MULTIPLIERS.get(weapon_material, 1.0)
+        base_dmg = max(1, int(round(base_dmg * mat_mult)))
+
+        # 3. Apply Strength Damage Bonus (Arena formula)
+        str_val = attacker.get("strength", 50) if attr_name == "strength" else 50
+        str_bonus = calculate_damage_bonus(str_val)
+        
+        # 4. Degree of Success Scaling for narrative combat
         if degree == "critical":
             damage_narrative = "critical strike"
-            damage_dealt = (base_dmg * 2) + attr_bonus + 2
+            damage_dealt = (base_dmg * 2) + str_bonus + 2
         elif margin <= 2:
             damage_narrative = "graze"
-            damage_dealt = max(1, (base_dmg // 2) + attr_bonus)
+            damage_dealt = max(1, (base_dmg // 2) + (str_bonus // 2))
         elif margin <= 5:
             damage_narrative = "solid hit"
-            damage_dealt = base_dmg + attr_bonus
+            damage_dealt = base_dmg + str_bonus
         else:
             damage_narrative = "devastating blow"
-            damage_dealt = base_dmg + attr_bonus + random.randint(2, 4)
+            damage_dealt = base_dmg + str_bonus + random.randint(2, 4)
             
         # Monster on-hit status effects (when monster attacks player)
         special_traits = monster_data.get("special_traits", [])
@@ -205,10 +308,9 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
                     status_effect = "paralysed"
                     break
 
-        # Apply incoming (3x) and outgoing (0.75x) difficulty scaling
-        import os
-        inc_mult = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "3.0"))
-        out_mult = float(os.getenv("OUTGOING_DAMAGE_MULTIPLIER", "0.75"))
+        # Apply incoming and outgoing difficulty scaling (default 1.0)
+        inc_mult = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "1.0"))
+        out_mult = float(os.getenv("OUTGOING_DAMAGE_MULTIPLIER", "1.0"))
         
         is_player_target = target.get("is_player", False) or target_name.lower() in ["player", "user", "{{user}}", "dovres malven", "eternal champion"] or not attacker.get("is_player", False)
         mult = inc_mult if is_player_target else out_mult

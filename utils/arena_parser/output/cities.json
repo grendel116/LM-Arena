@@ -1,0 +1,386 @@
+[
+  {
+    "raw_id": "0600",
+    "province_id": 6,
+    "location_id": 0,
+    "greeting": "North Point hail thee, traveler. We wish you good fortune within our walls..."
+  },
+  {
+    "raw_id": "0601",
+    "province_id": 6,
+    "location_id": 1,
+    "greeting": "Daggerfall greets those search for rest, and hope to challenge those who search for glory..."
+  },
+  {
+    "raw_id": "0602",
+    "province_id": 6,
+    "location_id": 2,
+    "greeting": "Camlorn, Jewel of the West, greets thee weary traveler and bids thee welcome to our City-State..."
+  },
+  {
+    "raw_id": "0603",
+    "province_id": 6,
+    "location_id": 3,
+    "greeting": "Shornhelm welcomes all who find themselves within our walls upon their journey. May good fortune smile upon thee and be merciful..."
+  },
+  {
+    "raw_id": "0604",
+    "province_id": 6,
+    "location_id": 4,
+    "greeting": "The port city of Wayrest hail all weary travelers who wish to rest. Find ye the strength within our walls to continue your journey, wherever that may be..."
+  },
+  {
+    "raw_id": "0605",
+    "province_id": 6,
+    "location_id": 5,
+    "greeting": "We of Evermore welcome you into our walls. Many call this their home and extend their welcome. Remember this, lest you forget who you would face in the world outside..."
+  },
+  {
+    "raw_id": "0606",
+    "province_id": 6,
+    "location_id": 6,
+    "greeting": "The northern port of Farrun welcomes you into her icy hold. Feel not the bite of our winter, nor the edge of the wind..."
+  },
+  {
+    "raw_id": "0607",
+    "province_id": 6,
+    "location_id": 7,
+    "greeting": "Welcome to Jehanna, a city as beautiful as her name. We greet you, and wish you only peace on your stay..."
+  },
+  {
+    "raw_id": "0608",
+    "province_id": 6,
+    "location_id": 8,
+    "greeting": "Weary traveler, thou art entering Sentinel, the guardian of Starfall Bay. Learn what it is to be survivors, for amongst enemies we stand alone..."
+  },
+  {
+    "raw_id": "0609",
+    "province_id": 6,
+    "location_id": 9,
+    "greeting": "Hegathe bids you welcome, and good fortune. We are home many who would seek the paths of danger. Not a deadlier challenge wouldst thou face elsewhere..."
+  },
+  {
+    "raw_id": "0610",
+    "province_id": 6,
+    "location_id": 10,
+    "greeting": "Gilane, the southern port of Hammerfell, welcomes thee into its walls. We stand ready for all who would come to us in peace..."
+  },
+  {
+    "raw_id": "0611",
+    "province_id": 6,
+    "location_id": 11,
+    "greeting": "The port city of Taneth welcomes thee unto its soil. We bids thee, be not fearful of this world, but stand forward tall and proud..."
+  },
+  {
+    "raw_id": "0612",
+    "province_id": 6,
+    "location_id": 12,
+    "greeting": "Rihad, southern most port of Hammerfell, welcomes thee. Lay aside thy vice and avarice and enter these walls as nobles. We wish you only a long life and prosperity..."
+  },
+  {
+    "raw_id": "0613",
+    "province_id": 6,
+    "location_id": 13,
+    "greeting": "Welcome to Dragonstar, home of the sacred rage. We wish thee peace and rest in our City-State, but conduct thyselves honorably, or thou shalt answer to our guards..."
+  },
+  {
+    "raw_id": "0614",
+    "province_id": 6,
+    "location_id": 14,
+    "greeting": "Thou art welcome in Elinhir, guardian of the West. Many name this home. Be cautious, lest ye draw their wrath upon thy heads..."
+  },
+  {
+    "raw_id": "0615",
+    "province_id": 6,
+    "location_id": 15,
+    "greeting": "Know that we of Skaven welcome thee, for it is rare indeed to receive travelers brave enough to stand under the shadow of our land..."
+  },
+  {
+    "raw_id": "0616",
+    "province_id": 6,
+    "location_id": 16,
+    "greeting": "We bid you welcome to the arctic wastes of Solitude, the northern most City-State in the realm. Beware our might..."
+  },
+  {
+    "raw_id": "0617",
+    "province_id": 6,
+    "location_id": 17,
+    "greeting": "We bid you welcome to the City-State which greets the sun as it begins its journey, Dawnstar..."
+  },
+  {
+    "raw_id": "0618",
+    "province_id": 6,
+    "location_id": 18,
+    "greeting": "We welcomes you to Winterhold. Let travelers find warmth within our walls, let challengers find us worthy..."
+  },
+  {
+    "raw_id": "0619",
+    "province_id": 6,
+    "location_id": 19,
+    "greeting": "We bids you enter Snowhawk, where the wind is as sharp as its talons and as fierce as its name..."
+  },
+  {
+    "raw_id": "0620",
+    "province_id": 6,
+    "location_id": 20,
+    "greeting": "Riften bids you welcome. We call this our home. Let those who challenge be wary..."
+  },
+  {
+    "raw_id": "0621",
+    "province_id": 6,
+    "location_id": 21,
+    "greeting": "The City-State of Falcrenth bids you welcome, as does its people..."
+  },
+  {
+    "raw_id": "0622",
+    "province_id": 6,
+    "location_id": 22,
+    "greeting": "The heart of Skyrim, Whiterun bids you welcome. For travelers we offer a place of rest..."
+  },
+  {
+    "raw_id": "0623",
+    "province_id": 6,
+    "location_id": 23,
+    "greeting": "Let all who enter Windhelm know of us. We laugh at death and thirst for life. Be not afraid, but instead enter bravely and live well..."
+  },
+  {
+    "raw_id": "0624",
+    "province_id": 6,
+    "location_id": 24,
+    "greeting": "You enter Ebonheart, also known as the Black City. To the north you can see the red-orange glow of Dagoth Ur, the firecone on the Black Isle. This city's ruler has a reputation of being extremely ruthless..."
+  },
+  {
+    "raw_id": "0625",
+    "province_id": 6,
+    "location_id": 25,
+    "greeting": "Narsis weaves it web of sleep upon all those who enter, for the Dark Elves of discourage visitors. It seems however that you are unaffected..."
+  },
+  {
+    "raw_id": "0626",
+    "province_id": 6,
+    "location_id": 26,
+    "greeting": "Blacklight holds the northern tip of Morrowind, and to the east is Dagoth Ur in all its fiery glory..."
+  },
+  {
+    "raw_id": "0627",
+    "province_id": 6,
+    "location_id": 27,
+    "greeting": "Firewatch is the closest City-State to the firecone, Dagoth Ur. Legend has it that a great labyrinth resides under that fiery mountain. Here in this city however, the danger comes from other sources..."
+  },
+  {
+    "raw_id": "0628",
+    "province_id": 6,
+    "location_id": 28,
+    "greeting": "Necrom, eastern port of the Realm, and City-State of a dark heat. Necrom is known for two things, the ferocity of their guards, and the quality of their arms..."
+  },
+  {
+    "raw_id": "0629",
+    "province_id": 6,
+    "location_id": 29,
+    "greeting": "You enter Mournhold, lost City-State of the first empire. It is said that a great evil resides under this city, slowly driving its citizens mad. It is said that none have ever seen the bodies of the slain after the a battle is over on this soil..."
+  },
+  {
+    "raw_id": "0630",
+    "province_id": 6,
+    "location_id": 30,
+    "greeting": "The southeastern port city of Tear is also known as the Jewel of the East. Of all the City-States in Morrowind, Tear is most open to trade and commerce. Perhaps this is why few have complained about the strange happenings when night falls..."
+  },
+  {
+    "raw_id": "0631",
+    "province_id": 6,
+    "location_id": 31,
+    "greeting": "Kragenmoor holds the western border of Morrowind. You are struck by a chill wind that seems to flow through your clothes and to your very bone..."
+  },
+  {
+    "raw_id": "0632",
+    "province_id": 6,
+    "location_id": 32,
+    "greeting": "You have entered the gates of Dusk, the High Elven city of Summurset. All who journey here know that we stand ready to meet you in friendship..."
+  },
+  {
+    "raw_id": "0633",
+    "province_id": 6,
+    "location_id": 33,
+    "greeting": "Enter Sunhold and be welcome, for we wish all who come in peace a long and healthy life, and those who come in search of glory, a quick and merciful death..."
+  },
+  {
+    "raw_id": "0634",
+    "province_id": 6,
+    "location_id": 34,
+    "greeting": "Alinor, forest city of Summurset, welcomes you to our gates. Know that the guards hold this city, and will fight any who challenge to keep it..."
+  },
+  {
+    "raw_id": "0635",
+    "province_id": 6,
+    "location_id": 35,
+    "greeting": "None can match the beauty of Shimmerene, the city of lights. Be welcome and merry, for what is ours is yours. However, if you come to steal tread lightly, the guards do not take kindly to would be thieves..."
+  },
+  {
+    "raw_id": "0636",
+    "province_id": 6,
+    "location_id": 36,
+    "greeting": "Welcome to Lillandril, the High Elven hold on the northern coasts of Summurset. The people fight here for honor and glory. Come, challenge our land, if you dare..."
+  },
+  {
+    "raw_id": "0637",
+    "province_id": 6,
+    "location_id": 37,
+    "greeting": "When High Lord Torinaan came to this isle, our city sprang from his first step onto its rocky shores. Be welcome to First Hold, birthplace of the High Elves who carry our past..."
+  },
+  {
+    "raw_id": "0638",
+    "province_id": 6,
+    "location_id": 38,
+    "greeting": "Skywatch, northern city of Summurset, welcomes you to its gates. Enter in peace and feel our warmth, challenge our lands and feel your blood run cold..."
+  },
+  {
+    "raw_id": "0639",
+    "province_id": 6,
+    "location_id": 39,
+    "greeting": "We hold the Plains of Summurset, for we are the High Elves of Cloudrest. Never will you see more beauty than in our land..."
+  },
+  {
+    "raw_id": "0640",
+    "province_id": 6,
+    "location_id": 40,
+    "greeting": "You enter Eldenroot, center of the Wood Elven nation. The elves here seem friendly and you are hailed in welcome. You overhear that the City-State's commerce is going well..."
+  },
+  {
+    "raw_id": "0641",
+    "province_id": 6,
+    "location_id": 41,
+    "greeting": "Perched on the edge of the great Elden Grove, Silvenar is a City-State of breath taking beauty. Tall minarets and spires worked out of marble rise out of the forest..."
+  },
+  {
+    "raw_id": "0642",
+    "province_id": 6,
+    "location_id": 42,
+    "greeting": "The coastal City-State of Woodhearth is the departure point for those bound for Summurset Isle. The Wood Elves here are friendly and pleasant and seem to have strong ties to magic..."
+  },
+  {
+    "raw_id": "0643",
+    "province_id": 6,
+    "location_id": 43,
+    "greeting": "Falinesti lies near the coast on the northern region of Valenwood. To the north are the spines of the Dragon's Teeth..."
+  },
+  {
+    "raw_id": "0644",
+    "province_id": 6,
+    "location_id": 44,
+    "greeting": "Greenheart lies on the southern edge of the Elden Grove. Beautiful trees fill the City-State, making it seem more like a forest than a thriving metropolis..."
+  },
+  {
+    "raw_id": "0645",
+    "province_id": 6,
+    "location_id": 45,
+    "greeting": "Named after the first king of the Wood Elves, Arenthia is regal in bearing and noble in stature. The city seems quiet and dignified for her guards are reputed to be honorable warriors but dangerous foes..."
+  },
+  {
+    "raw_id": "0646",
+    "province_id": 6,
+    "location_id": 46,
+    "greeting": "Haven lies on the southern edge of Valenwood. She seems a place of safety in an otherwise dangerous world..."
+  },
+  {
+    "raw_id": "0647",
+    "province_id": 6,
+    "location_id": 47,
+    "greeting": "Southpoint is the southern most port city in Valenwood. To the south can be seen the Blue Divide..."
+  },
+  {
+    "raw_id": "0648",
+    "province_id": 6,
+    "location_id": 48,
+    "greeting": "Corinth, heart of the Province Elsweyr, greets our weary brethren..."
+  },
+  {
+    "raw_id": "0649",
+    "province_id": 6,
+    "location_id": 49,
+    "greeting": "The white walled Alabaster welcomes you into her breast. Feel not the sting of fear, but instead the song of victory..."
+  },
+  {
+    "raw_id": "0650",
+    "province_id": 6,
+    "location_id": 50,
+    "greeting": "The southern port of Senchal greets you. Know that you are welcome within these walls, but take care not to take advantage of our hospitality..."
+  },
+  {
+    "raw_id": "0651",
+    "province_id": 6,
+    "location_id": 51,
+    "greeting": "Be welcome in Rimmen, chosen in the Empire to hold the greatest wealth. Come and bid us to accept your adventures, we have not seen true heroes in a time..."
+  },
+  {
+    "raw_id": "0652",
+    "province_id": 6,
+    "location_id": 52,
+    "greeting": "Welcome to Torval, home of the finest southern wines. Be wary of our market, for those who have crossed the merchants' path have been in dire straits indeed..."
+  },
+  {
+    "raw_id": "0653",
+    "province_id": 6,
+    "location_id": 53,
+    "greeting": "Dune stands forever. Challenge our land if you dare, for we are the best blades of the south, and we will show any who come to our door adventure..."
+  },
+  {
+    "raw_id": "0654",
+    "province_id": 6,
+    "location_id": 54,
+    "greeting": "You who would enter Orcrest beware! Monsters abide within these walls. They are called by thirst for blood, and you would do best to travel elsewhere..."
+  },
+  {
+    "raw_id": "0655",
+    "province_id": 6,
+    "location_id": 55,
+    "greeting": "You have come to Riverhold, closest City-State to the Imperial Isle. It is here that you can find the cheapest items to be bought, the Emperor's hand lying lightly upon our shoulders..."
+  },
+  {
+    "raw_id": "0656",
+    "province_id": 6,
+    "location_id": 56,
+    "greeting": "Stormhold lies on the northern tip of the Province of Black Marsh. Here the people seem friendly, but a strain shows in their eyes. Perhaps it is because of their proximity to the Dark Elven lands..."
+  },
+  {
+    "raw_id": "0657",
+    "province_id": 6,
+    "location_id": 57,
+    "greeting": "Thorn holds the eastern edge of the continent, and has been named by some the Jewel of the East. As you enter their gates however, you realize that this town is as deadly as it is rumored to be beautiful. Vagabonds eye your purse strings and guards seem to turn lazy eyes elsewhere..."
+  },
+  {
+    "raw_id": "0658",
+    "province_id": 6,
+    "location_id": 58,
+    "greeting": "You enter the city gates of Helstrom, noticing the dark looks the guards give you. They have a reputation of being very dangerous. Perhaps you can change that..."
+  },
+  {
+    "raw_id": "0659",
+    "province_id": 6,
+    "location_id": 59,
+    "greeting": "Gideon, the black city of the followers of Seth, lies near the southern tip of the Imperial Run. A cold air that has nothing to do with the time of year seems to chill your bones as you enter..."
+  },
+  {
+    "raw_id": "0660",
+    "province_id": 6,
+    "location_id": 60,
+    "greeting": "You enter the gates of Soulrest, leaving the sounds of the ocean and surf behind. Inside it seems as if a hush as fallen over the city, as if all inside are holding their breath in anticipation..."
+  },
+  {
+    "raw_id": "0661",
+    "province_id": 6,
+    "location_id": 61,
+    "greeting": "Blackrose holds many secrets. You feel eyes on your back as the city gates shut behind you with a hollow boom. It is said that many enter and few leave this City-State. You do not plan to add yourself to that list..."
+  },
+  {
+    "raw_id": "0662",
+    "province_id": 6,
+    "location_id": 62,
+    "greeting": "Lilmoth seems gloomy and forbidding. Never before have you experienced the unnatural fear that pervades the atmosphere. This city it is rumored, holds much under its streets..."
+  },
+  {
+    "raw_id": "0663",
+    "province_id": 6,
+    "location_id": 63,
+    "greeting": "The city gate of Archon looms over you as you enter. People around you here seem to be avoiding eye contact..."
+  }
+]

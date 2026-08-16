@@ -2664,6 +2664,57 @@ def arena_remove_item(item_name, quantity=1, **kwargs):
     return {"success": success, "item": item_name}
 
 @track_tool_activity
+def arena_create_spell(spell_name, effect_description, school=None, target_type="Target", tier=2, deduct_gold=True, **kwargs):
+    """
+    Craft and inscribe a new custom spell at a Mages Guild or through arcane study.
+    Calculates Magicka cost (SP), casting DC, and inscribers' fee.
+    """
+    from engine.spellmaker import create_spell as craft_spell
+    sheet = load_character()
+    caster_int = sheet.get("intelligence", 50)
+    
+    spell_info = craft_spell(
+        name=spell_name,
+        effect_description=effect_description,
+        school=school,
+        target_type=target_type,
+        tier=int(tier),
+        caster_intelligence=caster_int
+    )
+    
+    gold_fee = spell_info["gold_fee"]
+    current_gold = sheet.get("gold", 0)
+    
+    if deduct_gold and current_gold < gold_fee:
+        return {
+            "success": False,
+            "error": f"Insufficient gold. Creating '{spell_name}' requires {gold_fee} gold, but you only have {current_gold} gold.",
+            "spell_info": spell_info
+        }
+        
+    if deduct_gold:
+        sheet["gold"] = max(0, current_gold - gold_fee)
+        
+    # Learn the crafted spell
+    sheet = learn_spell(sheet, {
+        "name": spell_info["name"],
+        "school": spell_info["school"],
+        "tier": spell_info["tier"],
+        "sp_cost": spell_info["sp_cost"],
+        "target_type": spell_info["target_type"],
+        "effect_description": spell_info["effect_description"]
+    })
+    save_character(sheet)
+    
+    return {
+        "success": True,
+        "spell": spell_info,
+        "gold_spent": gold_fee if deduct_gold else 0,
+        "remaining_gold": sheet.get("gold", 0),
+        "spells": [s["name"] for s in sheet.get("spells", [])]
+    }
+
+@track_tool_activity
 def arena_learn_spell(spell_name, school="Restoration", tier=1, sp_cost=5, **kwargs):
     """Add a spell to the character's known spells."""
     sheet = load_character()

@@ -34,15 +34,60 @@ let cachedProvincesData = null;
 let selectedProvinceName = null;
 
 const PROVINCE_MAP_COORDS = {
-    "High Rock": { pinX: 235, pinY: 200, labelX: 235, labelY: 175 },
-    "Hammerfell": { pinX: 300, pinY: 330, labelX: 300, labelY: 305 },
-    "Skyrim": { pinX: 470, pinY: 170, labelX: 470, labelY: 145 },
-    "Cyrodiil": { pinX: 538, pinY: 320, labelX: 538, labelY: 295 },
-    "Morrowind": { pinX: 740, pinY: 215, labelX: 740, labelY: 185 },
-    "Summerset Isle": { pinX: 175, pinY: 505, labelX: 175, labelY: 475 },
-    "Valenwood": { pinX: 375, pinY: 460, labelX: 375, labelY: 435 },
-    "Elsweyr": { pinX: 515, pinY: 480, labelX: 515, labelY: 455 },
-    "Black Marsh": { pinX: 720, pinY: 465, labelX: 720, labelY: 440 }
+    "High Rock": {
+        "pinX": 144.0,
+        "pinY": 255.0,
+        "cap": "Daggerfall",
+        "path": "M 317,78 L 326,84 L 329,92 L 334,94 L 336,101 L 344,106 L 346,104 L 343,98 L 345,87 L 349,83 L 360,88 L 362,87 L 362,89 L 366,91 L 366,99 L 382,113 L 387,111 L 385,107 L 392,103 L 398,95 L 409,93 L 414,87 L 419,90 L 420,107 L 405,119 L 390,138 L 387,173 L 381,180 L 367,184 L 347,183 L 341,186 L 327,185 L 324,192 L 313,200 L 312,209 L 309,210 L 307,216 L 299,222 L 294,232 L 274,232 L 272,238 L 260,248 L 233,256 L 230,259 L 215,259 L 205,253 L 200,257 L 201,259 L 142,259 L 137,265 L 138,268 L 135,274 L 127,280 L 121,301 L 116,304 L 102,306 L 98,304 L 95,299 L 101,293 L 113,291 L 115,289 L 112,287 L 101,286 L 100,290 L 94,293 L 87,291 L 86,274 L 93,271 L 94,264 L 98,265 L 103,261 L 103,259 L 96,254 L 98,240 L 95,237 L 97,235 L 90,226 L 94,222 L 100,222 L 102,220 L 101,218 L 107,217 L 110,212 L 120,208 L 127,202 L 137,200 L 144,195 L 142,186 L 145,185 L 150,173 L 168,151 L 169,148 L 164,140 L 168,135 L 176,132 L 179,121 L 186,114 L 197,109 L 207,113 L 210,112 L 216,101 L 227,94 L 232,97 L 243,93 L 252,94 L 257,99 L 255,107 L 257,111 L 253,118 L 255,120 L 255,131 L 251,144 L 255,157 L 260,158 L 266,155 L 272,146 L 275,147 L 273,144 L 279,136 L 290,132 L 288,129 L 290,122 L 295,120 L 299,123 L 304,119 L 303,113 L 306,111 L 302,104 L 306,100 L 312,100 L 308,88 L 316,79 Z"
+    },
+    "Skyrim": {
+        "pinX": 570.0,
+        "pinY": 115.0,
+        "cap": "Solitude",
+        "path": "M 450,81 L 460,82 L 461,84 L 460,89 L 463,92 L 460,95 L 459,106 L 457,109 L 452,110 L 446,117 L 432,120 L 428,124 L 427,129 L 434,123 L 444,122 L 456,116 L 473,100 L 490,98 L 494,94 L 503,101 L 511,95 L 515,95 L 517,100 L 524,101 L 526,99 L 533,99 L 539,106 L 544,107 L 550,113 L 546,118 L 547,120 L 551,117 L 568,113 L 582,98 L 585,103 L 584,108 L 587,112 L 605,119 L 610,123 L 613,137 L 619,144 L 627,142 L 633,142 L 634,144 L 635,140 L 637,140 L 637,154 L 658,190 L 671,238 L 683,258 L 685,265 L 691,267 L 690,270 L 679,276 L 660,276 L 658,274 L 649,273 L 647,269 L 644,270 L 619,256 L 610,256 L 600,260 L 593,257 L 585,257 L 581,260 L 578,259 L 560,264 L 557,262 L 552,268 L 543,270 L 507,264 L 502,259 L 507,254 L 498,237 L 469,206 L 453,197 L 426,193 L 397,184 L 394,178 L 388,175 L 393,137 L 406,121 L 421,109 L 422,93 L 420,88 L 423,87 L 424,89 L 433,90 L 436,87 L 444,85 L 445,82 L 449,82 Z"
+    },
+    "Morrowind": {
+        "pinX": 835.0,
+        "pinY": 360.0,
+        "cap": "Mournhold",
+        "path": "M 683,66 L 690,71 L 690,80 L 699,80 L 701,82 L 704,90 L 703,96 L 706,99 L 704,106 L 970,106 L 981,111 L 976,122 L 979,131 L 985,135 L 985,142 L 979,148 L 979,156 L 976,160 L 903,160 L 906,164 L 963,163 L 965,166 L 961,171 L 924,172 L 921,183 L 919,183 L 918,198 L 927,217 L 930,218 L 934,224 L 933,240 L 929,244 L 928,251 L 956,252 L 959,255 L 959,259 L 966,263 L 968,274 L 963,278 L 957,296 L 955,296 L 952,301 L 947,301 L 939,312 L 931,313 L 920,323 L 918,332 L 905,339 L 898,355 L 897,365 L 894,368 L 886,371 L 883,376 L 869,386 L 854,387 L 859,394 L 883,394 L 887,397 L 888,406 L 893,414 L 891,422 L 892,431 L 902,438 L 904,437 L 906,440 L 899,449 L 901,453 L 900,462 L 896,464 L 872,463 L 867,456 L 860,453 L 858,456 L 834,439 L 826,441 L 815,453 L 809,456 L 789,446 L 780,444 L 764,432 L 758,432 L 753,427 L 746,412 L 729,390 L 724,377 L 708,361 L 706,347 L 707,342 L 712,336 L 711,329 L 714,325 L 712,323 L 714,320 L 711,316 L 712,307 L 702,291 L 697,277 L 691,272 L 693,267 L 687,264 L 671,234 L 672,231 L 670,229 L 666,205 L 662,201 L 663,199 L 659,188 L 642,159 L 639,150 L 639,140 L 644,138 L 657,138 L 661,134 L 665,137 L 667,133 L 666,125 L 655,120 L 656,115 L 652,108 L 652,103 L 645,95 L 649,89 L 641,78 L 644,76 L 662,76 L 664,70 L 673,70 L 682,67 Z"
+    },
+    "Hammerfell": {
+        "pinX": 210.0,
+        "pinY": 275.0,
+        "cap": "Sentinel",
+        "path": "M 387,177 L 391,178 L 393,183 L 401,188 L 426,195 L 450,198 L 462,204 L 491,232 L 504,252 L 500,259 L 503,263 L 489,275 L 473,295 L 463,324 L 453,341 L 447,344 L 433,359 L 407,375 L 403,381 L 399,377 L 378,379 L 374,373 L 366,373 L 362,377 L 362,381 L 356,392 L 345,398 L 337,411 L 334,408 L 336,400 L 330,394 L 320,394 L 318,383 L 306,375 L 308,369 L 304,363 L 293,360 L 290,355 L 275,348 L 266,348 L 258,345 L 252,347 L 243,356 L 243,364 L 251,373 L 260,377 L 275,374 L 284,377 L 289,373 L 296,378 L 295,383 L 298,388 L 298,395 L 294,397 L 291,396 L 287,393 L 286,388 L 282,390 L 281,395 L 281,398 L 284,399 L 289,406 L 294,408 L 295,411 L 292,417 L 286,420 L 279,418 L 274,421 L 268,418 L 265,420 L 248,418 L 245,413 L 253,403 L 252,400 L 256,390 L 251,387 L 243,388 L 234,374 L 227,371 L 222,366 L 218,357 L 212,352 L 197,361 L 196,365 L 193,366 L 196,367 L 195,369 L 188,377 L 188,382 L 177,388 L 164,386 L 163,380 L 159,377 L 159,371 L 152,365 L 147,365 L 144,360 L 146,354 L 152,350 L 151,348 L 155,339 L 151,322 L 160,308 L 159,302 L 162,299 L 162,288 L 165,285 L 169,285 L 174,279 L 178,281 L 182,274 L 189,273 L 195,277 L 201,271 L 198,265 L 204,254 L 209,258 L 214,258 L 217,263 L 228,263 L 233,257 L 260,249 L 273,238 L 274,233 L 294,233 L 300,222 L 306,218 L 308,212 L 313,209 L 314,200 L 325,192 L 327,186 L 341,187 L 349,184 L 367,185 L 383,181 L 386,178 Z"
+    },
+    "Cyrodiil": {
+        "pinX": 565.0,
+        "pinY": 368.0,
+        "cap": "Imperial City",
+        "path": "M 612,257 L 614,259 L 618,257 L 646,271 L 648,274 L 660,278 L 679,278 L 689,272 L 696,277 L 701,291 L 711,307 L 710,316 L 713,320 L 711,322 L 713,325 L 710,329 L 711,336 L 706,342 L 705,347 L 706,359 L 723,377 L 734,400 L 743,409 L 752,427 L 757,432 L 738,450 L 728,484 L 717,507 L 695,529 L 677,551 L 673,561 L 671,576 L 664,590 L 654,596 L 650,596 L 649,589 L 641,586 L 638,580 L 640,572 L 639,566 L 638,568 L 633,568 L 633,575 L 628,583 L 618,587 L 621,577 L 616,543 L 616,529 L 622,507 L 621,493 L 612,482 L 593,467 L 541,456 L 522,457 L 513,463 L 513,460 L 498,446 L 487,442 L 477,442 L 459,444 L 442,450 L 434,449 L 419,456 L 411,464 L 399,471 L 372,475 L 370,470 L 374,463 L 371,460 L 353,458 L 349,447 L 344,444 L 343,440 L 344,429 L 349,424 L 348,417 L 355,411 L 358,405 L 375,394 L 401,388 L 407,377 L 434,360 L 447,346 L 450,346 L 454,342 L 465,324 L 470,305 L 476,293 L 493,273 L 504,264 L 517,268 L 522,267 L 526,270 L 533,269 L 543,272 L 551,270 L 557,264 L 560,266 L 577,261 L 580,262 L 586,258 L 588,260 L 593,259 L 597,261 L 611,258 Z"
+    },
+    "Summerset Isle": {
+        "pinX": 150.0,
+        "pinY": 615.0,
+        "cap": "Alinor",
+        "path": "M 209,494 L 246,495 L 267,507 L 271,510 L 272,516 L 280,520 L 281,541 L 283,546 L 289,548 L 292,553 L 292,608 L 289,613 L 288,624 L 287,626 L 271,628 L 237,629 L 237,675 L 232,681 L 228,691 L 221,692 L 219,696 L 187,696 L 181,693 L 177,688 L 109,688 L 100,685 L 95,679 L 94,674 L 90,672 L 87,664 L 87,604 L 79,595 L 81,588 L 86,585 L 98,585 L 99,580 L 108,571 L 109,555 L 123,527 L 143,527 L 154,517 L 201,517 L 202,498 L 208,495 Z"
+    },
+    "Valenwood": {
+        "pinX": 420.0,
+        "pinY": 530.0,
+        "cap": "Falinesti",
+        "path": "M 479,443 L 491,444 L 499,448 L 512,460 L 510,473 L 505,478 L 501,480 L 497,479 L 492,484 L 488,494 L 478,507 L 478,536 L 476,538 L 482,566 L 489,577 L 500,588 L 512,620 L 513,636 L 508,628 L 503,630 L 504,639 L 508,644 L 505,646 L 494,645 L 484,647 L 481,651 L 484,654 L 484,659 L 482,663 L 476,666 L 469,656 L 470,649 L 454,653 L 452,648 L 447,649 L 443,647 L 442,645 L 448,639 L 448,636 L 442,628 L 440,617 L 432,618 L 429,616 L 415,615 L 400,627 L 383,629 L 381,626 L 383,622 L 372,618 L 361,622 L 356,621 L 353,618 L 354,615 L 348,612 L 336,598 L 328,598 L 329,591 L 325,587 L 326,565 L 332,562 L 341,563 L 345,561 L 337,557 L 339,536 L 342,535 L 341,530 L 344,525 L 343,509 L 341,507 L 344,501 L 348,501 L 348,508 L 352,505 L 350,503 L 358,498 L 359,495 L 368,496 L 377,490 L 381,490 L 386,498 L 392,494 L 402,495 L 404,488 L 413,488 L 413,479 L 422,456 L 436,451 L 449,452 L 455,446 L 478,444 Z"
+    },
+    "Elsweyr": {
+        "pinX": 550.0,
+        "pinY": 600.0,
+        "cap": "Torval",
+        "path": "M 523,458 L 548,458 L 567,464 L 594,469 L 619,492 L 621,504 L 615,528 L 619,585 L 616,587 L 612,586 L 609,590 L 604,591 L 600,597 L 598,597 L 596,604 L 594,603 L 585,609 L 583,624 L 593,628 L 596,634 L 610,644 L 610,648 L 620,656 L 621,661 L 619,668 L 614,670 L 609,668 L 604,662 L 599,662 L 594,665 L 593,663 L 585,663 L 577,660 L 574,663 L 569,659 L 564,661 L 563,659 L 559,659 L 552,651 L 536,650 L 529,636 L 523,635 L 517,637 L 515,635 L 514,622 L 504,592 L 491,578 L 482,562 L 478,541 L 480,535 L 479,508 L 491,491 L 493,484 L 496,481 L 504,480 L 512,472 L 513,464 L 522,459 Z"
+    },
+    "Black Marsh": {
+        "pinX": 770.0,
+        "pinY": 520.0,
+        "cap": "Stormhold",
+        "path": "M 758,433 L 764,433 L 780,446 L 783,445 L 809,458 L 825,443 L 832,440 L 836,443 L 835,446 L 837,448 L 839,442 L 849,452 L 854,453 L 859,460 L 858,465 L 852,472 L 854,488 L 860,499 L 859,512 L 863,518 L 872,520 L 871,522 L 875,528 L 870,546 L 866,550 L 866,556 L 873,571 L 865,585 L 862,597 L 866,605 L 856,620 L 845,621 L 842,626 L 837,629 L 843,646 L 837,648 L 825,659 L 811,656 L 804,647 L 804,640 L 809,632 L 797,621 L 795,616 L 790,622 L 790,637 L 787,641 L 791,646 L 790,653 L 796,658 L 804,656 L 808,659 L 809,671 L 812,676 L 811,681 L 802,683 L 799,686 L 792,686 L 785,679 L 774,679 L 754,669 L 744,667 L 738,662 L 736,654 L 728,655 L 718,668 L 700,668 L 691,673 L 681,671 L 675,664 L 675,660 L 678,657 L 678,646 L 682,642 L 677,638 L 680,630 L 678,619 L 682,614 L 682,610 L 681,605 L 669,598 L 665,590 L 672,577 L 675,558 L 685,542 L 720,504 L 729,484 L 739,450 L 757,434 Z"
+    }
 };
 
 async function openMapModal() {
@@ -81,35 +126,25 @@ async function renderTamrielMap() {
 
     if (!selectedProvinceName) selectedProvinceName = curProvince;
 
-    const pinCoords = PROVINCE_MAP_COORDS[curProvince] || { pinX: 538, pinY: 320 };
+    const pinCoords = PROVINCE_MAP_COORDS[curProvince] || { pinX: 653.9, pinY: 416.8 };
 
-    let markersSvg = '';
+    let clickZonesSvg = '';
     for (const [pName, data] of Object.entries(PROVINCE_MAP_COORDS)) {
-        const isCurrent = pName.toLowerCase() === curProvince.toLowerCase();
-        const isSelected = pName.toLowerCase() === selectedProvinceName.toLowerCase();
-        
-        const badgeBg = isCurrent ? 'rgba(239, 68, 68, 0.85)' : (isSelected ? 'rgba(56, 189, 248, 0.85)' : 'rgba(15, 23, 42, 0.75)');
-        const badgeBorder = isCurrent ? '#fca5a5' : (isSelected ? '#7dd3fc' : 'rgba(226, 176, 71, 0.6)');
-        const textColor = isCurrent ? '#ffffff' : (isSelected ? '#ffffff' : '#fef08a');
-
-        markersSvg += `
-            <g class="province-marker-group" style="cursor: pointer;" onclick="inspectProvince('${pName}')">
-                <!-- Interactive click area -->
-                <circle cx="${data.pinX}" cy="${data.pinY}" r="36" fill="transparent" />
-                
-                <!-- Province Label Badge -->
-                <rect x="${data.labelX - 48}" y="${data.labelY - 10}" width="96" height="20" rx="5" fill="${badgeBg}" stroke="${badgeBorder}" stroke-width="1.2" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); transition: all 0.2s ease;" />
-                <text x="${data.labelX}" y="${data.labelY + 4}" fill="${textColor}" font-size="9.5" font-weight="700" font-family="'Cinzel', Georgia, serif" text-anchor="middle" letter-spacing="0.5" pointer-events="none">${pName.toUpperCase()}</text>
+        clickZonesSvg += `
+            <g class="province-click-zone" style="cursor: pointer;" onmousemove="showMapProvinceTooltip(event, '${pName}')" onmouseleave="hideMapProvinceTooltip()" onclick="showMapProvinceTooltip(event, '${pName}')">
+                <!-- Completely Invisible Province Click Hotspot -->
+                <path d="${data.path}" fill="rgba(0,0,0,0.001)" stroke="transparent" stroke-width="1" fill-rule="evenodd" pointer-events="all" style="cursor: pointer;" />
             </g>
         `;
     }
 
-    // High resolution Tamriel Map SVG with image backdrop and pulsing pin
+    // High resolution Map SVG with floating cursor tooltip
     container.innerHTML = `
-        <svg viewBox="0 0 1024 589" style="width: 100%; height: auto; display: block; background: #a6c9e2;">
+        <svg viewBox="0 0 1024 768" onmouseleave="hideMapProvinceTooltip()" style="width: 100%; height: auto; display: block; background: #000; border-radius: 8px; user-select: none;">
             <defs>
+                <!-- Glowing Pin Filter -->
                 <filter id="pinGlow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feGaussianBlur stdDeviation="3.5" result="blur" />
                     <feMerge>
                         <feMergeNode in="blur" />
                         <feMergeNode in="SourceGraphic" />
@@ -117,74 +152,111 @@ async function renderTamrielMap() {
                 </filter>
             </defs>
 
-            <!-- Authentic Tamriel Map Image -->
-            <image href="/static/img/tamriel.webp" x="0" y="0" width="1024" height="589" />
+            <!-- Tamriel Map Image (1024x768) -->
+            <image href="/static/img/tamriel_map.png" x="0" y="0" width="1024" height="768" />
 
-            <!-- Province Badges & Click Hotspots -->
-            ${markersSvg}
+            <!-- Invisible Click Hotspots for each province (no label badges) -->
+            ${clickZonesSvg}
 
-            <!-- Real-time Location Pin 📍 -->
-            <g transform="translate(${pinCoords.pinX}, ${pinCoords.pinY})" filter="url(#pinGlow)">
+            <!-- Real-time Location Pin 📍 (Clean glowing concentric marker centered on Imperial City / active location) -->
+            <g transform="translate(${pinCoords.pinX}, ${pinCoords.pinY})" filter="url(#pinGlow)" pointer-events="none">
                 <!-- Pulse animation rings -->
-                <circle cx="0" cy="0" r="16" fill="none" stroke="#fbbf24" stroke-width="2" opacity="0.9">
-                    <animate attributeName="r" values="10;28" dur="2s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="1;0" dur="2s" repeatCount="indefinite" />
+                <circle cx="0" cy="0" r="18" fill="none" stroke-width="2.2" opacity="0.85" style="stroke: var(--gold-warm)">
+                    <animate attributeName="r" values="8;30" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.9;0" dur="2s" repeatCount="indefinite" />
                 </circle>
                 <!-- Center Pin Marker -->
-                <circle cx="0" cy="0" r="8" fill="#ef4444" stroke="#ffffff" stroke-width="2" />
-                <circle cx="0" cy="0" r="3.5" fill="#ffffff" />
-                <rect x="-46" y="12" width="92" height="20" rx="4" fill="rgba(15, 23, 42, 0.92)" stroke="#fbbf24" stroke-width="1.2" />
-                <text x="0" y="26" fill="#fef08a" font-size="10" font-weight="700" text-anchor="middle" font-family="sans-serif">YOU ARE HERE</text>
+                <circle cx="0" cy="0" r="8" stroke-width="2" style="fill: var(--danger-vivid); stroke: #ffffff" />
+                <circle cx="0" cy="0" r="3" fill="#ffffff" />
             </g>
         </svg>
+
+        <!-- Floating Cursor Tooltip -->
+        <div id="map-cursor-tooltip" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1000; background: hsla(var(--slate-h), var(--slate-s), 9%, 0.96); backdrop-filter: blur(12px); border: 1px solid hsla(var(--gold-h), var(--gold-s), 50%, 0.45); border-radius: 8px; padding: 10px 13px; max-width: 290px; box-shadow: 0 8px 24px rgba(0,0,0,0.85), 0 0 10px hsla(var(--gold-h), var(--gold-s), 50%, 0.2); opacity: 0; transform: scale(0.96); transition: opacity 0.12s ease, transform 0.12s ease;"></div>
     `;
-
-    renderProvinceDetailsCard(selectedProvinceName);
 }
 
-function inspectProvince(provinceName) {
-    selectedProvinceName = provinceName;
-    renderTamrielMap();
-}
+let activeMapHoverProvince = null;
 
-function renderProvinceDetailsCard(pName) {
-    const detailsContainer = document.getElementById('map-province-details');
-    if (!detailsContainer) return;
+function showMapProvinceTooltip(e, pName) {
+    const container = document.getElementById('arena-map-container');
+    const tooltip = document.getElementById('map-cursor-tooltip');
+    if (!container || !tooltip) return;
 
+    activeMapHoverProvince = pName;
     const prov = (cachedProvincesData || []).find(p => p.name.toLowerCase() === pName.toLowerCase()) || {
         name: pName,
         dominant_race: "Inhabitants of Tamriel",
         climate: "Varied",
         culture_summary: "A storied realm within the Empire of Tamriel.",
-        cities: [],
-        main_quest_dungeon: "Ancient Ruins"
+        cities: []
     };
 
     const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
     const isCurrent = (world.current_province || '').toLowerCase() === pName.toLowerCase();
 
-    detailsContainer.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-            <div>
-                <h3 style="margin: 0; font-size: 1.1rem; color: var(--arena-gold); font-family: var(--font-heading); display: flex; align-items: center; gap: 8px;">
-                    ${prov.name}
-                    ${isCurrent ? '<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #ef4444; color: #fff; font-weight: 700; text-transform: uppercase;">Current Province</span>' : ''}
-                </h3>
-                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                    <strong>Climate:</strong> ${prov.climate || 'Temperate'} • <strong>Dominant Race:</strong> ${prov.dominant_race || 'Native'}
-                </div>
-            </div>
-            <div style="text-align: right; font-size: 0.78rem; color: var(--arena-gold);">
-                <strong>Quest Dungeon:</strong> ${prov.main_quest_dungeon || 'Unknown'}
-            </div>
+    tooltip.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <h4 style="margin: 0; font-size: 0.94rem; color: var(--gold-bright); font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 0.8px;">
+                ${prov.name}
+            </h4>
+            ${isCurrent ? '<span style="font-size: 0.58rem; padding: 1px 6px; border-radius: 3px; background: hsla(var(--green-h), 70%, 45%, 0.2); color: var(--success-bright); border: 1px solid hsla(var(--green-h), 70%, 45%, 0.4); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Current</span>' : ''}
         </div>
-        <p style="margin: 0 0 10px 0; font-size: 0.82rem; color: var(--text-main); line-height: 1.45;">
+        <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
+            <strong>Climate:</strong> ${prov.climate || 'Temperate'} • <strong>Race:</strong> ${prov.dominant_race || 'Native'}
+        </div>
+        <p style="margin: 0 0 6px 0; font-size: 0.75rem; color: var(--text-main); line-height: 1.35;">
             ${prov.culture_summary || ''}
         </p>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">
-            <strong style="color: var(--text-main);">Major Cities:</strong> ${(prov.cities || []).join(', ') || 'Various settlements'}
+        <div style="font-size: 0.70rem; color: var(--text-dim);">
+            <strong style="color: var(--text-muted);">Cities:</strong> ${(prov.cities || []).join(', ') || 'Settlements'}
         </div>
     `;
+
+    positionMapProvinceTooltip(e);
+    tooltip.style.opacity = '1';
+    tooltip.style.transform = 'scale(1)';
+}
+
+function positionMapProvinceTooltip(e) {
+    const container = document.getElementById('arena-map-container');
+    const tooltip = document.getElementById('map-cursor-tooltip');
+    if (!container || !tooltip || !activeMapHoverProvince) return;
+
+    const rect = container.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const tooltipWidth = tooltip.offsetWidth || 280;
+    const tooltipHeight = tooltip.offsetHeight || 140;
+
+    let left = mouseX + 14;
+    let top = mouseY + 14;
+
+    // Flip horizontally if close to right edge
+    if (left + tooltipWidth > rect.width - 10) {
+        left = mouseX - tooltipWidth - 14;
+    }
+    // Flip vertically if close to bottom edge
+    if (top + tooltipHeight > rect.height - 10) {
+        top = mouseY - tooltipHeight - 14;
+    }
+
+    // Clamp strictly within map container borders
+    left = Math.max(8, Math.min(rect.width - tooltipWidth - 8, left));
+    top = Math.max(8, Math.min(rect.height - tooltipHeight - 8, top));
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+}
+
+function hideMapProvinceTooltip() {
+    activeMapHoverProvince = null;
+    const tooltip = document.getElementById('map-cursor-tooltip');
+    if (tooltip) {
+        tooltip.style.opacity = '0';
+        tooltip.style.transform = 'scale(0.96)';
+    }
 }
 
 function showDebugToast(message) {
@@ -196,8 +268,8 @@ function showDebugToast(message) {
         document.body.appendChild(container);
     }
     const toast = document.createElement('div');
-    toast.style.cssText = 'background: rgba(239, 68, 68, 0.95); color: white; padding: 12px 16px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto; word-break: break-all; border-left: 4px solid #fca5a5;';
-    toast.innerHTML = `<div style="font-weight: bold; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Application Error</div><div>${message}</div><button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; text-decoration: underline; margin-top: 8px; cursor: pointer; padding: 0; font-size: 0.75rem;">Dismiss</button>`;
+    toast.style.cssText = 'background: hsla(0, 85%, 60%, 0.95); color: white; padding: 12px 16px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto; word-break: break-all; border-left: 4px solid var(--danger-bright);';
+    toast.innerHTML = `<div style="font-weight: bold; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; stroke: var(--danger-bright);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Application Error</div><div>${message}</div><button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; text-decoration: underline; margin-top: 8px; cursor: pointer; padding: 0; font-size: 0.75rem;">Dismiss</button>`;
     container.appendChild(toast);
 }
 
@@ -866,8 +938,8 @@ function showOnboardingCard() {
         localContent = `
             <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">Local LLM engine is running and active.</p>
             <div class="local-steps" style="font-size: 0.8rem; gap: 6px; margin-bottom: 15px;">
-                <div class="step-item" style="color: #86efac;">
-                    <span class="step-num" style="background: rgba(34, 197, 94, 0.12); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.25);">✓</span>
+                <div class="step-item" style="color: var(--success-bright);">
+                    <span class="step-num" style="background: hsla(115, 70%, 45%, 0.12); color: var(--success-bright); border: 1px solid hsla(115, 70%, 45%, 0.25);">✓</span>
                     <span>Engine online. Choose a model in the header selector to start conversing.</span>
                 </div>
             </div>
@@ -1502,7 +1574,7 @@ async function searchHFModels(inputId, resultsId) {
         container.innerHTML = '';
         results.forEach(m => {
             const item = document.createElement('div');
-            item.style.cssText = 'display: flex; flex-direction: column; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; width: 100%; box-sizing: border-box; gap: 8px; margin-bottom: 6px;';
+            item.style.cssText = 'display: flex; flex-direction: column; padding: 10px; background: hsla(215, 5%, 100%, 0.03); border: 1px solid var(--border-color); border-radius: 8px; width: 100%; box-sizing: border-box; gap: 8px; margin-bottom: 6px;';
             item.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;">
                     <div style="min-width: 0; flex: 1; text-align: left;">
@@ -1511,12 +1583,12 @@ async function searchHFModels(inputId, resultsId) {
                     </div>
                     <button onclick="expandHFRepo('${m.id}', this)" class="onboarding-btn" style="margin: 0; padding: 2px 8px; font-size: 0.7rem; height: 24px; flex-shrink: 0; background: var(--border-color); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">Show Files</button>
                 </div>
-                <div class="repo-files-container" style="display: none; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 4px; flex-direction: column; gap: 6px;"></div>
+                <div class="repo-files-container" style="display: none; border-top: 1px solid hsla(215, 5%, 100%, 0.05); padding-top: 8px; margin-top: 4px; flex-direction: column; gap: 6px;"></div>
             `;
             container.appendChild(item);
         });
     } catch (e) {
-        container.innerHTML = '<div style="color: #fca5a5; font-size: 0.75rem; text-align: center; width: 100%; margin: 10px 0;">Search failed.</div>';
+        container.innerHTML = '<div style="color: var(--danger-bright); font-size: 0.75rem; text-align: center; width: 100%; margin: 10px 0;">Search failed.</div>';
     }
 }
 
@@ -1547,7 +1619,7 @@ async function expandHFRepo(repoId, btn) {
         filesContainer.innerHTML = '';
         files.forEach(f => {
             const fileRow = document.createElement('div');
-            fileRow.style.cssText = 'display: flex; flex-direction: column; font-size: 0.7rem; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; gap: 6px; width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.03);';
+            fileRow.style.cssText = 'display: flex; flex-direction: column; font-size: 0.7rem; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; gap: 6px; width: 100%; box-sizing: border-box; border: 1px solid hsla(215, 5%, 100%, 0.03);';
             const trackingName = `${repoId}@${f.filename}`;
             const cleanId = trackingName.replace(/[^a-zA-Z0-9]/g, '');
             fileRow.innerHTML = `
@@ -1564,7 +1636,7 @@ async function expandHFRepo(repoId, btn) {
                         <span class="speed-span">0 MB/s</span>
                         <span class="eta-span">--:--</span>
                     </div>
-                    <div style="background: rgba(255,255,255,0.08); border-radius: 3px; height: 4px; overflow: hidden; width: 100%;">
+                    <div style="background: hsla(215, 5%, 100%, 0.08); border-radius: 3px; height: 4px; overflow: hidden; width: 100%;">
                         <div class="bar-span" style="background: var(--primary-accent); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
                     </div>
                 </div>
@@ -1572,7 +1644,7 @@ async function expandHFRepo(repoId, btn) {
             filesContainer.appendChild(fileRow);
         });
     } catch (e) {
-        filesContainer.innerHTML = '<div style="color: #fca5a5; font-size: 0.65rem; text-align: center; width: 100%; margin: 5px 0;">Failed to load files.</div>';
+        filesContainer.innerHTML = '<div style="color: var(--danger-bright); font-size: 0.65rem; text-align: center; width: 100%; margin: 5px 0;">Failed to load files.</div>';
     }
 }
 
@@ -1643,7 +1715,7 @@ function pollDownloadProgress(trackingName, progressWrapper, btn) {
                 } else if (statusObj.status === 'completed') {
                     clearInterval(interval);
                     btn.textContent = "Downloaded";
-                    btn.style.background = "#10b981"; // green style
+                    btn.style.background = "var(--success-color)"; // green style
                     btn.disabled = true;
                     if (pctSpan) pctSpan.textContent = "100%";
                     if (barSpan) barSpan.style.width = "100%";
@@ -1652,7 +1724,7 @@ function pollDownloadProgress(trackingName, progressWrapper, btn) {
                     fetchAndRenderLocalModels();
                 } else if (statusObj.status === 'failed') {
                     clearInterval(interval);
-                    showCustomAlert("Download Failed", `Model download failed:<br><code style="color: #fca5a5; font-size: 0.75rem;">${statusObj.error || 'Unknown error'}</code>`);
+                    showCustomAlert("Download Failed", `Model download failed:<br><code style="color: var(--danger-bright); font-size: 0.75rem;">${statusObj.error || 'Unknown error'}</code>`);
                     btn.disabled = false;
                     btn.textContent = "Download";
                     if (progressWrapper) progressWrapper.style.display = 'none';
@@ -1702,7 +1774,7 @@ async function fetchAndRenderLocalModels() {
             });
             
             html += `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); gap: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; background: hsla(215, 5%, 100%, 0.03); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); gap: 10px;">
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-size: 0.78rem; font-weight: 500; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${displayName}">${displayName}</div>
                         <div style="font-size: 0.65rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${modelKey}</div>
@@ -1722,7 +1794,7 @@ async function fetchAndRenderLocalModels() {
         listContainer.innerHTML = html;
     } catch (e) {
         console.error("Error fetching local models detail:", e);
-        listContainer.innerHTML = '<div style="color: #fca5a5; font-size: 0.75rem; margin-top: 10px;">Failed to fetch model list.</div>';
+        listContainer.innerHTML = '<div style="color: var(--danger-bright); font-size: 0.75rem; margin-top: 10px;">Failed to fetch model list.</div>';
     }
 }
 
@@ -1780,7 +1852,7 @@ async function loadLocalModelDirect(modelKey, btn) {
 
 // --- deleteLocalModel ---
 async function deleteLocalModel(modelKey, btn) {
-    showCustomConfirm("Delete Model", `Are you sure you want to permanently delete this model from disk?<br><code style="font-size: 0.7rem; color: #fca5a5; word-break: break-all;">${modelKey}</code>`, async () => {
+    showCustomConfirm("Delete Model", `Are you sure you want to permanently delete this model from disk?<br><code style="font-size: 0.7rem; color: var(--danger-bright); word-break: break-all;">${modelKey}</code>`, async () => {
         btn.disabled = true;
         btn.textContent = "Deleting...";
         try {
@@ -1861,28 +1933,28 @@ async function pollComfyCheckpointDownloads() {
             if (info.status === 'downloading') {
                 activeCount++;
                 html += `
-                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 6px; border-radius: 4px;">
+                    <div style="background: hsla(215, 5%, 100%, 0.02); border: 1px solid var(--border-color); padding: 6px; border-radius: 4px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                             <span style="font-weight: 500; font-size: 0.72rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 70%;" title="${filename}">${filename}</span>
                             <span>${info.progress}%</span>
                         </div>
-                        <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                        <div style="width: 100%; height: 4px; background: hsla(215, 5%, 100%, 0.1); border-radius: 2px; overflow: hidden;">
                             <div style="width: ${info.progress}%; height: 100%; background: var(--primary-accent); transition: width 0.3s;"></div>
                         </div>
                     </div>
                 `;
             } else if (info.status === 'completed') {
                 html += `
-                    <div style="background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2); padding: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.72rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 80%; color: #86efac;" title="${filename}">${filename}</span>
-                        <span style="color: #86efac; font-size: 0.65rem; font-weight: 600;">Done</span>
+                    <div style="background: hsla(115, 70%, 45%, 0.05); border: 1px solid hsla(115, 70%, 45%, 0.2); padding: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.72rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 80%; color: var(--success-bright);" title="${filename}">${filename}</span>
+                        <span style="color: var(--success-bright); font-size: 0.65rem; font-weight: 600;">Done</span>
                     </div>
                 `;
             } else if (info.status === 'failed') {
                 html += `
-                    <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); padding: 6px; border-radius: 4px;">
-                        <div style="font-size: 0.72rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: #fca5a5;" title="${filename}">${filename}</div>
-                        <div style="font-size: 0.62rem; color: #fca5a5; margin-top: 2px;">Error: ${info.error || 'Failed'}</div>
+                    <div style="background: hsla(0, 85%, 60%, 0.05); border: 1px solid hsla(0, 85%, 60%, 0.2); padding: 6px; border-radius: 4px;">
+                        <div style="font-size: 0.72rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: var(--danger-bright);" title="${filename}">${filename}</div>
+                        <div style="font-size: 0.62rem; color: var(--danger-bright); margin-top: 2px;">Error: ${info.error || 'Failed'}</div>
                     </div>
                 `;
             }
@@ -2142,14 +2214,14 @@ function updatePlayerHeartState(char, world) {
     const conditions = (char.conditions || []).map(c => c.toLowerCase());
     const isAfflicted = conditions.some(c => c.includes('poison') || c.includes('disease'));
 
-    let color = '#ef4444'; // Crimson Red
-    let glow = 'rgba(239, 68, 68, 0.6)';
+    let color = 'var(--danger-vivid)'; // Crimson Red
+    let glow = 'hsla(0, 85%, 60%, 0.6)';
     let speed = '2.0s';
     let statusText = `Vitality: ${hpCurrent}/${hpMax} HP (Healthy)`;
 
     if (hpCurrent <= 0) {
-        color = '#64748b'; // Slate gray (fallen)
-        glow = 'rgba(100, 116, 139, 0.4)';
+        color = 'var(--text-muted)'; // Slate gray (fallen)
+        glow = 'hsla(215, 18%, 47%, 0.4)';
         speed = '4.0s';
         statusText = 'Player Status: Fallen (GAME OVER)';
         heartElement.classList.remove('jiggling');
@@ -2159,26 +2231,26 @@ function updatePlayerHeartState(char, world) {
             clearGameOverState();
         }
         if (isAfflicted) {
-            color = '#22c55e'; // Sickly green (poison/disease)
-            glow = 'rgba(34, 197, 94, 0.7)';
+            color = 'var(--success-deep)'; // Sickly green (poison/disease)
+            glow = 'hsla(115, 70%, 45%, 0.7)';
             speed = '0.9s';
             statusText = `Player Status: Afflicted (${char.conditions.join(', ')}) - ${hpCurrent}/${hpMax} HP`;
             heartElement.classList.remove('jiggling');
         } else if (hpPct <= 25) {
-            color = '#dc2626'; // Deep pulsing red (critical)
-            glow = 'rgba(220, 38, 38, 0.9)';
+            color = 'var(--danger-deep)'; // Deep pulsing red (critical)
+            glow = 'hsla(0, 74%, 51%, 0.9)';
             speed = '0.5s';
             statusText = `Player Status: Critical Health! (${hpCurrent}/${hpMax} HP)`;
             heartElement.classList.add('jiggling');
         } else if (hpPct <= 60) {
-            color = '#f87171'; // Soft wounded red
-            glow = 'rgba(248, 113, 113, 0.7)';
+            color = 'var(--danger-color)'; // Soft wounded red
+            glow = 'hsla(0, 90%, 71%, 0.7)';
             speed = '1.2s';
             statusText = `Player Status: Wounded (${hpCurrent}/${hpMax} HP)`;
             heartElement.classList.remove('jiggling');
         } else {
-            color = '#ef4444'; // Classic Vibrant Crimson Red
-            glow = 'rgba(239, 68, 68, 0.6)';
+            color = 'var(--danger-vivid)'; // Classic Vibrant Crimson Red
+            glow = 'hsla(0, 85%, 60%, 0.6)';
             speed = '2.0s';
             statusText = `Player Status: Healthy (${hpCurrent}/${hpMax} HP)`;
             heartElement.classList.remove('jiggling');
@@ -2378,7 +2450,10 @@ function renderCharacterStatusModal(data) {
     if (armorEl) armorEl.textContent = d.armor_rating !== undefined ? d.armor_rating : 4;
 
     const goldEl = document.getElementById('modal-char-gold');
-    if (goldEl) goldEl.textContent = `${char.gold !== undefined ? char.gold : 75}`;
+    if (goldEl) {
+        goldEl.textContent = `${char.gold !== undefined ? char.gold : 75}`;
+        goldEl.style.removeProperty('color');
+    }
 
     const invGoldEl = document.getElementById('inventory-gold-display');
     if (invGoldEl) {
@@ -2389,21 +2464,23 @@ function renderCharacterStatusModal(data) {
     const xpEl = document.getElementById('modal-char-xp');
     if (xpEl) xpEl.textContent = `${char.experience || 0}`;
 
-    // Attributes
+    // Attributes — Canonical Elder Scrolls Order: STR, INT, WIL, AGI, SPD, END, PER, LUC
     const attrContainer = document.getElementById('modal-char-attributes');
     if (attrContainer && char.attributes) {
         attrContainer.innerHTML = '';
-        for (const [attr, val] of Object.entries(char.attributes)) {
+        const TES_ATTR_ORDER = ['strength', 'intelligence', 'willpower', 'agility', 'speed', 'endurance', 'personality', 'luck'];
+        TES_ATTR_ORDER.forEach(attr => {
+            const val = char.attributes[attr] !== undefined ? char.attributes[attr] : 50;
             const card = document.createElement('div');
-            card.style.cssText = 'background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 4px; text-align: center;';
+            card.style.cssText = 'background: rgba(0,0,0,0.35); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 4px; text-align: center;';
             const mod = mods[attr] || '+0';
             card.innerHTML = `
-                <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">${attr.slice(0, 3)}</div>
-                <div style="font-size: 1rem; font-weight: 700; color: #fff; margin-top: 2px;">${val}</div>
-                <div style="font-size: 0.72rem; color: var(--primary-accent); margin-top: 2px;">${mod}</div>
+                <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">${attr.slice(0, 3)}</div>
+                <div style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">${val}</div>
+                <div style="font-size: 0.72rem; color: var(--primary-accent); margin-top: 2px; font-weight: 600;">${mod}</div>
             `;
             attrContainer.appendChild(card);
-        }
+        });
     }
 
     // Inventory
@@ -2421,14 +2498,14 @@ function renderCharacterStatusModal(data) {
         if (weightEl) {
             weightEl.textContent = `${weight} / ${maxWeight} kg`;
             if (isEncumbered) {
-                weightEl.style.color = '#ef4444';
-                weightEl.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                weightEl.style.background = 'rgba(239, 68, 68, 0.15)';
+                weightEl.style.color = 'var(--danger-vivid)';
+                weightEl.style.borderColor = 'hsla(0, 85%, 60%, 0.4)';
+                weightEl.style.background = 'hsla(0, 85%, 60%, 0.15)';
                 weightEl.textContent += ' (ENCUMBERED)';
             } else {
                 weightEl.style.color = 'var(--text-muted)';
-                weightEl.style.borderColor = 'rgba(255,255,255,0.1)';
-                weightEl.style.background = 'rgba(255,255,255,0.06)';
+                weightEl.style.borderColor = 'hsla(215, 5%, 100%, 0.1)';
+                weightEl.style.background = 'hsla(215, 5%, 100%, 0.06)';
             }
         }
 
@@ -2444,18 +2521,18 @@ function renderCharacterStatusModal(data) {
                 const isJewelry = nameLower.includes('ring') || nameLower.includes('amulet') || nameLower.includes('necklace') || typeLower === 'ring' || typeLower === 'neck';
                 const canEquip = isTorch || isJewelry || ['weapon', '2h_weapon', 'armor', 'robes', 'shield', 'head', 'helmet', 'hood', 'hands', 'feet', 'boots', 'apparel', 'cloak', 'cape', 'mantle', 'back'].includes(typeLower) || nameLower.includes('dagger') || nameLower.includes('sword') || nameLower.includes('staff') || nameLower.includes('bow') || nameLower.includes('robe') || nameLower.includes('cuirass') || nameLower.includes('boot') || nameLower.includes('shoe') || nameLower.includes('greave') || nameLower.includes('glove') || nameLower.includes('gauntlet') || nameLower.includes('bracer') || nameLower.includes('helm') || nameLower.includes('hood') || nameLower.includes('cap') || nameLower.includes('armor') || nameLower.includes('tunic') || nameLower.includes('mail') || nameLower.includes('cloak') || nameLower.includes('cape') || nameLower.includes('mantle') || nameLower.includes('back');
                 
-                itemRow.style.cssText = `display: inline-flex; align-items: center; gap: 6px; background: ${isEq ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255,255,255,0.04)'}; border: 1px solid ${isEq ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255,255,255,0.08)'}; border-radius: 8px; padding: 4px 6px 4px 10px; transition: all 0.15s ease;`;
+                itemRow.style.cssText = `display: inline-flex; align-items: center; gap: 6px; background: ${isEq ? 'hsla(42, 75%, 50%, 0.12)' : 'hsla(215, 5%, 100%, 0.04)'}; border: 1px solid ${isEq ? 'hsla(42, 75%, 50%, 0.4)' : 'hsla(215, 5%, 100%, 0.08)'}; border-radius: 8px; padding: 4px 6px 4px 10px; transition: all 0.15s ease;`;
                 
                 if (canEquip) {
                     itemRow.style.cursor = 'pointer';
                     itemRow.title = isEq ? `Click to unequip ${item.name}` : `Click to equip ${item.name}`;
                     itemRow.onmouseover = () => {
-                        itemRow.style.background = isEq ? 'rgba(245, 158, 11, 0.22)' : 'rgba(255, 255, 255, 0.08)';
-                        itemRow.style.borderColor = isEq ? 'rgba(245, 158, 11, 0.6)' : 'rgba(255, 255, 255, 0.2)';
+                        itemRow.style.background = isEq ? 'hsla(42, 75%, 50%, 0.22)' : 'hsla(215, 5%, 100%, 0.08)';
+                        itemRow.style.borderColor = isEq ? 'hsla(42, 75%, 50%, 0.6)' : 'hsla(215, 5%, 100%, 0.2)';
                     };
                     itemRow.onmouseout = () => {
-                        itemRow.style.background = isEq ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.04)';
-                        itemRow.style.borderColor = isEq ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255, 255, 255, 0.08)';
+                        itemRow.style.background = isEq ? 'hsla(42, 75%, 50%, 0.12)' : 'hsla(215, 5%, 100%, 0.04)';
+                        itemRow.style.borderColor = isEq ? 'hsla(42, 75%, 50%, 0.4)' : 'hsla(215, 5%, 100%, 0.08)';
                     };
                     itemRow.onclick = () => {
                         toggleItemEquip(item.name, isEq);
@@ -2465,10 +2542,10 @@ function renderCharacterStatusModal(data) {
                 const qtyStr = item.quantity && item.quantity > 1 ? ` x${item.quantity}` : '';
                 const itemWtStr = item.weight ? ` (${item.weight} kg)` : '';
                 const slotLabel = item.equipped_slot ? item.equipped_slot.replace('_', ' ').toUpperCase() : 'EQUIPPED';
-                const tag = isEq ? `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: var(--primary-accent); color: #000; font-weight: 700;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
+                const tag = isEq ? `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: hsla(var(--gold-h), var(--gold-s), 45%, 0.22); color: var(--text-bright); border: 1px solid var(--border-color); font-weight: 700; letter-spacing: 0.03em;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
                 
                 const equipLabel = document.createElement('div');
-                equipLabel.style.cssText = `background: transparent; border: none; padding: 0; font-size: 0.82rem; color: ${isEq ? 'var(--primary-accent)' : '#fff'}; display: inline-flex; align-items: center; gap: 6px;`;
+                equipLabel.style.cssText = `background: transparent; border: none; padding: 0; font-size: 0.82rem; color: ${isEq ? 'var(--primary-accent)' : 'var(--text-bright)'}; display: inline-flex; align-items: center; gap: 6px;`;
                 equipLabel.innerHTML = `<span>${item.name}${qtyStr}${itemWtStr}</span> ${tag}`;
                 itemRow.appendChild(equipLabel);
 
@@ -2476,7 +2553,7 @@ function renderCharacterStatusModal(data) {
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'action-icon-btn';
                 removeBtn.title = `Remove ${item.name}`;
-                removeBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
+                removeBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: hsla(215, 5%, 100%, 0.05); border: 1px solid hsla(215, 5%, 100%, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
                 removeBtn.innerHTML = `
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -2484,14 +2561,14 @@ function renderCharacterStatusModal(data) {
                     </svg>
                 `;
                 removeBtn.onmouseover = () => {
-                    removeBtn.style.color = '#fff';
-                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                    removeBtn.style.background = 'rgba(255, 255, 255, 0.12)';
+                    removeBtn.style.color = 'var(--text-bright)';
+                    removeBtn.style.borderColor = 'hsla(215, 5%, 100%, 0.25)';
+                    removeBtn.style.background = 'hsla(215, 5%, 100%, 0.12)';
                 };
                 removeBtn.onmouseout = () => {
                     removeBtn.style.color = 'var(--text-muted)';
-                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                    removeBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                    removeBtn.style.borderColor = 'hsla(215, 5%, 100%, 0.08)';
+                    removeBtn.style.background = 'hsla(215, 5%, 100%, 0.05)';
                 };
                 removeBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -2516,7 +2593,7 @@ function renderCharacterStatusModal(data) {
         } else {
             spells.forEach(spell => {
                 const badge = document.createElement('span');
-                badge.style.cssText = 'font-size: 0.8rem; padding: 4px 6px 4px 10px; border-radius: 8px; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); display: inline-flex; align-items: center; gap: 6px;';
+                badge.style.cssText = 'font-size: 0.8rem; padding: 4px 6px 4px 10px; border-radius: 8px; background: hsla(218, 90%, 60%, 0.1); color: hsl(218, 90%, 60%); border: 1px solid hsla(218, 90%, 60%, 0.25); display: inline-flex; align-items: center; gap: 6px;';
                 
                 const spellText = document.createElement('span');
                 spellText.textContent = `${spell.name} (${spell.school || 'Magic'}) • ${spell.mp_cost || spell.sp_cost || 4} MP`;
@@ -2525,7 +2602,7 @@ function renderCharacterStatusModal(data) {
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'action-icon-btn';
                 removeBtn.title = `Forget ${spell.name}`;
-                removeBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
+                removeBtn.style.cssText = `width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; background: hsla(215, 5%, 100%, 0.05); border: 1px solid hsla(215, 5%, 100%, 0.08); color: var(--text-muted); cursor: pointer; padding: 0; transition: all 0.15s ease;`;
                 removeBtn.innerHTML = `
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -2533,14 +2610,14 @@ function renderCharacterStatusModal(data) {
                     </svg>
                 `;
                 removeBtn.onmouseover = () => {
-                    removeBtn.style.color = '#fff';
-                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
-                    removeBtn.style.background = 'rgba(255, 255, 255, 0.12)';
+                    removeBtn.style.color = 'var(--text-bright)';
+                    removeBtn.style.borderColor = 'hsla(215, 5%, 100%, 0.25)';
+                    removeBtn.style.background = 'hsla(215, 5%, 100%, 0.12)';
                 };
                 removeBtn.onmouseout = () => {
                     removeBtn.style.color = 'var(--text-muted)';
-                    removeBtn.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                    removeBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                    removeBtn.style.borderColor = 'hsla(215, 5%, 100%, 0.08)';
+                    removeBtn.style.background = 'hsla(215, 5%, 100%, 0.05)';
                 };
                 removeBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -2709,10 +2786,10 @@ function openGoldEditModal() {
         modal.innerHTML = `
             <div class="modal-card" style="max-width: 260px; width: 90%; text-align: left; align-items: stretch; padding: 18px;" onclick="event.stopPropagation()">
                 <form onsubmit="event.preventDefault(); submitGoldEditModal();" style="display: flex; flex-direction: column; gap: 14px; margin: 0;">
-                    <input type="number" id="gold-modal-input" min="0" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 1rem; outline: none; box-shadow: none;" onfocus="this.style.borderColor='rgba(255,255,255,0.3)'; this.style.boxShadow='none';" />
+                    <input type="number" id="gold-modal-input" min="0" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.4); border: 1px solid hsla(215, 5%, 100%, 0.15); border-radius: 8px; padding: 10px 12px; color: var(--text-bright); font-size: 1rem; outline: none; box-shadow: none;" onfocus="this.style.borderColor='hsla(215, 5%, 100%, 0.3)'; this.style.boxShadow='none';" />
 
                     <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                        <button type="button" onclick="closeGoldEditModal()" class="onboarding-btn" style="padding: 7px 14px; font-size: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-muted);">
+                        <button type="button" onclick="closeGoldEditModal()" class="onboarding-btn" style="padding: 7px 14px; font-size: 0.8rem; background: hsla(215, 5%, 100%, 0.05); border: 1px solid hsla(215, 5%, 100%, 0.1); color: var(--text-muted);">
                             Cancel
                         </button>
                         <button type="submit" class="onboarding-btn" style="padding: 7px 18px; font-size: 0.8rem;">
@@ -2930,7 +3007,7 @@ function applyTheme(programId, theme) {
         root.style.setProperty('--send-btn-hover', 'rgba(45, 38, 56, 0.75)');
         root.style.setProperty('--accent-green', '#b19cd9');
         root.style.setProperty('--quote-blue', '#79aeff');
-        root.style.setProperty('--primary-btn-text', '#ffffff');
+        root.style.setProperty('--primary-btn-text', 'var(--text-bright)');
     }
 }
 
@@ -3131,7 +3208,7 @@ async function updateComfyModalStatus(skipFetch = false) {
                         <div id="comfy-install-progress" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-main);">
                             <div style="font-weight: 500; margin-bottom: 5px;">Status: INSTALLING</div>
                             <div style="font-style: italic; margin-bottom: 8px;" id="comfy-install-progress-text">${comfyStatus.resolution_status.progress}</div>
-                            <div style="background: rgba(255,255,255,0.05); border-radius: 4px; height: 6px; width: 100%; overflow: hidden;">
+                            <div style="background: hsla(215, 5%, 100%, 0.05); border-radius: 4px; height: 6px; width: 100%; overflow: hidden;">
                                 <div id="comfy-install-progress-bar" style="background: var(--primary-accent); height: 100%; width: ${percentWidth};"></div>
                             </div>
                         </div>
@@ -3207,7 +3284,7 @@ async function updateComfyModalStatus(skipFetch = false) {
                         if (r.status !== "idle") {
                             let errorHtml = "";
                             if (r.errors && r.errors.length > 0) {
-                                errorHtml = `<div style="color: #fca5a5; margin-top: 4px;">Errors: ${r.errors.join(", ")}</div>`;
+                                errorHtml = `<div style="color: var(--danger-bright); margin-top: 4px;">Errors: ${r.errors.join(", ")}</div>`;
                             }
                             progressDiv.innerHTML = `
                                 <div style="font-weight: 500; color: var(--text-main); margin-top: 8px; margin-bottom: 3px;">Status: ${r.status.toUpperCase()}</div>
@@ -3262,7 +3339,7 @@ async function updateComfyModalStatus(skipFetch = false) {
                                 <div id="comfy-hf-search-results" style="margin-top: 10px; max-height: 140px; overflow-y: auto; font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;"></div>
                             </div>
                             
-                            <div id="comfy-checkpoint-downloads-container" style="display: none; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; margin-top: 10px;">
+                            <div id="comfy-checkpoint-downloads-container" style="display: none; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid hsla(215, 5%, 100%, 0.05); padding-top: 10px; margin-top: 10px;">
                                 <div style="font-weight: 600; color: var(--text-color); margin-bottom: 5px;">Active Downloads:</div>
                                 <div id="comfy-checkpoint-downloads-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
                             </div>
@@ -3512,8 +3589,9 @@ function renderUserProfilesList() {
             align-items: center;
             justify-content: space-between;
             padding: 12px 16px;
-            background: ${isActive ? 'color-mix(in srgb, var(--primary-accent) 12%, transparent)' : 'rgba(255, 255, 255, 0.03)'};
-            border: 1px solid ${isActive ? 'color-mix(in srgb, var(--primary-accent) 35%, transparent)' : 'var(--border-color)'};
+            background: ${isActive ? 'hsla(var(--gold-h), var(--gold-s), 45%, 0.12)' : 'hsla(215, 5%, 100%, 0.03)'};
+            border: 1px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+            box-shadow: ${isActive ? '0 0 14px var(--primary-glow)' : 'none'};
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -3521,13 +3599,13 @@ function renderUserProfilesList() {
 
         card.onmouseover = () => {
             if (!isActive) {
-                card.style.background = 'rgba(255, 255, 255, 0.07)';
-                card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                card.style.background = 'hsla(215, 5%, 100%, 0.07)';
+                card.style.borderColor = 'hsla(215, 5%, 100%, 0.2)';
             }
         };
         card.onmouseout = () => {
             if (!isActive) {
-                card.style.background = 'rgba(255, 255, 255, 0.03)';
+                card.style.background = 'hsla(215, 5%, 100%, 0.03)';
                 card.style.borderColor = 'var(--border-color)';
             }
         };
@@ -3547,12 +3625,12 @@ function renderUserProfilesList() {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: ${isActive ? 'color-mix(in srgb, var(--primary-accent) 25%, transparent)' : 'rgba(255, 255, 255, 0.08)'};
-            border: 1px solid ${isActive ? 'var(--primary-accent)' : 'rgba(255, 255, 255, 0.12)'};
+            background: ${isActive ? 'hsla(var(--gold-h), var(--gold-s), 45%, 0.2)' : 'hsla(215, 5%, 100%, 0.08)'};
+            border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
             display: flex;
             align-items: center;
             justify-content: center;
-            color: ${isActive ? 'var(--primary-accent)' : 'var(--text-main)'};
+            color: ${isActive ? 'var(--gold-bright)' : 'var(--text-main)'};
             flex-shrink: 0;
         `;
         avatarDiv.innerHTML = `
@@ -3572,8 +3650,8 @@ function renderUserProfilesList() {
 
         if (isActive) {
             const activeBadge = document.createElement('span');
-            activeBadge.style.cssText = 'font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; background: rgba(56, 189, 248, 0.15); color: var(--primary-accent); border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 500;';
-            activeBadge.innerText = 'Active';
+            activeBadge.style.cssText = 'font-size: 0.65rem; padding: 2px 7px; border-radius: 10px; background: hsla(var(--gold-h), var(--gold-s), 45%, 0.25); color: var(--gold-bright); border: 1px solid var(--border-color); font-weight: 700; letter-spacing: 0.02em;';
+            activeBadge.innerText = 'Active Save';
             nameDiv.appendChild(activeBadge);
         }
 
@@ -3964,9 +4042,9 @@ function switchAssistantModalTab(tab) {
     // De-activate all tab buttons by default
     [compBtn, userBtn, sessBtn].forEach(btn => {
         if (btn) {
-            btn.style.background = 'rgba(255,255,255,0.05)';
+            btn.style.background = 'hsla(215, 5%, 100%, 0.05)';
             btn.style.color = 'var(--text-muted)';
-            btn.style.border = '1px solid rgba(255,255,255,0.1)';
+            btn.style.border = '1px solid hsla(215, 5%, 100%, 0.1)';
         }
     });
     
@@ -3976,12 +4054,12 @@ function switchAssistantModalTab(tab) {
     });
     
     if (tab === 'program') {
-        compBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+        compBtn.style.background = 'hsla(215, 5%, 100%, 0.08)';
         compBtn.style.color = 'var(--primary-accent)';
         compBtn.style.border = '1px solid var(--primary-accent)';
         compTab.style.display = 'block';
     } else if (tab === 'user') {
-        userBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+        userBtn.style.background = 'hsla(215, 5%, 100%, 0.08)';
         userBtn.style.color = 'var(--primary-accent)';
         userBtn.style.border = '1px solid var(--primary-accent)';
         userTab.style.display = 'block';
@@ -4020,19 +4098,19 @@ function switchImportTab(tab) {
     if (tab === 'tavern') {
         tabTavern.style.display = 'block';
         tabDescribe.style.display = 'none';
-        btnTavern.style.background = 'rgba(255, 255, 255, 0.08)';
+        btnTavern.style.background = 'hsla(215, 5%, 100%, 0.08)';
         btnTavern.style.color = 'var(--primary-accent)';
         btnTavern.style.border = '1px solid var(--primary-accent)';
-        btnDescribe.style.background = 'rgba(255,255,255,0.05)';
+        btnDescribe.style.background = 'hsla(215, 5%, 100%, 0.05)';
         btnDescribe.style.color = 'var(--text-muted)';
-        btnDescribe.style.border = '1px solid rgba(255,255,255,0.1)';
+        btnDescribe.style.border = '1px solid hsla(215, 5%, 100%, 0.1)';
     } else {
         tabTavern.style.display = 'none';
         tabDescribe.style.display = 'block';
-        btnTavern.style.background = 'rgba(255,255,255,0.05)';
+        btnTavern.style.background = 'hsla(215, 5%, 100%, 0.05)';
         btnTavern.style.color = 'var(--text-muted)';
-        btnTavern.style.border = '1px solid rgba(255,255,255,0.1)';
-        btnDescribe.style.background = 'rgba(255, 255, 255, 0.08)';
+        btnTavern.style.border = '1px solid hsla(215, 5%, 100%, 0.1)';
+        btnDescribe.style.background = 'hsla(215, 5%, 100%, 0.08)';
         btnDescribe.style.color = 'var(--primary-accent)';
         btnDescribe.style.border = '1px solid var(--primary-accent)';
     }
@@ -4139,6 +4217,7 @@ function renderProgramsList(assistants, activeId) {
 
     visible.forEach(assistant => {
         const isRia = assistant.id === 'ria_silmane';
+        const isActive = (assistant.id === activeId) || assistant.active || (typeof currentAssistantId !== 'undefined' && assistant.id === currentAssistantId) || (typeof activeAssistant !== 'undefined' && activeAssistant && assistant.id === activeAssistant.id);
 
         const div = document.createElement('div');
         div.style.cssText = `
@@ -4146,21 +4225,22 @@ function renderProgramsList(assistants, activeId) {
             align-items: center;
             justify-content: space-between;
             padding: 12px 16px;
-            background: ${assistant.active ? 'color-mix(in srgb, var(--primary-accent) 12%, transparent)' : 'rgba(255, 255, 255, 0.03)'};
-            border: 1px solid ${assistant.active ? 'color-mix(in srgb, var(--primary-accent) 35%, transparent)' : 'var(--border-color)'};
+            background: ${isActive ? 'hsla(var(--gold-h), var(--gold-s), 45%, 0.12)' : 'hsla(215, 5%, 100%, 0.03)'};
+            border: 1px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+            box-shadow: ${isActive ? '0 0 14px var(--primary-glow)' : 'none'};
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
         `;
         div.onmouseover = () => {
-            if (!assistant.active) {
-                div.style.background = 'rgba(255, 255, 255, 0.07)';
-                div.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            if (!isActive) {
+                div.style.background = 'hsla(215, 5%, 100%, 0.07)';
+                div.style.borderColor = 'hsla(215, 5%, 100%, 0.2)';
             }
         };
         div.onmouseout = () => {
-            if (!assistant.active) {
-                div.style.background = 'rgba(255, 255, 255, 0.03)';
+            if (!isActive) {
+                div.style.background = 'hsla(215, 5%, 100%, 0.03)';
                 div.style.borderColor = 'var(--border-color)';
             }
         };
@@ -4180,7 +4260,8 @@ function renderProgramsList(assistants, activeId) {
             width: 44px;
             height: 44px;
             object-fit: cover;
-            background: rgba(255,255,255,0.05);
+            background: hsla(215, 5%, 100%, 0.05);
+            border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             flex-shrink: 0;
@@ -4191,8 +4272,15 @@ function renderProgramsList(assistants, activeId) {
         info.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
         
         const name = document.createElement('div');
-        name.style.cssText = 'font-size: 0.95rem; font-weight: 600; color: var(--text-main);';
+        name.style.cssText = 'font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px;';
         name.innerText = assistant.name;
+
+        if (isActive) {
+            const activeBadge = document.createElement('span');
+            activeBadge.style.cssText = 'font-size: 0.65rem; padding: 2px 7px; border-radius: 10px; background: hsla(var(--gold-h), var(--gold-s), 45%, 0.25); color: var(--gold-bright); border: 1px solid var(--border-color); font-weight: 700; letter-spacing: 0.02em;';
+            activeBadge.innerText = 'Active Follower';
+            name.appendChild(activeBadge);
+        }
         info.appendChild(name);
 
         const folderName = document.createElement('div');
@@ -4236,7 +4324,7 @@ function renderProgramsList(assistants, activeId) {
                 <line x1="9" y1="14" x2="9" y2="14"/><line x1="15" y1="14" x2="15" y2="14"/>
             </svg>`;
             skullBtn.title = 'Kill Follower (Permadeath)';
-            skullBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;margin-left:10px;flex-shrink:0;color:var(--danger-color,#f87171);';
+            skullBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;margin-left:10px;flex-shrink:0;color:var(--danger-color,var(--danger-color));';
             skullBtn.onclick = (e) => {
                 e.stopPropagation();
                 showCustomConfirm(
@@ -4410,16 +4498,16 @@ function switchProgramProfileTab(tab) {
         if (t === tab) {
             if (content) content.style.display = 'block';
             if (btn) {
-                btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                btn.style.background = 'hsla(215, 5%, 100%, 0.08)';
                 btn.style.color = 'var(--primary-accent)';
                 btn.style.border = '1px solid var(--primary-accent)';
             }
         } else {
             if (content) content.style.display = 'none';
             if (btn) {
-                btn.style.background = 'rgba(255, 255, 255, 0.05)';
+                btn.style.background = 'hsla(215, 5%, 100%, 0.05)';
                 btn.style.color = 'var(--text-muted)';
-                btn.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                btn.style.border = '1px solid hsla(215, 5%, 100%, 0.1)';
             }
         }
     });
@@ -4606,7 +4694,7 @@ async function loadProgramJournals() {
                     header.className = 'list-entry-header';
                     
                     const kps = document.createElement('span');
-                    kps.style.color = '#10b981';
+                    kps.style.color = 'hsl(115, 80%, 40%)';
                     kps.style.fontWeight = '600';
                     kps.style.fontSize = '0.72rem';
                     kps.textContent = 'Auto-Compacted';
@@ -4660,10 +4748,10 @@ async function loadProgramJournals() {
     } catch (e) {
         console.error("Error in loadProgramJournals:", e);
         if (journalsContainer) {
-            journalsContainer.innerHTML = '<div style="color: #fca5a5; font-size: 0.75rem; text-align: center; padding: 10px;">Failed to load journals.</div>';
+            journalsContainer.innerHTML = '<div style="color: var(--danger-bright); font-size: 0.75rem; text-align: center; padding: 10px;">Failed to load journals.</div>';
         }
         if (memoriesContainer) {
-            memoriesContainer.innerHTML = '<div style="color: #fca5a5; font-size: 0.75rem; text-align: center; padding: 10px;">Failed to load memories.</div>';
+            memoriesContainer.innerHTML = '<div style="color: var(--danger-bright); font-size: 0.75rem; text-align: center; padding: 10px;">Failed to load memories.</div>';
         }
     }
 }
@@ -6407,7 +6495,12 @@ async function sendMessage() {
         
         chatContainer.removeChild(typingIndicatorRow);
 
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseErr) {
+            data = { error: `Server error (${response.status}): Unable to parse response.` };
+        }
         
         // Update user message row/bubble msgId
         const userBubbles = Array.from(chatContainer.querySelectorAll('.message.user'));
@@ -6511,7 +6604,12 @@ async function continueMessage() {
             chatContainer.removeChild(typingIndicatorRow);
         }
         
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseErr) {
+            data = { error: `Server error (${response.status}): Unable to parse response.` };
+        }
         if (data.response !== undefined) {
             await softReloadApp();
         } else if (data.error) {
@@ -7242,7 +7340,7 @@ async function searchComfyHFCheckpoints() {
         let html = '';
         results.forEach(item => {
             html += `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); gap: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; background: hsla(215, 5%, 100%, 0.03); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); gap: 10px;">
                     <div style="flex: 1; min-width: 0;">
                         <div style="font-weight: 500; font-size: 0.75rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${item.filename}">${item.filename}</div>
                         <div style="font-size: 0.65rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${item.repo_id}</div>
@@ -7253,7 +7351,7 @@ async function searchComfyHFCheckpoints() {
         });
         resultsDiv.innerHTML = html;
     } catch (e) {
-        resultsDiv.innerHTML = '<div style="color: #fca5a5; font-size: 0.72rem;">Error searching Hugging Face.</div>';
+        resultsDiv.innerHTML = '<div style="color: var(--danger-bright); font-size: 0.72rem;">Error searching Hugging Face.</div>';
         console.error(e);
     }
 }
@@ -8242,14 +8340,14 @@ function showImageErrorOverlay(container, error) {
     const overlay = container.querySelector('.image-loading-overlay');
     if (overlay) {
         overlay.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; color: #ef4444; padding: 10px; text-align: center;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--danger-vivid); padding: 10px; text-align: center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="8" x2="12" y2="12"></line>
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
                 <span style="font-size: 0.75rem; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Generation Failed</span>
-                <button class="icon-btn" onclick="this.closest('.image-loading-overlay').remove();" style="font-size: 0.7rem; padding: 2px 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin-top: 4px; color: #ffffff; cursor: pointer; pointer-events: auto;">Dismiss</button>
+                <button class="icon-btn" onclick="this.closest('.image-loading-overlay').remove();" style="font-size: 0.7rem; padding: 2px 8px; background: hsla(215, 5%, 100%, 0.1); border-radius: 4px; margin-top: 4px; color: var(--text-bright); cursor: pointer; pointer-events: auto;">Dismiss</button>
             </div>
         `;
     }
@@ -8316,17 +8414,17 @@ function updateQueueModalUI(generations) {
         item.style.alignItems = 'center';
         item.style.gap = '10px';
         item.style.padding = '8px';
-        item.style.background = 'rgba(255, 255, 255, 0.04)';
+        item.style.background = 'hsla(215, 5%, 100%, 0.04)';
         item.style.borderRadius = '8px';
-        item.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+        item.style.border = '1px solid hsla(215, 5%, 100%, 0.05)';
         
         const statusLabel = task.status === 'queued' ? 'Queued' : 'Rendering';
         
         item.innerHTML = `
-            <img src="${task.source_image}" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);">
+            <img src="${task.source_image}" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid hsla(215, 5%, 100%, 0.1);">
             <div style="flex-grow: 1; min-width: 0;">
                 <div style="font-weight: 600; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${task.prompt}</div>
-                <div style="font-size: 0.7rem; color: #94a3b8; display: flex; align-items: center; gap: 6px;">
+                <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
                     <span class="typing-dot" style="background: var(--primary-accent); width: 6px; height: 6px; border-radius: 50%; display: inline-block;"></span>
                     <span>${statusLabel}</span>
                 </div>
@@ -8944,28 +9042,28 @@ function switchQuestModalTab(tabName) {
     if (tabName === 'map') {
         if (modalCard) modalCard.style.maxWidth = '820px';
 
-        mapTabBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+        mapTabBtn.style.background = 'hsla(215, 5%, 100%, 0.08)';
         mapTabBtn.style.color = 'var(--primary-accent)';
         mapTabBtn.style.borderColor = 'var(--primary-accent)';
 
-        journalTabBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+        journalTabBtn.style.background = 'hsla(215, 5%, 100%, 0.05)';
         journalTabBtn.style.color = 'var(--text-muted)';
-        journalTabBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        journalTabBtn.style.borderColor = 'hsla(215, 5%, 100%, 0.1)';
 
         journalContent.style.display = 'none';
         mapContent.style.display = 'block';
 
-        initTamrielMapPanZoom();
+        renderTamrielMap();
     } else {
         if (modalCard) modalCard.style.maxWidth = '580px';
 
-        journalTabBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+        journalTabBtn.style.background = 'hsla(215, 5%, 100%, 0.08)';
         journalTabBtn.style.color = 'var(--primary-accent)';
         journalTabBtn.style.borderColor = 'var(--primary-accent)';
 
-        mapTabBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+        mapTabBtn.style.background = 'hsla(215, 5%, 100%, 0.05)';
         mapTabBtn.style.color = 'var(--text-muted)';
-        mapTabBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        mapTabBtn.style.borderColor = 'hsla(215, 5%, 100%, 0.1)';
 
         journalContent.style.display = 'block';
         mapContent.style.display = 'none';
@@ -8985,7 +9083,7 @@ async function loadQuests() {
         const data = await response.json();
         
         if (data.error) {
-            container.innerHTML = `<p style="color: #fca5a5; font-size: 0.85rem; text-align: center; margin: 20px 0;">Error loading quests: ${data.error}</p>`;
+            container.innerHTML = `<p style="color: var(--danger-bright); font-size: 0.85rem; text-align: center; margin: 20px 0;">Error loading quests: ${data.error}</p>`;
             return;
         }
         
@@ -8999,22 +9097,22 @@ async function loadQuests() {
         container.innerHTML = quests.map(quest => {
             const objectivesHtml = (quest.objectives || []).map(obj => 
                 `<li style="margin-bottom: 8px; color: var(--text-main); font-size: 0.84rem; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;">
-                    <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid rgba(251, 191, 36, 0.6); border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: rgba(251, 191, 36, 0.08);"></span>
+                    <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid hsla(42, 90%, 56%, 0.6); border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: hsla(42, 90%, 56%, 0.08);"></span>
                     <span>${obj}</span>
                 </li>`
             ).join('');
             
             return `
-                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                        <h4 style="margin: 0; color: #fbbf24; font-size: 0.98rem; font-weight: 600; letter-spacing: 0.01em;">${quest.title}</h4>
-                        <span style="font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3);">ACTIVE</span>
+                        <h4 style="margin: 0; color: var(--primary-accent); font-size: 0.98rem; font-weight: 600; letter-spacing: 0.01em;">${quest.title}</h4>
+                        <span style="font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--primary-glow); color: var(--primary-accent); border: 1px solid var(--border-color);">ACTIVE</span>
                     </div>
                     <div style="display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap;">
                         ${quest.location ? `<div><strong style="color: var(--text-muted);">Location:</strong> <span style="color: var(--text-main);">${quest.location}</span></div>` : ''}
                         ${quest.due ? `<div><strong style="color: var(--text-muted);">Status:</strong> <span style="color: var(--text-main);">${quest.due}</span></div>` : ''}
                     </div>
-                    <div style="margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+                    <div style="margin-top: 4px; padding-top: 8px; border-top: 1px solid hsla(215, 5%, 100%, 0.06);">
                         <ul style="margin: 6px 0 0 0; padding: 0; list-style: none;">
                             ${objectivesHtml}
                         </ul>
@@ -9025,7 +9123,7 @@ async function loadQuests() {
 
     } catch (e) {
         console.error("Error loading quests:", e);
-        container.innerHTML = `<p style="color: #fca5a5; font-size: 0.85rem; text-align: center; margin: 20px 0;">Failed to load quests.</p>`;
+        container.innerHTML = `<p style="color: var(--danger-bright); font-size: 0.85rem; text-align: center; margin: 20px 0;">Failed to load quests.</p>`;
     }
 }
 
@@ -9110,9 +9208,9 @@ function switchDataBankTab(tab) {
     // Reset all buttons
     [uploadBtn, memoriesBtn, lorebooksBtn].forEach(btn => {
         if (btn) {
-            btn.style.background = 'rgba(255,255,255,0.05)';
+            btn.style.background = 'hsla(215, 5%, 100%, 0.05)';
             btn.style.color = 'var(--text-muted)';
-            btn.style.border = '1px solid rgba(255,255,255,0.1)';
+            btn.style.border = '1px solid hsla(215, 5%, 100%, 0.1)';
         }
     });
 
@@ -9128,7 +9226,7 @@ function switchDataBankTab(tab) {
     const activate = (el, btn) => {
         if (el) el.style.display = 'flex';
         if (btn) {
-            btn.style.background = 'rgba(255, 255, 255, 0.08)';
+            btn.style.background = 'hsla(215, 5%, 100%, 0.08)';
             btn.style.color = 'var(--primary-accent)';
             btn.style.border = '1px solid var(--primary-accent)';
         }
@@ -9549,7 +9647,7 @@ async function loadDataBankFiles() {
         const res = await fetch('/api/databank/files');
         const data = await res.json();
         if (data.error) {
-            container.innerHTML = `<div style="padding: 15px; color: #fca5a5; font-size: 0.8rem; text-align: center;">Error: ${data.error}</div>`;
+            container.innerHTML = `<div style="padding: 15px; color: var(--danger-bright); font-size: 0.8rem; text-align: center;">Error: ${data.error}</div>`;
             return;
         }
         const files = data.files || [];
@@ -9596,7 +9694,7 @@ async function loadDataBankFiles() {
         });
     } catch (e) {
         console.error("Error loading files:", e);
-        container.innerHTML = '<div style="padding: 15px; color: #fca5a5; font-size: 0.8rem; text-align: center;">Failed to connect to server.</div>';
+        container.innerHTML = '<div style="padding: 15px; color: var(--danger-bright); font-size: 0.8rem; text-align: center;">Failed to connect to server.</div>';
     }
 }
 
@@ -9622,7 +9720,7 @@ async function uploadDataBankFile(event) {
         });
         const data = await res.json();
         if (data.error) {
-            showCustomAlert("Upload Failed", `Could not index document:<br><code style="color: #fca5a5; font-size: 0.75rem;">${data.error}</code>`);
+            showCustomAlert("Upload Failed", `Could not index document:<br><code style="color: var(--danger-bright); font-size: 0.75rem;">${data.error}</code>`);
         }
     } catch (e) {
         console.error("Error uploading file:", e);
@@ -9654,7 +9752,7 @@ async function scrapeDataBankUrl() {
         });
         const data = await res.json();
         if (data.error) {
-            showCustomAlert("Scraping Failed", `Could not scrape URL:<br><code style="color: #fca5a5; font-size: 0.75rem;">${data.error}</code>`);
+            showCustomAlert("Scraping Failed", `Could not scrape URL:<br><code style="color: var(--danger-bright); font-size: 0.75rem;">${data.error}</code>`);
         } else {
             input.value = ''; // Reset input
         }
@@ -10406,14 +10504,14 @@ function switchToCircleFallback(img) {
         let g = parseInt(hex.substring(2, 4), 16) || 0;
         let b = parseInt(hex.substring(4, 6), 16) || 0;
         let brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        fallback.style.color = brightness > 140 ? '#121214' : '#ffffff';
+        fallback.style.color = brightness > 140 ? '#121214' : 'var(--text-bright)';
     }
     
     fallback.style.display = 'flex';
     fallback.style.alignItems = 'center';
     fallback.style.justifyContent = 'center';
     const isBright = useAccent ? (getComputedStyle(document.documentElement).getPropertyValue('--primary-btn-text').trim() === '#121214') : (fallback.style.color === '#121214');
-    const silhouetteColor = isBright ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.3)';
+    const silhouetteColor = isBright ? 'rgba(0,0,0,0.35)' : 'hsla(215, 5%, 100%, 0.3)';
     fallback.innerHTML = `
         <svg viewBox="0 0 24 24" style="width: 62%; height: 62%; fill: ${silhouetteColor}; display: block;">
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
