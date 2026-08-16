@@ -863,7 +863,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 skill_instructions = retrieve_skill_instructions(
                     query=last_user_message,
                     threshold=0.35,
-                    top_k=2
+                    top_k=4
                 )
                 if skill_instructions:
                     context_parts.append(skill_instructions)
@@ -929,7 +929,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             if disp_hour == 0:
                 disp_hour = 12
             am_pm = "AM" if hour < 12 else "PM"
-            time_display = f"{disp_hour}:00 {am_pm} ({period})"
+            time_display = f"{disp_hour}:00 {am_pm}"
             
             prov = world.get("current_province", "Cyrodiil")
             loc = world.get("current_location", "Imperial Dungeon")
@@ -990,12 +990,13 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         cleaned_text, updated_snapshot = extract_hidden_state_footer(text, current_snapshot)
         apply_state_snapshot(active_user, updated_snapshot)
 
-        winning_mode = self.runner_obj._winning_mode_cache.get(self.session_id, "")
+        t_date = (updated_snapshot.get("date") if updated_snapshot else None) or world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
             
         history = self.runner_obj.sessions_history[self.session_id]
         if history and history[-1]['role'] == 'program':
             history[-1]['text'] = cleaned_text
             history[-1]['tool_calls'] = tool_calls_data
+            history[-1]['tamrielic_date'] = t_date
             history[-1].pop('state_snapshot', None)
             return history[-1]
             
@@ -1011,6 +1012,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             'role': 'program',
             'text': cleaned_text,
             'tool_calls': tool_calls_data,
+            'tamrielic_date': t_date,
             'timestamp': time.time()
         }
         history.append(bot_msg)
@@ -2383,8 +2385,9 @@ class OpenSourceRunner(BaseProgramRunner):
             'media': media,
             'tool_summary': tool_summary,
             'tool_calls': msg.get('tool_calls', []),
+            'tamrielic_date': msg.get('tamrielic_date'),
             'timestamp': msg.get('timestamp'),
-            'editable': role in ('user', 'program'),
+            'editable': False,
             'deletable': True,
         }
 
@@ -2950,12 +2953,19 @@ class OpenSourceRunner(BaseProgramRunner):
             else:
                 if text.strip().startswith("![") and text.strip().endswith(")"):
                     prefix = "img_"
+            from utils.user import get_active_user
+            from engine.world_engine import load_world_state
+            active_user = get_active_user()
+            world = load_world_state(active_user)
+            t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+
             history = self.sessions_history[session_id]
             new_msg = {
                 'id': f"{prefix}{uuid.uuid4().hex}",
                 'role': 'user' if role == 'user' else 'program',
                 'text': text,
                 'tool_calls': [],
+                'tamrielic_date': t_date,
                 'timestamp': time.time()
             }
             history.append(new_msg)

@@ -3,7 +3,6 @@ name: arena_quests
 description: "Tracks main quest chapter progression, Staff of Chaos fragments, province-to-province travel, and dungeon milestones in The Elder Scrolls: Arena."
 summary: "Advance main quest stages with [arena_advance_stage], travel across Tamriel with [arena_travel], and retrieve location data with [arena_get_location]."
 retrieval: vector
-triggers: quest, escape, dungeon, imperial dungeon, shift gate, gate, riddle, travel, journey, province, cyrodiil, hammerfell, skyrim, morrowind, high rock, valenwood, elsweyr, summerset, black marsh, fang lair, labyrinthian, crystal tower, crypt of hearts, elden grove, halls of colossus, murkwood, dagoth ur, imperial palace, fragment, staff of chaos, ria silmane, jagar tharn, milestone, vision
 ---
 
 # QUEST & WORLD TRAVEL PROTOCOLS
@@ -31,7 +30,7 @@ When the player completes narrative milestones, seeks Staff of Chaos fragments, 
   `[arena_get_location()]`
 
 
-## 4. Procedural Side Quests & Rare Artifact Rumors
+## 5. Procedural Side Quests & Rare Artifact Rumors
 - **Tavern Side Quests**: When {{user}} inquires about work in local taverns or inns, generate side quests (Delivery of rare goods, Retrieval of stolen items, or Escorting patrons to nearby settlements).
 - **Palace Commissions**: When {{user}} requests audience with provincial rulers between 6 AM and 6 PM, offer lucrative commissions (Rescuing kidnapped heirs, Apprehending dangerous outlaws, or Slaying dungeon bosses).
 - **Narrative Integration**: Describe environmental shifts and visceral sensory details (e.g. the cold blue glow of Ria Silmane's ghost, the tolling of curfew bells, or the dusty desert winds of Hammerfell).

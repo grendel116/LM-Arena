@@ -1,9 +1,8 @@
 ---
 name: arena_combat
-description: "Resolves combat encounters, enemy strikes, damage calculations, healing, stamina expenditure, rest recovery, bestiary HP tracking, and material immunities in The Elder Scrolls: Arena."
+description: "Resolves combat encounters: attack rolls, damage, healing, stamina, resting, and resource expenditure in The Elder Scrolls: Arena."
 summary: "Resolve melee/ranged attacks with [arena_roll_combat], take damage with [arena_take_damage], heal with [arena_heal], spend/restore stamina with [arena_spend_stamina]/[arena_restore_stamina], and rest with [arena_rest]."
 retrieval: vector
-triggers: attack, fight, strike, enemy, blade, combat, damage, wound, ambush, monster, hit, rat, giant rat, goblin, skeleton, zombie, ghoul, spider, orc, minotaur, troll, ghost, wraith, atronach, flame atronach, frost atronach, storm atronach, winged twilight, medusa, vampire, lich, cliff racer, nix hound, draugr, dune ripper, senche raht, spriggan, harpy, werewolf, slash, dodge, parry, initiative, heal, rest, sleep, camp, inn, potion, poison, paralysis, disease, stamina, fatigue, exhaust, winded
 ---
 
 # COMBAT, BESTIARY & RESOURCE RESOLUTION PROTOCOLS
@@ -37,10 +36,9 @@ When hostilities, ambushes, or physical confrontations occur between the player 
   - Health Potions, Magicka Potions, and Stamina Potions instantly restore their respective pools.
   - City Temples cure diseases, poisons, and restore full vitals upon donation.
 
-## 4. Canonical TES Creature Retcons & Material Immunities
-- Golems are **Atronachs** (`Flame Atronach`, `Frost Atronach`, `Storm Atronach`).
-- Homunculus is **Winged Twilight**.
+## 4. Material Immunities & Regional Ecology
 - Ethereal undead (**Ghosts, Wraiths**), **Vampires**, and **Liches** are immune to mundane iron/steel weapons and require **Silver**, **Elven**, **Dwarven**, **Mithril**, **Ebony**, or **Spells**.
+- **Regional Ecology**: Generate creatures whose natural habitat matches the current province's biome, culture, and historical inhabitants. Do not introduce creatures endemic to other provinces unless the narrative explicitly provides a reason for their presence.
 
 ## 5. Narrative Style
 - Output the tool calls alongside your narrative text in a single turn.

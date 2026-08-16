@@ -926,7 +926,8 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
     seed_text = (user_input or "").strip()
     if seed_text:
         system_instruction = (
-            "Expand the draft action into the player first person action in the roleplay.\n"
+            "Rewrite and rephrase the player's action for the roleplay while maintaining strict narrative continuity.\n"
+            "Preserve story fidelity, resolve typos or awkward phrasing, and retain player intent.\n"
             "Format: Use *Italics* for narration. Render dialogue as plain text without quotation marks. Keep actions expressive and in character."
         )
         prompt = (
@@ -934,9 +935,9 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
             f"{replace_placeholders(full_profile_block)}\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{replace_placeholders(history_text)}\n\n"
-            f"### USER DRAFT CONCEPT\n"
+            f"### ORIGINAL USER ACTION\n"
             f"{replace_placeholders(seed_text)}\n\n"
-            f"Expand on the draft concept above into a complete first person action for the character:"
+            f"Rephrase and refine the user action above preserving story fidelity:"
         )
     else:
         system_instruction = (

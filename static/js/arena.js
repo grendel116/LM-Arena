@@ -1171,145 +1171,138 @@ function playBGMTrack(trackFilename, isLooping = true) {
 function evaluateSceneBGM(text, locationContext) {
     if (!text && !locationContext) return;
 
-    // Auto-fetch world location context from current active character sheet if available
     const world = (window.currentCharacterData && window.currentCharacterData.world) ? window.currentCharacterData.world : {};
     const worldLoc = `${world.current_location || ''} ${world.current_province || ''}`;
-    
-    // Auto-fetch HP state for defeat detection
     const charHP = (window.currentCharacterData && window.currentCharacterData.vitals) ? window.currentCharacterData.vitals.hp : null;
+    const isDead = window.currentCharacterData?.vitals?.dead === true;
 
     const combined = `${text || ''} ${locationContext || ''} ${worldLoc}`.toLowerCase();
 
-    // 1. Defeat / Player Death (Non-looping Game Over)
-    if ((charHP !== null && charHP <= 0) || combined.includes("you have died") || combined.includes("slain") || combined.includes("fatal strike") || combined.includes("you perish")) {
+    // 1. Game Over — only on confirmed death state, never on combat vocabulary
+    if (isDead || (charHP !== null && charHP <= 0)) {
         playBGMTrack("Game Over.mp3", false);
         return;
     }
 
-    // 2. Main Quest Completion / Fragment Recovery / Level Up (Non-looping Victory fan-fare)
-    if (combined.includes("objective completed") || combined.includes("fragment recovered") || 
-        combined.includes("staff of chaos fragment") || combined.includes("quest completed") || 
-        combined.includes("level up") || combined.includes("leveled up") || 
-        combined.includes("level-up") || combined.includes("level increased") || 
-        combined.includes("gained a level") || combined.includes("you have reached level") || 
-        combined.includes("you are now level") || combined.includes("leveled_up")) {
+    // 2. Quest milestone / level up (non-looping fanfare)
+    if (combined.includes("[arena_advance_stage") || combined.includes("[arena_level_up") ||
+        combined.includes("objective completed") || combined.includes("quest completed") ||
+        combined.includes("leveled_up") || combined.includes("gained a level")) {
         playBGMTrack("Objective Completed.mp3", false);
         return;
     }
 
-    // 3. Spectral Visions & Ria Silmane
-    if (combined.includes("ria silmane") || combined.includes("vision") || combined.includes("spectral") || combined.includes("dream vision")) {
+    // 3. Spectral visions & Ria Silmane
+    if (combined.includes("ria silmane") || combined.includes("spectral vision") || combined.includes("dream vision")) {
         playBGMTrack("A Vision Beyond.mp3");
         return;
     }
 
-    // 4. Boss Encounters & Imperial Palace
-    if (combined.includes("jagar tharn") || combined.includes("emperor's palace") || combined.includes("throne room") || combined.includes("arch-mage tharn")) {
+    // 4. Boss / Imperial Palace
+    if (combined.includes("jagar tharn") || combined.includes("emperor's palace") || combined.includes("throne room")) {
         playBGMTrack("Tharn's Betrayal.mp3");
         return;
     }
 
-    // 5. Combat & Enemy Encounters (Rats, Goblins, Skeletons, Beasts, Attacks, Damage, Initiative)
-    const isCombat = combined.includes("combat") || combined.includes("battle") || combined.includes("initiative") ||
-                     combined.includes("attack") || combined.includes("lunges") || combined.includes("snapping") ||
-                     combined.includes("rat") || combined.includes("goblin") || combined.includes("skeleton") ||
-                     combined.includes("zombie") || combined.includes("orc") || combined.includes("spider") ||
-                     combined.includes("minotaur") || combined.includes("wraith") || combined.includes("vampire") ||
-                     combined.includes("lich") || combined.includes("troll") || combined.includes("imp") ||
-                     combined.includes("daedra") || combined.includes("monster") || combined.includes("beast") ||
-                     combined.includes("bitten") || combined.includes("slay") || combined.includes("swords") ||
-                     combined.includes("d20_roll");
+    // 5. Dungeon locations — checked before combat so interior context wins
+    const isDungeon = combined.includes("dungeon") || combined.includes("sewer") ||
+                      combined.includes("crypt") || combined.includes("catacomb") ||
+                      combined.includes("fang lair") || combined.includes("labyrinthian") ||
+                      combined.includes("underground");
+    if (isDungeon) {
+        playBGMTrack("Dungeon Crawling.mp3");
+        return;
+    }
 
+    // 6. Active combat — use tool call tags as reliable anchors, supplement with direct action words
+    const isCombat = combined.includes("[arena_roll_combat") || combined.includes("[arena_take_damage") ||
+                     combined.includes("d20_roll") || combined.includes("initiative") ||
+                     combined.includes("lunges") || combined.includes("strikes at") ||
+                     combined.includes("draws a weapon") || combined.includes("raises its weapon");
     if (isCombat) {
         playBGMTrack("Tharn's Betrayal.mp3");
         return;
     }
 
-    // 6. Spellcasting / Spellmaker / Arcane Arts
-    if (combined.includes("spellmaker") || combined.includes("grimoire") || combined.includes("casting spell") || combined.includes("arcane arts")) {
+    // 7. Spellcasting / Spellmaker
+    if (combined.includes("[arena_create_spell") || combined.includes("spellmaker") || combined.includes("grimoire")) {
         playBGMTrack("Arcane Arts.mp3");
         return;
     }
 
-    // 7. Infiltration / Stealth / Lockpicking
-    if (combined.includes("lockpick") || combined.includes("stealth") || combined.includes("sneaking") || combined.includes("infiltrate") || combined.includes("pickpocket")) {
+    // 8. Stealth / Lockpicking
+    if (combined.includes("[arena_roll_skill") && (combined.includes("lockpick") || combined.includes("stealth"))) {
         playBGMTrack("Breaking And Entering.mp3");
         return;
     }
 
-    // 8. Swimming / Water Bodies / Submerged
-    if (combined.includes("swimming") || combined.includes("underwater") || combined.includes("submerged") || combined.includes("diving") || combined.includes("lake") || combined.includes("river")) {
+    // 9. Swimming / Water
+    if (combined.includes("swimming") || combined.includes("underwater") || combined.includes("submerged") || combined.includes("diving")) {
         playBGMTrack("Swimming.mp3");
         return;
     }
 
-    // 9. Dungeons, Sewers, Crypts, Vaults & Catacombs
-    if (combined.includes("dungeon") || combined.includes("sewer") || combined.includes("crypt") || combined.includes("vault") || combined.includes("catacomb") || combined.includes("ruins") || combined.includes("fang lair") || combined.includes("underground")) {
-        playBGMTrack("Dungeon Crawling.mp3");
-        return;
-    }
-
-    // 10. Mages Guild & Arcane Academies
+    // 10. Mages Guild
     if (combined.includes("mages guild") || combined.includes("arcane academy") || combined.includes("guildhall")) {
         playBGMTrack("The Mages Guild.mp3");
         return;
     }
 
     // 11. Inns & Taverns
-    if (combined.includes("inn") || combined.includes("tavern") || combined.includes("alehouse") || combined.includes("pub")) {
+    if (combined.includes("inn") || combined.includes("tavern") || combined.includes("alehouse")) {
         playBGMTrack("The Wandering Inn.mp3");
         return;
     }
 
     // 12. Blacksmith & Forge
-    if (combined.includes("blacksmith") || combined.includes("armorer") || combined.includes("forge") || combined.includes("weaponsmith")) {
+    if (combined.includes("blacksmith") || combined.includes("armorer") || combined.includes("forge")) {
         playBGMTrack("Blacksmith.mp3");
         return;
     }
 
     // 13. Royalty & Audience Chambers
-    if (combined.includes("audience chamber") || combined.includes("ruler") || combined.includes("king's court") || combined.includes("court")) {
+    if (combined.includes("audience chamber") || combined.includes("king's court")) {
         playBGMTrack("The Audience Chamber.mp3");
         return;
     }
 
-    // 14. Fog / Swamp / Marshlands
-    if (combined.includes("fog") || combined.includes("mist") || combined.includes("swamp") || combined.includes("marsh") || combined.includes("murkwood")) {
+    // 14. Swamp / Marsh / Fog
+    if (combined.includes("swamp") || combined.includes("marsh") || combined.includes("murkwood")) {
         playBGMTrack("Foggy Afternoon.mp3");
         return;
     }
 
     // 15. Snow / Cold / Skyrim
-    if (combined.includes("skyrim") || combined.includes("snow") || combined.includes("blizzard") || combined.includes("frost") || combined.includes("ice")) {
+    if (combined.includes("skyrim") || combined.includes("blizzard") || combined.includes("snowfall")) {
         playBGMTrack("Winter In Hammerfell.mp3");
         return;
     }
 
-    // 16. Night / Curfew / Late Hours
-    if (combined.includes("curfew") || combined.includes("night") || combined.includes("dark alley") || combined.includes("midnight")) {
+    // 16. Night / Late Hours
+    if (combined.includes("curfew") || combined.includes("midnight") || combined.includes("dead of night")) {
         playBGMTrack("The Late Hours.mp3");
         return;
     }
 
-    // 17. Dusk / Sunset / Evening
-    if (combined.includes("evening") || combined.includes("twilight") || combined.includes("sunset")) {
+    // 17. Dusk / Evening
+    if (combined.includes("twilight") || combined.includes("sunset") || combined.includes("dusk")) {
         playBGMTrack("Evening Star.mp3");
         return;
     }
 
-    // 18. Wilderness / Traveling / Forests
-    if (combined.includes("wilderness") || combined.includes("forest") || combined.includes("woods") || combined.includes("traveling") || combined.includes("road")) {
+    // 18. Wilderness / Forests / Roads
+    if (combined.includes("wilderness") || combined.includes("forest") || combined.includes("woods") || combined.includes("road")) {
         playBGMTrack("The First Seed.mp3");
         return;
     }
 
-    // 19. Shopping & Merchants
-    if (combined.includes("shopping") || combined.includes("shop") || combined.includes("merchant") || combined.includes("store") || combined.includes("vendor") || combined.includes("trader") || combined.includes("market") || combined.includes("bazaar") || combined.includes("buying") || combined.includes("selling")) {
+    // 19. Merchants / Markets
+    if (combined.includes("merchant") || combined.includes("market") || combined.includes("bazaar")) {
         playBGMTrack("Where Dost Thou Hail.mp3");
         return;
     }
 
-    // 20. Default Town & Peaceful Environment
+    // 20. Default — town, peaceful environment
     playBGMTrack("A Warm Welcome.mp3");
 }
 
@@ -2202,7 +2195,7 @@ function updatePlayerHeartState(char, world) {
     heartElement.style.setProperty('--heart-glow', glow);
     heartElement.style.setProperty('--heart-speed', speed);
     heartElement.style.setProperty('--heart-speed-active', '0.6s');
-    heartElement.title = `${statusText} — Click to view character sheet`;
+    heartElement.title = "Player Status";
 }
 
 let isGameOverState = false;
@@ -2328,13 +2321,7 @@ function formatTamrielicTime(hour) {
     const h = parseInt(hour, 10) % 24;
     const period = h >= 12 ? "PM" : "AM";
     const displayHour = h % 12 === 0 ? 12 : h % 12;
-    let timeOfDay = "Morning";
-    if (h >= 5 && h < 7) timeOfDay = "Dawn";
-    else if (h >= 7 && h < 12) timeOfDay = "Morning";
-    else if (h >= 12 && h < 17) timeOfDay = "Afternoon";
-    else if (h >= 17 && h < 20) timeOfDay = "Dusk";
-    else if (h >= 20 || h < 5) timeOfDay = "Night";
-    return `${displayHour}:00 ${period} (${timeOfDay})`;
+    return `${displayHour}:00 ${period}`;
 }
 
 function renderCharacterStatusModal(data) {
@@ -5083,7 +5070,7 @@ function resetSpeakButtons() {
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
             </svg>
         `;
-        btn.title = "Speak message (TTS)";
+        btn.title = "Read Message";
     });
     currentPlayingBtn = null;
 }
@@ -5178,24 +5165,34 @@ function toggleThinkingBlock(headerElement) {
 }
 
 // --- formatMessageTimestamp ---
-function formatMessageTimestamp(timestamp) {
-    if (!timestamp) return '';
-    const date = new Date(timestamp < 10000000000 ? timestamp * 1000 : timestamp);
-    if (isNaN(date.getTime())) return '';
-    
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    
-    const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
-    const timeStr = date.toLocaleTimeString(undefined, timeOptions);
-    
-    if (isToday) {
-        return timeStr;
-    } else {
-        const dateOptions = { month: 'short', day: 'numeric' };
-        const dateStr = date.toLocaleDateString(undefined, dateOptions);
-        return `${dateStr}, ${timeStr}`;
+function formatMessageTimestamp(timestamp, msg = null) {
+    if (msg && msg.tamrielic_date) {
+        if (typeof msg.tamrielic_date === 'string') {
+            return msg.tamrielic_date;
+        }
+        if (typeof msg.tamrielic_date === 'object') {
+            const t = msg.tamrielic_date;
+            const timeStr = t.hour !== undefined ? ` • ${formatTamrielicTime(t.hour)}` : '';
+            return `${t.day || 1} ${t.month || 'Morning Star'}, ${t.year ? `3E ${t.year}` : '3E 389'}${timeStr}`;
+        }
     }
+
+    // Extract historical date header from text if present (e.g. **1st of Hearthfire, 3E 389**)
+    if (msg && msg.text) {
+        const dateMatch = msg.text.match(/\*\*(\d+(?:st|nd|rd|th)?\s+(?:of\s+)?[A-Za-z\s]+,\s*3E\s*\d+)\*\*/i);
+        if (dateMatch) {
+            return `${dateMatch[1]} • 6:00 AM`;
+        }
+    }
+
+    const world = currentCharacterData?.world;
+    if (world) {
+        const tDate = world.date || world.tamrielic_date || { day: 1, month: "Morning Star", year: 389, hour: 6 };
+        const timeStr = tDate.hour !== undefined ? ` • ${formatTamrielicTime(tDate.hour)}` : '';
+        return `${tDate.day || 1} ${tDate.month || 'Morning Star'}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}${timeStr}`;
+    }
+
+    return "1 Morning Star, 3E 389 • 6:00 AM";
 }
 
 // --- renderCompletedLogs ---
@@ -5854,22 +5851,23 @@ function renderMessage(msg, isLive = false) {
             if (msgTimestamp) {
                 const tsSpan = document.createElement('span');
                 tsSpan.className = 'message-timestamp';
-                tsSpan.textContent = formatMessageTimestamp(msgTimestamp);
+                tsSpan.textContent = formatMessageTimestamp(msgTimestamp, msg);
                 actions.appendChild(tsSpan);
             }
 
             if (role === 'user') {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'action-icon-btn';
-                editBtn.title = 'Edit message';
-                editBtn.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path>
-                    </svg>
-                `;
-                editBtn.onclick = () => startEditMessage(editBtn);
-                actions.appendChild(editBtn);
+                if (!isMsgTransient && !isImageOnly && item.type === 'text') {
+                    const rerollBtn = document.createElement('button');
+                    rerollBtn.className = 'action-icon-btn';
+                    rerollBtn.title = 'Reroll Message';
+                    rerollBtn.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                        </svg>
+                    `;
+                    rerollBtn.onclick = () => rerollUserMessage(rerollBtn);
+                    actions.appendChild(rerollBtn);
+                }
             } else if (role === 'program' && !text.startsWith("Hello, " + getUserDisplayName())) {
                 if (!isMsgTransient && !isImageOnly && item.type === 'text') {
                     const rerollBtn = document.createElement('button');
@@ -5883,21 +5881,9 @@ function renderMessage(msg, isLive = false) {
                     rerollBtn.onclick = () => rerollFromMessage(rerollBtn);
                     actions.appendChild(rerollBtn);
 
-                    const editBtn = document.createElement('button');
-                    editBtn.className = 'action-icon-btn';
-                    editBtn.title = 'Edit response text';
-                    editBtn.innerHTML = `
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"></path>
-                        </svg>
-                    `;
-                    editBtn.onclick = () => startEditMessage(editBtn);
-                    actions.appendChild(editBtn);
-
                     const speakBtn = document.createElement('button');
                     speakBtn.className = 'action-icon-btn speak-btn';
-                    speakBtn.title = 'Speak message (TTS)';
+                    speakBtn.title = 'Read Message';
                     speakBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -6134,6 +6120,7 @@ function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = f
         cleanText = cleanText.replace(imgRegex, '').trim();
     }
 
+    const activeWorldDate = currentCharacterData?.world?.date || currentCharacterData?.world?.tamrielic_date || null;
     const msg = {
         id: msgId || generateMessageId(text, role),
         role: role,
@@ -6142,9 +6129,10 @@ function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = f
         tool_calls: toolCalls,
         timestamp: timestamp,
         duration: duration,
+        tamrielic_date: activeWorldDate ? JSON.parse(JSON.stringify(activeWorldDate)) : null,
         isTransient: isTransient,
         vitals: vitals,
-        editable: role === 'user' || role === 'program',
+        editable: false,
         deletable: true
     };
     return renderMessage(msg, isLive);
@@ -6861,6 +6849,148 @@ async function resendUserMessage(bubble) {
         if (heartElement) {
             heartElement.classList.remove('jiggling');
         }
+    }
+}
+
+// --- rerollUserMessage ---
+async function rerollUserMessage(button) {
+    const bubble = button.closest('.message');
+    const row = bubble.closest('.message-row.user-row');
+    if (!row || !bubble) return;
+    
+    const msgId = bubble.dataset.msgId;
+    const origRawText = bubble.dataset.rawText || bubble.textContent || '';
+    if (!msgId || !origRawText.trim()) return;
+
+    const origHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `
+        <div class="typing-indicator" style="padding: 0; gap: 2px; display: flex; align-items: center; justify-content: center; height: 14px;">
+            <div class="typing-dot" style="width: 3px; height: 3px; background-color: var(--text-muted);"></div>
+            <div class="typing-dot" style="width: 3px; height: 3px; background-color: var(--text-muted); animation-delay: -0.16s;"></div>
+            <div class="typing-dot" style="width: 3px; height: 3px; background-color: var(--text-muted); animation-delay: -0.32s;"></div>
+        </div>
+    `;
+
+    try {
+        const genResponse = await fetch('/api/generate_user_message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: sessionId,
+                model: selectedModel,
+                current_input: origRawText
+            })
+        });
+
+        const genData = await genResponse.json();
+        if (!genData.message) {
+            button.innerHTML = origHtml;
+            button.disabled = false;
+            if (genData.error) {
+                showCustomAlert("Reroll Failed", genData.error);
+            }
+            return;
+        }
+
+        const newText = genData.message;
+        
+        // Update user bubble DOM content
+        bubble.dataset.rawText = newText;
+        const textElement = bubble.querySelector('.message-text');
+        if (textElement) {
+            textElement.innerHTML = marked.parse(newText);
+            postProcessMessageHTML(textElement);
+        }
+
+        // Truncate any messages after this user turn
+        truncateChatAfter(row);
+
+        // Regenerate assistant response via /edit
+        hasApprovedToolThisTurn = false;
+        const heartElement = document.querySelector('.heart-pulse');
+        if (heartElement) {
+            heartElement.classList.add('jiggling');
+        }
+
+        const typingIndicatorRow = document.createElement('div');
+        typingIndicatorRow.className = 'message-row program-row';
+        const profileUrl = getProfileUrl();
+        typingIndicatorRow.innerHTML = `
+            <div class="avatar-container">
+                <img class="avatar program-avatar" src="${profileUrl}" alt="Program" onclick="expandImage('${profileUrl}')">
+            </div>
+            <div class="message program">
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        `;
+        chatContainer.appendChild(typingIndicatorRow);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        userInput.disabled = true;
+        userInput.placeholder = "";
+
+        setGenerating(true);
+        startToolPolling();
+        if (chatAbortController) {
+            chatAbortController.abort();
+        }
+        chatAbortController = new AbortController();
+
+        const editResponse = await fetch('/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: sessionId,
+                msg_id: msgId,
+                new_text: newText,
+                model: selectedModel
+            }),
+            signal: chatAbortController.signal
+        });
+
+        if (chatContainer.contains(typingIndicatorRow)) {
+            chatContainer.removeChild(typingIndicatorRow);
+        }
+
+        const editData = await editResponse.json();
+        if (editData.response !== undefined) {
+            appendMessage('program', editData.response, null, editData.tool_calls, true, editData.timestamp, editData.duration, false, editData.program_msg_id);
+        } else if (editData.error) {
+            let errMsg = editData.error;
+            if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
+                errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
+            }
+            appendMessage('program', errMsg);
+        }
+        fetchCharacterStatus();
+        handleSuccessReload(editData);
+    } catch (error) {
+        if (chatContainer.contains(typingIndicatorRow)) {
+            chatContainer.removeChild(typingIndicatorRow);
+        }
+        if (error.name === 'AbortError') {
+            appendMessage('program', '*(Generation stopped)*');
+        } else {
+            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+        }
+        handleToolReloadOrRecovery();
+    } finally {
+        button.innerHTML = origHtml;
+        button.disabled = false;
+        stopToolPolling();
+        setGenerating(false);
+        userInput.disabled = false;
+        userInput.placeholder = "What do you do?";
+        const heartElement = document.querySelector('.heart-pulse');
+        if (heartElement) {
+            heartElement.classList.remove('jiggling');
+        }
+        await initializeModelSelect();
     }
 }
 
@@ -7681,7 +7811,7 @@ async function autoGenerateUserMessage() {
     } finally {
         btn.disabled = false;
         btn.style.opacity = '0.5';
-        btn.title = "Auto-Generate Message (Impersonate)";
+        btn.title = "Impersonate";
         btn.innerHTML = origIcon;
         userInput.disabled = false;
         userInput.placeholder = "What do you do?";
@@ -7699,10 +7829,7 @@ function activateSkillCheckUI(checkData) {
     const diceBtn = document.getElementById('dice-skill-btn');
     if (diceBtn) {
         diceBtn.classList.add('skill-check-active');
-        const skill = checkData.skill_name || "Skill";
-        const attr = checkData.attribute_name || "Agility";
-        const dc = checkData.dc || 15;
-        diceBtn.title = `Roll ${skill} Check (${attr} DC ${dc}) — Click to React`;
+        diceBtn.title = "Skill Check";
     }
 
     if (userInput) {
@@ -7781,7 +7908,7 @@ function resetSkillCheckUI() {
         diceBtn.disabled = false;
         diceBtn.style.opacity = '';
         diceBtn.style.pointerEvents = '';
-        diceBtn.title = "Roll Action (D20)";
+        diceBtn.title = "Skill Check";
     }
 
     if (userInput) {

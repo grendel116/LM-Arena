@@ -199,6 +199,78 @@
       "enabled": true,
       "priority": 10,
       "probability": 100
+    },
+    {
+      "uid": 8023,
+      "key": ["draugr", "draugr wight", "ancient nord"],
+      "secondary_key": [],
+      "content": "Draugr are mummified Nordic warriors native exclusively to the ancient barrows, catacombs, and frozen tombs of Skyrim and Solstheim. They never naturally appear outside Nordic burial crypts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8024,
+      "key": ["ayleid wight", "wight", "ayleid guardian"],
+      "secondary_key": [],
+      "content": "Ayleid Wights are ancient cursed elven undead haunting subterranean vaults, catacombs, and white stone Ayleid ruins across Cyrodiil.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8025,
+      "key": ["cliff racer", "cliff racers"],
+      "secondary_key": [],
+      "content": "Cliff Racers are aggressive avian predators native to the ash wastes and skies of Morrowind and Vvardenfell.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8026,
+      "key": ["nix hound", "nix hounds"],
+      "secondary_key": [],
+      "content": "Nix Hounds are predatory arthropods native to Morrowind. They hunt in packs across the Ashlands and swamps, draining stamina from prey.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8027,
+      "key": ["dune ripper", "dune rippers"],
+      "secondary_key": [],
+      "content": "Dune Rippers are massive serpentine burrowers native to the sands and badlands of Hammerfell and the Alik'r Desert.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8028,
+      "key": ["senche-raht", "senche raht"],
+      "secondary_key": [],
+      "content": "Senche-raht are colossal quadrupedal Khajiit morphs native to the savannas and jungles of Elsweyr.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8029,
+      "key": ["spriggan", "spriggans"],
+      "secondary_key": [],
+      "content": "Spriggans are nature spirits guarding ancient forests and glades in Valenwood and High Rock. They regenerate health rapidly and command woodland beasts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8030,
+      "key": ["harpy", "harpies"],
+      "secondary_key": [],
+      "content": "Harpies are winged bird women nesting in the coastal cliffs, canyons, and mountains of High Rock and Hammerfell.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
     }
   ]
 }
