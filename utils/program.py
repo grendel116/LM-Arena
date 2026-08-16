@@ -96,6 +96,14 @@ def get_active_user() -> str:
 
     return active_usr
 
+def get_player_name() -> str:
+    """Returns the active player's name from their character sheet."""
+    try:
+        from engine.character import load_character
+        return load_character().get("name") or "Eternal Champion"
+    except Exception:
+        return "Eternal Champion"
+
 def set_active_user(username: str):
     os.environ["ACTIVE_USER"] = username
     settings = _load_settings()

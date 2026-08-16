@@ -186,7 +186,10 @@ def read_save(save_id: str = None) -> dict:
             except Exception:
                 pass
                 
-        char_name = bundle["character"].get("name", save_id.replace("_", " ").title())
+        char_name = bundle["character"].get("name") or bundle["meta"].get("character_name")
+        if not char_name:
+            clean_id = re.sub(r'[\s_]+\d+$', '', save_id)
+            char_name = clean_id.replace("_", " ").title() if clean_id else "Hero"
         bundle["meta"]["id"] = save_id
         bundle["meta"]["character_name"] = char_name
         bundle["meta"]["name"] = bundle["meta"].get("name") or char_name
@@ -474,17 +477,23 @@ def list_saves() -> list:
             with open(item, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 meta = data.get("meta", {})
+                char = data.get("character", {})
+                char_name = char.get("name") or meta.get("character_name")
+                if not char_name:
+                    clean_id = re.sub(r'[\s_]+\d+$', '', save_id)
+                    char_name = clean_id.replace("_", " ").title() if clean_id else "Hero"
                 if not meta:
-                    char = data.get("character", {})
                     meta = {
                         "id": save_id,
-                        "name": save_id.replace("_", " ").title(),
-                        "character_name": char.get("name", "Hero"),
+                        "name": char_name,
+                        "character_name": char_name,
                         "race": char.get("race", "Nord"),
                         "class": char.get("class", "Mage"),
                         "level": char.get("level", 1),
                         "updated_at": datetime.fromtimestamp(item.stat().st_mtime).isoformat()
                     }
+                else:
+                    meta["character_name"] = char_name
                 meta["id"] = save_id
                 meta["is_active"] = (save_id == active_id)
                 saves.append(meta)

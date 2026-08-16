@@ -310,6 +310,7 @@ const localIp = appConfig.localIp || "127.0.0.1";
 let chatContainer = document.getElementById('chat-container');
 let userInput = document.getElementById('user-input');
 let programWelcomeMessage = null;
+let activePlayerName = (appConfig && appConfig.userName) || "";
 
 function replacePlaceholders(text) {
     if (!text) return text;
@@ -2077,6 +2078,9 @@ async function fetchCharacterStatus() {
         const data = await res.json();
         if (data.status === 'success' && data.character) {
             currentCharacterData = data;
+            if (data.character.name) {
+                activePlayerName = data.character.name;
+            }
             updatePlayerHeartState(data.character, data.world);
             renderCharacterStatusModal(data);
             updateMusicFromWorldState(data.world, data.character?.vitals || data.character?.derived);
@@ -4852,21 +4856,8 @@ async function deleteConsolidatedMemory(session_id, timestamp) {
    ========================================================================== */
 
 // --- getUserDisplayName ---
-function getUserDisplayName(userId) {
-    const id = userId || activeUserProfile || (window.__ARENA_CONFIG && window.__ARENA_CONFIG.activeUser) || "";
-    if (typeof userProfiles !== 'undefined' && userProfiles.length > 0) {
-        const activeProf = userProfiles.find(p => p.id === id || p.save_id === id);
-        if (activeProf && activeProf.name) {
-            return activeProf.name;
-        }
-    }
-    if (typeof currentCharacterSheet !== 'undefined' && currentCharacterSheet && currentCharacterSheet.name) {
-        return currentCharacterSheet.name;
-    }
-    if (id) {
-        return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    }
-    return "Eternal Champion";
+function getUserDisplayName() {
+    return activePlayerName || currentCharacterData?.character?.name || window.__ARENA_CONFIG?.userName || "Eternal Champion";
 }
 
 // --- renderOpeningLoreCard ---
@@ -4987,6 +4978,9 @@ async function loadHistory() {
             programWelcomeMessage = data.welcome_message;
         } else {
             programWelcomeMessage = null;
+        }
+        if (data.user_name) {
+            activePlayerName = data.user_name;
         }
         if (data.active_program) {
             applyTheme(data.active_program, data.theme);

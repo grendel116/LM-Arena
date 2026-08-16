@@ -41,24 +41,10 @@ def replace_placeholders(text: str, user_name: str = None, comp_name: str = None
     if not text:
         return text
     if not user_name:
-        try:
-            from engine.save_manager import get_active_save_id, read_save
-            from engine.character import load_character
-            active_id = get_active_save_id()
-            sheet = load_character(active_id)
-            user_name = sheet.get("name")
-            if not user_name:
-                bundle = read_save(active_id)
-                user_name = bundle.get("meta", {}).get("character_name") or bundle.get("meta", {}).get("name")
-            if not user_name:
-                user_name = active_id.replace("_", " ").title()
-        except Exception:
-            user_name = "Eternal Champion"
+        from utils.program import get_player_name
+        user_name = get_player_name()
     if not comp_name:
-        try:
-            comp_name = get_program_name()
-        except Exception:
-            comp_name = "Program"
+        comp_name = get_program_name()
     
     text = re.sub(r'(?i)\{\{user\}\}', user_name, text)
     text = re.sub(r'(?i)\{\{char\}\}', comp_name, text)

@@ -1202,10 +1202,10 @@ class BaseProgramRunner:
         remote_key = os.getenv("REMOTE_API_KEY")
         remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
         
-        from utils.program import get_active_user
+        from utils.program import get_player_name
         from core.program_config import get_program_name
         
-        user_name = get_active_user().capitalize()
+        user_name = get_player_name()
         try:
             program_name = get_program_name()
         except Exception:
@@ -1279,8 +1279,8 @@ class BaseProgramRunner:
 
     async def _distill_epic_chronicle(self, text_to_distill: str, active_model: str) -> str:
         """Condenses an extended multi-chapter historical chronicle into a high-level epic summary."""
-        from utils.program import get_active_user, get_active_program
-        user_name = get_active_user() or "The Player"
+        from utils.program import get_player_name, get_active_program
+        user_name = get_player_name()
         program_name = get_active_program() or "Program"
         
         prompt = (

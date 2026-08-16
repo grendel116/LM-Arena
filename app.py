@@ -249,16 +249,18 @@ def index():
     active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
     theme = load_theme(active_program)
 
-    from utils.program import get_active_user
+    from utils.program import get_active_user, get_player_name
     active_user = get_active_user()
     if os.getenv("AUTH_USER") and request.authorization and active_user == "eternal_champion":
         # If Basic Auth is active, default active user to authenticated user
         active_user = request.authorization.username
 
+    user_name = get_player_name()
+
     from flask import make_response
     from core.program_config import get_program_greeting, replace_placeholders
-    welcome_message = replace_placeholders(get_program_greeting())
-    response = make_response(render_template('index.html', local_ip=local_ip, tts_auto_speak=tts_auto_speak, tts_provider=tts_provider, active_program=active_program, theme=theme, active_user=active_user, welcome_message=welcome_message))
+    welcome_message = replace_placeholders(get_program_greeting(), user_name=user_name)
+    response = make_response(render_template('index.html', local_ip=local_ip, tts_auto_speak=tts_auto_speak, tts_provider=tts_provider, active_program=active_program, theme=theme, active_user=active_user, user_name=user_name, welcome_message=welcome_message))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
 
@@ -511,10 +513,9 @@ def proactive_action():
                 except Exception as ex:
                     print(f"Error reading program config for proactive action: {ex}")
                     
-        # Get active user profile
-        from utils.program import get_active_user
-        active_user = get_active_user()
-        user_display_name = active_user.replace("_", " ").title()
+        # Get active player name
+        from utils.program import get_player_name
+        user_display_name = get_player_name()
 
         # Load session history
         chat_history = asyncio.run(runner.get_history(session_id))
@@ -667,8 +668,11 @@ def history():
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
         
+        from utils.program import get_player_name
+        user_name = get_player_name()
+
         from core.program_config import program_name, get_program_greeting, replace_placeholders
-        welcome_message = replace_placeholders(get_program_greeting())
+        welcome_message = replace_placeholders(get_program_greeting(), user_name=user_name)
         active_program = os.environ.get("ACTIVE_PROGRAM", "sebile")
         
         theme = load_theme(active_program)
@@ -676,6 +680,7 @@ def history():
         return jsonify({
             'history': chat_history,
             'character_name': program_name,
+            'user_name': user_name,
             'active_program': active_program,
             'theme': theme,
             'welcome_message': welcome_message
@@ -3427,7 +3432,8 @@ def extract_profile_display_name(profile_id: str, content: str) -> str:
                     raw = raw[len(prefix):].strip()
             if raw:
                 return raw
-    return profile_id.replace("_", " ").title()
+    clean_id = re.sub(r'[\s_]+\d+$', '', profile_id).replace("_", " ").strip()
+    return clean_id.title() if clean_id else "Eternal Champion"
 
 
 @app.route('/api/user_profiles', methods=['GET'])
