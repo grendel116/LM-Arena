@@ -118,7 +118,7 @@ async function renderTamrielMap() {
             </defs>
 
             <!-- Authentic Tamriel Map Image -->
-            <image href="/static/images/tamriel_map.png" x="0" y="0" width="1024" height="589" />
+            <image href="/static/img/tamriel.webp" x="0" y="0" width="1024" height="589" />
 
             <!-- Province Badges & Click Hotspots -->
             ${markersSvg}
@@ -343,7 +343,7 @@ async function softReloadApp() {
             
             const userInput = document.getElementById('user-input');
             if (userInput) {
-                userInput.placeholder = "Ask " + data.character_name;
+                userInput.placeholder = "What do you do?";
             }
         }
         
@@ -2195,7 +2195,7 @@ function clearGameOverState() {
     const inputEl = document.getElementById('user-input');
     if (inputEl) {
         inputEl.disabled = false;
-        inputEl.placeholder = "Ask " + (activeProgramName || "Program");
+        inputEl.placeholder = "What do you do?";
         inputEl.classList.remove('user-input-frozen');
     }
 
@@ -4165,7 +4165,7 @@ async function selectAssistant(assistantId) {
             }
             const textarea = document.getElementById('user-input');
             if (textarea) {
-                textarea.placeholder = `Ask ${data.character_name}`;
+                textarea.placeholder = "What do you do?";
             }
             
             // Update profile cache buster and switch avatars instantly
@@ -4634,18 +4634,57 @@ async function deleteConsolidatedMemory(session_id, timestamp) {
 
 // --- getUserDisplayName ---
 function getUserDisplayName(userId) {
-    const id = userId || activeUserProfile || window.__ARENA_CONFIG.activeUser;
+    const id = userId || activeUserProfile || (window.__ARENA_CONFIG && window.__ARENA_CONFIG.activeUser) || "";
     if (typeof userProfiles !== 'undefined' && userProfiles.length > 0) {
-        const activeProf = userProfiles.find(p => p.id === id);
+        const activeProf = userProfiles.find(p => p.id === id || p.save_id === id);
         if (activeProf && activeProf.name) {
             return activeProf.name;
         }
     }
-    return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if (typeof currentCharacterSheet !== 'undefined' && currentCharacterSheet && currentCharacterSheet.name) {
+        return currentCharacterSheet.name;
+    }
+    if (id) {
+        return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    return "Eternal Champion";
+}
+
+// --- renderOpeningLoreCard ---
+function renderOpeningLoreCard() {
+    const container = document.getElementById('chat-container');
+    if (!container) return;
+    if (document.getElementById('opening-lore-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'opening-lore-banner';
+    banner.className = 'opening-lore-overlay';
+    banner.innerHTML = `
+        <div class="opening-lore-card">
+            <div class="opening-lore-heading">
+                <span class="opening-lore-subtitle">THE ELDER SCROLLS</span>
+                <h2 class="opening-lore-title">ARENA</h2>
+            </div>
+            <div class="opening-lore-divider"></div>
+            <div class="opening-lore-body">
+                <p>For centuries different factions battled in petty wars and border conflicts, until in 2E 896 Tiber Septim crushed all who opposed him and proclaimed himself Emperor. Still, the bitter years of war had their effect. The name Tamriel — Elvish for <em>&ldquo;Dawn's Beauty&rdquo;</em> — seldom fell from anguished lips and was soon forgotten. In a place where life and death were different sides of the same coin, tossed every day, the people began calling the land of their sorrow the Arena.</p>
+                <p>Now, 492 years after Tiber Septim brought peace, a new shadow falls. The Emperor Uriel Septim VII celebrates his forty-third birthday. But jealous hearts desire the throne and plot his downfall.</p>
+                <p>Uriel Septim VII stood with Talin, captain of the Imperial Guard, summoned to the throne room by Jagar Tharn on rumors of treachery. But Tharn betrayed the Emperor. He took the throne and wasted no time. The Emperor's Guard were twisted into loyal servants, and the Imperial Wizard settled into his stolen crown.</p>
+                <p class="opening-lore-climax">It is said that hope flies on death's wings. Prepare then — for as the Elder Scrolls foretold, it is here that your adventure begins.</p>
+            </div>
+        </div>
+    `;
+
+    if (container.firstChild) {
+        container.insertBefore(banner, container.firstChild);
+    } else {
+        container.appendChild(banner);
+    }
 }
 
 // --- showWelcomeMessage ---
 function showWelcomeMessage() {
+    renderOpeningLoreCard();
     // Do not show welcome message if there is already active chat history visible
     const visibleMessages = chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)');
     if (visibleMessages.length > 0) return;
@@ -4745,13 +4784,14 @@ async function loadHistory() {
             
             const userInput = document.getElementById('user-input');
             if (userInput) {
-                userInput.placeholder = "Ask " + data.character_name;
+                userInput.placeholder = "What do you do?";
             }
         }
         
         if (container) {
             container.innerHTML = '';
         }
+        renderOpeningLoreCard();
         if (data.history && data.history.length > 0) {
             // Remove welcome message or onboarding card
             const welcome = document.getElementById('welcome-message');
@@ -5415,7 +5455,6 @@ function normalizeChatResponse(data) {
         tool_calls: toolCalls,
         timestamp: data.timestamp,
         duration: data.duration,
-        mood: data.state,
         inversion_active: data.inversion_active || '',
         editable: true,
         deletable: true
@@ -5749,6 +5788,7 @@ function renderMessage(msg, isLive = false) {
 
             if (actualResponse) {
                 actualResponse = actualResponse.replace(/<!--[\s\S]*?-->/g, '').trim();
+                actualResponse = replacePlaceholders(actualResponse);
                 const textDiv = document.createElement('div');
                 textDiv.className = 'message-text';
                 if (role === 'program' || role === 'user') {
@@ -5961,7 +6001,6 @@ function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = f
         timestamp: timestamp,
         duration: duration,
         isTransient: isTransient,
-        mood: null,
         editable: role === 'user' || role === 'program',
         deletable: true
     };
@@ -6157,6 +6196,7 @@ async function sendMessage() {
     }
 
     hasApprovedToolThisTurn = false;
+    hasStagedRollMessage = false;
     setGenerating(true);
     userInput.disabled = true;
     userInput.placeholder = "";
@@ -6270,9 +6310,10 @@ async function sendMessage() {
         handleToolReloadOrRecovery();
     } finally {
         setGenerating(false);
-        if (!activePlayerSkillCheck) {
+        if (!activePlayerSkillCheck && !hasStagedRollMessage) {
             userInput.disabled = false;
-            userInput.placeholder = "Ask " + (activeProgramName || "Program");
+            userInput.placeholder = "What do you do?";
+            userInput.classList.remove('user-input-frozen');
         }
         updateInputGlow();
         stopToolPolling();
@@ -6665,7 +6706,7 @@ async function resendUserMessage(bubble) {
         stopToolPolling();
         setGenerating(false);
         userInput.disabled = false;
-        userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        userInput.placeholder = "What do you do?";
         if (heartElement) {
             heartElement.classList.remove('jiggling');
         }
@@ -6774,7 +6815,7 @@ async function rerollFromMessage(button) {
         stopToolPolling();
         setGenerating(false);
         userInput.disabled = false;
-        userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        userInput.placeholder = "What do you do?";
         if (heartElement) {
             heartElement.classList.remove('jiggling');
         }
@@ -7498,15 +7539,16 @@ async function autoGenerateUserMessage() {
         btn.title = "Auto-Generate Message (Impersonate)";
         btn.innerHTML = origIcon;
         userInput.disabled = false;
-        userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        userInput.placeholder = "What do you do?";
     }
 }
 
 // --- Player Skill Check System ---
 let activePlayerSkillCheck = null;
+let hasStagedRollMessage = false;
 
 function activateSkillCheckUI(checkData) {
-    if (!checkData) return;
+    if (!checkData || hasStagedRollMessage) return;
     activePlayerSkillCheck = checkData;
 
     const diceBtn = document.getElementById('dice-skill-btn');
@@ -7547,6 +7589,7 @@ function activateSkillCheckUI(checkData) {
 }
 
 function evaluateLatestMessageForSkillCheck() {
+    if (hasStagedRollMessage) return;
     if (!chatContainer) return;
     const allRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)'));
     if (allRows.length === 0) {
@@ -7584,6 +7627,7 @@ function evaluateLatestMessageForSkillCheck() {
 
 function resetSkillCheckUI() {
     activePlayerSkillCheck = null;
+    hasStagedRollMessage = false;
 
     const diceBtn = document.getElementById('dice-skill-btn');
     if (diceBtn) {
@@ -7593,7 +7637,7 @@ function resetSkillCheckUI() {
 
     if (userInput) {
         userInput.disabled = false;
-        userInput.placeholder = "Ask " + (activeProgramName || "Program");
+        userInput.placeholder = "What do you do?";
         userInput.classList.remove('user-input-frozen');
     }
 
@@ -7678,10 +7722,10 @@ async function resolvePlayerSkillCheck() {
             userInput.style.height = 'auto';
             userInput.style.height = (userInput.scrollHeight) + 'px';
 
-            // Prefill text area and ensure it is fully editable and ready to send
-            userInput.disabled = false;
-            userInput.classList.remove('user-input-frozen');
-            userInput.placeholder = "Ask " + (activeProgramName || "Program");
+            // Keep text area locked until pressing send so player cannot edit roll result before sending
+            userInput.disabled = true;
+            userInput.classList.add('user-input-frozen');
+            userInput.placeholder = "Roll action generated — Click Send to submit";
 
             // Reset dice button state
             if (diceBtn) {
@@ -7689,26 +7733,26 @@ async function resolvePlayerSkillCheck() {
                 diceBtn.title = "Roll Action (D20)";
             }
 
-            // Restore all input toolbar buttons
+            // Keep toolbar buttons disabled while staged roll message is locked
             const autoGenBtn = document.getElementById('auto-generate-user-btn');
             if (autoGenBtn) {
-                autoGenBtn.disabled = false;
-                autoGenBtn.style.opacity = '';
-                autoGenBtn.style.pointerEvents = '';
+                autoGenBtn.disabled = true;
+                autoGenBtn.style.opacity = '0.25';
+                autoGenBtn.style.pointerEvents = 'none';
             }
 
             const portraitBtn = document.getElementById('generate-portrait-btn');
             if (portraitBtn) {
-                portraitBtn.disabled = false;
-                portraitBtn.style.opacity = '';
-                portraitBtn.style.pointerEvents = '';
+                portraitBtn.disabled = true;
+                portraitBtn.style.opacity = '0.25';
+                portraitBtn.style.pointerEvents = 'none';
             }
 
             const imgUploadBtn = document.getElementById('image-upload-btn');
             if (imgUploadBtn) {
-                imgUploadBtn.disabled = false;
-                imgUploadBtn.style.opacity = '';
-                imgUploadBtn.style.pointerEvents = '';
+                imgUploadBtn.disabled = true;
+                imgUploadBtn.style.opacity = '0.25';
+                imgUploadBtn.style.pointerEvents = 'none';
             }
 
             // Unlock and focus the send button so the user can send with one click or Enter
@@ -7720,6 +7764,7 @@ async function resolvePlayerSkillCheck() {
                 sendBtn.focus();
             }
 
+            hasStagedRollMessage = true;
             activePlayerSkillCheck = null;
             updateInputGlow();
 
@@ -8412,9 +8457,24 @@ async function openQuestLog() {
     await loadQuests();
 }
 
+let questModalMouseDownTarget = null;
+document.addEventListener('mousedown', (e) => {
+    questModalMouseDownTarget = e.target;
+}, true);
+
 // --- closeQuestLog ---
-function closeQuestLog() {
-    document.getElementById('quest-modal').style.display = 'none';
+function closeQuestLog(e) {
+    if (hadMapDrag || isMapPanning) {
+        hadMapDrag = false;
+        return;
+    }
+    const modal = document.getElementById('quest-modal');
+    if (e && modal) {
+        if (e.target !== modal || questModalMouseDownTarget !== modal) {
+            return;
+        }
+    }
+    if (modal) modal.style.display = 'none';
 }
 
 // --- Map Pan & Zoom Variables ---
@@ -8422,27 +8482,75 @@ let mapZoom = 1.0;
 let mapPanX = 0;
 let mapPanY = 0;
 let isMapPanning = false;
+let hadMapDrag = false;
 let mapStartX = 0;
 let mapStartY = 0;
 
+function clampTamrielMapPan() {
+    const viewport = document.getElementById('tamriel-map-viewport');
+    if (!viewport) return;
+    const w = viewport.clientWidth;
+    const h = viewport.clientHeight;
+
+    if (mapZoom <= 1.0) {
+        mapZoom = 1.0;
+        mapPanX = 0;
+        mapPanY = 0;
+        return;
+    }
+
+    const minPanX = -w * (mapZoom - 1.0);
+    const maxPanX = 0;
+    const minPanY = -h * (mapZoom - 1.0);
+    const maxPanY = 0;
+
+    mapPanX = Math.min(Math.max(mapPanX, minPanX), maxPanX);
+    mapPanY = Math.min(Math.max(mapPanY, minPanY), maxPanY);
+}
+
 function updateTamrielMapTransform() {
+    clampTamrielMapPan();
     const layer = document.getElementById('tamriel-map-layer');
     const zoomDisplay = document.getElementById('tamriel-map-zoom-level');
+    const viewport = document.getElementById('tamriel-map-viewport');
     if (layer) {
         layer.style.transform = `translate(${mapPanX}px, ${mapPanY}px) scale(${mapZoom})`;
     }
     if (zoomDisplay) {
         zoomDisplay.textContent = `${Math.round(mapZoom * 100)}%`;
     }
+    if (viewport && !isMapPanning) {
+        viewport.style.cursor = mapZoom > 1.0 ? 'grab' : 'default';
+    }
 }
 
 function tamrielMapZoomIn() {
-    mapZoom = Math.min(mapZoom * 1.3, 5.0);
+    const viewport = document.getElementById('tamriel-map-viewport');
+    const w = viewport ? viewport.clientWidth : 0;
+    const h = viewport ? viewport.clientHeight : 0;
+    const newZoom = Math.min(mapZoom * 1.3, 5.0);
+    if (w && h && mapZoom > 0) {
+        const centerX = w / 2;
+        const centerY = h / 2;
+        mapPanX = centerX - (centerX - mapPanX) * (newZoom / mapZoom);
+        mapPanY = centerY - (centerY - mapPanY) * (newZoom / mapZoom);
+    }
+    mapZoom = newZoom;
     updateTamrielMapTransform();
 }
 
 function tamrielMapZoomOut() {
-    mapZoom = Math.max(mapZoom / 1.3, 0.6);
+    const viewport = document.getElementById('tamriel-map-viewport');
+    const w = viewport ? viewport.clientWidth : 0;
+    const h = viewport ? viewport.clientHeight : 0;
+    const newZoom = Math.max(mapZoom / 1.3, 1.0);
+    if (w && h && mapZoom > 0) {
+        const centerX = w / 2;
+        const centerY = h / 2;
+        mapPanX = centerX - (centerX - mapPanX) * (newZoom / mapZoom);
+        mapPanY = centerY - (centerY - mapPanY) * (newZoom / mapZoom);
+    }
+    mapZoom = newZoom;
     updateTamrielMapTransform();
 }
 
@@ -8466,10 +8574,12 @@ function initTamrielMapPanZoom() {
         const mouseY = e.clientY - rect.top;
 
         const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-        const newZoom = Math.min(Math.max(mapZoom * zoomFactor, 0.6), 5.0);
+        const newZoom = Math.min(Math.max(mapZoom * zoomFactor, 1.0), 5.0);
 
-        mapPanX = mouseX - (mouseX - mapPanX) * (newZoom / mapZoom);
-        mapPanY = mouseY - (mouseY - mapPanY) * (newZoom / mapZoom);
+        if (mapZoom > 0) {
+            mapPanX = mouseX - (mouseX - mapPanX) * (newZoom / mapZoom);
+            mapPanY = mouseY - (mouseY - mapPanY) * (newZoom / mapZoom);
+        }
         mapZoom = newZoom;
 
         updateTamrielMapTransform();
@@ -8477,7 +8587,7 @@ function initTamrielMapPanZoom() {
 
     // Mouse Down (Drag Start)
     viewport.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || mapZoom <= 1.0) return;
         isMapPanning = true;
         mapStartX = e.clientX - mapPanX;
         mapStartY = e.clientY - mapPanY;
@@ -8496,15 +8606,17 @@ function initTamrielMapPanZoom() {
     window.addEventListener('mouseup', () => {
         if (isMapPanning) {
             isMapPanning = false;
+            hadMapDrag = true;
+            setTimeout(() => { hadMapDrag = false; }, 200);
             const vp = document.getElementById('tamriel-map-viewport');
-            if (vp) vp.style.cursor = 'grab';
+            if (vp) vp.style.cursor = mapZoom > 1.0 ? 'grab' : 'default';
         }
     });
 
     // Touch Support for Mobile
     let touchStartDist = 0;
     viewport.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
+        if (e.touches.length === 1 && mapZoom > 1.0) {
             isMapPanning = true;
             mapStartX = e.touches[0].clientX - mapPanX;
             mapStartY = e.touches[0].clientY - mapPanY;
@@ -8528,7 +8640,8 @@ function initTamrielMapPanZoom() {
                 e.touches[0].clientY - e.touches[1].clientY
             );
             const factor = dist / touchStartDist;
-            mapZoom = Math.min(Math.max(mapZoom * (factor > 1 ? 1.04 : 0.96), 0.6), 5.0);
+            const newZoom = Math.min(Math.max(mapZoom * (factor > 1 ? 1.04 : 0.96), 1.0), 5.0);
+            mapZoom = newZoom;
             updateTamrielMapTransform();
         }
     }, { passive: true });

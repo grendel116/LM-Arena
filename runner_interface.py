@@ -34,15 +34,7 @@ def _run_async_in_background_thread(coro):
 
 _DEFAULT_INVERSION_STATE = {
     "active_inversion": "",
-    "inversion_consecutive_turns": 0,
-    "mood_tally": {
-        "intimate": 0,
-        "excited": 0,
-        "intense": 0,
-        "sad": 0,
-        "analytical": 0,
-        "focused": 0
-    }
+    "inversion_consecutive_turns": 0
 }
 
 
@@ -969,7 +961,6 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         return openai_messages
 
     def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str, intermediate: bool = False):
-        from utils.program_mood import extract_and_strip_mood
         from utils.program import get_active_user
         from engine.world_engine import (
             load_world_state,
@@ -987,19 +978,13 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         cleaned_text, updated_snapshot = extract_hidden_state_footer(text, current_snapshot)
         apply_state_snapshot(active_user, updated_snapshot)
 
-        _, mood_details = extract_and_strip_mood(cleaned_text)
         winning_mode = self.runner_obj._winning_mode_cache.get(self.session_id, "")
-        
-        if mood_details:
-            mood_name = mood_details.get('name')
-            self.runner_obj.update_inversion_state_with_mood(self.session_id, mood_name)
             
         history = self.runner_obj.sessions_history[self.session_id]
         if history and history[-1]['role'] == 'program':
             history[-1]['text'] = cleaned_text
             history[-1]['tool_calls'] = tool_calls_data
             history[-1]['inversion_active'] = winning_mode
-            history[-1]['mood'] = mood_details
             history[-1]['state_snapshot'] = updated_snapshot
             return history[-1]
             
@@ -1017,7 +1002,6 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             'tool_calls': tool_calls_data,
             'timestamp': time.time(),
             'inversion_active': winning_mode,
-            'mood': mood_details,
             'state_snapshot': updated_snapshot
         }
         history.append(bot_msg)
@@ -1835,29 +1819,6 @@ class BaseProgramRunner:
         """Deletes a specific message inside the session history."""
         raise NotImplementedError()
 
-    def update_inversion_state_with_mood(self, session_id: str, mood_name: str):
-        state = self.sessions_inversion_state.setdefault(session_id, copy.deepcopy(_DEFAULT_INVERSION_STATE))
-        
-        # If there is an active inversion, it remains active for a consecutive count of turns.
-        if state.get("active_inversion"):
-            state["inversion_consecutive_turns"] = state.get("inversion_consecutive_turns", 0) + 1
-            if state["inversion_consecutive_turns"] >= 5:
-                # Inversion mode expires after 5 turns!
-                state["active_inversion"] = ""
-                state["inversion_consecutive_turns"] = 0
-            return
-            
-        # If no active inversion, count the mood
-        tally = state.setdefault("mood_tally", copy.deepcopy(_DEFAULT_INVERSION_STATE["mood_tally"]))
-        if mood_name in tally:
-            tally[mood_name] += 1
-            if tally[mood_name] >= 5:
-                # Trigger inversion!
-                state["active_inversion"] = mood_name
-                state["inversion_consecutive_turns"] = 0
-                # Reset tally
-                state["mood_tally"] = copy.deepcopy(_DEFAULT_INVERSION_STATE["mood_tally"])
-
     async def _get_inversion_mode(self, session_id: str, history: list = None) -> str:
         state = self.sessions_inversion_state.setdefault(session_id, copy.deepcopy(_DEFAULT_INVERSION_STATE))
         return state.get("active_inversion", "")
@@ -2322,7 +2283,6 @@ class OpenSourceRunner(BaseProgramRunner):
             'tool_summary': tool_summary,
             'tool_calls': msg.get('tool_calls', []),
             'timestamp': msg.get('timestamp'),
-            'mood': msg.get('mood'),
             'inversion_active': msg.get('inversion_active', ''),
             'editable': role in ('user', 'program'),
             'deletable': True,
@@ -2346,29 +2306,13 @@ class OpenSourceRunner(BaseProgramRunner):
                             'role': 'program',
                             'text': greeting,
                             'tool_calls': [],
-                            'inversion_active': '',
-                            'mood': None
+                            'inversion_active': ''
                         })
                         self._save_session_to_disk(session_id)
                 except Exception as _e:
                     print(f"[runner] Could not seed first_mes: {_e}")
 
             raw_history = self.sessions_history.get(session_id, [])
-
-            updated_any = False
-            for msg in raw_history:
-                if msg.get('role') == 'program' and 'mood' not in msg:
-                    msg['mood'] = {
-                        "name": "calm",
-                        "color": "#85b9eb",
-                        "glow": "rgba(133, 185, 235, 0.9)",
-                        "speed": "2.00s",
-                        "intensity": 0.0
-                    }
-                    updated_any = True
-                            
-            if updated_any:
-                self._save_session_to_disk(session_id)
                 
             _hidden_prefixes = ('tool_', 'port_', 'quest_', 'sys_', 'itm_')
             chat_history = []
@@ -2643,35 +2587,31 @@ class OpenSourceRunner(BaseProgramRunner):
                 if marked_compacted:
                     self._save_session_to_disk(session_id)
                     
-            # Delete from memories.json vector database
+            # Delete from save memories
             from core.skills.vectorized_databank.databank import DataBankManager
             db = DataBankManager()
-            memories_path = db.memories_path
             deleted_from_db = False
-            if os.path.exists(memories_path):
-                try:
-                    with open(memories_path, "r", encoding="utf-8") as f:
-                        m_data = json.load(f)
-                    docs = m_data.get("documents", [])
-                    chunks = m_data.get("chunks", [])
-                    
-                    prefix = f"chat_history_archive_{session_id}_"
-                    matching_ids = []
-                    for doc in docs:
-                        doc_name = doc.get("name", "")
-                        doc_ts = doc.get("timestamp", 0)
-                        if doc.get("source_type") == "chat_history" and (abs(doc_ts - timestamp) < 10.0 or doc_name.startswith(prefix)):
-                            matching_ids.append(doc.get("id"))
-                            
-                    if matching_ids:
-                        m_data["documents"] = [d for d in docs if d.get("id") not in matching_ids]
-                        m_data["chunks"] = [c for c in chunks if c.get("doc_id") not in matching_ids]
-                        with open(memories_path, "w", encoding="utf-8") as f:
-                            json.dump(m_data, f, indent=2, ensure_ascii=False)
-                        deleted_from_db = True
-                        print(f"[MEMORY DELETE] Deleted docs {matching_ids} from memories.json.", flush=True)
-                except Exception as e:
-                    print(f"[MEMORY DELETE ERROR] Failed to clean memories.json: {e}", flush=True)
+            try:
+                m_data = db._load_data(db.memories_path)
+                docs = m_data.get("documents", [])
+                chunks = m_data.get("chunks", [])
+                
+                prefix = f"chat_history_archive_{session_id}_"
+                matching_ids = []
+                for doc in docs:
+                    doc_name = doc.get("name", "")
+                    doc_ts = doc.get("timestamp", 0)
+                    if doc.get("source_type") == "chat_history" and (abs(doc_ts - timestamp) < 10.0 or doc_name.startswith(prefix)):
+                        matching_ids.append(doc.get("id"))
+                        
+                if matching_ids:
+                    m_data["documents"] = [d for d in docs if d.get("id") not in matching_ids]
+                    m_data["chunks"] = [c for c in chunks if c.get("doc_id") not in matching_ids]
+                    db._save_data(db.memories_path, m_data)
+                    deleted_from_db = True
+                    print(f"[MEMORY DELETE] Deleted docs {matching_ids} from save memories.", flush=True)
+            except Exception as e:
+                print(f"[MEMORY DELETE ERROR] Failed to clean save memories: {e}", flush=True)
                     
             return marked_compacted or deleted_from_db
 
@@ -2909,13 +2849,7 @@ class OpenSourceRunner(BaseProgramRunner):
             }
             if role != "user":
                 winning_mode = await self._get_inversion_mode(session_id)
-                from utils.program_mood import extract_and_strip_mood
-                _, mood_details = extract_and_strip_mood(text)
-                if mood_details:
-                    mood_name = mood_details.get('name')
-                    self.update_inversion_state_with_mood(session_id, mood_name)
                 new_msg['inversion_active'] = winning_mode
-                new_msg['mood'] = mood_details
             history.append(new_msg)
             self._save_session_to_disk(session_id)
             return True
@@ -2987,9 +2921,7 @@ class OpenSourceRunner(BaseProgramRunner):
                 target_msg['text'] = new_text
                 role = target_msg.get('role')
                 if role in ('program', 'model'):
-                    from utils.program_mood import extract_and_strip_mood
-                    _, mood_details = extract_and_strip_mood(new_text)
-                    target_msg['mood'] = mood_details
+                    pass
                     
                     prev_user_idx = -1
                     for k in range(found_idx - 1, -1, -1):

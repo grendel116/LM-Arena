@@ -15,23 +15,23 @@ When hostilities, ambushes, or physical confrontations occur between the player 
   `[arena_roll_combat(attacker_name="...", attacker_strength=..., attacker_agility=..., attacker_class_archetype="...", weapon_name="...", weapon_damage_tier=..., weapon_attribute="...", target_name="...", target_agility=...)]`
 - **Stamina Impact on Combat**:
   - When the attacker's Stamina drops below 25% (or 0), they suffer **Low Stamina / Exhaustion** (-3 penalty / disadvantage to hit).
-  - Heavy power strikes, dodging, and prolonged sprinting spend Stamina: `[arena_spend_stamina(character_name="{{user}}", amount=...)]`.
-  - Catching breath or drinking stamina potions restores Stamina: `[arena_restore_stamina(character_name="{{user}}", amount=...)]`.
+  - Heavy power strikes, dodging, and prolonged sprinting spend Stamina: `[arena_spend_stamina(amount=...)]`.
+  - Catching breath or drinking stamina potions restores Stamina: `[arena_restore_stamina(amount=...)]`.
 
 ## 2. Damage & Healing Application
 - When an attack connects against the player:
-  `[arena_take_damage(character_name="{{user}}", amount=...)]`
+  `[arena_take_damage(amount=...)]`
 - When healed via potion or Restoration spell:
-  `[arena_heal(character_name="{{user}}", amount=...)]`
+  `[arena_heal(amount=...)]`
 - When casting spells, spend Magicka (MP):
-  `[arena_spend_magicka(character_name="{{user}}", amount=...)]`
+  `[arena_spend_magicka(amount=...)]`
 
 ## 3. Resource Restoration & Resting
 - **Resting at an Inn or Safe Camp** (6–8 hours):
-  `[arena_rest(character_name="{{user}}", hours=8, safe=True)]`
+  `[arena_rest(hours=8, safe=True)]`
   - Restores **Health (HP)**, **Magicka (MP)**, and **Stamina** to 100% (Note: *Sorcerers* do not regenerate MP through resting; they rely on Spell Absorption).
 - **Short Breather / Unsafe Rest** (1–2 hours):
-  `[arena_rest(character_name="{{user}}", hours=2, safe=False)]`
+  `[arena_rest(hours=2, safe=False)]`
   - Restores **Stamina** to 100% and recovers ~35% of Health and Magicka.
 - **Potions & Temple Blessings**:
   - Health Potions, Magicka Potions, and Stamina Potions instantly restore their respective pools.

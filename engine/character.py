@@ -64,28 +64,17 @@ DEFAULT_SHEET = {
     "conditions": []
 }
 
-def _normalize_save_slot(character_name: str) -> str:
-    if not character_name or str(character_name).strip() in ("{{user}}", "user", "player", "current", ""):
-        try:
-            from engine.save_manager import get_active_save_id
-            return get_active_save_id()
-        except Exception:
-            return "eternal_champion"
-    return str(character_name).strip().lower().replace(" ", "_").replace("-", "_")
-
-
-def load_character(character_name: str) -> dict:
+def load_character(save_id: str = None) -> dict:
     """Load and return the character sheet for the active save slot."""
-    slot = _normalize_save_slot(character_name)
     try:
-        from engine.save_manager import read_save
+        from engine.save_manager import get_active_save_id, read_save
+        slot = save_id or get_active_save_id()
         bundle = read_save(slot)
         sheet = bundle.get("character", {})
         if not sheet:
             import copy
             sheet = copy.deepcopy(DEFAULT_SHEET)
-            sheet["name"] = character_name.replace("_", " ").title() if character_name else "Eternal Champion"
-            save_character(slot, sheet)
+            save_character(sheet, slot)
             return sheet
 
         # Seamless migration: SP -> MP and Stamina
@@ -105,16 +94,22 @@ def load_character(character_name: str) -> dict:
         return copy.deepcopy(DEFAULT_SHEET)
 
 
-def save_character(character_name: str, sheet: dict) -> None:
-    """Persist the character sheet to the save file."""
-    slot = _normalize_save_slot(character_name)
+def save_character(arg1=None, arg2=None) -> None:
+    """Persist the character sheet to the active save file."""
     try:
-        from engine.save_manager import read_save, write_save
+        from engine.save_manager import get_active_save_id, read_save, write_save
+        if isinstance(arg1, dict):
+            sheet = arg1
+            slot = arg2 or get_active_save_id()
+        else:
+            slot = arg1 or get_active_save_id()
+            sheet = arg2 or {}
+            
         bundle = read_save(slot)
         bundle["character"] = sheet
         write_save(slot, bundle)
     except Exception as e:
-        print(f"[save_character] Error persisting character sheet to {slot}: {e}")
+        print(f"[save_character] Error persisting character sheet: {e}")
 
 
 # ── Equipment Slots & Categorization ──────────────────────────────────────────

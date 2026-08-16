@@ -116,15 +116,22 @@ def execute_action(state: dict, action: dict) -> dict:
         
     return state
 
-def advance_quest_stage(character_name: str, target_stage: int = None) -> dict:
-    """Advances the active character's quest stage and saves the world state."""
+def advance_quest_stage(arg1=None, target_stage: int = None, **kwargs) -> dict:
+    """Advances the active save quest stage and saves the world state."""
     from engine.world_engine import load_world_state, save_world_state
-    world_state = load_world_state(character_name)
+    if isinstance(arg1, (int, float)):
+        stage_num_target = int(arg1)
+    elif target_stage is not None:
+        stage_num_target = int(target_stage)
+    else:
+        stage_num_target = None
+
+    world_state = load_world_state()
     current_stage_num = world_state.get("quest_stage", 10)
     stages = load_quest_stages()
 
-    if target_stage is not None:
-        new_stage_num = int(target_stage)
+    if stage_num_target is not None:
+        new_stage_num = stage_num_target
         stage = get_current_stage(current_stage_num, stages)
         fired_actions = []
         if stage:
@@ -136,7 +143,7 @@ def advance_quest_stage(character_name: str, target_stage: int = None) -> dict:
         world_state, fired_actions = advance_stage(world_state, stages)
         new_stage_num = world_state.get("quest_stage", current_stage_num + 10)
 
-    save_world_state(character_name, world_state)
+    save_world_state(world_state)
     new_stage = get_current_stage(new_stage_num, stages)
     
     return {
@@ -148,16 +155,15 @@ def advance_quest_stage(character_name: str, target_stage: int = None) -> dict:
         "fired_actions": fired_actions
     }
 
-def set_quest_stage(character_name: str, stage_number: int) -> dict:
+def set_quest_stage(stage_number: int, **kwargs) -> dict:
     """Sets the character's quest stage directly."""
-    return advance_quest_stage(character_name, target_stage=int(stage_number))
+    return advance_quest_stage(target_stage=int(stage_number))
 
-def sync_quest_stage_with_location(character_name: str) -> dict:
+def sync_quest_stage_with_location(character_name: str = None) -> dict:
     """Auto-advances quest stage if the player has moved past earlier milestones in the narrative."""
     from engine.world_engine import load_world_state, save_world_state
-    state = load_world_state(character_name)
+    state = load_world_state()
     loc = str(state.get("current_location", "")).strip().lower()
-    prov = str(state.get("current_province", "")).strip().lower()
     stage = state.get("quest_stage", 10)
 
     # If player is outside the Imperial Dungeon, Stage 10 is accomplished
@@ -165,7 +171,7 @@ def sync_quest_stage_with_location(character_name: str) -> dict:
         state["quest_stage"] = 20
         flags = state.setdefault("world_flags", {})
         flags["province_travel_unlocked"] = True
-        save_world_state(character_name, state)
+        save_world_state(state)
 
     return state
 

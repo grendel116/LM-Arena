@@ -12,23 +12,23 @@ When the player completes narrative milestones, seeks Staff of Chaos fragments, 
 
 ## 1. Main Quest Advancement
 - When the player fulfills the requirements of their active main quest stage (e.g. solving the Shift Gate riddle in the Imperial Dungeon, acquiring a Staff fragment, reaching a ruler, or entering the Imperial Palace):
-  `[arena_advance_stage(character_name="{{user}}")]`
+  `[arena_advance_stage()]`
 - To jump or set a specific chapter stage directly:
-  `[arena_set_quest_stage(character_name="{{user}}", stage_number=...)]`
+  `[arena_set_quest_stage(stage_number=...)]`
 - This updates `world_state.json`, triggers spectral vision flags for Ria Silmane, and updates the player's active Quest Journal.
 
 ## 2. Setting Location & Portal Transit
 - When the player steps through a Shift Gate, enters or exits a dungeon, or arrives in a specific town or wilderness:
-  `[arena_set_location(character_name="{{user}}", province="...", location_name="...")]`
+  `[arena_set_location(province="...", location_name="...")]`
 
 ## 3. Fast Travel Across Provinces & Cities
 - When the player journeys overland between provinces or travels to specific settlements:
-  `[arena_travel(character_name="{{user}}", destination_province="...", destination_city="...")]`
+  `[arena_travel(destination_province="...", destination_city="...")]`
 - This advances the in-game Tamrielic calendar and updates local weather and climate state.
 
 ## 4. Location Grounding
 - To query current regional geography, weather, and date context:
-  `[arena_get_location(character_name="{{user}}")]`
+  `[arena_get_location()]`
 
 
 ## 4. Procedural Side Quests & Rare Artifact Rumors

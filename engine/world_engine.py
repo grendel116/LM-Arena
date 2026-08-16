@@ -5,24 +5,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
 
-def _normalize_save_slot(character_name: str) -> str:
-    if not character_name or str(character_name).strip() in ("{{user}}", "user", "player", "current", ""):
-        try:
-            from engine.save_manager import get_active_save_id
-            return get_active_save_id()
-        except Exception:
-            return "eternal_champion"
-    return str(character_name).strip().lower().replace(" ", "_").replace("-", "_")
-
-def _get_save_path(character_name: str) -> Path:
-    slot = _normalize_save_slot(character_name)
-    return BASE_DIR / "variables" / "saves" / slot / "world_state.json"
-
-def load_world_state(character_name: str) -> dict:
+def load_world_state(save_id: str = None) -> dict:
     """Loads the world state for the active save slot."""
-    slot = _normalize_save_slot(character_name)
     try:
-        from engine.save_manager import read_save
+        from engine.save_manager import get_active_save_id, read_save
+        slot = save_id or get_active_save_id()
         bundle = read_save(slot)
         state = bundle.get("world", {})
         if state:
@@ -35,22 +22,29 @@ def load_world_state(character_name: str) -> dict:
         try:
             with open(default_world_path, "r", encoding="utf-8") as f:
                 state = json.load(f)
-            save_world_state(character_name, state)
+            save_world_state(state, slot)
             return state
         except Exception:
             pass
     return {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
 
-def save_world_state(character_name: str, state: dict) -> None:
-    """Saves the world state dict to the save file."""
-    slot = _normalize_save_slot(character_name)
+
+def save_world_state(arg1=None, arg2=None) -> None:
+    """Saves the world state dict to the active save file."""
     try:
-        from engine.save_manager import read_save, write_save
+        from engine.save_manager import get_active_save_id, read_save, write_save
+        if isinstance(arg1, dict):
+            state = arg1
+            slot = arg2 or get_active_save_id()
+        else:
+            slot = arg1 or get_active_save_id()
+            state = arg2 or {}
+
         bundle = read_save(slot)
         bundle["world"] = state
         write_save(slot, bundle)
     except Exception as e:
-        print(f"[save_world_state] Error persisting world state to {slot}: {e}")
+        print(f"[save_world_state] Error persisting world state: {e}")
 
 TAMRIEL_GEOGRAPHY = {
     "High Rock": {
@@ -215,9 +209,19 @@ def set_flag(state: dict, flag_name: str, value) -> dict:
     state["world_flags"][flag_name] = value
     return state
 
-def set_location(character_name: str, province: str, location_name: str, advance_hours: int = 0) -> dict:
+def set_location(arg1: str, arg2: str = None, arg3: str = None, advance_hours: int = 0, **kwargs) -> dict:
     """Sets the character's active location and province directly, discovering them in world state."""
-    world_state = load_world_state(character_name)
+    if arg3 is not None:
+        province = arg2
+        location_name = arg3
+    elif arg2 is not None:
+        province = arg1
+        location_name = arg2
+    else:
+        province = "Cyrodiil"
+        location_name = arg1
+
+    world_state = load_world_state()
     prev_province = world_state.get("current_province", "Cyrodiil")
     prev_location = world_state.get("current_location", "Imperial Dungeon")
 
@@ -234,10 +238,11 @@ def set_location(character_name: str, province: str, location_name: str, advance
     if location_name not in world_state["cities_discovered"]:
         world_state["cities_discovered"].append(location_name)
 
-    if advance_hours > 0:
-        world_state = advance_time(world_state, advance_hours)
+    adv = advance_hours if isinstance(advance_hours, int) else 0
+    if adv > 0:
+        world_state = advance_time(world_state, adv)
 
-    save_world_state(character_name, world_state)
+    save_world_state(world_state)
     return {
         "status": "success",
         "previous_province": prev_province,

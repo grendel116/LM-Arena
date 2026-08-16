@@ -19,18 +19,20 @@ certs/
 variables/*
 !variables/__init__.py
 !variables/user.md.example
-!variables/user_profiles/
 !variables/banned_words.json
 !variables/saves/
 variables/saves/*
 !variables/saves/eternal_champion.json
+variables/user_profiles/*
+!variables/user_profiles/
+!variables/user_profiles/.gitkeep
 
 # Ignore all companion profiles under core/programs except the default Arena guide
 core/programs/*
 !core/programs/ria_silmane/
 !core/programs/sparkle.mp3
 
-# Ignore user-generated dynamic program sessions, databases, custom generated portraits, and memories
+# Ignore user-generated dynamic program sessions, databases, custom generated portraits, media, and memories
 core/programs/*/sessions/
 core/programs/*/portraits/*
 !core/programs/*/portraits/profile.png
@@ -44,6 +46,11 @@ core/programs/*/quest_log.json
 core/programs/*/lorebooks/
 core/embeddings.pkl
 temp_uploads/
+static/uploads/
+static/media/
+static/generated/
+uploads/
+media/
 
 
 # Local model weights

@@ -2446,33 +2446,34 @@ def arena_sorcerer_absorb(intelligence, willpower, incoming_spell_tier):
     return sorcerer_absorb(intelligence, willpower, incoming_spell_tier)
 
 @track_tool_activity
-def arena_get_location(character_name):
+def arena_get_location(**kwargs):
     """Get the current location context for the active character."""
     import json
-    world_state = load_world_state(character_name)
-    with open(os.path.join(os.path.dirname(__file__), "core", "world", "provinces.json"), "r") as f:
+    world_state = load_world_state()
+    with open(os.path.join(os.path.dirname(__file__), "core", "world", "provinces.json"), "r", encoding="utf-8") as f:
         provinces = json.load(f)
-    with open(os.path.join(os.path.dirname(__file__), "core", "world", "cities.json"), "r") as f:
-        cities = json.load(f)
-    with open(os.path.join(os.path.dirname(__file__), "core", "world", "dungeons.json"), "r") as f:
-        dungeons = json.load(f)
-    return get_location_context(world_state, provinces, cities, dungeons)
+    dungeons_path = os.path.join(os.path.dirname(__file__), "core", "world", "dungeons.json")
+    dungeons = []
+    if os.path.exists(dungeons_path):
+        with open(dungeons_path, "r", encoding="utf-8") as f:
+            dungeons = json.load(f)
+    return get_location_context(world_state, provinces, [], dungeons)
 
 @track_tool_activity
-def arena_set_location(character_name, province, location_name, advance_hours=0):
+def arena_set_location(province, location_name, advance_hours=0, **kwargs):
     """Directly sets the character's active location and province (e.g. exiting a shift gate, entering a dungeon or city)."""
-    return set_location(character_name, province, location_name, advance_hours)
+    return set_location(province, location_name, advance_hours)
 
 @track_tool_activity
-def arena_travel(character_name, destination_province, destination_city):
+def arena_travel(destination_province, destination_city, **kwargs):
     """Travel to a new province and city. Updates world state and advances time."""
-    world_state = load_world_state(character_name)
+    world_state = load_world_state()
     world_state, travel_summary = travel(world_state, destination_province, destination_city)
-    save_world_state(character_name, world_state)
+    save_world_state(world_state)
     return travel_summary
 
 @track_tool_activity
-def arena_advance_stage(character_name=None, target_stage=None, *args, **kwargs):
+def arena_advance_stage(target_stage=None, *args, **kwargs):
     """Advances the main quest stage to the next chapter upon milestone completion."""
     stage = target_stage or kwargs.get("next_stage") or kwargs.get("stage") or kwargs.get("stage_number") or kwargs.get("new_stage")
     if stage is not None:
@@ -2480,11 +2481,10 @@ def arena_advance_stage(character_name=None, target_stage=None, *args, **kwargs)
             stage = int(stage)
         except (ValueError, TypeError):
             stage = None
-    char_name = character_name if isinstance(character_name, str) and not character_name.isdigit() else "Eternal Champion"
-    return advance_quest_stage(char_name, stage)
+    return advance_quest_stage(stage)
 
 @track_tool_activity
-def arena_set_quest_stage(character_name=None, stage_number=None, *args, **kwargs):
+def arena_set_quest_stage(stage_number=None, *args, **kwargs):
     """Directly sets the main quest stage number for the character."""
     stage = stage_number or kwargs.get("stage") or kwargs.get("target_stage") or kwargs.get("next_stage") or kwargs.get("new_stage")
     if stage is not None:
@@ -2492,8 +2492,7 @@ def arena_set_quest_stage(character_name=None, stage_number=None, *args, **kwarg
             stage = int(stage)
         except (ValueError, TypeError):
             stage = None
-    char_name = character_name if isinstance(character_name, str) and not character_name.isdigit() else "Eternal Champion"
-    return advance_quest_stage(char_name, target_stage=stage)
+    return advance_quest_stage(target_stage=stage)
 
 @track_tool_activity
 def arena_recruit_follower(follower_name, follower_race="Imperial", follower_class="Adventurer", persona_description=""):
@@ -2536,84 +2535,84 @@ from engine.character import (
 )
 
 @track_tool_activity
-def arena_take_damage(character_name, amount=0, damage_amount=None, damage=None, **kwargs):
+def arena_take_damage(amount=0, damage_amount=None, damage=None, **kwargs):
     """Apply damage to the character. Updates HP on the character sheet."""
     import os
     actual_amount = amount if amount else (damage_amount if damage_amount is not None else (damage if damage is not None else 0))
     inc_mult = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "3.0"))
     scaled_amount = max(1, int(round(int(actual_amount) * inc_mult))) if int(actual_amount) > 0 else 0
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = take_damage(sheet, scaled_amount)
-    save_character(character_name, sheet)
+    save_character(sheet)
     d = sheet["derived"]
     return {"hp_current": d["hp_current"], "hp_max": d["hp_max"], "dead": is_dead(sheet), "damage_inflicted": scaled_amount}
 
 @track_tool_activity
-def arena_heal(character_name, amount=0, heal_amount=None, healing=None, **kwargs):
+def arena_heal(amount=0, heal_amount=None, healing=None, **kwargs):
     """Restore HP to the character up to their maximum."""
     actual_amount = amount if amount else (heal_amount if heal_amount is not None else (healing if healing is not None else 0))
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = heal(sheet, int(actual_amount))
-    save_character(character_name, sheet)
+    save_character(sheet)
     d = sheet["derived"]
     return {"hp_current": d["hp_current"], "hp_max": d["hp_max"]}
 
 @track_tool_activity
-def arena_spend_magicka(character_name, amount=0, mp_amount=None, cost=None, **kwargs):
+def arena_spend_magicka(amount=0, mp_amount=None, cost=None, **kwargs):
     """Spend Magicka (MP) to cast a spell. Returns success or failure if MP insufficient."""
     actual_amount = amount if amount else (mp_amount if mp_amount is not None else (cost if cost is not None else 0))
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet, success = spend_magicka(sheet, int(actual_amount))
     if success:
-        save_character(character_name, sheet)
+        save_character(sheet)
     d = sheet["derived"]
     return {"success": success, "mp_current": d.get("mp_current", 0), "mp_max": d.get("mp_max", 42)}
 
 @track_tool_activity
-def arena_spend_spell_points(character_name, amount=0, **kwargs):
+def arena_spend_spell_points(amount=0, **kwargs):
     """Backwards compatibility alias for arena_spend_magicka."""
-    return arena_spend_magicka(character_name, amount=amount, **kwargs)
+    return arena_spend_magicka(amount=amount, **kwargs)
 
 @track_tool_activity
-def arena_restore_magicka(character_name, amount=0, mp_amount=None, **kwargs):
+def arena_restore_magicka(amount=0, mp_amount=None, **kwargs):
     """Restore Magicka (MP) up to maximum (via potions, absorbing spells, or rest)."""
     actual_amount = amount if amount else (mp_amount if mp_amount is not None else 0)
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = restore_magicka(sheet, int(actual_amount))
-    save_character(character_name, sheet)
+    save_character(sheet)
     d = sheet["derived"]
     return {"mp_current": d.get("mp_current", 0), "mp_max": d.get("mp_max", 42)}
 
 @track_tool_activity
-def arena_spend_stamina(character_name, amount=0, stamina_amount=None, cost=None, **kwargs):
+def arena_spend_stamina(amount=0, stamina_amount=None, cost=None, **kwargs):
     """Spend Stamina for sprinting, heavy power strikes, dodging, or physical exertion."""
     actual_amount = amount if amount else (stamina_amount if stamina_amount is not None else (cost if cost is not None else 0))
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet, not_exhausted = spend_stamina(sheet, int(actual_amount))
-    save_character(character_name, sheet)
+    save_character(sheet)
     d = sheet["derived"]
     return {"stamina_current": d.get("stamina_current", 0), "stamina_max": d.get("stamina_max", 50), "exhausted": not not_exhausted}
 
 @track_tool_activity
-def arena_restore_stamina(character_name, amount=0, stamina_amount=None, **kwargs):
+def arena_restore_stamina(amount=0, stamina_amount=None, **kwargs):
     """Restore Stamina up to maximum (potions, resting, catching breath)."""
     actual_amount = amount if amount else (stamina_amount if stamina_amount is not None else 0)
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = restore_stamina(sheet, int(actual_amount))
-    save_character(character_name, sheet)
+    save_character(sheet)
     d = sheet["derived"]
     return {"stamina_current": d.get("stamina_current", 0), "stamina_max": d.get("stamina_max", 50)}
 
 @track_tool_activity
-def arena_rest(character_name, hours=8, safe=True, **kwargs):
+def arena_rest(hours=8, safe=True, **kwargs):
     """Rest or sleep at an inn or camp to recover Health, Stamina, and Magicka."""
-    sheet = load_character(character_name)
+    sheet = load_character()
     d = sheet["derived"]
     hp_before = d.get("hp_current", 0)
     mp_before = d.get("mp_current", 0)
     stamina_before = d.get("stamina_current", 0)
     sheet, summary = rest(sheet, int(hours), bool(safe))
-    save_character(character_name, sheet)
+    save_character(sheet)
     d = sheet["derived"]
     return {
         "summary": summary,
@@ -2629,79 +2628,76 @@ def arena_rest(character_name, hours=8, safe=True, **kwargs):
     }
 
 @track_tool_activity
-def arena_add_gold(character_name, amount=0, gold_amount=None, **kwargs):
+def arena_add_gold(amount=0, gold_amount=None, **kwargs):
     """Add gold to the character (loot, reward, sale)."""
     actual_amount = amount if amount else (gold_amount if gold_amount is not None else 0)
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = add_gold(sheet, int(actual_amount))
-    save_character(character_name, sheet)
+    save_character(sheet)
     return {"gold": sheet["gold"]}
 
 @track_tool_activity
-def arena_spend_gold(character_name, amount=0, gold_amount=None, cost=None, **kwargs):
+def arena_spend_gold(amount=0, gold_amount=None, cost=None, **kwargs):
     """Spend gold on a purchase. Returns success or failure if funds insufficient."""
     actual_amount = amount if amount else (gold_amount if gold_amount is not None else (cost if cost is not None else 0))
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet, success = spend_gold(sheet, int(actual_amount))
     if success:
-        save_character(character_name, sheet)
+        save_character(sheet)
     return {"success": success, "gold": sheet["gold"]}
 
 @track_tool_activity
-def arena_add_item(character_name, item_name, item_type="Item", quantity=1, **kwargs):
+def arena_add_item(item_name, item_type="Item", quantity=1, **kwargs):
     """Add an item to the character's inventory (looted, purchased, found)."""
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = add_item(sheet, {"name": item_name, "type": item_type, "quantity": quantity})
-    save_character(character_name, sheet)
+    save_character(sheet)
     return {"inventory_count": len(sheet["inventory"]), "item": item_name}
 
 @track_tool_activity
-def arena_remove_item(character_name, item_name, quantity=1, **kwargs):
+def arena_remove_item(item_name, quantity=1, **kwargs):
     """Remove an item from inventory (used, sold, consumed)."""
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet, success = remove_item(sheet, item_name, int(quantity))
     if success:
-        save_character(character_name, sheet)
+        save_character(sheet)
     return {"success": success, "item": item_name}
 
-
-
-
 @track_tool_activity
-def arena_learn_spell(character_name, spell_name, school="Restoration", tier=1, sp_cost=5, **kwargs):
+def arena_learn_spell(spell_name, school="Restoration", tier=1, sp_cost=5, **kwargs):
     """Add a spell to the character's known spells."""
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = learn_spell(sheet, {"name": spell_name, "school": school, "tier": tier, "sp_cost": sp_cost})
-    save_character(character_name, sheet)
+    save_character(sheet)
     return {"spells": [s["name"] for s in sheet["spells"]]}
 
 @track_tool_activity
-def arena_add_effect(character_name, effect_name, duration_turns=1, source="", **kwargs):
+def arena_add_effect(effect_name, duration_turns=1, source="", **kwargs):
     """Apply a status effect to the character (poisoned, paralysed, fortified, etc.)."""
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = add_effect(sheet, {"name": effect_name, "duration_turns": duration_turns, "source": source})
-    save_character(character_name, sheet)
+    save_character(sheet)
     return {"active_effects": [e["name"] for e in sheet["active_effects"]]}
 
 @track_tool_activity
-def arena_remove_effect(character_name, effect_name, **kwargs):
+def arena_remove_effect(effect_name, **kwargs):
     """Remove a status effect (cured, expired, dispelled)."""
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet = remove_effect(sheet, effect_name)
-    save_character(character_name, sheet)
+    save_character(sheet)
     return {"active_effects": [e["name"] for e in sheet["active_effects"]]}
 
 @track_tool_activity
-def arena_add_experience(character_name, amount=0, xp_amount=None, **kwargs):
+def arena_add_experience(amount=0, xp_amount=None, **kwargs):
     """Award XP. Automatically handles level-up if threshold reached."""
     actual_amount = amount if amount else (xp_amount if xp_amount is not None else 0)
-    sheet = load_character(character_name)
+    sheet = load_character()
     sheet, leveled_up = add_experience(sheet, int(actual_amount))
-    save_character(character_name, sheet)
+    save_character(sheet)
     return {"experience": sheet["experience"], "level": sheet["level"], "leveled_up": leveled_up}
 
 @track_tool_activity
-def arena_get_character_context(character_name, **kwargs):
+def arena_get_character_context(**kwargs):
     """Return the current character sheet as a compact context string for the narrative."""
-    sheet = load_character(character_name)
+    sheet = load_character()
     return get_character_context(sheet)

@@ -3947,3 +3947,100 @@ body, #app-container, #chat-container, .chat-container {
     0%, 100% { transform: scale(1); opacity: 0.9; }
     50% { transform: scale(1.1); opacity: 1; }
 }
+
+/* ==========================================================================
+   OPENING LORE PROLOGUE CARD
+   ========================================================================== */
+.opening-lore-overlay {
+    margin: 10px auto 20px auto;
+    width: 92%;
+    max-width: 620px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+}
+
+.opening-lore-card {
+    background: linear-gradient(180deg, rgba(26, 20, 12, 0.95) 0%, rgba(14, 16, 22, 0.98) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    box-shadow: 0 0 35px rgba(245, 158, 11, 0.15), inset 0 0 25px rgba(245, 158, 11, 0.06);
+    border-radius: 14px;
+    padding: 22px 28px 24px 28px;
+    text-align: center;
+    width: 100%;
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.opening-lore-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.opening-lore-subtitle {
+    color: var(--primary-accent);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.opening-lore-title {
+    color: #fbbf24;
+    font-size: 1.75rem;
+    font-weight: 900;
+    letter-spacing: 0.28em;
+    margin: 0;
+    text-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+    font-family: inherit;
+}
+
+.opening-lore-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0.6) 50%, transparent 100%);
+    margin: 12px auto 16px auto;
+    width: 80%;
+}
+
+.opening-lore-body {
+    text-align: left;
+    color: #e2e8f0;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    font-style: italic;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.opening-lore-body p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.92);
+}
+
+.opening-lore-body strong {
+    color: #fef08a;
+    font-style: normal;
+    font-weight: 700;
+}
+
+.opening-lore-body em {
+    color: #fde68a;
+}
+
+.opening-lore-climax {
+    border-top: 1px dashed rgba(245, 158, 11, 0.3);
+    padding-top: 10px;
+    color: #fbbf24 !important;
+    font-weight: 600;
+    text-align: center;
+    font-style: normal;
+    letter-spacing: 0.02em;
+}
+

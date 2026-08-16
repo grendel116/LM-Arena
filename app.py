@@ -203,16 +203,7 @@ def sanitize_response(response_text, session_id, program_msg_id):
     return sanitized
 
 
-def extract_mood(chat_history):
-    """Extract mood from the latest program message, with neutral fallback."""
-    for msg in reversed(chat_history):
-        if msg.get('role') == 'program':
-            mood = msg.get('mood')
-            if mood:
-                return mood
-            break
-    from utils.program_mood import analyze_emotional_state
-    return analyze_emotional_state("")
+
 
 
 # --- SECURE OPTIONAL AUTHENTICATION DECORATOR ---
@@ -265,8 +256,8 @@ def index():
         active_user = request.authorization.username
 
     from flask import make_response
-    from core.program_config import get_program_greeting
-    welcome_message = get_program_greeting()
+    from core.program_config import get_program_greeting, replace_placeholders
+    welcome_message = replace_placeholders(get_program_greeting())
     response = make_response(render_template('index.html', local_ip=local_ip, tts_auto_speak=tts_auto_speak, tts_provider=tts_provider, active_program=active_program, theme=theme, active_user=active_user, welcome_message=welcome_message))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
@@ -291,7 +282,7 @@ def serve_service_worker():
 
 @app.route('/app_icon.png')
 def app_icon():
-    response = send_file('images/app_icon.png')
+    response = send_file('static/img/app_icon.png')
     from flask import make_response
     res = make_response(response)
     res.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -434,9 +425,9 @@ def serve_sound(filename):
 @app.route('/images/<path:filename>')
 @requires_auth
 def serve_image(filename):
-    root_images_dir = os.path.join(base_dir, 'images')
-    if os.path.exists(os.path.join(root_images_dir, filename)):
-        return send_from_directory(root_images_dir, filename)
+    static_img_dir = os.path.join(base_dir, 'static', 'img')
+    if os.path.exists(os.path.join(static_img_dir, filename)):
+        return send_from_directory(static_img_dir, filename)
 
     try:
         from utils.program import get_active_program
@@ -446,7 +437,7 @@ def serve_image(filename):
     program_dir = os.path.join('core', 'programs', active_program)
     if os.path.exists(os.path.join(program_dir, filename)):
         return send_from_directory(program_dir, filename)
-    return send_from_directory(root_images_dir, filename)
+    return send_from_directory(static_img_dir, filename)
 
 
 @app.route('/api/get_image_prompt', methods=['GET'])
@@ -675,17 +666,15 @@ def history():
     session_id = request.args.get('session_id', 'default')
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
-        state_info = extract_mood(chat_history)
         
-        from core.program_config import program_name, get_program_greeting
-        welcome_message = get_program_greeting()
+        from core.program_config import program_name, get_program_greeting, replace_placeholders
+        welcome_message = replace_placeholders(get_program_greeting())
         active_program = os.environ.get("ACTIVE_PROGRAM", "sebile")
         
         theme = load_theme(active_program)
 
         return jsonify({
             'history': chat_history,
-            'state': state_info,
             'character_name': program_name,
             'active_program': active_program,
             'theme': theme,
@@ -778,7 +767,6 @@ def chat():
         response_text = sanitize_response(response_text, session_id, program_msg_id)
 
         chat_history = asyncio.run(runner.get_history(session_id))
-        state_info = extract_mood(chat_history)
         inversion_mode = asyncio.run(runner._get_inversion_mode(session_id, history=chat_history))
         
         # Align timestamp with stored program message
@@ -792,7 +780,6 @@ def chat():
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
-            'state': state_info,
             'inversion_active': inversion_mode,
             'timestamp': program_timestamp or time.time(),
             'duration': duration,
@@ -857,7 +844,6 @@ def edit():
         response_text = sanitize_response(response_text, session_id, program_msg_id)
 
         chat_history = asyncio.run(runner.get_history(session_id))
-        state_info = extract_mood(chat_history)
         inversion_mode = asyncio.run(runner._get_inversion_mode(session_id, history=chat_history))
 
         # Align timestamp with stored program message
@@ -871,7 +857,6 @@ def edit():
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
-            'state': state_info,
             'inversion_active': inversion_mode,
             'timestamp': program_timestamp or time.time(),
             'duration': duration,
@@ -912,7 +897,7 @@ def generate_impersonated_message(session_id, user_profile, model):
         
     system_instruction = (
         "Auto-generate the User's next first-person action in the roleplay.\n"
-        "Format: *italics* narration, plain text dialogue. Short, actionable, in character."
+        "Format: *Italics* narration. Dialogue is plain text, without quotation marks. Short, actionable, in character."
     )
     
     from core.program_config import load_user_instructions, replace_placeholders
@@ -3436,6 +3421,25 @@ def save_user_profile():
             bundle["meta"]["gender"] = gender
         if character_class:
             bundle["meta"]["class"] = character_class
+
+        # If this save only contains the initial opening greeting, update it to use the new character name
+        history = bundle.get("history", [])
+        if len(history) <= 1:
+            from core.program_config import get_program_greeting, replace_placeholders
+            new_opening = replace_placeholders(get_program_greeting(), user_name=display_name)
+            if history:
+                history[0]["text"] = new_opening
+                history[0]["content"] = new_opening
+            else:
+                import uuid, time
+                history = [{
+                    "id": f"first_mes_{uuid.uuid4().hex[:12]}",
+                    "role": "program",
+                    "text": new_opening,
+                    "content": new_opening,
+                    "timestamp": time.time()
+                }]
+            bundle["history"] = history
 
         write_save(profile_id, bundle)
             

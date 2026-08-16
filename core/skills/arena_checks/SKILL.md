@@ -37,9 +37,9 @@ When the narrative requires an action or reaction with skill:
 - When the player creates or designs a custom spell:
   `[arena_create_spell(spell_description="...", school="...", tier=..., caster_intelligence=...)]`
 - Followed by learning the spell card:
-  `[arena_learn_spell(character_name="{{user}}", spell_name="...", school="...", tier=..., sp_cost=...)]`
+  `[arena_learn_spell(spell_name="...", school="...", tier=..., sp_cost=...)]`
 - Expending spell points during casting:
-  `[arena_spend_spell_points(character_name="{{user}}", amount=...)]`
+  `[arena_spend_spell_points(amount=...)]`
 
 ## 5. Narrative Style
 - Interpret the roll result directly into descriptive action.

@@ -6,11 +6,6 @@ import re
 from utils.program import get_active_program
 from variables import PROGRAMS_DIR
 
-def _get_journals_path(program_id: str = None) -> str:
-    if not program_id:
-        program_id = get_active_program()
-    return os.path.join(PROGRAMS_DIR, program_id, "journals.json")
-
 def get_journal_entries(program_id: str = None) -> list:
     try:
         from engine.save_manager import get_active_save_id, read_save
@@ -22,15 +17,7 @@ def get_journal_entries(program_id: str = None) -> list:
             return entries.get("documents", [])
     except Exception as e:
         print(f"Error loading journals from save bundle: {e}")
-    path = _get_journals_path(program_id)
-    if not os.path.exists(path):
-        return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading journals from {path}: {e}")
-        return []
+    return []
 
 def save_journal_entries(entries: list, program_id: str = None):
     try:
@@ -42,13 +29,6 @@ def save_journal_entries(entries: list, program_id: str = None):
         write_save(save_id, bundle)
     except Exception as e:
         print(f"Error saving journals to save bundle: {e}")
-    path = _get_journals_path(program_id)
-    try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(entries, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        print(f"Error saving journals to {path}: {e}")
 
 def add_journal_entry(keyphrases_str: str, content: str, program_id: str = None) -> dict:
     entries = get_journal_entries(program_id)

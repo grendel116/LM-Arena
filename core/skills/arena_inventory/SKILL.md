@@ -12,7 +12,7 @@ When the player acquires items, discovers loot, shops with merchants, or expends
 
 ## 1. Item Acquisition & Looting
 - When the player picks up, loots from a corpse, finds in a chest, or receives an item (such as keys, weapons, robes, potions, torches, scrolls, quest tokens):
-  `[arena_add_item(character_name="{{user}}", item_name="...", item_type="...", quantity=1)]`
+  `[arena_add_item(item_name="...", item_type="...", quantity=1)]`
 - Valid item types:
   - `"weapon"` (1-Handed blades, daggers, maces, bows)
   - `"2h_weapon"` (Claymores, battle axes, staves, halberds)
@@ -30,13 +30,13 @@ When the player acquires items, discovers loot, shops with merchants, or expends
 
 ## 2. Consuming, Selling, or Dropping Items
 - When the player drinks a potion, lights and expends a torch, loses a lockpick, hands over a key, or sells goods:
-  `[arena_remove_item(character_name="{{user}}", item_name="...", quantity=1)]`
+  `[arena_remove_item(item_name="...", quantity=1)]`
 
 ## 3. Gold & Financial Transactions
 - When the player loots coins, receives quest rewards, or discovers hidden caches:
-  `[arena_add_gold(character_name="{{user}}", amount=...)]`
+  `[arena_add_gold(amount=...)]`
 - When the player purchases equipment, pays tavern lodging, bribes city guards, or pays temple tithes:
-  `[arena_spend_gold(character_name="{{user}}", amount=...)]`
+  `[arena_spend_gold(amount=...)]`
 
 ## 4. Narrative Integration
 - Output the tool call in the same turn that the action occurs.
