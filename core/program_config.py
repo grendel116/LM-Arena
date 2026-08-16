@@ -76,7 +76,7 @@ def compile_instructions_from_card(card: dict) -> str:
     if scenario:
         prompt_parts.append(f"## SCENARIO\n{scenario}")
 
-    mes_example = (card.get("mes_example") or card.get("first_mes") or "").strip()
+    mes_example = card.get("mes_example", "").strip()
     if mes_example:
         prompt_parts.append(f"## EXAMPLE MESSAGE\n{mes_example}")
 
