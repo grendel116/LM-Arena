@@ -1178,13 +1178,14 @@ function evaluateSceneBGM(text, locationContext) {
 
     const combined = `${text || ''} ${locationContext || ''} ${worldLoc}`.toLowerCase();
 
-    // 1. Game Over — only on confirmed death state, never on combat vocabulary
+    // --- 1. JINGLES & STINGS (Non-looping) ---
+    // Defeat / Game Over
     if (isDead || (charHP !== null && charHP <= 0)) {
         playBGMTrack("Game Over.mp3", false);
         return;
     }
 
-    // 2. Quest milestone / level up (non-looping fanfare)
+    // Victory / Level Up / Quest Completion
     if (combined.includes("[arena_advance_stage") || combined.includes("[arena_level_up") ||
         combined.includes("objective completed") || combined.includes("quest completed") ||
         combined.includes("leveled_up") || combined.includes("gained a level")) {
@@ -1192,19 +1193,21 @@ function evaluateSceneBGM(text, locationContext) {
         return;
     }
 
-    // 3. Spectral visions & Ria Silmane
+    // --- 2. CINEMATICS & VISIONS ---
+    // Spectral Visions (Ria Silmane)
     if (combined.includes("ria silmane") || combined.includes("spectral vision") || combined.includes("dream vision")) {
         playBGMTrack("A Vision Beyond.mp3");
         return;
     }
 
-    // 4. Boss / Imperial Palace
+    // Jagar Tharn & Imperial Palace Boss Context
     if (combined.includes("jagar tharn") || combined.includes("emperor's palace") || combined.includes("throne room")) {
         playBGMTrack("Tharn's Betrayal.mp3");
         return;
     }
 
-    // 5. Dungeon locations — checked before combat so interior context wins
+    // --- 3. INTERIORS (Dungeons, Guilds, Shops, Taverns, Palaces) ---
+    // Dungeons / Crypts / Sewers / Catacombs
     const isDungeon = combined.includes("dungeon") || combined.includes("sewer") ||
                       combined.includes("crypt") || combined.includes("catacomb") ||
                       combined.includes("fang lair") || combined.includes("labyrinthian") ||
@@ -1214,85 +1217,86 @@ function evaluateSceneBGM(text, locationContext) {
         return;
     }
 
-    // 7. Spellcasting / Spellmaker
-    if (combined.includes("[arena_create_spell") || combined.includes("spellmaker") || combined.includes("grimoire")) {
-        playBGMTrack("Arcane Arts.mp3");
-        return;
-    }
-
-    // 8. Stealth / Lockpicking
-    if (combined.includes("[arena_roll_skill") && (combined.includes("lockpick") || combined.includes("stealth"))) {
-        playBGMTrack("Breaking And Entering.mp3");
-        return;
-    }
-
-    // 9. Swimming / Water
-    if (combined.includes("swimming") || combined.includes("underwater") || combined.includes("submerged") || combined.includes("diving")) {
-        playBGMTrack("Swimming.mp3");
-        return;
-    }
-
-    // 10. Mages Guild
+    // Mages Guild
     if (combined.includes("mages guild") || combined.includes("arcane academy") || combined.includes("guildhall")) {
         playBGMTrack("The Mages Guild.mp3");
         return;
     }
 
-    // 11. Inns & Taverns
+    // Inns & Taverns
     if (combined.includes("inn") || combined.includes("tavern") || combined.includes("alehouse")) {
         playBGMTrack("The Wandering Inn.mp3");
         return;
     }
 
-    // 12. Blacksmith & Forge
+    // Blacksmith & Forge
     if (combined.includes("blacksmith") || combined.includes("armorer") || combined.includes("forge")) {
         playBGMTrack("Blacksmith.mp3");
         return;
     }
 
-    // 13. Royalty & Audience Chambers
+    // Royalty & Audience Chambers / Palaces
     if (combined.includes("audience chamber") || combined.includes("king's court")) {
         playBGMTrack("The Audience Chamber.mp3");
         return;
     }
 
-    // 14. Swamp / Marsh / Fog
+    // Temples & Arcane Arts / Spellmaking
+    if (combined.includes("temple") || combined.includes("[arena_create_spell") || combined.includes("spellmaker") || combined.includes("grimoire")) {
+        playBGMTrack("Arcane Arts.mp3");
+        return;
+    }
+
+    // Infiltration / Stealth / Residential Houses
+    if (combined.includes("[arena_roll_skill") && (combined.includes("lockpick") || combined.includes("stealth"))) {
+        playBGMTrack("Breaking And Entering.mp3");
+        return;
+    }
+
+    // Equipment Stores & Merchants / Shopping
+    if (combined.includes("merchant") || combined.includes("market") || combined.includes("bazaar") || combined.includes("equipmnt")) {
+        playBGMTrack("Where Dost Thou Hail.mp3");
+        return;
+    }
+
+    // --- 4. EXTERIORS & OVERWORLD ---
+    // Swimming / Submerged Water
+    if (combined.includes("swimming") || combined.includes("underwater") || combined.includes("submerged") || combined.includes("diving")) {
+        playBGMTrack("Swimming.mp3");
+        return;
+    }
+
+    // Swamp / Marsh / Rain / Overcast
     if (combined.includes("swamp") || combined.includes("marsh") || combined.includes("murkwood")) {
         playBGMTrack("Foggy Afternoon.mp3");
         return;
     }
 
-    // 15. Snow / Cold / Skyrim
+    // Snow / Blizzard / Cold Regions (Oversnow / Skyrim)
     if (combined.includes("skyrim") || combined.includes("blizzard") || combined.includes("snowfall")) {
         playBGMTrack("Winter In Hammerfell.mp3");
         return;
     }
 
-    // 16. Night / Late Hours
+    // Nighttime / Curfew
     if (combined.includes("curfew") || combined.includes("midnight") || combined.includes("dead of night")) {
         playBGMTrack("The Late Hours.mp3");
         return;
     }
 
-    // 17. Dusk / Evening
+    // Twilight / Sunset / Evening
     if (combined.includes("twilight") || combined.includes("sunset") || combined.includes("dusk")) {
         playBGMTrack("Evening Star.mp3");
         return;
     }
 
-    // 18. Wilderness / Forests / Roads
+    // Wilderness / Traveling / Forests (Sunny Day Exterior)
     if (combined.includes("wilderness") || combined.includes("forest") || combined.includes("woods") || combined.includes("road")) {
         playBGMTrack("The First Seed.mp3");
         return;
     }
 
-    // 19. Merchants / Markets
-    if (combined.includes("merchant") || combined.includes("market") || combined.includes("bazaar")) {
-        playBGMTrack("Where Dost Thou Hail.mp3");
-        return;
-    }
-
-    // 20. Default — town, peaceful environment
+    // --- 5. DEFAULT TOWN & CITY AMBIENT ---
     playBGMTrack("A Warm Welcome.mp3");
 }
 
