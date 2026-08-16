@@ -6,6 +6,12 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 
 ---
 
+<p align="center">
+  <img src="static/img/samplechat.png" alt="LM-Arena Gameplay Preview" width="700">
+</p>
+
+---
+
 ## CORE FEATURES
 
 ### D20 Narrative Mechanics
