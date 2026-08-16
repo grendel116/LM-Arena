@@ -991,11 +991,13 @@ function saveModalConfig() {
     saveConfigData(apiKey, projectId, geminiModel);
 }
 
-// --- Ambient BGM Audio Manager ---
+// --- Ambient BGM & Speech Audio Manager ---
 let audioTrackPlayer = null;
 let currentTrackPath = null;
 let audioVolume = 0.6; // 0.0 to 1.0
 let isAudioMuted = false;
+let speechVolume = 1.0; // 0.0 to 1.0
+let isSpeechMuted = false;
 let useImagenMode = false;
 
 function initAudioSystem() {
@@ -1007,6 +1009,14 @@ function initAudioSystem() {
     if (savedMute === 'true') {
         isAudioMuted = true;
     }
+    const savedSpeechVol = safeLocalStorage.getItem('arena_speech_volume');
+    if (savedSpeechVol !== null) {
+        speechVolume = parseFloat(savedSpeechVol);
+    }
+    const savedSpeechMute = safeLocalStorage.getItem('arena_speech_muted');
+    if (savedSpeechMute === 'true') {
+        isSpeechMuted = true;
+    }
     const savedImagen = safeLocalStorage.getItem('arena_use_imagen');
     if (savedImagen === 'true') {
         useImagenMode = true;
@@ -1017,7 +1027,13 @@ function initAudioSystem() {
     if (slider) slider.value = Math.round(audioVolume * 100);
     if (display) display.textContent = `${Math.round(audioVolume * 100)}%`;
 
+    const speechSlider = document.getElementById('speech-volume-slider');
+    const speechDisplay = document.getElementById('speech-volume-display');
+    if (speechSlider) speechSlider.value = Math.round(speechVolume * 100);
+    if (speechDisplay) speechDisplay.textContent = `${Math.round(speechVolume * 100)}%`;
+
     updateMuteButtonUI();
+    updateSpeechMuteButtonUI();
     updateImagenToggleUI();
 
     // Immediate startup track request
@@ -1074,6 +1090,50 @@ function updateMuteButtonUI() {
     const icon = document.getElementById('audio-mute-icon');
     if (!icon) return;
     if (isAudioMuted) {
+        icon.innerHTML = `
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+            <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+        `;
+    } else {
+        icon.innerHTML = `
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        `;
+    }
+}
+
+function onSpeechVolumeInput(val) {
+    speechVolume = parseFloat(val) / 100;
+    safeLocalStorage.setItem('arena_speech_volume', speechVolume.toString());
+    const display = document.getElementById('speech-volume-display');
+    if (display) display.textContent = `${Math.round(speechVolume * 100)}%`;
+
+    if (typeof currentAudio !== 'undefined' && currentAudio) {
+        currentAudio.volume = isSpeechMuted ? 0 : speechVolume;
+    }
+    if (typeof voiceCallActiveAudio !== 'undefined' && voiceCallActiveAudio) {
+        voiceCallActiveAudio.volume = isSpeechMuted ? 0 : speechVolume;
+    }
+}
+
+function toggleSpeechMute() {
+    isSpeechMuted = !isSpeechMuted;
+    safeLocalStorage.setItem('arena_speech_muted', isSpeechMuted.toString());
+    updateSpeechMuteButtonUI();
+
+    if (typeof currentAudio !== 'undefined' && currentAudio) {
+        currentAudio.volume = isSpeechMuted ? 0 : speechVolume;
+    }
+    if (typeof voiceCallActiveAudio !== 'undefined' && voiceCallActiveAudio) {
+        voiceCallActiveAudio.volume = isSpeechMuted ? 0 : speechVolume;
+    }
+}
+
+function updateSpeechMuteButtonUI() {
+    const icon = document.getElementById('speech-mute-icon');
+    if (!icon) return;
+    if (isSpeechMuted) {
         icon.innerHTML = `
             <line x1="1" y1="1" x2="23" y2="23"></line>
             <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
@@ -1956,49 +2016,93 @@ async function fetchCharacterStatus() {
 
 let _lastTrackedVitals = {
     hp: null,
+    hpMax: null,
     mp: null,
+    mpMax: null,
     stamina: null,
+    staminaMax: null,
     gold: null,
     itemCount: null,
     itemNames: []
 };
 
-function spawnHeartDelta(text, color, delayMs = 0) {
-    const heartElement = document.getElementById('header-heart-pulse') || document.querySelector('.heart-pulse');
-    if (!heartElement) return;
+function updateUserMessageResourceBars(targetBubble = null) {
+    const bubbles = targetBubble ? [targetBubble] : Array.from(document.querySelectorAll('.message.user:not(.image-message)'));
+    if (!bubbles || bubbles.length === 0) return;
 
-    setTimeout(() => {
-        const pop = document.createElement('div');
-        pop.className = 'heart-delta-pop';
-        pop.textContent = text;
-        pop.style.color = color;
-        heartElement.appendChild(pop);
+    const curHp = _lastTrackedVitals.hp !== null ? _lastTrackedVitals.hp : 28;
+    const curHpMax = _lastTrackedVitals.hpMax || 28;
+    const curMp = _lastTrackedVitals.mp !== null ? _lastTrackedVitals.mp : 42;
+    const curMpMax = _lastTrackedVitals.mpMax || 42;
+    const curSp = _lastTrackedVitals.stamina !== null ? _lastTrackedVitals.stamina : 50;
+    const curSpMax = _lastTrackedVitals.staminaMax || 50;
 
-        setTimeout(() => {
-            if (pop.parentNode) {
-                pop.parentNode.removeChild(pop);
-            }
-        }, 600);
-    }, delayMs);
+    bubbles.forEach(bubble => {
+        let barContainer = bubble.querySelector('.user-resource-bars');
+        if (!barContainer) {
+            barContainer = document.createElement('div');
+            barContainer.className = 'user-resource-bars';
+            bubble.appendChild(barContainer);
+        }
+
+        const hpVal = bubble.dataset.hp ? parseFloat(bubble.dataset.hp) : curHp;
+        const hpMaxVal = bubble.dataset.hpMax ? parseFloat(bubble.dataset.hpMax) : curHpMax;
+        const mpVal = bubble.dataset.mp ? parseFloat(bubble.dataset.mp) : curMp;
+        const mpMaxVal = bubble.dataset.mpMax ? parseFloat(bubble.dataset.mpMax) : curMpMax;
+        const spVal = bubble.dataset.stamina ? parseFloat(bubble.dataset.stamina) : curSp;
+        const spMaxVal = bubble.dataset.staminaMax ? parseFloat(bubble.dataset.staminaMax) : curSpMax;
+
+        const hpPct = Math.max(0, Math.min(100, (hpVal / (hpMaxVal || 1)) * 100));
+        const mpPct = Math.max(0, Math.min(100, (mpVal / (mpMaxVal || 1)) * 100));
+        const spPct = Math.max(0, Math.min(100, (spVal / (spMaxVal || 1)) * 100));
+
+        barContainer.innerHTML = `
+            <div class="resource-bar magicka" title="Magicka: ${Math.round(mpVal)} / ${Math.round(mpMaxVal)}">
+                <div class="resource-bar-track">
+                    <div class="resource-bar-fill magicka" style="width: ${mpPct}%;"></div>
+                </div>
+            </div>
+            <div class="resource-bar health" title="Health: ${Math.round(hpVal)} / ${Math.round(hpMaxVal)}">
+                <div class="resource-bar-track">
+                    <div class="resource-bar-fill health" style="width: ${hpPct}%;"></div>
+                </div>
+            </div>
+            <div class="resource-bar stamina" title="Stamina: ${Math.round(spVal)} / ${Math.round(spMaxVal)}">
+                <div class="resource-bar-track">
+                    <div class="resource-bar-fill stamina" style="width: ${spPct}%;"></div>
+                </div>
+            </div>
+        `;
+    });
 }
 
-function spawnBagDelta(text, color, delayMs = 0) {
-    const bagElement = document.querySelector('.inventory-btn');
-    if (!bagElement) return;
+function getLastUserBubbleElement() {
+    if (!chatContainer) return null;
+    const userRows = chatContainer.querySelectorAll('.message-row.user-row, .user-row');
+    if (userRows.length > 0) {
+        const lastRow = userRows[userRows.length - 1];
+        const bubble = lastRow.querySelector('.message.user');
+        if (bubble) return bubble;
+    }
+    const userBubbles = chatContainer.querySelectorAll('.message.user');
+    if (userBubbles.length > 0) {
+        return userBubbles[userBubbles.length - 1];
+    }
+    return null;
+}
 
+function triggerBubblePulse(pulseType) {
+    if (!pulseType) return;
+    const userBubble = getLastUserBubbleElement();
+    if (!userBubble) return;
+
+    const pulseClass = `bubble-pulse-${pulseType}`;
+    userBubble.classList.remove(pulseClass);
+    void userBubble.offsetWidth;
+    userBubble.classList.add(pulseClass);
     setTimeout(() => {
-        const pop = document.createElement('div');
-        pop.className = 'bag-delta-pop';
-        pop.textContent = text;
-        pop.style.color = color;
-        bagElement.appendChild(pop);
-
-        setTimeout(() => {
-            if (pop.parentNode) {
-                pop.parentNode.removeChild(pop);
-            }
-        }, 600);
-    }, delayMs);
+        userBubble.classList.remove(pulseClass);
+    }, 850);
 }
 
 function triggerBagPulse() {
@@ -2025,7 +2129,7 @@ function updatePlayerHeartState(char, world) {
     const inventory = char.inventory || [];
     const currentItemCount = inventory.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-    // Detect and trigger floating delta indicators on resource changes
+    // Trigger subtle outline glow pulse on resource changes
     if (_lastTrackedVitals.hp !== null) {
         const dHp = hpCurrent - _lastTrackedVitals.hp;
         const dMp = mpCurrent - _lastTrackedVitals.mp;
@@ -2033,53 +2137,30 @@ function updatePlayerHeartState(char, world) {
         const dGold = (_lastTrackedVitals.gold !== null && goldCurrent !== undefined) ? (goldCurrent - _lastTrackedVitals.gold) : 0;
         const dItems = (_lastTrackedVitals.itemCount !== null) ? (currentItemCount - _lastTrackedVitals.itemCount) : 0;
 
-        let stagger = 0;
         if (dHp !== 0) {
-            const txt = (dHp > 0 ? `+${dHp}` : `${dHp}`) + " HP";
-            const clr = dHp > 0 ? "#22c55e" : "#ef4444";
-            spawnHeartDelta(txt, clr, stagger);
-            stagger += 150;
+            triggerBubblePulse(dHp > 0 ? 'hp-up' : 'hp-down');
+        } else if (dMp !== 0) {
+            triggerBubblePulse('mp');
+        } else if (dStamina !== 0) {
+            triggerBubblePulse('sp');
         }
-        if (dMp !== 0) {
-            const txt = (dMp > 0 ? `+${dMp}` : `${dMp}`) + " MP";
-            const clr = dMp > 0 ? "#38bdf8" : "#818cf8";
-            spawnHeartDelta(txt, clr, stagger);
-            stagger += 150;
-        }
-        if (dStamina !== 0) {
-            const txt = (dStamina > 0 ? `+${dStamina}` : `${dStamina}`) + " SP";
-            const clr = dStamina > 0 ? "#fbbf24" : "#fb923c";
-            spawnHeartDelta(txt, clr, stagger);
-            stagger += 150;
-        }
-        if (dGold !== 0) {
-            const txt = (dGold > 0 ? `+${dGold}` : `${dGold}`) + " Gold";
-            const clr = dGold > 0 ? "#e2b047" : "#a1a1aa";
-            spawnHeartDelta(txt, clr, stagger);
-            stagger += 150;
-        }
+        
         if (dItems !== 0) {
             triggerBagPulse();
-            if (dItems > 0) {
-                let itemLabel = "Item";
-                if (_lastTrackedVitals.itemNames) {
-                    const added = inventory.filter(it => !_lastTrackedVitals.itemNames.includes(it.name));
-                    if (added.length > 0) {
-                        itemLabel = added[0].name;
-                    }
-                }
-                const txt = `+${dItems > 1 ? dItems + ' ' : ''}${itemLabel}`;
-                spawnBagDelta(txt, "#fbbf24", 0);
-            }
         }
     }
 
     _lastTrackedVitals.hp = hpCurrent;
+    _lastTrackedVitals.hpMax = hpMax;
     _lastTrackedVitals.mp = mpCurrent;
+    _lastTrackedVitals.mpMax = d.mp_max || (d.sp_max !== undefined ? d.sp_max : 42);
     _lastTrackedVitals.stamina = staminaCurrent;
+    _lastTrackedVitals.staminaMax = d.stamina_max || 50;
     _lastTrackedVitals.gold = goldCurrent;
     _lastTrackedVitals.itemCount = currentItemCount;
     _lastTrackedVitals.itemNames = inventory.map(it => it.name);
+
+    updateUserMessageResourceBars();
 
     const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
     const conditions = (char.conditions || []).map(c => c.toLowerCase());
@@ -5002,6 +5083,7 @@ async function speakMessage(btn) {
         
         // Play audio
         currentAudio = new Audio(data.audio_url);
+        currentAudio.volume = isSpeechMuted ? 0 : speechVolume;
         currentAudio.onended = () => {
             resetSpeakButtons();
         };
@@ -5070,9 +5152,13 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
 
     const pairedTools = [];
     const callsMap = {};
+    const seenCallSignatures = new Set();
     
     toolCalls.forEach(tc => {
         if (tc.type === 'call') {
+            const sig = tc.name + '::' + JSON.stringify(tc.args || {});
+            if (seenCallSignatures.has(sig)) return;
+            seenCallSignatures.add(sig);
             const callInfo = {
                 id: tc.id,
                 name: tc.name,
@@ -5670,7 +5756,15 @@ function renderMessage(msg, isLive = false) {
         });
     }
     if (bubblesToCreate.length === 0) {
-        bubblesToCreate.push({ type: 'text', content: text || '*(Empty message)*' });
+        let fallbackText = text;
+        if (!fallbackText && msg.tool_calls) {
+            const skillCall = msg.tool_calls.find(tc => (tc.name === 'arena_request_skill_check' || tc.name === 'request_skill_check') && tc.args);
+            if (skillCall && skillCall.args) {
+                const reason = skillCall.args.reason || (skillCall.args.skill_name ? `${skillCall.args.skill_name} check required.` : '');
+                if (reason) fallbackText = `*${reason}*`;
+            }
+        }
+        bubblesToCreate.push({ type: 'text', content: fallbackText || '*(Empty message)*' });
     }
 
     bubblesToCreate.forEach((item, idx) => {
@@ -5686,6 +5780,25 @@ function renderMessage(msg, isLive = false) {
         bubble.dataset.msgId = msgId;
         if (isMsgTransient) {
             bubble.dataset.isTransient = "true";
+        }
+
+        if (role === 'user' && !isImageOnly) {
+            if (msg.vitals) {
+                bubble.dataset.hp = msg.vitals.hp;
+                bubble.dataset.hpMax = msg.vitals.hp_max || msg.vitals.hpMax;
+                bubble.dataset.mp = msg.vitals.mp;
+                bubble.dataset.mpMax = msg.vitals.mp_max || msg.vitals.mpMax;
+                bubble.dataset.stamina = msg.vitals.stamina;
+                bubble.dataset.staminaMax = msg.vitals.stamina_max || msg.vitals.staminaMax;
+            } else if (_lastTrackedVitals.hp !== null) {
+                bubble.dataset.hp = _lastTrackedVitals.hp;
+                bubble.dataset.hpMax = _lastTrackedVitals.hpMax || 28;
+                bubble.dataset.mp = _lastTrackedVitals.mp;
+                bubble.dataset.mpMax = _lastTrackedVitals.mpMax || 42;
+                bubble.dataset.stamina = _lastTrackedVitals.stamina;
+                bubble.dataset.staminaMax = _lastTrackedVitals.staminaMax || 50;
+            }
+            updateUserMessageResourceBars(bubble);
         }
 
         const shouldAddStandardActions = (item.type === 'text') || (bubblesToCreate.length === 1);
@@ -5705,18 +5818,6 @@ function renderMessage(msg, isLive = false) {
             }
 
             if (role === 'user') {
-                const reuseBtn = document.createElement('button');
-                reuseBtn.className = 'action-icon-btn';
-                reuseBtn.title = 'Resend prompt (local)';
-                reuseBtn.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="9 17 4 12 9 7"></polyline>
-                        <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
-                    </svg>
-                `;
-                reuseBtn.onclick = () => reusePromptFromMessage(reuseBtn);
-                actions.appendChild(reuseBtn);
-
                 const editBtn = document.createElement('button');
                 editBtn.className = 'action-icon-btn';
                 editBtn.title = 'Edit message';
@@ -5732,7 +5833,7 @@ function renderMessage(msg, isLive = false) {
                 if (!isMsgTransient && !isImageOnly && item.type === 'text') {
                     const rerollBtn = document.createElement('button');
                     rerollBtn.className = 'action-icon-btn';
-                    rerollBtn.title = 'Reroll response (cloud)';
+                    rerollBtn.title = 'Reroll response';
                     rerollBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
@@ -5968,7 +6069,7 @@ function renderMessage(msg, isLive = false) {
 }
 
 // --- appendMessage ---
-function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = false, timestamp = null, duration = null, isTransient = false, msgId = null) {
+function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = false, timestamp = null, duration = null, isTransient = false, msgId = null, vitals = null) {
     const media = [];
     if (imageUrl) {
         media.push({
@@ -6001,6 +6102,7 @@ function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = f
         timestamp: timestamp,
         duration: duration,
         isTransient: isTransient,
+        vitals: vitals,
         editable: role === 'user' || role === 'program',
         deletable: true
     };
@@ -6217,7 +6319,15 @@ async function sendMessage() {
         prefix = 'tool_';
     }
     const userMsgId = prefix + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId);
+    const snapshotVitals = _lastTrackedVitals.hp !== null ? {
+        hp: _lastTrackedVitals.hp,
+        hpMax: _lastTrackedVitals.hpMax,
+        mp: _lastTrackedVitals.mp,
+        mpMax: _lastTrackedVitals.mpMax,
+        stamina: _lastTrackedVitals.stamina,
+        staminaMax: _lastTrackedVitals.staminaMax
+    } : null;
+    appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals);
 
     // Trigger heart jiggle on high user interaction or when Program is generating/responding
     const heartElement = document.querySelector('.heart-pulse');
@@ -6779,8 +6889,7 @@ async function rerollFromMessage(button) {
                 session_id: sessionId,
                 msg_id: msgId,
                 new_text: null,
-                model: selectedModel,
-                force_offload: true
+                model: selectedModel
             }),
             signal: chatAbortController.signal
         });
@@ -6884,14 +6993,6 @@ async function deleteTurnFromMessage(button) {
             showCustomAlert("Error", "Could not connect to the server to delete message.");
         }
     });
-}
-
-// --- reusePromptFromMessage ---
-function reusePromptFromMessage(button) {
-    const bubble = button.closest('.message');
-    if (bubble) {
-        resendUserMessage(bubble);
-    }
 }
 
 /* ==========================================================================
@@ -7635,6 +7736,10 @@ function resetSkillCheckUI() {
     const diceBtn = document.getElementById('dice-skill-btn');
     if (diceBtn) {
         diceBtn.classList.remove('skill-check-active');
+        diceBtn.classList.remove('rolling');
+        diceBtn.disabled = false;
+        diceBtn.style.opacity = '';
+        diceBtn.style.pointerEvents = '';
         diceBtn.title = "Roll Action (D20)";
     }
 
@@ -7656,6 +7761,13 @@ function resetSkillCheckUI() {
         portraitBtn.disabled = false;
         portraitBtn.style.opacity = '';
         portraitBtn.style.pointerEvents = '';
+    }
+
+    const imgUploadBtn = document.getElementById('image-upload-btn');
+    if (imgUploadBtn) {
+        imgUploadBtn.disabled = false;
+        imgUploadBtn.style.opacity = '';
+        imgUploadBtn.style.pointerEvents = '';
     }
 
     const sendBtn = document.querySelector('.send-btn');
@@ -7681,7 +7793,7 @@ function getDiceIconSvg() {
 
 async function handleDiceButtonClick() {
     const diceBtn = document.getElementById('dice-skill-btn');
-    if (!diceBtn || isGenerating) {
+    if (!diceBtn || isGenerating || hasStagedRollMessage || diceBtn.disabled) {
         return;
     }
     await resolvePlayerSkillCheck();
@@ -7730,10 +7842,14 @@ async function resolvePlayerSkillCheck() {
             userInput.classList.add('user-input-frozen');
             userInput.placeholder = "Roll action generated — Click Send to submit";
 
-            // Reset dice button state
+            // Lock dice button so player cannot reroll outcome before sending
             if (diceBtn) {
                 diceBtn.classList.remove('skill-check-active');
-                diceBtn.title = "Roll Action (D20)";
+                diceBtn.classList.remove('rolling');
+                diceBtn.disabled = true;
+                diceBtn.style.opacity = '0.25';
+                diceBtn.style.pointerEvents = 'none';
+                diceBtn.title = "Roll locked — Send action to submit";
             }
 
             // Keep toolbar buttons disabled while staged roll message is locked
@@ -7780,10 +7896,8 @@ async function resolvePlayerSkillCheck() {
         showCustomAlert("Error", "Could not execute skill check.");
         resetSkillCheckUI();
     } finally {
-        if (diceBtn) {
+        if (diceBtn && !hasStagedRollMessage) {
             diceBtn.classList.remove('rolling');
-            diceBtn.style.pointerEvents = '';
-            diceBtn.innerHTML = getDiceIconSvg();
         }
     }
 }
@@ -10549,6 +10663,7 @@ async function playProgramSpeech(text) {
         }
         
         voiceCallActiveAudio = new Audio(data.audio_url);
+        voiceCallActiveAudio.volume = isSpeechMuted ? 0 : speechVolume;
         
         try {
             const AudioContextClass = window.AudioContext || window.webkitAudioContext;

@@ -440,6 +440,86 @@ def remove_item(sheet: dict, item_name: str, quantity: int = 1) -> tuple[dict, b
     return sheet, False
 
 
+def reconcile_inventory_from_turn(sheet: dict, user_text: str, program_text: str) -> tuple[dict, list[dict]]:
+    """
+    Reconciles character inventory against the context of the turn.
+    Detects if the player explicitly discarded, consumed, or surrendered an item currently held.
+    Returns (updated_sheet, list_of_removed_items).
+    """
+    if not sheet or "inventory" not in sheet or not sheet["inventory"]:
+        return sheet, []
+
+    combined_text = f"{user_text}\n{program_text}"
+    if not combined_text.strip():
+        return sheet, []
+
+    removals = []
+    
+    negation_patterns = [
+        r'\b(?:not|never|without|refuse\w*|hesitat\w*)\s+(?:to\s+)?(?:drop|discard|leave|lose|release|toss)\b',
+        r'\b(?:holding|gripping|grasping|clutching|brandishing)\s+(?:the|my|a|an)?\s*',
+        r'\b(?:held|gripped|grasped|clutched)\s+(?:high|tight|fast|close|firmly)\b'
+    ]
+
+    relinquish_actions = [
+        r'(?:\bleaving\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bleft\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bdrop(?:ped|ping|s)?\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bdiscard(?:ed|ing|s)?\s+(?:my|the|this|a)?\s*)',
+        r'(?:\btoss(?:ed|ing|es)?\s+(?:away|down|aside)?\s*(?:my|the|this|a)?\s*)',
+        r'(?:\bthrew\s+(?:away|down|aside)?\s*(?:my|the|this|a)?\s*)',
+        r'(?:\bthrow(?:ing|s)?\s+(?:away|down|aside)?\s*(?:my|the|this|a)?\s*)',
+        r'(?:\bset(?:ting)?\s+down\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bplaced?\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bsurrender(?:ed|ing|s)?\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bdrink(?:ing|s)?\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bdrank\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bswallow(?:ed|ing|s)?\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bconsum(?:ed|ing|es)?\s+(?:my|the|this|a)?\s*)',
+        r'(?:\bused\s+up\s+(?:my|the|this|a)?\s*)',
+    ]
+
+    items_to_remove = []
+
+    for item in list(sheet["inventory"]):
+        item_name = item.get("name", "").strip()
+        if not item_name:
+            continue
+
+        item_escaped = re.escape(item_name)
+        
+        found_relinquish = False
+        for action_pat in relinquish_actions:
+            full_pattern = rf'{action_pat}{item_escaped}\b'
+            matches = list(re.finditer(full_pattern, user_text, re.IGNORECASE))
+            if not matches:
+                matches = list(re.finditer(full_pattern, program_text, re.IGNORECASE))
+                
+            for match in matches:
+                start_pos = max(0, match.start() - 40)
+                snippet = combined_text[start_pos:match.end()]
+                is_negated = any(re.search(neg, snippet, re.IGNORECASE) for neg in negation_patterns)
+                if not is_negated:
+                    found_relinquish = True
+                    break
+            if found_relinquish:
+                break
+
+        if found_relinquish:
+            items_to_remove.append(item_name)
+
+    for it_name in items_to_remove:
+        sheet, success = remove_item(sheet, it_name, 1)
+        if success:
+            removals.append({"name": it_name, "quantity": 1})
+            print(f"[Inventory Reconciliation] Automatically reconciled dropped item: {it_name}", flush=True)
+
+    if removals:
+        recalculate_derived_stats(sheet)
+
+    return sheet, removals
+
+
 def equip_item(sheet: dict, item_name: str) -> tuple[dict, bool]:
     """
     Equip an item by name enforcing slot constraints:

@@ -345,21 +345,26 @@ def strip_narration(text: str) -> str:
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG DIRECTIVES\n"
     "Tools:\n"
-    "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` Player skill/attribute check. Freezes input for dice roll.\n"
-    "- `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` NPC/monster attack roll.\n"
-    "- `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` NPC/monster attribute check.\n"
+    "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` Player skill or attribute check. Freezes input for dice roll.\n"
+    "- `[arena_spend_magicka(amount=...)]` Deduct Magicka cost when the player casts spells.\n"
+    "- `[arena_spend_stamina(amount=...)]` Deduct Stamina for physical exertion, sprinting, dodging, or heavy power strikes.\n"
+    "- `[arena_take_damage(amount=...)]` Apply damage when the player sustains an injury.\n"
+    "- `[arena_heal(amount=...)]` Restore health from potions or healing spells.\n"
+    "- `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` NPC or monster attack roll.\n"
+    "- `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` NPC or monster attribute check.\n"
     "- `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` Recruit a trusted combat companion.\n"
-    "- `[generate_local_image(prompt=\"...\")]` ComfyUI portrait/scene (comma tags).\n"
-    "- `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` Environment/creature art.\n"
+    "- `[generate_local_image(prompt=\"...\")]` ComfyUI portrait or scene with comma tags.\n"
+    "- `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` Environment or creature art.\n"
     "- `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` Add acquired item.\n"
-    "- `[arena_remove_item(character_name=\"{{user}}\", item_name=\"...\", quantity=1)]` Remove lost/given/used item.\n"
+    "- `[arena_remove_item(character_name=\"{{user}}\", item_name=\"...\", quantity=1)]` Remove lost, given, or used item.\n"
     "- `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` / `[arena_spend_gold(character_name=\"{{user}}\", amount=...)]` Gold changes.\n\n"
     "Rules:\n"
-    "- INVENTORY: Track every item transfer. Gained items: [arena_add_item]. Lost/given/sold/consumed: [arena_remove_item]. Gold: [arena_add_gold]/[arena_spend_gold]. Alt: add_item=\"...\", remove_item=\"...\", gold=... in state comment.\n"
+    "- INVENTORY: Track every item transfer. Gained items: [arena_add_item]. Lost, given, sold, or consumed: [arena_remove_item]. Gold: [arena_add_gold]/[arena_spend_gold]. Alt: add_item=\"...\", remove_item=\"...\", gold=... in state comment.\n"
+    "- MAGIC & VITALS: When the player casts a spell, deduct the spell Magicka cost with [arena_spend_magicka(amount=...)]. Deduct Stamina for physical exertion with [arena_spend_stamina(amount=...)]. Apply damage with [arena_take_damage(amount=...)] and healing with [arena_heal(amount=...)]. Combine resource adjustments with skill checks in the same turn.\n"
     "- STATE: End turn with <!-- state: province=\"...\", location=\"...\", hours=..., quest_stage=... --> when location, time, or quest changes.\n"
-    "- CHECKS: Player actions requiring skill use [arena_request_skill_check], end at moment of tension. NPC/monster rolls use [arena_roll_check] or [arena_roll_combat].\n"
+    "- CHECKS: Narrate the dramatic scene setup and rising tension leading up to the test before placing [arena_request_skill_check]. NPC and monster rolls use [arena_roll_check] or [arena_roll_combat].\n"
     "- FOLLOWERS: [arena_recruit_follower] only for permanent combat companions with earned trust. Temporary escorts stay in narrative only.\n"
-    "- NPCS: Use authentic Elder Scrolls racial naming conventions (Latinate Imperials, Nordic Nords, Dunmeri Dark Elves, Altmeri High Elves, Anglo-Norman Bretons, Arabic Redguards, gro-/gra- Orcs, Jel Argonians, Ta'agra Khajiit).\n"
+    "- NPCS: Use authentic Elder Scrolls racial naming conventions (Latinate Imperials, Nordic Nords, Dunmeri Dark Elves, Altmeri High Elves, Anglo Norman Bretons, Arabic Redguards, gro/gra Orcs, Jel Argonians, Ta'agra Khajiit).\n"
     "- NARRATIVE: Sensory outcomes, no raw formulas. No questions or choices to {{user}}.\n"
     "- LORE: Weave <recalled_journals>, <knowledge_base>, and [WORLD INFO] seamlessly into narration.\n"
 )
@@ -781,6 +786,13 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     
         openai_messages = [{"role": "system", "content": sys_inst}]
         openai_messages[0]["content"] += _ARENA_DIRECTIVE_PROMPT
+        try:
+            from utils.banned_words import get_banned_words_directive
+            banned_dir = get_banned_words_directive()
+            if banned_dir:
+                openai_messages[0]["content"] += f"\n\n{banned_dir}"
+        except Exception:
+            pass
 
         # Inject lorebook lore (ST-compatible keyword-triggered world info)
         try:
@@ -985,7 +997,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             history[-1]['text'] = cleaned_text
             history[-1]['tool_calls'] = tool_calls_data
             history[-1]['inversion_active'] = winning_mode
-            history[-1]['state_snapshot'] = updated_snapshot
+            history[-1].pop('state_snapshot', None)
             return history[-1]
             
         is_img_msg = cleaned_text and cleaned_text.strip().startswith("![") and cleaned_text.strip().endswith(")")
@@ -1001,8 +1013,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             'text': cleaned_text,
             'tool_calls': tool_calls_data,
             'timestamp': time.time(),
-            'inversion_active': winning_mode,
-            'state_snapshot': updated_snapshot
+            'inversion_active': winning_mode
         }
         history.append(bot_msg)
         return bot_msg
@@ -1643,6 +1654,7 @@ class BaseProgramRunner:
                     # Execute all tools, embed generated media, and strip all [tool(...)] tags
                     clean_response = bot_response_text
                     t_calls = []
+                    skill_check_reason = ""
                     
                     for idx, m_tool in enumerate(matches):
                         if session_id in cancelled_sessions:
@@ -1651,6 +1663,15 @@ class BaseProgramRunner:
                         a_str = m_tool.group(2)
                         original_tag = m_tool.group(0)
                         normalized_name = _normalize_tool_name(t_name)
+                        parsed_args = _parse_emulated_tool_call(normalized_name, a_str)
+                        dedup_keys = _get_tool_dedup_keys(normalized_name, parsed_args["kwargs"], parsed_args.get("args", []))
+                        
+                        is_duplicate = any(k in seen_tool_calls for k in dedup_keys)
+                        clean_response = clean_response.replace(original_tag, "")
+                        if is_duplicate:
+                            continue
+                        for k in dedup_keys:
+                            seen_tool_calls.add(k)
                         
                         if normalized_name in ("generate_local_image", "generate_imagen", "generate_program_portrait", "generate_general_image", "apply_comfy_workflow"):
                             parsed_args, new_markdown = _execute_emulated_tool(t_name, a_str)
@@ -1665,7 +1686,8 @@ class BaseProgramRunner:
                             adapter.append_image_tool_events(normalized_name, pair[0]['args'], new_markdown, pair[0]['id'], invocation_id)
                         else:
                             parsed_args, output = _execute_emulated_tool(t_name, a_str)
-                            clean_response = clean_response.replace(original_tag, "")
+                            if normalized_name in ("arena_request_skill_check", "request_skill_check"):
+                                skill_check_reason = parsed_args.get("kwargs", {}).get("reason") or parsed_args.get("kwargs", {}).get("skill_name") or ""
                             pair = _build_tool_calls_pair(normalized_name, parsed_args["kwargs"], output, idx)
                             t_calls.extend(pair)
                             
@@ -1675,6 +1697,9 @@ class BaseProgramRunner:
                     clean_response = re.sub(r'\n{3,}', '\n\n', clean_response).strip()
                     clean_response = self._ensure_images_are_embedded(clean_response)
                     
+                    if not clean_response and skill_check_reason:
+                        clean_response = f"*{skill_check_reason}*"
+
                     if accumulated_prefix and not clean_response.startswith(accumulated_prefix):
                         if clean_response:
                             clean_response = f"{accumulated_prefix} {clean_response}".strip()
@@ -1739,8 +1764,34 @@ class BaseProgramRunner:
                 
         adapter.post_process_thoughts(invocation_id)
         bot_response_text = self._ensure_images_are_embedded(bot_response_text)
-        from engine.world_engine import extract_hidden_state_footer
-        bot_response_text, _ = extract_hidden_state_footer(bot_response_text, {})
+        from engine.world_engine import extract_hidden_state_footer, load_world_state, save_world_state
+        from engine.character import load_character, save_character, reconcile_inventory_from_turn
+        from utils.program import get_active_user
+        try:
+            active_user = get_active_user()
+            world_state = load_world_state(active_user)
+            bot_response_text, snapshot = extract_hidden_state_footer(bot_response_text, world_state)
+            if snapshot and active_user:
+                save_world_state(active_user, snapshot)
+
+            sheet = load_character(active_user)
+            if sheet and active_user:
+                if snapshot:
+                    if "inventory" in snapshot:
+                        sheet["inventory"] = snapshot["inventory"]
+                    if "vitals" in snapshot:
+                        d = sheet.setdefault("derived", {})
+                        v = snapshot["vitals"]
+                        if "hp" in v: d["hp_current"] = v["hp"]
+                        if "mp" in v: d["mp_current"] = v["mp"]
+                        if "stamina" in v: d["stamina_current"] = v["stamina"]
+                        if "gold" in v: sheet["gold"] = v["gold"]
+
+                sheet, removals = reconcile_inventory_from_turn(sheet, new_message_text or "", bot_response_text or "")
+                save_character(active_user, sheet)
+        except Exception as _sync_err:
+            print(f"[Turn State Sync] Warning: {_sync_err}", flush=True)
+
         if existing_tool_calls:
             existing_ids = {tc.get('id') for tc in existing_tool_calls if tc.get('id')}
             merged = list(existing_tool_calls)
@@ -2116,6 +2167,15 @@ class OpenSourceRunner(BaseProgramRunner):
             "temperature": temperature,
             "max_tokens": 512
         }
+        try:
+            from utils.banned_words import get_banned_words_directive, sanitize_text
+            banned_dir = get_banned_words_directive()
+            if banned_dir and banned_dir not in system_instruction:
+                system_instruction = f"{system_instruction}\n\n{banned_dir}"
+                payload["messages"][0]["content"] = system_instruction
+        except Exception:
+            pass
+
         if is_cloud:
             from variables import DISABLED_THINKING, is_thinking_enabled
             if not is_thinking_enabled(is_cloud):
@@ -2128,7 +2188,13 @@ class OpenSourceRunner(BaseProgramRunner):
             if r.status_code == 200:
                 res_json = r.json()
                 _imp_text = res_json['choices'][0]['message'].get('content', '').strip()
-                return re.sub(r'(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', _imp_text, flags=re.IGNORECASE).strip()
+                cleaned = re.sub(r'(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', _imp_text, flags=re.IGNORECASE).strip()
+                try:
+                    from utils.banned_words import sanitize_text
+                    cleaned = sanitize_text(cleaned)
+                except Exception:
+                    pass
+                return cleaned
             else:
                 raise Exception(f"HTTP Server returned status code {r.status_code}: {r.text}")
         except Exception as e:
@@ -2151,7 +2217,13 @@ class OpenSourceRunner(BaseProgramRunner):
                         if r_fallback.status_code == 200:
                             res_json = r_fallback.json()
                             _imp_text = res_json['choices'][0]['message'].get('content', '').strip()
-                            return re.sub(r'(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', _imp_text, flags=re.IGNORECASE).strip()
+                            cleaned = re.sub(r'(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)', '', _imp_text, flags=re.IGNORECASE).strip()
+                            try:
+                                from utils.banned_words import sanitize_text
+                                cleaned = sanitize_text(cleaned)
+                            except Exception:
+                                pass
+                            return cleaned
                         else:
                             raise Exception(f"Fallback HTTP Server returned status code {r_fallback.status_code}: {r_fallback.text}")
                     except Exception as cloud_err:

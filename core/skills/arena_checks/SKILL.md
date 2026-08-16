@@ -11,8 +11,10 @@ triggers: roll, check, d20, lock, pick, lockpick, picklock, door, chest, stealth
 When the narrative requires an action or reaction with skill:
 
 ## 1. Player Skill Checks (Active Player Reactions)
-- When the player character attempts a risky maneuver, stealth action, lockpicking, athletic feat, or social check:
+- When the player character attempts a risky maneuver, stealth action, spell attack, lockpicking, athletic feat, or social check:
   `[arena_request_skill_check(skill_name="...", attribute_name="...", dc=..., reason="...")]`
+- Narrate the dramatic scene setup and rising tension in full detail before outputting the skill check tool tag.
+- When the player casts a spell during a skill check, deduct the Magicka cost in the same turn: `[arena_spend_magicka(amount=...)]`.
 - This tool freezes the input area and prompts the player to roll their glowing D20 dice directly.
 - Standard Difficulty Classes (DC):
   - Easy: DC 10

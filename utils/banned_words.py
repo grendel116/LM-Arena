@@ -29,19 +29,31 @@ def match_case(word: str, replacement: str) -> str:
         return replacement.capitalize()
     return replacement.lower()
 
+def get_banned_words_directive() -> str:
+    """Formats active banned words as active substitution instructions for system prompts."""
+    banned_map = load_banned_words()
+    if not banned_map:
+        return ""
+    lines = ["Vocabulary directives:"]
+    for word, rep in banned_map.items():
+        lines.append(f"- Use '{rep}' instead of '{word}'")
+    return "\n".join(lines)
+
 def sanitize_text(text: str) -> str:
     """Scans and replaces banned words in text while preserving casing."""
     if not text:
         return text
         
     banned_map = load_banned_words()
-    
+    if not banned_map:
+        return text
+        
     # Sort keys by length descending to replace plurals/longer words first
     sorted_words = sorted(banned_map.keys(), key=len, reverse=True)
     
     for word in sorted_words:
         replacement = banned_map[word]
-        # Match word boundaries to prevent replacing parts of larger words (e.g., 'ghostly' should still match 'ghost' if desired, but boundary check prevents unintended matches)
+        # Match word boundaries to prevent replacing parts of larger words
         pattern = re.compile(rf'\b{re.escape(word)}\b', re.IGNORECASE)
         
         def replace_match(match):

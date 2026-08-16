@@ -1940,7 +1940,6 @@ header {
 /* Message actions container */
 .message-actions {
     position: absolute;
-    top: -12px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -1950,23 +1949,36 @@ header {
     z-index: 10;
 }
 
-.message-row.user-row .message-actions {
-    right: 12px;
-    transform: translateY(4px);
+.message-row.user-row .message-actions,
+.message.user .message-actions {
+    top: 0;
+    right: 14px;
+    bottom: auto;
+    left: auto;
+    transform: translateY(-50%);
 }
 
-.message-row.program-row .message-actions {
-    bottom: 4px;
-    right: 12px;
+.message-row.program-row .message-actions,
+.message.program .message-actions {
+    bottom: 0;
+    right: 14px;
     top: auto;
     left: auto;
-    transform: translateY(0);
+    transform: translateY(50%);
 }
 
-.message:hover .message-actions {
+.message.user:hover .message-actions,
+.message-row.user-row:hover .message-actions {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(0);
+    transform: translateY(-50%);
+}
+
+.message.program:hover .message-actions,
+.message-row.program-row:hover .message-actions {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(50%);
 }
 
 .action-icon-btn {
@@ -3756,38 +3768,90 @@ body, #app-container, #chat-container, .chat-container {
     filter: none;
 }
 
-.heart-delta-pop {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    pointer-events: none;
-    font-size: 0.68rem;
-    font-weight: 700;
-    font-family: var(--font-arena, "Cinzel", Georgia, serif);
-    letter-spacing: 0.02em;
-    padding: 1px 6px;
-    border-radius: 9999px;
-    background: rgba(12, 12, 16, 0.88);
-    border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 6px color-mix(in srgb, currentColor 40%, transparent);
-    white-space: nowrap;
-    z-index: 9999;
-    animation: heartDeltaFloat 0.55s ease-out forwards;
+.message.user {
+    position: relative;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
-@keyframes heartDeltaFloat {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, 4px) scale(0.85);
-    }
-    20% {
-        opacity: 1;
-        transform: translate(-50%, -10px) scale(1);
-    }
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -36px) scale(0.9);
-    }
+.message.user.bubble-pulse-hp-down {
+    border-color: rgba(220, 38, 38, 0.8) !important;
+    box-shadow: 0 4px 22px rgba(220, 38, 38, 0.45) !important;
+}
+
+.message.user.bubble-pulse-hp-up {
+    border-color: rgba(254, 240, 138, 0.9) !important;
+    box-shadow: 0 4px 24px rgba(253, 224, 71, 0.45), 0 0 12px rgba(255, 255, 255, 0.35) !important;
+}
+
+.message.user.bubble-pulse-mp {
+    border-color: rgba(37, 99, 235, 0.8) !important;
+    box-shadow: 0 4px 22px rgba(37, 99, 235, 0.45) !important;
+}
+
+.message.user.bubble-pulse-sp {
+    border-color: rgba(22, 163, 74, 0.8) !important;
+    box-shadow: 0 4px 22px rgba(22, 163, 74, 0.45) !important;
+}
+
+/* User Message Minimalist Resource Bars on Hover */
+.user-resource-bars {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: absolute;
+    bottom: -4px;
+    left: 20px;
+    right: 20px;
+    width: calc(100% - 40px);
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none;
+    z-index: 30;
+}
+
+.message.user:hover .user-resource-bars,
+.user-row:hover .user-resource-bars {
+    opacity: 0.7;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.user-resource-bars .resource-bar {
+    flex: 1;
+    cursor: default;
+    position: relative;
+}
+
+.user-resource-bars .resource-bar-track {
+    width: 100%;
+    height: 6px;
+    background: #080a0f;
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.user-resource-bars .resource-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.user-resource-bars .resource-bar-fill.magicka {
+    background: #1d4ed8;
+    box-shadow: 0 0 6px rgba(29, 78, 216, 0.5);
+}
+
+.user-resource-bars .resource-bar-fill.health {
+    background: #b91c1c;
+    box-shadow: 0 0 6px rgba(185, 28, 28, 0.5);
+}
+
+.user-resource-bars .resource-bar-fill.stamina {
+    background: #15803d;
+    box-shadow: 0 0 6px rgba(21, 128, 61, 0.5);
 }
 
 .heart-pulse svg {

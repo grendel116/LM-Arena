@@ -957,9 +957,22 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
             f"Generate a succinct first person action for the character:"
         )
     
+    try:
+        from utils.banned_words import get_banned_words_directive, sanitize_text
+        banned_dir = get_banned_words_directive()
+        if banned_dir:
+            system_instruction += f"\n{banned_dir}"
+    except Exception:
+        pass
+
     # Delegate entirely to the runner's provider-agnostic generator
     try:
-        return asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
+        raw_msg = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
+        try:
+            from utils.banned_words import sanitize_text
+            return sanitize_text(raw_msg)
+        except Exception:
+            return raw_msg
     except Exception as e:
         print(f"Error generating impersonated message via runner: {e}")
         raise
@@ -1045,6 +1058,13 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
         "Generate the User character's immediate reaction in first person.\n"
         f"1 concise *italicized* narrative sentence matching the {roll_res['degree']} outcome."
     )
+    try:
+        from utils.banned_words import get_banned_words_directive, sanitize_text
+        banned_dir = get_banned_words_directive()
+        if banned_dir:
+            system_instruction += f"\n{banned_dir}"
+    except Exception:
+        pass
 
     if is_flat_roll:
         prompt = (
@@ -1074,6 +1094,11 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
 
     action_text = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
     action_text = action_text.strip().replace('"', '')
+    try:
+        from utils.banned_words import sanitize_text
+        action_text = sanitize_text(action_text)
+    except Exception:
+        pass
 
     # Return pure narrative action without visible bracketed roll formulas
     formatted_message = action_text
@@ -3132,47 +3157,8 @@ def delete_existing_save():
 
 
 def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id: str = None):
-    """Synchronizes updated inventory, vitals, and spells to history state snapshots across active session aliases."""
-    try:
-        from runner_interface import get_runner
-        from engine.save_manager import get_active_save_id
-        import copy
-        
-        runner = get_runner()
-        save_id = get_active_save_id()
-        
-        target_session_ids = set()
-        if session_id:
-            target_session_ids.add(session_id)
-        target_session_ids.add('default')
-        if save_id:
-            target_session_ids.add(save_id)
-            
-        for sid in target_session_ids:
-            if sid not in runner.sessions_history:
-                runner._load_session_from_disk(sid)
-            
-            if sid in runner.sessions_history:
-                history = runner.sessions_history[sid]
-                if history:
-                    msg = history[-1]
-                    if msg.get('state_snapshot'):
-                        msg['state_snapshot']['inventory'] = copy.deepcopy(character_sheet.get('inventory', []))
-                        if 'derived' in character_sheet:
-                            derived = character_sheet['derived']
-                            vitals = msg['state_snapshot'].setdefault('vitals', {})
-                            vitals['hp'] = derived.get('hp_current', vitals.get('hp', 30))
-                            vitals['hp_max'] = derived.get('hp_max', vitals.get('hp_max', 30))
-                            vitals['mp'] = derived.get('mp_current', vitals.get('mp_current', 162))
-                            vitals['mp_max'] = derived.get('mp_max', vitals.get('mp_max', 162))
-                            vitals['stamina'] = derived.get('stamina_current', vitals.get('stamina', 60))
-                            vitals['stamina_max'] = derived.get('stamina_max', vitals.get('stamina_max', 60))
-                            vitals['gold'] = character_sheet.get('gold', vitals.get('gold', 0))
-                        if 'spells' in character_sheet:
-                            msg['state_snapshot']['spells'] = copy.deepcopy(character_sheet.get('spells', []))
-                runner._save_session_to_disk(sid)
-    except Exception as e:
-        print(f"[Snapshot Sync Warning] {e}", flush=True)
+    """No-op: Single save state is authoritative; individual message state snapshots are deprecated."""
+    pass
 
 
 @app.route('/api/character/equip', methods=['POST'])
