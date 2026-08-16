@@ -821,7 +821,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     clean_text = text.replace("[System Memory of older conversation turns]:", "").strip()
                     latest_memory = clean_text  # last one wins
         if latest_memory:
-            context_parts.append(f"<conversation_memory>\n{latest_memory}\n</conversation_memory>")
+            from core.program_config import replace_placeholders
+            context_parts.append(f"<conversation_memory>\n{replace_placeholders(latest_memory)}\n</conversation_memory>")
             
         # 2. Recalled journals
         recalled_journals = []
@@ -854,7 +855,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             
         # 4. Memory context from archived chat history
         if memory_context:
-            context_parts.append(f"<archived_memory>\n{memory_context}\n</archived_memory>")
+            from core.program_config import replace_placeholders
+            context_parts.append(f"<archived_memory>\n{replace_placeholders(memory_context)}\n</archived_memory>")
             
         # 5. Vector retrieved skill instructions (Toolbelt tier 2)
         if last_user_message:
@@ -1211,8 +1213,8 @@ class BaseProgramRunner:
             
         prompt = (
             "You are a progressive memory compaction assistant for a roleplay adventure.\n"
-            f"Summarize the NEW chapter of events between {user_name} and {program_name}.\n"
-            f"Always refer to the user as '{user_name}' and the program as '{program_name}'. Use their names for all references.\n"
+            f"Summarize the NEW chapter of events involving {user_name} and {program_name}.\n"
+            f"Always refer to the user/player as '{{{{user}}}}'. Refer to companions, NPCs, and characters by their explicit names (e.g. '{program_name}') and do NOT use '{{{{char}}}}' as memories persist across different companions.\n"
             "Extract new key developments, decisions, inventory/quest changes, locations reached, and relationship milestones.\n"
             "Write a concise narrative summary (2-3 sentences, up to 500 characters).\n"
             "Focus STRICTLY on the new developments in the recent chat history and do NOT repeat details already recorded in prior memories.\n\n"
@@ -2383,8 +2385,8 @@ class OpenSourceRunner(BaseProgramRunner):
             if not self.sessions_history.get(session_id):
                 self.sessions_history[session_id] = []
                 try:
-                    from core.program_config import get_program_greeting, replace_placeholders
-                    greeting = replace_placeholders(get_program_greeting()).strip()
+                    from core.program_config import get_program_greeting
+                    greeting = get_program_greeting().strip()
                     if greeting:
                         import uuid as _uuid
                         self.sessions_history[session_id].append({

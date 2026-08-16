@@ -3912,13 +3912,8 @@ async function saveActiveUserProfile() {
 
         showCustomAlert("Success", `Character profile saved and updated!`);
 
-        const messagesList = document.getElementById('messages-list');
-        if (messagesList) {
-            messagesList.innerHTML = "";
-            showWelcomeMessage();
-        }
-
         await loadUserProfiles();
+        await loadHistory();
         closeUserProfileEditor();
     } catch (e) {
         showCustomAlert("Error", e.message || "Failed to update profile.");

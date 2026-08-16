@@ -3536,11 +3536,11 @@ def save_user_profile():
         if character_class:
             bundle["meta"]["class"] = character_class
 
-        # If this save only contains the initial opening greeting, update it to use the new character name
+        # If this save only contains the initial opening greeting, update it to use the card greeting
         history = bundle.get("history", [])
         if len(history) <= 1:
-            from core.program_config import get_program_greeting, replace_placeholders
-            new_opening = replace_placeholders(get_program_greeting(), user_name=display_name)
+            from core.program_config import get_program_greeting
+            new_opening = get_program_greeting()
             if history:
                 history[0]["text"] = new_opening
                 history[0]["content"] = new_opening
