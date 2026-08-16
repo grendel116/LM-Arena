@@ -2853,20 +2853,13 @@ input.onboarding-input {
 }
 
 .loading-logo {
-    width: 80px;
-    height: 80px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, hsl(var(--gold-h), 55%, 62%), var(--arena-dull-gold, hsl(var(--gold-h), 48%, 56%)), hsl(var(--gold-h), 45%, 37%));
+    font-size: 3.5rem;
+    line-height: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 8px 32px hsla(var(--gold-h), 48%, 56%, 0.25);
-}
-
-.loading-logo svg {
-    width: 40px;
-    height: 40px;
-    color: var(--text-bright);
+    user-select: none;
+    filter: drop-shadow(0 4px 16px hsla(var(--gold-h), 48%, 56%, 0.35));
     animation: pulse-heart 1.5s infinite ease-in-out;
 }
 
@@ -4018,11 +4011,7 @@ body, #app-container, #chat-container, .chat-container {
     color: hsl(42, 40%, 70%) !important;
 }
 
-/* Loading Overlay Styling */
-.loading-logo {
-    background: linear-gradient(135deg, hsl(var(--gold-h), 55%, 62%), var(--arena-dull-gold, hsl(var(--gold-h), 48%, 56%)), hsl(var(--gold-h), 45%, 37%)) !important;
-    box-shadow: 0 8px 32px hsla(var(--gold-h), 48%, 56%, 0.25) !important;
-}
+
 
 .loading-spinner-bar::after {
     background: linear-gradient(90deg, transparent, var(--arena-dull-gold, hsl(var(--gold-h), 48%, 56%)), transparent) !important;

@@ -716,7 +716,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             msg for msg in history 
             if msg.get('role') not in ('voice-call', 'system-memory') 
             and not msg.get('compacted')
-            and not (msg.get('role') == 'program' and not msg.get('text', '').strip() and not msg.get('tool_calls'))
+            and not (msg.get('role') == 'program' and not (msg.get('text') or '').strip() and not msg.get('tool_calls') and not msg.get('id', '').startswith('first_mes'))
         ]
         if not filtered_history:
             return [{"role": "system", "content": sys_inst}]
@@ -2317,11 +2317,13 @@ class OpenSourceRunner(BaseProgramRunner):
     def _normalize_message(self, msg: dict) -> dict:
         """Transforms a raw stored message into the canonical frontend format."""
         msg_id = msg.get('id', '')
-        if msg_id.startswith('first_mes'):
-            from core.program_config import get_program_greeting
-            text = get_program_greeting()
+        if msg.get('text') is not None and str(msg.get('text')).strip() != '':
+            text = str(msg.get('text'))
+        elif msg_id.startswith('first_mes'):
+            from core.program_config import get_program_greeting, replace_placeholders
+            text = replace_placeholders(get_program_greeting())
         else:
-            text = msg.get('text', '') or msg.get('content', '') or ''
+            text = msg.get('content', '') or ''
         media = []
 
         # 1. Extract markdown images from text into media[]
@@ -2417,13 +2419,16 @@ class OpenSourceRunner(BaseProgramRunner):
                     continue
                 if msg.get('id', '').startswith(_hidden_prefixes):
                     continue
+                
+                normalized = self._normalize_message(msg)
                 # Skip empty program messages
-                if msg.get('role') == 'program':
-                    text = (msg.get('text') or '').strip()
-                    has_tools = bool(msg.get('tool_calls'))
-                    if not text and not has_tools:
+                if normalized.get('role') == 'program':
+                    text = (normalized.get('text') or '').strip()
+                    has_tools = bool(normalized.get('tool_calls'))
+                    has_media = bool(normalized.get('media'))
+                    if not text and not has_tools and not has_media:
                         continue
-                chat_history.append(self._normalize_message(msg))
+                chat_history.append(normalized)
             return chat_history
 
     async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None, existing_tool_calls: list = None) -> tuple:
@@ -2464,11 +2469,18 @@ class OpenSourceRunner(BaseProgramRunner):
             new_message_text = re.sub(r'(?i)/cloud|/offload', '', new_message_text).strip()
 
 
-        if session_id not in self.sessions_history:
-            self._load_session_from_disk(session_id)
-
-        if session_id not in self.sessions_history:
+        if not self.sessions_history.get(session_id):
             self.sessions_history[session_id] = []
+            try:
+                import uuid as _uuid
+                self.sessions_history[session_id].append({
+                    'id': f"first_mes_{_uuid.uuid4().hex[:12]}",
+                    'role': 'program',
+                    'timestamp': time.time(),
+                    'tool_calls': []
+                })
+            except Exception as _e:
+                print(f"[runner] Could not seed first_mes: {_e}")
 
         # Resolve media upload if present
         file_path_resolved = None

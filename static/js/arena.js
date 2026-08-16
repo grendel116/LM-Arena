@@ -6403,11 +6403,6 @@ async function sendMessage() {
     hideThoughtBubbleOverlay();
     const text = userInput.value.trim();
     if (!text && !attachedBase64 && !attachedMediaPath) {
-        const messageRows = chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)');
-        if (messageRows.length === 0) {
-            return;
-        }
-        await continueMessage();
         return;
     }
 
@@ -6553,92 +6548,7 @@ async function sendMessage() {
     }
 }
 
-async function continueMessage() {
-    if (isGenerating) return;
-    hideThoughtBubbleOverlay();
-    
-    const messageRows = chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)');
-    if (messageRows.length === 0) {
-        return;
-    }
-    
-    hasApprovedToolThisTurn = false;
-    setGenerating(true);
-    userInput.disabled = true;
-    userInput.placeholder = "";
-    updateInputGlow();
-    
-    const heartElement = document.querySelector('.heart-pulse');
-    if (heartElement) {
-        heartElement.classList.add('jiggling');
-    }
-    
-    const typingIndicatorRow = document.createElement('div');
-    typingIndicatorRow.className = 'message-row program-row';
-    const profileUrl = getProfileUrl();
-    typingIndicatorRow.innerHTML = `
-        <div class="avatar-container">
-            <img class="avatar program-avatar" src="${profileUrl}" alt="Program" onclick="expandImage('${profileUrl}')">
-        </div>
-        <div class="message program">
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        </div>
-    `;
-    chatContainer.appendChild(typingIndicatorRow);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    
-    chatAbortController = new AbortController();
-    try {
-        const response = await fetch('/continue', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                session_id: sessionId,
-                model: selectedModel
-            }),
-            signal: chatAbortController.signal
-        });
-        
-        if (chatContainer.contains(typingIndicatorRow)) {
-            chatContainer.removeChild(typingIndicatorRow);
-        }
-        
-        let data;
-        try {
-            data = await response.json();
-        } catch (parseErr) {
-            data = { error: `Server error (${response.status}): Unable to parse response.` };
-        }
-        if (data.response !== undefined) {
-            await softReloadApp();
-        } else if (data.error) {
-            showCustomAlert("Continue Failed", data.error);
-        }
-    } catch (error) {
-        if (chatContainer.contains(typingIndicatorRow)) {
-            chatContainer.removeChild(typingIndicatorRow);
-        }
-        if (error.name === 'AbortError') {
-            appendMessage('program', '*(Generation stopped)*');
-        } else {
-            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
-        }
-    } finally {
-        setGenerating(false);
-        userInput.disabled = false;
-        userInput.placeholder = "What do you do?";
-        updateInputGlow();
-        if (heartElement) {
-            heartElement.classList.remove('jiggling');
-        }
-        await fetchCharacterStatus();
-        await initializeModelSelect();
-    }
-}
+
 
 // --- truncateChatAfter ---
 function truncateChatAfter(row) {
