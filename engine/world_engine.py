@@ -388,6 +388,8 @@ def apply_state_snapshot(character_name: str, snapshot: dict) -> None:
         world_state["current_province"] = snapshot["province"]
     if "location" in snapshot:
         world_state["current_location"] = snapshot["location"]
+    if "bgm" in snapshot:
+        world_state["bgm"] = snapshot["bgm"]
     if "date" in snapshot:
         world_state["date"] = snapshot["date"]
         world_state["tamrielic_date"] = snapshot["date"]
@@ -471,6 +473,8 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
                 snapshot["province"] = str(val).strip()
             elif key == "location":
                 snapshot["location"] = str(val).strip()
+            elif key in ("bgm", "music", "track"):
+                snapshot["bgm"] = str(val).strip()
             elif key in ("quest_stage", "stage"):
                 try:
                     snapshot["quest_stage"] = int(val)

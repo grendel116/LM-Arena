@@ -59,14 +59,9 @@
             <div class="loading-content">
                 <div class="loading-logo">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
-                        <line x1="13" y1="19" x2="19" y2="13"></line>
-                        <line x1="16" y1="16" x2="20" y2="20"></line>
-                        <line x1="19" y1="21" x2="21" y2="19"></line>
-                        <polyline points="9.5 17.5 21 6 21 3 18 3 6.5 14.5"></polyline>
-                        <line x1="11" y1="19" x2="5" y2="13"></line>
-                        <line x1="8" y1="16" x2="4" y2="20"></line>
-                        <line x1="5" y1="21" x2="3" y2="19"></line>
+                        <path d="M19 17V5a2 2 0 0 0-2-2H4"></path>
+                        <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v2a2 2 0 0 0 2 2z"></path>
+                        <path d="M8 21a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                     </svg>
                 </div>
             </div>
@@ -713,7 +708,7 @@
                         <input id="user-profile-name-input" type="text" class="onboarding-input" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid hsla(215, 5%, 100%, 0.1); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; outline: none;" placeholder="Profile Name" oninput="onUserProfileFieldInput()" />
                     </div>
 
-                    <!-- RPG Character Trinity: Gender, Race, Class -->
+                    <!-- RPG Character Trinity: Gender, Heritage, Class -->
                     <div style="display: grid; grid-template-columns: 1fr 1.2fr 1.4fr; gap: 10px; margin-bottom: 16px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
                         <div>
                             <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 4px; font-weight: 600;">Gender</label>
@@ -723,7 +718,7 @@
                             </select>
                         </div>
                         <div>
-                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 4px; font-weight: 600;">Race</label>
+                            <label style="font-size: 0.72rem; color: var(--arena-gold); display: block; margin-bottom: 4px; font-weight: 600;">Heritage</label>
                             <select id="user-profile-race-select" onchange="onUserProfileFieldInput()" style="width: 100%; background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; padding: 6px; font-size: 0.82rem; outline: none;">
                                 <option value="Nord">Nord (Cold Resist)</option>
                                 <option value="Breton">Breton (Magic Resist)</option>

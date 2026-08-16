@@ -203,7 +203,7 @@ function showMapProvinceTooltip(e, pName) {
             ${isCurrent ? '<span style="font-size: 0.58rem; padding: 1px 6px; border-radius: 3px; background: hsla(var(--green-h), 70%, 45%, 0.2); color: var(--success-bright); border: 1px solid hsla(var(--green-h), 70%, 45%, 0.4); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Current</span>' : ''}
         </div>
         <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
-            <strong>Climate:</strong> ${prov.climate || 'Temperate'} • <strong>Race:</strong> ${prov.dominant_race || 'Native'}
+            <strong>Climate:</strong> ${prov.climate || 'Temperate'} • <strong>Heritage:</strong> ${prov.dominant_race || 'Native'}
         </div>
         <p style="margin: 0 0 6px 0; font-size: 0.75rem; color: var(--text-main); line-height: 1.35;">
             ${prov.culture_summary || ''}
@@ -1108,18 +1108,30 @@ function initAudioSystem() {
     updateSpeechMuteButtonUI();
     updateImagenToggleUI();
 
-    // Immediate startup track request
-    playBGMTrack("Opening Titles.mp3");
+    // Immediate startup track request based on world state
+    if (currentCharacterData && currentCharacterData.world) {
+        updateMusicFromWorldState();
+    } else {
+        playBGMTrack("Opening Titles.mp3");
+    }
 
     // Unified document unlocker for browser policies
+    const unlockEvents = ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'scroll'];
     const unlocker = () => {
         if (audioTrackPlayer && audioTrackPlayer.paused) {
             audioTrackPlayer.play().catch(() => {});
         } else if (!audioTrackPlayer) {
-            playBGMTrack("Opening Titles.mp3");
+            if (currentCharacterData && currentCharacterData.world) {
+                updateMusicFromWorldState();
+            } else {
+                playBGMTrack("Opening Titles.mp3");
+            }
         }
+        unlockEvents.forEach(evt => {
+            window.removeEventListener(evt, unlocker);
+        });
     };
-    ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+    unlockEvents.forEach(evt => {
         window.addEventListener(evt, unlocker, { passive: true });
     });
 }
@@ -1240,136 +1252,136 @@ function playBGMTrack(trackFilename, isLooping = true) {
     });
 }
 
-function evaluateSceneBGM(text, locationContext) {
-    if (!text && !locationContext) return;
+function updateMusicFromWorldState(world, vitals) {
+    world = world || (window.currentCharacterData ? window.currentCharacterData.world : null) || {};
+    vitals = vitals || (window.currentCharacterData && window.currentCharacterData.character ? (window.currentCharacterData.character.vitals || window.currentCharacterData.character.derived) : null) || {};
 
-    const world = (window.currentCharacterData && window.currentCharacterData.world) ? window.currentCharacterData.world : {};
-    const worldLoc = `${world.current_location || ''} ${world.current_province || ''}`;
-    const charHP = (window.currentCharacterData && window.currentCharacterData.vitals) ? window.currentCharacterData.vitals.hp : null;
-    const isDead = window.currentCharacterData?.vitals?.dead === true;
+    const charHP = (vitals.hp_current !== undefined) ? vitals.hp_current : (vitals.hp !== undefined ? vitals.hp : null);
+    const isDead = vitals.dead === true || (charHP !== null && charHP <= 0);
 
-    const combined = `${text || ''} ${locationContext || ''} ${worldLoc}`.toLowerCase();
-
-    // --- 1. JINGLES & STINGS (Non-looping) ---
-    // Defeat / Game Over
-    if (isDead || (charHP !== null && charHP <= 0)) {
+    // 1. Defeat / Game Over
+    if (isDead) {
         playBGMTrack("Game Over.mp3", false);
         return;
     }
 
-    // Victory / Level Up / Quest Completion
-    if (combined.includes("[arena_advance_stage") || combined.includes("[arena_level_up") ||
-        combined.includes("objective completed") || combined.includes("quest completed") ||
-        combined.includes("leveled_up") || combined.includes("gained a level")) {
-        playBGMTrack("Objective Completed.mp3", false);
-        return;
-    }
+    const loc = (world.current_location || 'Imperial Dungeon').trim();
+    const locLower = loc.toLowerCase();
+    const prov = (world.current_province || 'Cyrodiil').trim().toLowerCase();
+    const stage = world.quest_stage !== undefined ? parseInt(world.quest_stage) : 10;
+    const dateObj = world.date || world.tamrielic_date || {};
+    const hour = dateObj.hour !== undefined ? parseInt(dateObj.hour) : 12;
+    const timeOfDay = (dateObj.time_of_day || dateObj.time || '').toLowerCase();
 
-    // --- 2. CINEMATICS & VISIONS ---
-    // Spectral Visions (Ria Silmane)
-    if (combined.includes("ria silmane") || combined.includes("spectral vision") || combined.includes("dream vision")) {
-        playBGMTrack("A Vision Beyond.mp3");
-        return;
-    }
-
-    // Jagar Tharn & Imperial Palace Boss Context
-    if (combined.includes("jagar tharn") || combined.includes("emperor's palace") || combined.includes("throne room")) {
+    // 2. Boss / Climax / Imperial Palace
+    if (locLower.includes("palace") && (locLower.includes("imperial") || locLower.includes("tharn") || stage >= 80)) {
         playBGMTrack("Tharn's Betrayal.mp3");
         return;
     }
 
-    // --- 3. INTERIORS (Dungeons, Guilds, Shops, Taverns, Palaces) ---
-    // Dungeons / Crypts / Sewers / Catacombs
-    const isDungeon = combined.includes("dungeon") || combined.includes("sewer") ||
-                      combined.includes("crypt") || combined.includes("catacomb") ||
-                      combined.includes("fang lair") || combined.includes("labyrinthian") ||
-                      combined.includes("underground");
+    // 3. Dungeons, Crypts, Prisons, Sewers, Caves, Starting Cells
+    const isDungeon = locLower.includes("dungeon") || locLower.includes("prison") ||
+                      locLower.includes("sewer") || locLower.includes("crypt") ||
+                      locLower.includes("catacomb") || locLower.includes("cave") ||
+                      locLower.includes("cavern") || locLower.includes("lair") ||
+                      locLower.includes("fang lair") || locLower.includes("labyrinthian") ||
+                      locLower.includes("crypt of hearts") || locLower.includes("murkwood") ||
+                      locLower.includes("dagoth ur") || locLower.includes("tomb") ||
+                      locLower.includes("ruin") || locLower.includes("cell") ||
+                      locLower.includes("labyrinth") || locLower.includes("keep");
     if (isDungeon) {
         playBGMTrack("Dungeon Crawling.mp3");
         return;
     }
 
-    // Mages Guild
-    if (combined.includes("mages guild") || combined.includes("arcane academy") || combined.includes("guildhall")) {
-        playBGMTrack("The Mages Guild.mp3");
-        return;
-    }
-
-    // Inns & Taverns
-    if (combined.includes("inn") || combined.includes("tavern") || combined.includes("alehouse")) {
+    // 4. Specific City & Settlement Buildings / Services
+    if (locLower.includes("inn") || locLower.includes("tavern") || locLower.includes("alehouse") || locLower.includes("pub")) {
         playBGMTrack("The Wandering Inn.mp3");
         return;
     }
-
-    // Blacksmith & Forge
-    if (combined.includes("blacksmith") || combined.includes("armorer") || combined.includes("forge")) {
+    if (locLower.includes("mages guild") || locLower.includes("arcane academy") || locLower.includes("library") || locLower.includes("guildhall")) {
+        playBGMTrack("The Mages Guild.mp3");
+        return;
+    }
+    if (locLower.includes("forge") || locLower.includes("blacksmith") || locLower.includes("armorer")) {
         playBGMTrack("Blacksmith.mp3");
         return;
     }
-
-    // Royalty & Audience Chambers / Palaces
-    if (combined.includes("audience chamber") || combined.includes("king's court")) {
-        playBGMTrack("The Audience Chamber.mp3");
-        return;
-    }
-
-    // Temples & Arcane Arts / Spellmaking
-    if (combined.includes("temple") || combined.includes("[arena_create_spell") || combined.includes("spellmaker") || combined.includes("grimoire")) {
+    if (locLower.includes("temple") || locLower.includes("shrine") || locLower.includes("sanctuary")) {
         playBGMTrack("Arcane Arts.mp3");
         return;
     }
-
-    // Infiltration / Stealth / Residential Houses
-    if (combined.includes("[arena_roll_skill") && (combined.includes("lockpick") || combined.includes("stealth"))) {
+    if (locLower.includes("audience chamber") || locLower.includes("court") || locLower.includes("throne room")) {
+        playBGMTrack("The Audience Chamber.mp3");
+        return;
+    }
+    if (locLower.includes("thieves guild") || locLower.includes("hideout") || locLower.includes("residence") || locLower.includes("vault")) {
         playBGMTrack("Breaking And Entering.mp3");
         return;
     }
-
-    // Equipment Stores & Merchants / Shopping
-    if (combined.includes("merchant") || combined.includes("market") || combined.includes("bazaar") || combined.includes("equipmnt")) {
+    if (locLower.includes("market") || locLower.includes("bazaar") || locLower.includes("shop") || locLower.includes("store")) {
         playBGMTrack("Where Dost Thou Hail.mp3");
         return;
     }
 
-    // --- 4. EXTERIORS & OVERWORLD ---
-    // Swimming / Submerged Water
-    if (combined.includes("swimming") || combined.includes("underwater") || combined.includes("submerged") || combined.includes("diving")) {
+    // 5. Environmental & Time-of-Day Overworld
+    if (locLower.includes("water") || locLower.includes("river") || locLower.includes("lake") || locLower.includes("sea") || locLower.includes("swim") || locLower.includes("bay")) {
         playBGMTrack("Swimming.mp3");
         return;
     }
 
-    // Swamp / Marsh / Rain / Overcast
-    if (combined.includes("swamp") || combined.includes("marsh") || combined.includes("murkwood")) {
-        playBGMTrack("Foggy Afternoon.mp3");
-        return;
-    }
-
-    // Snow / Blizzard / Cold Regions (Oversnow / Skyrim)
-    if (combined.includes("skyrim") || combined.includes("blizzard") || combined.includes("snowfall")) {
-        playBGMTrack("Winter In Hammerfell.mp3");
-        return;
-    }
-
-    // Nighttime / Curfew
-    if (combined.includes("curfew") || combined.includes("midnight") || combined.includes("dead of night")) {
+    const isNight = (hour >= 21 || hour < 5) || timeOfDay.includes("night") || timeOfDay.includes("midnight") || timeOfDay.includes("curfew");
+    if (isNight) {
         playBGMTrack("The Late Hours.mp3");
         return;
     }
 
-    // Twilight / Sunset / Evening
-    if (combined.includes("twilight") || combined.includes("sunset") || combined.includes("dusk")) {
+    const isSunset = (hour >= 18 && hour < 21) || timeOfDay.includes("sunset") || timeOfDay.includes("dusk") || timeOfDay.includes("evening");
+    if (isSunset) {
         playBGMTrack("Evening Star.mp3");
         return;
     }
 
-    // Wilderness / Traveling / Forests (Sunny Day Exterior)
-    if (combined.includes("wilderness") || combined.includes("forest") || combined.includes("woods") || combined.includes("road")) {
+    if (prov.includes("skyrim") || locLower.includes("snow") || locLower.includes("blizzard") || locLower.includes("frost")) {
+        playBGMTrack("Winter In Hammerfell.mp3");
+        return;
+    }
+
+    if (prov.includes("black marsh") || locLower.includes("marsh") || locLower.includes("swamp") || locLower.includes("bog")) {
+        playBGMTrack("Foggy Afternoon.mp3");
+        return;
+    }
+
+    const isWilderness = locLower.includes("wilderness") || locLower.includes("road") || locLower.includes("forest") || locLower.includes("woods") || locLower.includes("plains") || locLower.includes("travel");
+    if (isWilderness) {
         playBGMTrack("The First Seed.mp3");
         return;
     }
 
-    // --- 5. DEFAULT TOWN & CITY AMBIENT ---
+    // 6. Default City / Settlement Daytime
     playBGMTrack("A Warm Welcome.mp3");
+}
+
+function evaluateSceneBGM(text, locationContext) {
+    const combined = `${text || ''} ${locationContext || ''}`.toLowerCase();
+
+    // Victory / Level Up / Quest Completion sting (non-looping)
+    if (combined.includes("[arena_advance_stage") || combined.includes("[arena_level_up") ||
+        combined.includes("objective completed") || combined.includes("quest completed") ||
+        combined.includes("leveled_up") || combined.includes("gained a level") || combined.includes("victory")) {
+        playBGMTrack("Objective Completed.mp3", false);
+        return;
+    }
+
+    // Spectral Visions (Ria Silmane)
+    if (combined.includes("ria silmane") || combined.includes("spectral vision") || combined.includes("dream vision") ||
+        combined.includes("spectral form") || combined.includes("ghostly figure") || combined.includes("spirit of ria")) {
+        playBGMTrack("A Vision Beyond.mp3");
+        return;
+    }
+
+    // Derive directly from world state
+    updateMusicFromWorldState();
 }
 
 // --- verifyConnections ---
@@ -2067,6 +2079,7 @@ async function fetchCharacterStatus() {
             currentCharacterData = data;
             updatePlayerHeartState(data.character, data.world);
             renderCharacterStatusModal(data);
+            updateMusicFromWorldState(data.world, data.character?.vitals || data.character?.derived);
         }
     } catch (e) {
         console.warn('Error fetching character status:', e);
@@ -5017,6 +5030,7 @@ async function loadHistory() {
 
             // Check if latest message is a pending player skill check
             evaluateLatestMessageForSkillCheck();
+            updateMusicFromWorldState();
         } else {
             // History is empty! Wait for model initialization and health checks to complete if they haven't yet
             if (modelInitPromise) {
@@ -6027,7 +6041,7 @@ function renderMessage(msg, isLive = false) {
                 bubble.appendChild(textDiv);
                 if (role === 'program' && isLive) {
                     const toolCtx = (msg.tool_calls || []).map(tc => `${tc.name || ''} ${JSON.stringify(tc.args || {})}`).join(' ');
-                    evaluateSceneBGM(actualResponse, toolCtx);
+                    evaluateSceneBGM(item.content || actualResponse, toolCtx);
                 }
             }
 

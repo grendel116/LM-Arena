@@ -25,10 +25,10 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 * **Tamrielic Calendar**: Realistic day, month, and season progression across all twelve Tamrielic months.
 
 ### Character & Inventory System
-* **Playable Races & Classes**: Full support for all 8 original races and 18 classic Arena classes (Warrior, Mage, Thief archetypes).
+* **Playable Heritages & Classes**: Full support for all 8 original heritages and 18 classic Arena classes (Warrior, Mage, Thief archetypes).
 * **Backpack & Grimoire**: Equip and manage weapons, armor, shields, torches, and enchanted jewelry, or drop items from your pack.
 * **Arena Spellmaker**: Design custom spells with dynamic school and tier calculations (Destruction, Restoration, Alteration, Illusion, Mysticism, Conjuration, Thaumaturgy, Sorcery).
-* **Passive Traits**: Race traits (Nord Cold Resistance, Breton Magic Resistance, Dark Elf Fire Resistance) and class abilities (Sorcerer passive Spell Absorption).
+* **Passive Traits**: Heritage traits (Nord Cold Resistance, Breton Magic Resistance, Dark Elf Fire Resistance) and class abilities (Sorcerer passive Spell Absorption).
 
 ### Companions & Guides
 * **Ria Silmane**: The spectral former apprentice to Jagar Tharn, communicating through mystical dream visions to guide your quest.
@@ -90,7 +90,7 @@ Open your browser at **`http://localhost:5000`**
   * `save_manager.py`: Multi-slot save management and synchronization.
 * **`core/lorebooks/`**: Context-triggered world information and lore injection:
   * `quest/`: The Imperial Simulacrum and Staff of Chaos storyline.
-  * `character/`: Playable races and class archetypes.
+  * `character/`: Playable heritages and class archetypes.
   * `world/`: Bestiary, 16 Artifacts, Factions, Services, and Calendar.
   * `gameplay/`: Combat mechanics, magic schools, and d20 rules.
 * **`core/world/`**: Static province, city, dungeon, and quest stage JSON definitions.
