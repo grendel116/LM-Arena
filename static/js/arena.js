@@ -1214,16 +1214,6 @@ function evaluateSceneBGM(text, locationContext) {
         return;
     }
 
-    // 6. Active combat — use tool call tags as reliable anchors, supplement with direct action words
-    const isCombat = combined.includes("[arena_roll_combat") || combined.includes("[arena_take_damage") ||
-                     combined.includes("d20_roll") || combined.includes("initiative") ||
-                     combined.includes("lunges") || combined.includes("strikes at") ||
-                     combined.includes("draws a weapon") || combined.includes("raises its weapon");
-    if (isCombat) {
-        playBGMTrack("Tharn's Betrayal.mp3");
-        return;
-    }
-
     // 7. Spellcasting / Spellmaker
     if (combined.includes("[arena_create_spell") || combined.includes("spellmaker") || combined.includes("grimoire")) {
         playBGMTrack("Arcane Arts.mp3");
