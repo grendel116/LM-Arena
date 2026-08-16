@@ -1353,6 +1353,8 @@ class BaseProgramRunner:
         invocation_id: str,
         existing_tool_calls: list = None
     ) -> tuple:
+        import tools
+        tools.current_session_id.set(session_id)
         bot_response_text = ""
         tool_calls = []
         seen_tool_calls = set()  # tracks (tool_name, key_arg) to block duplicates
@@ -1708,8 +1710,8 @@ class BaseProgramRunner:
                         dedup_keys = _get_tool_dedup_keys(normalized_name, parsed_args["kwargs"], parsed_args.get("args", []))
                         
                         is_duplicate = any(k in seen_tool_calls for k in dedup_keys)
-                        clean_response = clean_response.replace(original_tag, "")
                         if is_duplicate:
+                            clean_response = clean_response.replace(original_tag, "", 1)
                             continue
                         for k in dedup_keys:
                             seen_tool_calls.add(k)
@@ -1718,14 +1720,15 @@ class BaseProgramRunner:
                             parsed_args, new_markdown = _execute_emulated_tool(t_name, a_str)
                             image_succeeded = new_markdown.startswith("![") and new_markdown.endswith(")")
                             if image_succeeded:
-                                clean_response = clean_response.replace(original_tag, new_markdown)
+                                clean_response = clean_response.replace(original_tag, new_markdown, 1)
                             else:
-                                clean_response = clean_response.replace(original_tag, f"*({new_markdown})*")
+                                clean_response = clean_response.replace(original_tag, f"*({new_markdown})*", 1)
                             resolved_args = parsed_args["kwargs"] if parsed_args["kwargs"] else {"prompt": parsed_args["args"][0] if parsed_args["args"] else ""}
                             pair = _build_tool_calls_pair(normalized_name, resolved_args, new_markdown, idx)
                             t_calls.extend(pair)
                             adapter.append_image_tool_events(normalized_name, pair[0]['args'], new_markdown, pair[0]['id'], invocation_id)
                         else:
+                            clean_response = clean_response.replace(original_tag, "", 1)
                             parsed_args, output = _execute_emulated_tool(t_name, a_str)
                             if normalized_name in ("arena_request_skill_check", "request_skill_check"):
                                 skill_check_reason = parsed_args.get("kwargs", {}).get("reason") or parsed_args.get("kwargs", {}).get("skill_name") or ""

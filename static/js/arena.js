@@ -5933,7 +5933,7 @@ function renderMessage(msg, isLive = false) {
             if (!msgTimestamp && isLive) {
                 msgTimestamp = Date.now() / 1000;
             }
-            if (msgTimestamp) {
+            if (msgTimestamp && !isImageOnly) {
                 const tsSpan = document.createElement('span');
                 tsSpan.className = 'message-timestamp';
                 tsSpan.textContent = formatMessageTimestamp(msgTimestamp, msg);
