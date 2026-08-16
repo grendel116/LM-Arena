@@ -815,8 +815,8 @@ def edit():
     msg_id = request.json.get('msg_id')
     new_text = request.json.get('new_text') # None means reroll (use original text)
     selected_model = request.json.get('model')
-    force_offload = request.json.get('force_offload', new_text is None)
-    print(f"[EDIT ROUTE] session_id={session_id}, msg_id={msg_id}, new_text={repr(new_text)}, model={selected_model}", flush=True)
+    force_offload = request.json.get('force_offload', False)
+    print(f"[EDIT ROUTE] session_id={session_id}, msg_id={msg_id}, new_text={repr(new_text)}, model={selected_model}, force_offload={force_offload}", flush=True)
 
     import tools
     tools.current_session_id.set(session_id)
@@ -3193,6 +3193,123 @@ def toggle_equip_item():
             "character": sheet,
             "item_name": item_name,
             "equipped": should_equip
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def generate_inventory_item(description: str, model: str = None) -> dict:
+    """Prompt the model to generate a structured RPG inventory item from a description."""
+    import json, re, asyncio
+    from engine.character import get_item_category, get_item_weight
+
+    global runner
+    if 'runner' not in globals() or runner is None:
+        init_runner()
+
+    system_instruction = (
+        "You are an RPG inventory system. Convert the user item description into a single structured item JSON object.\n"
+        "Return ONLY a valid JSON object without markdown code blocks, backticks, or explanatory text."
+    )
+    
+    prompt = (
+        f"Create a single RPG inventory item based on this concept or description:\n"
+        f"\"{description.strip()}\"\n\n"
+        f"Output JSON with exact fields:\n"
+        f"{{\n"
+        f"  \"name\": \"Formal Item Name\",\n"
+        f"  \"type\": \"weapon\" or \"armor\" or \"shield\" or \"head\" or \"feet\" or \"hands\" or \"neck\" or \"ring\" or \"torch\" or \"potion\" or \"consumable\" or \"quest\" or \"misc\",\n"
+        f"  \"weight\": 1.5,\n"
+        f"  \"quantity\": 1,\n"
+        f"  \"equipped\": false,\n"
+        f"  \"description\": \"Flavor description of the item\"\n"
+        f"}}"
+    )
+
+    raw_response = ""
+    try:
+        raw_response = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature=0.3))
+    except Exception as e:
+        print(f"Error invoking model for item generation: {e}")
+
+    item = None
+    if raw_response:
+        cleaned = re.sub(r'```(?:json)?\s*', '', raw_response)
+        cleaned = re.sub(r'```', '', cleaned).strip()
+        match = re.search(r'\{[\s\S]*\}', cleaned)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, dict) and parsed.get("name"):
+                    raw_name = str(parsed.get("name", description.strip().title())).strip()
+                    raw_type = str(parsed.get("type", "misc")).lower().strip()
+                    try:
+                        raw_weight = round(float(parsed.get("weight", 1.0)), 1)
+                    except (ValueError, TypeError):
+                        raw_weight = 1.0
+                    try:
+                        raw_qty = max(1, int(parsed.get("quantity", 1)))
+                    except (ValueError, TypeError):
+                        raw_qty = 1
+                    item = {
+                        "name": raw_name,
+                        "type": raw_type,
+                        "weight": raw_weight,
+                        "quantity": raw_qty,
+                        "equipped": bool(parsed.get("equipped", False)),
+                        "description": str(parsed.get("description", "")).strip()
+                    }
+            except Exception as pe:
+                print(f"Error parsing item JSON: {pe}")
+
+    if not item:
+        inferred_name = description.strip().title()
+        temp_item = {"name": inferred_name}
+        inferred_cat = get_item_category(temp_item) or "misc"
+        temp_item["type"] = inferred_cat
+        inferred_weight = get_item_weight(temp_item)
+        item = {
+            "name": inferred_name,
+            "type": inferred_cat,
+            "weight": inferred_weight,
+            "quantity": 1,
+            "equipped": False,
+            "description": description.strip()
+        }
+
+    return item
+
+
+@app.route('/api/character/item/create', methods=['POST'])
+@app.route('/api/character/item/add', methods=['POST'])
+@requires_auth
+def create_character_item_route():
+    try:
+        data = request.get_json(silent=True) or {}
+        description = data.get("description", "").strip()
+        req_session_id = data.get("session_id", "default")
+        model = data.get("model")
+
+        if not description:
+            return jsonify({"error": "Missing item description"}), 400
+
+        item = generate_inventory_item(description, model=model)
+
+        from engine.save_manager import get_active_save_id
+        from engine.character import load_character, save_character, add_item
+
+        save_id = get_active_save_id()
+        sheet = load_character(save_id)
+
+        sheet = add_item(sheet, item)
+        save_character(save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_session_id)
+
+        return jsonify({
+            "status": "success",
+            "character": sheet,
+            "item": item,
+            "message": f"Added {item['name']} to inventory."
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

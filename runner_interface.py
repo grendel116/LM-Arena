@@ -1350,6 +1350,16 @@ class BaseProgramRunner:
         tool_calls = []
         seen_tool_calls = set()  # tracks (tool_name, key_arg) to block duplicates
         accumulated_prefix = ""
+
+        def _get_merged_tool_calls(calls):
+            if not existing_tool_calls:
+                return calls
+            existing_ids = {tc.get('id') for tc in existing_tool_calls if tc.get('id')}
+            merged = list(existing_tool_calls)
+            for tc in calls:
+                if tc.get('id') not in existing_ids:
+                    merged.append(tc)
+            return merged
         
         if existing_tool_calls:
             # Build map of responses for calls
@@ -1391,7 +1401,10 @@ class BaseProgramRunner:
             
             if executed_hints:
                 action_summary = "\n".join(executed_hints)
-                turn_note = f"\n[RESOLVED ACTIONS THIS TURN:\n{action_summary}\nDo NOT repeat tool calls. Narrate these actions and outcomes directly in your response.]\n"
+                turn_note = (
+                    f"\n[RESOLVED ACTIONS THIS TURN:\n{action_summary}\n"
+                    f"Do NOT call these tools again. Renarrate the turn incorporating these exact actions and outcomes directly into your narrative response.]\n"
+                )
                 rag_context = (rag_context + turn_note) if rag_context else turn_note
         
         # Check if remote cloud server is configured for offloading
@@ -1707,7 +1720,8 @@ class BaseProgramRunner:
                             clean_response = accumulated_prefix
 
                     tool_calls.extend(t_calls)
-                    adapter.append_assistant_message(clean_response, t_calls, invocation_id)
+                    merged_calls = _get_merged_tool_calls(tool_calls)
+                    adapter.append_assistant_message(clean_response, merged_calls, invocation_id)
                     bot_response_text = clean_response
                     break
                 else:
@@ -1746,7 +1760,8 @@ class BaseProgramRunner:
                         t_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
                     tool_calls.extend(t_calls)
                     
-                    adapter.append_assistant_message(text_before if text_before else "", t_calls, invocation_id, intermediate=True)
+                    merged_calls = _get_merged_tool_calls(tool_calls)
+                    adapter.append_assistant_message(text_before if text_before else "", merged_calls, invocation_id, intermediate=True)
                     adapter.append_tool_events(results, invocation_id)
                     continue
             else:
@@ -1759,7 +1774,8 @@ class BaseProgramRunner:
                         bot_response_text = accumulated_prefix
                 if isinstance(session_id, str) and session_id.endswith('_voice'):
                     bot_response_text = strip_narration(bot_response_text)
-                adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
+                merged_calls = _get_merged_tool_calls(tool_calls)
+                adapter.append_assistant_message(bot_response_text, merged_calls, invocation_id)
                 break
                 
         adapter.post_process_thoughts(invocation_id)
@@ -1792,13 +1808,7 @@ class BaseProgramRunner:
         except Exception as _sync_err:
             print(f"[Turn State Sync] Warning: {_sync_err}", flush=True)
 
-        if existing_tool_calls:
-            existing_ids = {tc.get('id') for tc in existing_tool_calls if tc.get('id')}
-            merged = list(existing_tool_calls)
-            for tc in tool_calls:
-                if tc.get('id') not in existing_ids:
-                    merged.append(tc)
-            tool_calls = merged
+        tool_calls = _get_merged_tool_calls(tool_calls)
 
         adapter.save()
         return bot_response_text, tool_calls
@@ -2598,10 +2608,22 @@ class OpenSourceRunner(BaseProgramRunner):
             else:
                 media_path = url_str
                 
-        # Collect prior tool calls from the assistant response being rerolled
+        # Collect prior tool calls from all downstream messages in this turn being rerolled
         prior_tool_calls = []
-        if user_idx + 1 < len(history):
-            prior_tool_calls = history[user_idx + 1].get('tool_calls', [])
+        for subsequent_msg in history[user_idx + 1:]:
+            if subsequent_msg.get('tool_calls'):
+                prior_tool_calls.extend(subsequent_msg['tool_calls'])
+
+        seen_tc_ids = set()
+        deduped_prior_tool_calls = []
+        for tc in prior_tool_calls:
+            cid = tc.get('id')
+            if cid:
+                if cid in seen_tc_ids:
+                    continue
+                seen_tc_ids.add(cid)
+            deduped_prior_tool_calls.append(tc)
+        prior_tool_calls = deduped_prior_tool_calls
 
         # Truncate history (narrative only)
         history = history[:user_idx]

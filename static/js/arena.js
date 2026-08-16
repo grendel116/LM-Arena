@@ -2786,6 +2786,78 @@ function promptModifyGold() {
     openGoldEditModal();
 }
 
+function openNewItemModal() {
+    const modal = document.getElementById('new-item-modal');
+    if (!modal) return;
+    const inputEl = document.getElementById('new-item-input');
+    const statusEl = document.getElementById('new-item-status');
+    const submitBtn = document.getElementById('new-item-submit-btn');
+    if (inputEl) inputEl.value = '';
+    if (statusEl) statusEl.style.display = 'none';
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create';
+    }
+    modal.style.display = 'flex';
+    if (inputEl) {
+        setTimeout(() => {
+            inputEl.focus();
+        }, 50);
+    }
+}
+
+function closeNewItemModal() {
+    const modal = document.getElementById('new-item-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitNewItemModal() {
+    const inputEl = document.getElementById('new-item-input');
+    const statusEl = document.getElementById('new-item-status');
+    const submitBtn = document.getElementById('new-item-submit-btn');
+    if (!inputEl) return;
+    const desc = inputEl.value.trim();
+    if (!desc) {
+        inputEl.focus();
+        return;
+    }
+
+    if (statusEl) statusEl.style.display = 'flex';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Forging item...';
+    }
+
+    try {
+        const activeModel = (typeof selectedModel !== 'undefined' && selectedModel) ? selectedModel : (document.getElementById('model-select')?.value || '');
+        const res = await fetch('/api/character/item/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                description: desc,
+                session_id: sessionId,
+                model: activeModel
+            })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        closeNewItemModal();
+        await fetchCharacterStatus();
+    } catch (e) {
+        console.error('Error creating item:', e);
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert('Item Creation Error', e.message);
+        }
+    } finally {
+        if (statusEl) statusEl.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create';
+        }
+    }
+}
+
 
 // --- updateInputGlow ---
 function updateInputGlow() {
