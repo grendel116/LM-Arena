@@ -3542,23 +3542,15 @@ def save_user_profile():
         if character_class:
             bundle["meta"]["class"] = character_class
 
-        # If this save only contains the initial opening greeting, update it to use the card greeting
+        # If this save has no history, seed first_mes entry
         history = bundle.get("history", [])
-        if len(history) <= 1:
-            from core.program_config import get_program_greeting
-            new_opening = get_program_greeting()
-            if history:
-                history[0]["text"] = new_opening
-                history[0]["content"] = new_opening
-            else:
-                import uuid, time
-                history = [{
-                    "id": f"first_mes_{uuid.uuid4().hex[:12]}",
-                    "role": "program",
-                    "text": new_opening,
-                    "content": new_opening,
-                    "timestamp": time.time()
-                }]
+        if not history:
+            import uuid, time
+            history = [{
+                "id": f"first_mes_{uuid.uuid4().hex[:12]}",
+                "role": "program",
+                "timestamp": time.time()
+            }]
             bundle["history"] = history
 
         write_save(profile_id, bundle)

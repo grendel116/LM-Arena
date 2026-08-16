@@ -737,7 +737,12 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         for idx, msg in enumerate(filtered_history):
             role = "assistant" if msg['role'] == 'program' else "user"
             from core.program_config import replace_placeholders
-            content_text = replace_placeholders(msg.get('text', '') or '')
+            if msg.get('id', '').startswith('first_mes'):
+                from core.program_config import get_program_greeting
+                raw_text = get_program_greeting()
+            else:
+                raw_text = msg.get('text', '') or msg.get('content', '') or ''
+            content_text = replace_placeholders(raw_text)
             if msg.get('tool_calls'):
                 for tc in msg['tool_calls']:
                     if tc.get('type') == 'call':
@@ -2311,7 +2316,12 @@ class OpenSourceRunner(BaseProgramRunner):
 
     def _normalize_message(self, msg: dict) -> dict:
         """Transforms a raw stored message into the canonical frontend format."""
-        text = msg.get('text', '') or msg.get('content', '') or ''
+        msg_id = msg.get('id', '')
+        if msg_id.startswith('first_mes'):
+            from core.program_config import get_program_greeting
+            text = get_program_greeting()
+        else:
+            text = msg.get('text', '') or msg.get('content', '') or ''
         media = []
 
         # 1. Extract markdown images from text into media[]
@@ -2385,17 +2395,13 @@ class OpenSourceRunner(BaseProgramRunner):
             if not self.sessions_history.get(session_id):
                 self.sessions_history[session_id] = []
                 try:
-                    from core.program_config import get_program_greeting
-                    greeting = get_program_greeting().strip()
-                    if greeting:
-                        import uuid as _uuid
-                        self.sessions_history[session_id].append({
-                            'id': f"first_mes_{_uuid.uuid4().hex}",
-                            'role': 'program',
-                            'text': greeting,
-                            'tool_calls': []
-                        })
-                        self._save_session_to_disk(session_id)
+                    import uuid as _uuid
+                    self.sessions_history[session_id].append({
+                        'id': f"first_mes_{_uuid.uuid4().hex[:12]}",
+                        'role': 'program',
+                        'tool_calls': []
+                    })
+                    self._save_session_to_disk(session_id)
                 except Exception as _e:
                     print(f"[runner] Could not seed first_mes: {_e}")
 

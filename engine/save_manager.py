@@ -275,16 +275,12 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
             "world_flags": {"shift_gate_answered": False, "ria_vision_1_seen": True}
         }
 
-    from core.program_config import get_program_greeting
-    opening_mes = get_program_greeting()
     first_msg_id = f"first_mes_{uuid.uuid4().hex[:12]}"
 
     history = [
         {
             "id": first_msg_id,
             "role": "program",
-            "text": opening_mes,
-            "content": opening_mes,
             "timestamp": time.time()
         }
     ]
