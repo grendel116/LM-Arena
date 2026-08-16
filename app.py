@@ -791,14 +791,9 @@ def chat():
         })
     except asyncio.CancelledError:
         print(f"[CANCEL] Chat generation cancelled for session {session_id}")
-        asyncio.run(runner.append_message_to_session(session_id, 'program', '*(Generation cancelled)*'))
         return jsonify({
             'cancelled': True,
-            'response': '*(Generation cancelled)*',
-            'tool_calls': [],
-            'state': None,
-            'timestamp': time.time(),
-            'duration': round(time.time() - start_time, 1)
+            'status': 'cancelled'
         })
     except Exception as e:
         import traceback
@@ -865,14 +860,9 @@ def edit():
         })
     except asyncio.CancelledError:
         print(f"[CANCEL] Edit generation cancelled for session {session_id}")
-        asyncio.run(runner.append_message_to_session(session_id, 'program', '*(Generation cancelled)*'))
         return jsonify({
             'cancelled': True,
-            'response': '*(Generation cancelled)*',
-            'tool_calls': [],
-            'state': None,
-            'timestamp': time.time(),
-            'duration': round(time.time() - start_time, 1)
+            'status': 'cancelled'
         })
     except Exception as e:
         print(f"Error occurred during edit: {e}")

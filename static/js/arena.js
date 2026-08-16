@@ -6403,6 +6403,25 @@ async function sendMessage() {
     hideThoughtBubbleOverlay();
     const text = userInput.value.trim();
     if (!text && !attachedBase64 && !attachedMediaPath) {
+        // Walk backwards past bottom-sentinel and transient/ghost program rows
+        let lastRow = chatContainer.lastElementChild;
+        while (lastRow && !lastRow.classList.contains('message-row')) {
+            lastRow = lastRow.previousElementSibling;
+        }
+        while (lastRow && lastRow.classList.contains('program-row')) {
+            const bubble = lastRow.querySelector('.message.program');
+            if (bubble && bubble.dataset.isTransient === 'true') {
+                lastRow = lastRow.previousElementSibling;
+            } else {
+                break;
+            }
+        }
+        if (lastRow && lastRow.classList.contains('user-row')) {
+            const userBubble = lastRow.querySelector('.message.user');
+            if (userBubble) {
+                return resendUserMessage(userBubble);
+            }
+        }
         return;
     }
 
@@ -6419,6 +6438,11 @@ async function sendMessage() {
     } else if (attachedBase64) {
         userImageUrl = `data:${attachedMime};base64,${attachedBase64}`;
     }
+    const stagedText = text;
+    const stagedBase64 = attachedBase64;
+    const stagedMime = attachedMime;
+    const stagedMediaPath = attachedMediaPath;
+
     let prefix = 'usr_';
     if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:") || text.includes("[GENERATE_IMAGEN:"))) {
         prefix = 'port_';
@@ -6436,7 +6460,7 @@ async function sendMessage() {
         stamina: _lastTrackedVitals.stamina,
         staminaMax: _lastTrackedVitals.staminaMax
     } : null;
-    appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals);
+    const userMsgRow = appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals);
 
     // Trigger heart jiggle on high user interaction or when Program is generating/responding
     const heartElement = document.querySelector('.heart-pulse');
@@ -6499,6 +6523,10 @@ async function sendMessage() {
         } catch (parseErr) {
             data = { error: `Server error (${response.status}): Unable to parse response.` };
         }
+
+        if (data.cancelled) {
+            return;
+        }
         
         // Update user message row/bubble msgId
         const userBubbles = Array.from(chatContainer.querySelectorAll('.message.user'));
@@ -6527,17 +6555,18 @@ async function sendMessage() {
             chatContainer.removeChild(typingIndicatorRow);
         }
         if (error.name === 'AbortError') {
-            appendMessage('program', '*(Generation stopped)*');
+            // Cancelled cleanly: user message remains in chat ready for Send/reroll
         } else {
             appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+            handleToolReloadOrRecovery();
         }
-        handleToolReloadOrRecovery();
     } finally {
         setGenerating(false);
         if (!activePlayerSkillCheck && !hasStagedRollMessage) {
             userInput.disabled = false;
             userInput.placeholder = "What do you do?";
             userInput.classList.remove('user-input-frozen');
+            userInput.focus();
         }
         updateInputGlow();
         stopToolPolling();
@@ -6841,11 +6870,11 @@ async function resendUserMessage(bubble) {
             chatContainer.removeChild(typingIndicatorRow);
         }
         if (error.name === 'AbortError') {
-            appendMessage('program', '*(Generation stopped)*');
+            // Cancelled cleanly
         } else {
             appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+            handleToolReloadOrRecovery();
         }
-        handleToolReloadOrRecovery();
     } finally {
         stopToolPolling();
         setGenerating(false);
@@ -6979,11 +7008,11 @@ async function rerollUserMessage(button) {
             chatContainer.removeChild(typingIndicatorRow);
         }
         if (error.name === 'AbortError') {
-            appendMessage('program', '*(Generation stopped)*');
+            // Cancelled cleanly
         } else {
             appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+            handleToolReloadOrRecovery();
         }
-        handleToolReloadOrRecovery();
     } finally {
         button.innerHTML = origHtml;
         button.disabled = false;
@@ -7091,11 +7120,11 @@ async function rerollFromMessage(button) {
             chatContainer.removeChild(typingIndicatorRow);
         }
         if (error.name === 'AbortError') {
-            appendMessage('program', '*(Generation stopped)*');
+            // Cancelled cleanly
         } else {
             appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+            handleToolReloadOrRecovery();
         }
-        handleToolReloadOrRecovery();
     } finally {
         stopToolPolling();
         setGenerating(false);

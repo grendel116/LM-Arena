@@ -2289,6 +2289,17 @@ class OpenSourceRunner(BaseProgramRunner):
                 sid_key = session_id or save_id
                 bundle = read_save(save_id)
                 history = bundle.get("history", [])
+                # Scrub ghost cancelled/stopped placeholders from history
+                _ghost_texts = {'*(Generation cancelled)*', '*(Generation stopped)*'}
+                cleaned = [m for m in history if not (
+                    m.get('role') == 'program' and
+                    (m.get('text', '') or m.get('content', '')).strip() in _ghost_texts
+                )]
+                if len(cleaned) < len(history):
+                    history = cleaned
+                    bundle["history"] = history
+                    from engine.save_manager import write_save
+                    write_save(save_id, bundle)
                 self.sessions_history[sid_key] = history
                 self.sessions_history['default'] = history
                 self.sessions_history[save_id] = history
@@ -2424,12 +2435,14 @@ class OpenSourceRunner(BaseProgramRunner):
                     continue
                 
                 normalized = self._normalize_message(msg)
-                # Skip empty program messages
+                # Skip empty or ghost cancelled program messages
                 if normalized.get('role') == 'program':
                     text = (normalized.get('text') or '').strip()
                     has_tools = bool(normalized.get('tool_calls'))
                     has_media = bool(normalized.get('media'))
                     if not text and not has_tools and not has_media:
+                        continue
+                    if text in ('*(Generation cancelled)*', '*(Generation stopped)*'):
                         continue
                 chat_history.append(normalized)
             return chat_history
