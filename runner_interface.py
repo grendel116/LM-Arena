@@ -946,6 +946,29 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             post_blocks = []
             if char_ctx:
                 post_blocks.append(f"<player_character>\n{char_ctx}\n</player_character>")
+                
+            # Active Main Quest Context
+            try:
+                from engine.quest_tracker import load_quest_stages, get_current_stage
+                stages = load_quest_stages()
+                q_stage_num = world.get("quest_stage", 10)
+                current_stage = get_current_stage(q_stage_num, stages)
+                if current_stage:
+                    q_label = current_stage.get("label", f"Stage {q_stage_num}")
+                    q_objs = current_stage.get("objectives", [])
+                    q_ctx = current_stage.get("context_injection", "")
+                    objs_str = "\n".join(f"- {o}" for o in q_objs)
+                    quest_block = (
+                        f"<active_main_quest>\n"
+                        f"Chapter: {q_label} (Stage {q_stage_num})\n"
+                        f"Objectives:\n{objs_str}\n"
+                        f"Narrative Guidance: {q_ctx}\n"
+                        f"</active_main_quest>"
+                    )
+                    post_blocks.append(quest_block)
+            except Exception as _qe:
+                print(f"Error compiling active quest context: {_qe}", flush=True)
+
             if sheet and sheet.get("derived", {}).get("hp_current", 1) <= 0:
                 game_over_inst = (
                     "\n\n[CRITICAL GAME OVER DIRECTIVE: The player character's health has reached 0 (DEAD). "
