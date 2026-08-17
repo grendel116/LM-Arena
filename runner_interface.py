@@ -954,15 +954,15 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 q_stage_num = world.get("quest_stage", 10)
                 current_stage = get_current_stage(q_stage_num, stages)
                 if current_stage:
-                    q_label = current_stage.get("label", f"Stage {q_stage_num}")
-                    q_objs = current_stage.get("objectives", [])
-                    q_ctx = current_stage.get("context_injection", "")
-                    objs_str = "\n".join(f"- {o}" for o in q_objs)
+                    q_title = current_stage.get("quest_title", "Main Quest")
+                    q_obj = current_stage.get("objective", "")
+                    q_next = current_stage.get("next_stage", "Complete")
                     quest_block = (
                         f"<active_main_quest>\n"
-                        f"Chapter: {q_label} (Stage {q_stage_num})\n"
-                        f"Objectives:\n{objs_str}\n"
-                        f"Narrative Guidance: {q_ctx}\n"
+                        f"Quest: {q_title}\n"
+                        f"Stage: {q_stage_num}\n"
+                        f"Objective: {q_obj} (Call [arena_advance_stage] when completed).\n"
+                        f"Next Stage: {q_next}\n"
                         f"</active_main_quest>"
                     )
                     post_blocks.append(quest_block)

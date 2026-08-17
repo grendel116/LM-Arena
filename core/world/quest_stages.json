@@ -1,259 +1,389 @@
 [
   {
     "stage": 10,
-    "label": "Escape the Imperial Dungeon",
-    "objectives": [
-      "Navigate the subterranean cells beneath the Imperial City.",
-      "Reach the Shift Gate and escape into the open wilderness."
-    ],
+    "quest_id": "mq_escape_dungeon",
+    "quest_title": "Escape the Imperial Dungeon",
+    "objective": "Navigate the subterranean cells beneath the Imperial City.",
+    "next_stage": 12,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 12,
+    "quest_id": "mq_escape_dungeon",
+    "quest_title": "Escape the Imperial Dungeon",
+    "objective": "Locate the Shift Gate chamber and decipher the warding runes on the pedestal.",
+    "next_stage": 15,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 15,
+    "quest_id": "mq_escape_dungeon",
+    "quest_title": "Escape the Imperial Dungeon",
+    "objective": "Step through the active Shift Gate into the open wilderness of Cyrodiil.",
+    "next_stage": 20,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "unlock_province_travel",
         "params": {}
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 20
-        }
       }
-    ],
-    "context_injection": "The player is trapped in the Imperial Dungeon beneath the Imperial City, imprisoned by the usurper Jagar Tharn. Ria Silmane's spirit has provided guidance to the Shift Gate. Escaping this dark facility is the absolute priority."
+    ]
   },
   {
     "stage": 20,
-    "label": "Travel to Hammerfell",
-    "objectives": [
-      "Rest in the wilderness or an inn to receive Ria Silmane's guidance.",
-      "Journey to Hammerfell and investigate the location of Fang Lair in Rihad.",
-      "Uncover the path or directions leading to the dwarven ruins of Fang Lair."
-    ],
+    "quest_id": "mq_travel_hammerfell",
+    "quest_title": "Travel to Hammerfell",
+    "objective": "Rest in the wilderness or an inn to receive Ria Silmane's dream guidance.",
+    "next_stage": 25,
+    "is_quest_complete": false,
+    "on_complete": [
+      {
+        "action": "trigger_vision",
+        "params": {
+          "vision_id": "ria_vision_1"
+        }
+      }
+    ]
+  },
+  {
+    "stage": 25,
+    "quest_id": "mq_travel_hammerfell",
+    "quest_title": "Travel to Hammerfell",
+    "objective": "Journey to Hammerfell and seek audience in the city of Rihad.",
+    "next_stage": 30,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 30,
+    "quest_id": "mq_travel_hammerfell",
+    "quest_title": "Travel to Hammerfell",
+    "objective": "Uncover the directions and hidden path leading to the dwarven ruins of Fang Lair.",
+    "next_stage": 40,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "unlock_location",
         "params": {
           "location_id": "fang-lair"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 30
-        }
       }
-    ],
-    "context_injection": "Having escaped the dungeon, the player receives visions from Ria guiding them to Hammerfell. They must seek information in Rihad to locate the lost dwarven ruins of Fang Lair and begin recovering the eight fragments of the Staff of Chaos."
+    ]
   },
   {
-    "stage": 30,
-    "label": "Retrieve Fragment from Fang Lair",
-    "objectives": [
-      "Journey to Fang Lair in the Dragontail Mountains of Hammerfell.",
-      "Brave the subterranean dwarven depths and recover the first fragment of the Staff of Chaos."
-    ],
+    "stage": 40,
+    "quest_id": "mq_fang_lair",
+    "quest_title": "Fang Lair",
+    "objective": "Journey into the Dragontail Mountains to locate the entrance to Fang Lair.",
+    "next_stage": 45,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 45,
+    "quest_id": "mq_fang_lair",
+    "quest_title": "Fang Lair",
+    "objective": "Brave the subterranean dwarven depths, traps, and guardians within Fang Lair.",
+    "next_stage": 50,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 50,
+    "quest_id": "mq_fang_lair",
+    "quest_title": "Fang Lair",
+    "objective": "Recover the first fragment of the Staff of Chaos from the depths of Fang Lair.",
+    "next_stage": 60,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
         "params": {
           "fragment_id": 1
         }
-      },
+      }
+    ]
+  },
+  {
+    "stage": 60,
+    "quest_id": "mq_labyrinthian",
+    "quest_title": "Labyrinthian",
+    "objective": "Rest to receive Ria Silmane's vision directing you to Skyrim.",
+    "next_stage": 65,
+    "is_quest_complete": false,
+    "on_complete": [
       {
         "action": "trigger_vision",
         "params": {
           "vision_id": "ria_vision_3"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 40
-        }
       }
-    ],
-    "context_injection": "The player has reached Fang Lair in Hammerfell. They must brave its ancient traps and guardians to claim the first fragment of the Staff of Chaos."
+    ]
   },
   {
-    "stage": 40,
-    "label": "Retrieve Fragment from Labyrinthian",
-    "objectives": [
-      "Travel north to the frozen province of Skyrim.",
-      "Brave the ancient nordic maze of Labyrinthian and secure the second fragment."
-    ],
+    "stage": 65,
+    "quest_id": "mq_labyrinthian",
+    "quest_title": "Labyrinthian",
+    "objective": "Travel north to Skyrim and locate the ancient nordic maze of Labyrinthian.",
+    "next_stage": 70,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 70,
+    "quest_id": "mq_labyrinthian",
+    "quest_title": "Labyrinthian",
+    "objective": "Brave the depths of Labyrinthian and secure the second fragment of the Staff of Chaos.",
+    "next_stage": 80,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
         "params": {
           "fragment_id": 2
         }
-      },
+      }
+    ]
+  },
+  {
+    "stage": 80,
+    "quest_id": "mq_elden_grove",
+    "quest_title": "Elden Grove",
+    "objective": "Rest to receive Ria Silmane's vision directing you to Valenwood.",
+    "next_stage": 85,
+    "is_quest_complete": false,
+    "on_complete": [
       {
         "action": "trigger_vision",
         "params": {
           "vision_id": "ria_vision_4"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 50
-        }
       }
-    ],
-    "context_injection": "Guided by Ria Silmane, the player travels to the frozen ruins of Labyrinthian in Skyrim to secure the second piece of the Staff of Chaos."
+    ]
   },
   {
-    "stage": 50,
-    "label": "Retrieve Fragment from Elden Grove",
-    "objectives": [
-      "Journey to the lush forests of Valenwood.",
-      "Locate the sacred sanctuary of Elden Grove and claim the third fragment."
-    ],
+    "stage": 85,
+    "quest_id": "mq_elden_grove",
+    "quest_title": "Elden Grove",
+    "objective": "Journey to Valenwood and locate the sacred sanctuary of Elden Grove.",
+    "next_stage": 90,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 90,
+    "quest_id": "mq_elden_grove",
+    "quest_title": "Elden Grove",
+    "objective": "Infiltrate Elden Grove and claim the third fragment of the Staff of Chaos.",
+    "next_stage": 100,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
         "params": {
           "fragment_id": 3
         }
-      },
+      }
+    ]
+  },
+  {
+    "stage": 100,
+    "quest_id": "mq_halls_of_colossus",
+    "quest_title": "Halls of Colossus",
+    "objective": "Rest to receive Ria Silmane's vision directing you to Elsweyr.",
+    "next_stage": 105,
+    "is_quest_complete": false,
+    "on_complete": [
       {
         "action": "trigger_vision",
         "params": {
           "vision_id": "ria_vision_5"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 60
-        }
       }
-    ],
-    "context_injection": "The quest continues into the magical heart of Valenwood at Elden Grove to retrieve the third fragment hidden within the sacred grove."
+    ]
   },
   {
-    "stage": 60,
-    "label": "Retrieve Fragment from Halls of Colossus",
-    "objectives": [
-      "Travel to the arid desert province of Elsweyr.",
-      "Infiltrate the colossal desert temple and secure the fourth fragment."
-    ],
+    "stage": 105,
+    "quest_id": "mq_halls_of_colossus",
+    "quest_title": "Halls of Colossus",
+    "objective": "Travel to the arid desert province of Elsweyr and seek the Halls of Colossus.",
+    "next_stage": 110,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 110,
+    "quest_id": "mq_halls_of_colossus",
+    "quest_title": "Halls of Colossus",
+    "objective": "Infiltrate the colossal desert temple and secure the fourth fragment of the Staff of Chaos.",
+    "next_stage": 120,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
         "params": {
           "fragment_id": 4
         }
-      },
+      }
+    ]
+  },
+  {
+    "stage": 120,
+    "quest_id": "mq_crystal_tower",
+    "quest_title": "Crystal Tower",
+    "objective": "Rest to receive Ria Silmane's vision directing you to Summerset Isle.",
+    "next_stage": 125,
+    "is_quest_complete": false,
+    "on_complete": [
       {
         "action": "trigger_vision",
         "params": {
           "vision_id": "ria_vision_6"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 70
-        }
       }
-    ],
-    "context_injection": "The player explores the massive desert temple known as the Halls of Colossus in Elsweyr to find the fourth fragment."
+    ]
   },
   {
-    "stage": 70,
-    "label": "Retrieve Fragment from Crystal Tower",
-    "objectives": [
-      "Cross the seas to the ancestral homeland of Summerset Isle.",
-      "Ascend the magical Crystal Tower and recover the fifth fragment."
-    ],
+    "stage": 125,
+    "quest_id": "mq_crystal_tower",
+    "quest_title": "Crystal Tower",
+    "objective": "Cross the seas to Summerset Isle and locate the ancestral Crystal Tower.",
+    "next_stage": 130,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 130,
+    "quest_id": "mq_crystal_tower",
+    "quest_title": "Crystal Tower",
+    "objective": "Ascend the magical Crystal Tower and recover the fifth fragment of the Staff of Chaos.",
+    "next_stage": 140,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
         "params": {
           "fragment_id": 5
         }
-      },
+      }
+    ]
+  },
+  {
+    "stage": 140,
+    "quest_id": "mq_crypt_of_hearts",
+    "quest_title": "Crypt of Hearts",
+    "objective": "Rest to receive Ria Silmane's vision directing you to High Rock.",
+    "next_stage": 145,
+    "is_quest_complete": false,
+    "on_complete": [
       {
         "action": "trigger_vision",
         "params": {
           "vision_id": "ria_vision_7"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 80
-        }
       }
-    ],
-    "context_injection": "The pristine Crystal Tower of Summerset Isle holds the fifth fragment. The player must ascend the guarded spire to claim it."
+    ]
   },
   {
-    "stage": 80,
-    "label": "Retrieve Fragment from Crypt of Hearts",
-    "objectives": [
-      "Journey northwest to High Rock.",
-      "Descend into the haunted Crypt of Hearts and recover the sixth fragment."
-    ],
+    "stage": 145,
+    "quest_id": "mq_crypt_of_hearts",
+    "quest_title": "Crypt of Hearts",
+    "objective": "Journey northwest to High Rock and locate the entrance to the Crypt of Hearts.",
+    "next_stage": 150,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 150,
+    "quest_id": "mq_crypt_of_hearts",
+    "quest_title": "Crypt of Hearts",
+    "objective": "Descend into the haunted Crypt of Hearts and recover the sixth fragment of the Staff of Chaos.",
+    "next_stage": 160,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
         "params": {
           "fragment_id": 6
         }
-      },
+      }
+    ]
+  },
+  {
+    "stage": 160,
+    "quest_id": "mq_murkwood",
+    "quest_title": "Murkwood",
+    "objective": "Rest to receive Ria Silmane's vision directing you to Black Marsh.",
+    "next_stage": 165,
+    "is_quest_complete": false,
+    "on_complete": [
       {
         "action": "trigger_vision",
         "params": {
           "vision_id": "ria_vision_8"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 90
-        }
       }
-    ],
-    "context_injection": "A perilous path leads to the Crypt of Hearts in High Rock to recover the sixth fragment among ancient subterranean tombs."
+    ]
   },
   {
-    "stage": 90,
-    "label": "Retrieve Fragment from Murkwood",
-    "objectives": [
-      "Venture deep into the treacherous swamps of Black Marsh.",
-      "Find the ever-shifting dark forest of Murkwood and claim the seventh fragment."
-    ],
+    "stage": 165,
+    "quest_id": "mq_murkwood",
+    "quest_title": "Murkwood",
+    "objective": "Venture into Black Marsh to seek the ever-shifting dark forest of Murkwood.",
+    "next_stage": 170,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 170,
+    "quest_id": "mq_murkwood",
+    "quest_title": "Murkwood",
+    "objective": "Navigate Murkwood's living grove and claim the seventh fragment of the Staff of Chaos.",
+    "next_stage": 180,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
         "params": {
           "fragment_id": 7
         }
-      },
+      }
+    ]
+  },
+  {
+    "stage": 180,
+    "quest_id": "mq_dagoth_ur",
+    "quest_title": "Dagoth-Ur",
+    "objective": "Rest to receive Ria Silmane's vision directing you to Morrowind.",
+    "next_stage": 185,
+    "is_quest_complete": false,
+    "on_complete": [
       {
         "action": "trigger_vision",
         "params": {
           "vision_id": "ria_vision_9"
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 100
-        }
       }
-    ],
-    "context_injection": "Deep within the swamps of Black Marsh lies the living grove of Murkwood holding the seventh fragment of the Staff."
+    ]
   },
   {
-    "stage": 100,
-    "label": "Retrieve Fragment from Dagoth Ur",
-    "objectives": [
-      "Travel east to the volcanic ashen lands of Morrowind.",
-      "Ascend the slopes of Red Mountain to Dagoth Ur and claim the final fragment."
-    ],
+    "stage": 185,
+    "quest_id": "mq_dagoth_ur",
+    "quest_title": "Dagoth-Ur",
+    "objective": "Travel east to Morrowind and ascend the volcanic slopes of Red Mountain.",
+    "next_stage": 190,
+    "is_quest_complete": false,
+    "on_complete": []
+  },
+  {
+    "stage": 190,
+    "quest_id": "mq_dagoth_ur",
+    "quest_title": "Dagoth-Ur",
+    "objective": "Ascend Dagoth-Ur and claim the eighth fragment of the Staff of Chaos.",
+    "next_stage": 200,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "add_fragment",
@@ -264,68 +394,45 @@
       {
         "action": "set_flag",
         "params": {
-          "flag_name": "staff_assembled",
+          "flag": "staff_assembled",
           "value": true
         }
-      },
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 110
-        }
       }
-    ],
-    "context_injection": "The final piece of the Staff is located in the volcanic caldera of Dagoth Ur in Morrowind. Securing it allows the Staff to be fully reassembled."
+    ]
   },
   {
-    "stage": 110,
-    "label": "Return to Cyrodiil",
-    "objectives": [
-      "Reassemble the eight fragments into the complete Staff of Chaos.",
-      "Journey back to Cyrodiil to challenge the usurper Jagar Tharn."
-    ],
-    "on_complete": [
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 120
-        }
-      }
-    ],
-    "context_injection": "With all eight fragments collected and the Staff assembled, the player returns to Cyrodiil for the final confrontation."
+    "stage": 200,
+    "quest_id": "mq_imperial_palace",
+    "quest_title": "The Imperial Palace",
+    "objective": "Return to Cyrodiil and prepare for the final confrontation with the usurper.",
+    "next_stage": 210,
+    "is_quest_complete": false,
+    "on_complete": []
   },
   {
-    "stage": 120,
-    "label": "Enter the Imperial Palace",
-    "objectives": [
-      "Breach the Imperial Palace in the Imperial City.",
-      "Fight through Tharn's elite guards and wards to reach the inner sanctum."
-    ],
-    "on_complete": [
-      {
-        "action": "advance_stage",
-        "params": {
-          "next_stage": 130
-        }
-      }
-    ],
-    "context_injection": "The player has breached the Imperial Palace to confront Jagar Tharn."
+    "stage": 210,
+    "quest_id": "mq_imperial_palace",
+    "quest_title": "The Imperial Palace",
+    "objective": "Breach the Imperial Palace in the Imperial City and battle through Tharn's elite guards.",
+    "next_stage": 220,
+    "is_quest_complete": false,
+    "on_complete": []
   },
   {
-    "stage": 130,
-    "label": "Confront Jagar Tharn",
-    "objectives": [
-      "Confront the Imperial Battlemage Jagar Tharn.",
-      "Unleash the Staff of Chaos to defeat the usurper and rescue Emperor Uriel Septim VII."
-    ],
+    "stage": 220,
+    "quest_id": "mq_imperial_palace",
+    "quest_title": "The Imperial Palace",
+    "objective": "Confront Jagar Tharn in the inner sanctum, unleash the Staff of Chaos, and rescue Emperor Uriel Septim VII.",
+    "next_stage": null,
+    "is_quest_complete": true,
     "on_complete": [
       {
         "action": "trigger_npc_event",
         "params": {
-          "event_id": "emperor_restored"
+          "npc": "uriel_septim_vii",
+          "event": "emperor_restored"
         }
       }
-    ],
-    "context_injection": "The final battle against Jagar Tharn. Using the Staff of Chaos will break the illusion and restore Emperor Uriel Septim VII to the Ruby Throne."
+    ]
   }
 ]

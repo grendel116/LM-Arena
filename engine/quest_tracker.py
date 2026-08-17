@@ -28,10 +28,10 @@ def get_current_stage(stage_number: int, stages: list) -> dict:
 
 
 def get_stage_context_injection(state: dict, stages: list) -> str:
-    """Returns the context_injection string for the current quest stage."""
-    stage_num = state.get("quest_stage", 0)
+    """Returns the context_injection string or active objective for the current quest stage."""
+    stage_num = state.get("quest_stage", 10)
     stage = get_current_stage(stage_num, stages)
-    return stage.get("context_injection", "")
+    return stage.get("context_injection") or stage.get("objective", "")
 
 def check_stage_conditions(state: dict, stage: dict) -> bool:
     """Checks all conditions in stage['conditions'] against state['world_flags']."""
@@ -44,19 +44,21 @@ def check_stage_conditions(state: dict, stage: dict) -> bool:
 
 
 def advance_stage(state: dict, stages: list, force: bool = True) -> tuple[dict, list]:
-    """Advances the quest stage to the immediate next sequential chapter and executes on_complete actions."""
+    """Advances the quest stage to the immediate next stage and executes on_complete actions."""
     stage_num = state.get("quest_stage", 10)
     stage = get_current_stage(stage_num, stages)
     
     fired_actions = []
     
-    # Determine the immediate next sequential stage
-    sorted_stages = sorted(stages, key=lambda x: x.get("stage", 0))
-    next_stage_num = stage_num + 10
-    for s in sorted_stages:
-        if s.get("stage", 0) > stage_num:
-            next_stage_num = s.get("stage", 0)
-            break
+    next_stage_num = stage.get("next_stage")
+    if next_stage_num is None:
+        sorted_stages = sorted(stages, key=lambda x: x.get("stage", 0))
+        for s in sorted_stages:
+            if s.get("stage", 0) > stage_num:
+                next_stage_num = s.get("stage", 0)
+                break
+        if next_stage_num is None:
+            next_stage_num = stage_num
             
     if stage:
         for action in stage.get("on_complete", []):
@@ -65,6 +67,61 @@ def advance_stage(state: dict, stages: list, force: bool = True) -> tuple[dict, 
                     
     state["quest_stage"] = next_stage_num
     return state, fired_actions
+
+
+def get_quest_display_data(current_stage_num: int, stages: list) -> tuple[list, list]:
+    """Groups stages into active quest with granular checkboxes and archived completed quests."""
+    if not stages:
+        return [], []
+        
+    curr_stage = get_current_stage(current_stage_num, stages)
+    curr_quest_id = curr_stage.get("quest_id")
+    
+    from collections import OrderedDict
+    quest_groups = OrderedDict()
+    for s in sorted(stages, key=lambda x: x.get("stage", 0)):
+        qid = s.get("quest_id", "main_quest")
+        if qid not in quest_groups:
+            quest_groups[qid] = {
+                "quest_id": qid,
+                "quest_title": s.get("quest_title", "Main Quest"),
+                "stages": []
+            }
+        quest_groups[qid]["stages"].append(s)
+        
+    active_quests = []
+    completed_quests = []
+    
+    for qid, qdata in quest_groups.items():
+        q_stages = qdata["stages"]
+        is_quest_finished = all(s.get("stage", 0) < current_stage_num for s in q_stages) and (curr_quest_id != qid)
+        
+        if is_quest_finished:
+            completed_quests.append({
+                "id": f"completed_{qid}",
+                "title": qdata["quest_title"],
+                "objectives": [s.get("objective", "") for s in q_stages if s.get("objective")]
+            })
+        elif qid == curr_quest_id or any(s.get("stage", 0) == current_stage_num for s in q_stages):
+            objs = []
+            for s in q_stages:
+                s_num = s.get("stage", 0)
+                objs.append({
+                    "text": s.get("objective", ""),
+                    "completed": s_num < current_stage_num,
+                    "active": s_num == current_stage_num
+                })
+            active_quests.append({
+                "id": f"main_{qid}",
+                "title": qdata["quest_title"],
+                "stage_number": current_stage_num,
+                "active_objective": curr_stage.get("objective", ""),
+                "next_stage": curr_stage.get("next_stage"),
+                "objectives": objs,
+                "is_main_quest": True
+            })
+            
+    return active_quests, completed_quests
 
 def execute_action(state: dict, action: dict) -> dict:
     """Executes a single on_complete action supporting both schema formats."""
@@ -138,17 +195,22 @@ def advance_quest_stage(arg1=None, target_stage: int = None, **kwargs) -> dict:
         world_state["quest_stage"] = new_stage_num
     else:
         world_state, fired_actions = advance_stage(world_state, stages)
-        new_stage_num = world_state.get("quest_stage", current_stage_num + 10)
+        new_stage_num = world_state.get("quest_stage", current_stage_num)
 
     save_world_state(world_state)
     new_stage = get_current_stage(new_stage_num, stages)
+    
+    q_title = new_stage.get("quest_title", f"Stage {new_stage_num}")
+    q_obj = new_stage.get("objective", "")
     
     return {
         "status": "success",
         "previous_stage": current_stage_num,
         "current_stage": new_stage_num,
-        "stage_label": new_stage.get("label", f"Stage {new_stage_num}"),
-        "objectives": new_stage.get("objectives", []),
+        "quest_title": q_title,
+        "stage_label": f"{q_title} - Stage {new_stage_num}",
+        "active_objective": q_obj,
+        "objectives": [q_obj] if q_obj else [],
         "fired_actions": fired_actions
     }
 

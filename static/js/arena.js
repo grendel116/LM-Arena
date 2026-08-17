@@ -8983,12 +8983,25 @@ async function loadQuests() {
         
         html += quests.map(quest => {
             const isMain = !!quest.is_main_quest;
-            const objectivesHtml = (quest.objectives || []).map(obj => 
-                `<li style="margin-bottom: 8px; color: var(--text-main); font-size: 0.84rem; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;">
-                    <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid ${isMain ? 'hsla(42, 90%, 56%, 0.6)' : 'hsla(215, 60%, 50%, 0.6)'}; border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: ${isMain ? 'hsla(42, 90%, 56%, 0.08)' : 'hsla(215, 60%, 50%, 0.08)'};"></span>
-                    <span>${obj}</span>
-                </li>`
-            ).join('');
+            const objectivesHtml = (quest.objectives || []).map(obj => {
+                const text = typeof obj === 'object' ? (obj.text || '') : obj;
+                const completed = typeof obj === 'object' ? !!obj.completed : false;
+                const active = typeof obj === 'object' ? !!obj.active : true;
+
+                if (completed) {
+                    return `<li style="margin-bottom: 8px; color: var(--text-muted); font-size: 0.84rem; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px; text-decoration: line-through; opacity: 0.75;">
+                        <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid hsla(var(--green-h), 60%, 40%, 0.6); border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: hsla(var(--green-h), 60%, 40%, 0.15); position: relative;">
+                            <svg width="10" height="10" viewBox="0 0 12 12" style="position: absolute; top: 0; left: 0;" fill="none" stroke="hsla(var(--green-h), 60%, 50%, 0.9)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5 6 5 8.5 9.5 3.5"></polyline></svg>
+                        </span>
+                        <span>${text}</span>
+                    </li>`;
+                }
+
+                return `<li style="margin-bottom: 8px; color: ${active ? 'var(--text-main)' : 'var(--text-muted)'}; font-size: 0.84rem; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid ${isMain ? (active ? 'hsla(42, 90%, 56%, 0.9)' : 'hsla(42, 90%, 56%, 0.3)') : 'hsla(215, 60%, 50%, 0.6)'}; border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: ${isMain ? (active ? 'hsla(42, 90%, 56%, 0.18)' : 'hsla(42, 90%, 56%, 0.04)') : 'hsla(215, 60%, 50%, 0.08)'};"></span>
+                    <span>${text}</span>
+                </li>`;
+            }).join('');
             
             const badgeHtml = isMain
                 ? `<span style="font-size: 0.62rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: hsla(var(--green-h), 50%, 30%, 0.2); color: hsla(var(--green-h), 50%, 65%, 0.95); border: 1px solid hsla(var(--green-h), 50%, 40%, 0.3); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; line-height: 1.2;">MAIN QUEST</span>`

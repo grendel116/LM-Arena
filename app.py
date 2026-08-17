@@ -2164,38 +2164,20 @@ def delete_memory():
 def list_quests():
     try:
         from utils.program import get_active_program, get_active_user
-        from engine.quest_tracker import load_quest_stages, get_current_stage, sync_quest_stage_with_location
+        from engine.quest_tracker import load_quest_stages, get_current_stage, get_quest_display_data, sync_quest_stage_with_location
 
         user = get_active_user()
         world_state = sync_quest_stage_with_location(user)
         current_stage_num = world_state.get("quest_stage", 10)
         stages = load_quest_stages()
-        current_stage = get_current_stage(current_stage_num, stages)
 
-        quests = []
-        completed_quests = []
-
-        # 1. Main Quest Entry (Active Chapter)
-        if current_stage:
-            quests.append({
-                "id": f"main_quest_stage_{current_stage_num}",
-                "title": current_stage.get('label', 'Escape the Imperial Dungeon'),
-                "stage_number": current_stage_num,
-                "objectives": current_stage.get("objectives", []),
-                "location": f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}",
-                "is_main_quest": True
-            })
-
-        # 2. Completed Main Quest Stages
-        for s in sorted(stages, key=lambda x: x.get("stage", 0)):
-            s_num = s.get("stage", 0)
-            if s_num < current_stage_num:
-                completed_quests.append({
-                    "id": f"main_quest_stage_{s_num}",
-                    "title": s.get('label', f'Stage {s_num}'),
-                    "stage_number": s_num,
-                    "objectives": s.get("objectives", [])
-                })
+        # 1 & 2. Main Quests (Active Quest with granular checkboxes & Archived Completed Quests)
+        quests, completed_quests = get_quest_display_data(current_stage_num, stages)
+        
+        # Inject location into active main quest
+        for q in quests:
+            if q.get("is_main_quest"):
+                q["location"] = f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}"
 
         # 3. Companion / Local Side Quests
         active_program = get_active_program()
