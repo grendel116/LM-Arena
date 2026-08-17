@@ -2156,6 +2156,7 @@ def list_quests():
         current_stage = get_current_stage(current_stage_num, stages)
 
         quests = []
+        completed_quests = []
 
         # 1. Main Quest Entry (Active Chapter)
         if current_stage:
@@ -2169,7 +2170,18 @@ def list_quests():
                 "is_main_quest": True
             })
 
-        # 2. Companion / Local Side Quests
+        # 2. Completed Main Quest Stages
+        for s in sorted(stages, key=lambda x: x.get("stage", 0)):
+            s_num = s.get("stage", 0)
+            if s_num < current_stage_num:
+                completed_quests.append({
+                    "id": f"main_quest_stage_{s_num}",
+                    "title": f"Main Quest: {s.get('label', f'Stage {s_num}')}",
+                    "stage_number": s_num,
+                    "objectives": s.get("objectives", [])
+                })
+
+        # 3. Companion / Local Side Quests
         active_program = get_active_program()
         quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
         if os.path.exists(quests_path):
@@ -2180,6 +2192,7 @@ def list_quests():
                 
         return jsonify({
             "quests": quests,
+            "completed_quests": completed_quests,
             "quest_stage": current_stage_num
         })
     except Exception as e:

@@ -9005,13 +9005,17 @@ async function loadQuests() {
         }
         
         const quests = data.quests || [];
+        const completedQuests = data.completed_quests || [];
         
-        if (!quests || quests.length === 0) {
+        let html = '';
+
+        // Active quests
+        if (quests.length === 0 && completedQuests.length === 0) {
             container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin: 20px 0;">No active quests. Ask your program to assign you one!</p>`;
             return;
         }
         
-        container.innerHTML = quests.map(quest => {
+        html += quests.map(quest => {
             const objectivesHtml = (quest.objectives || []).map(obj => 
                 `<li style="margin-bottom: 8px; color: var(--text-main); font-size: 0.84rem; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;">
                     <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid hsla(42, 90%, 56%, 0.6); border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: hsla(42, 90%, 56%, 0.08);"></span>
@@ -9038,11 +9042,50 @@ async function loadQuests() {
             `;
         }).join('');
 
+        // Completed quests
+        if (completedQuests.length > 0) {
+            const completedItemsHtml = completedQuests.map(cq => {
+                const objHtml = (cq.objectives || []).map(obj =>
+                    `<li style="margin-bottom: 4px; color: var(--text-muted); font-size: 0.78rem; line-height: 1.3; display: flex; align-items: flex-start; gap: 7px; text-decoration: line-through; opacity: 0.7;">
+                        <span style="display: inline-block; width: 11px; height: 11px; border: 1.5px solid hsla(var(--green-h), 60%, 40%, 0.5); border-radius: 2px; margin-top: 2px; flex-shrink: 0; background: hsla(var(--green-h), 60%, 40%, 0.15); position: relative;">
+                            <svg width="9" height="9" viewBox="0 0 12 12" style="position: absolute; top: 0; left: 0;" fill="none" stroke="hsla(var(--green-h), 60%, 50%, 0.8)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5 6 5 8.5 9.5 3.5"></polyline></svg>
+                        </span>
+                        <span>${obj}</span>
+                    </li>`
+                ).join('');
+                return `
+                    <div style="padding: 8px 0; border-bottom: 1px solid hsla(215, 5%, 100%, 0.04);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                            <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500; opacity: 0.8;">${cq.title}</span>
+                            <span style="font-size: 0.62rem; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: hsla(var(--green-h), 50%, 30%, 0.2); color: hsla(var(--green-h), 50%, 55%, 0.9); border: 1px solid hsla(var(--green-h), 50%, 40%, 0.2); flex-shrink: 0;">DONE</span>
+                        </div>
+                        ${objHtml ? `<ul style="margin: 6px 0 0 0; padding: 0; list-style: none;">${objHtml}</ul>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            html += `
+                <div style="margin-top: 8px;">
+                    <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.querySelector('.caret').style.transform = this.nextElementSibling.style.display === 'none' ? '' : 'rotate(90deg)';"
+                        style="background: none; border: none; color: var(--text-muted); font-size: 0.78rem; cursor: pointer; padding: 6px 0; display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; opacity: 0.7;">
+                        <span class="caret" style="display: inline-block; transition: transform 0.2s ease; font-size: 0.65rem;">&#9654;</span>
+                        Completed Quests (${completedQuests.length})
+                    </button>
+                    <div style="display: none; background: rgba(0,0,0,0.2); border: 1px solid hsla(215, 5%, 100%, 0.05); border-radius: 8px; padding: 10px 14px;">
+                        ${completedItemsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+
     } catch (e) {
         console.error("Error loading quests:", e);
         container.innerHTML = `<p style="color: var(--danger-bright); font-size: 0.85rem; text-align: center; margin: 20px 0;">Failed to load quests.</p>`;
     }
 }
+
 
 // --- downloadQuest ---
 function downloadQuest(questId) {
