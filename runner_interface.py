@@ -969,6 +969,30 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             except Exception as _qe:
                 print(f"Error compiling active quest context: {_qe}", flush=True)
 
+            # Active Side Quests Context
+            try:
+                from engine.side_quests import load_active_side_quests
+                active_sq = load_active_side_quests()
+                for sq in active_sq:
+                    sq_id = sq.get("id")
+                    sq_title = sq.get("title", "Side Quest")
+                    sq_stage = sq.get("stage", 10)
+                    sq_obj = sq.get("active_objective", "")
+                    sq_next = sq.get("next_stage")
+                    next_str = f"{sq_next}" if sq_next else "Complete"
+                    sq_block = (
+                        f"<active_side_quest>\n"
+                        f"Quest: {sq_title}\n"
+                        f"Quest ID: {sq_id}\n"
+                        f"Stage: {sq_stage}\n"
+                        f"Objective: {sq_obj} (Call [arena_advance_side_quest(quest_id=\"{sq_id}\")] when completed).\n"
+                        f"Next Stage: {next_str}\n"
+                        f"</active_side_quest>"
+                    )
+                    post_blocks.append(sq_block)
+            except Exception as _sqe:
+                print(f"Error compiling active side quest context: {_sqe}", flush=True)
+
             if sheet and sheet.get("derived", {}).get("hp_current", 1) <= 0:
                 game_over_inst = (
                     "\n\n[CRITICAL GAME OVER DIRECTIVE: The player character's health has reached 0 (DEAD). "
@@ -1651,7 +1675,8 @@ class BaseProgramRunner:
                     arena_allowed = {
                         "generate_local_image", "generate_program_portrait",
                         "generate_imagen", "generate_general_image",
-                        "apply_comfy_workflow", "add_journal_entry",
+                        "apply_comfy_workflow", "add_journal_entry", "add_quest",
+                        "arena_add_side_quest", "arena_advance_side_quest", "arena_complete_side_quest",
                         "arena_roll_check", "arena_roll_combat", "arena_roll_initiative",
                         "arena_roll_skill", "arena_request_skill_check", "arena_sorcerer_absorb", "arena_get_location",
                         "arena_set_location", "arena_travel", "arena_advance_stage", "arena_set_quest_stage", "arena_create_spell",
@@ -1703,7 +1728,8 @@ class BaseProgramRunner:
                     "arena_add_effect", "arena_remove_effect", "arena_add_experience",
                     "arena_set_location", "arena_travel", "arena_advance_stage",
                     "arena_set_quest_stage", "arena_recruit_follower",
-                    "add_quest", "add_journal_entry", "generate_local_image",
+                    "add_quest", "arena_add_side_quest", "arena_advance_side_quest",
+                    "arena_complete_side_quest", "add_journal_entry", "generate_local_image",
                     "generate_program_portrait", "generate_imagen", "generate_general_image",
                     "apply_comfy_workflow"
                 }

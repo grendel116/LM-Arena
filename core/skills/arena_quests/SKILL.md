@@ -30,7 +30,10 @@ When the player completes narrative milestones, seeks Staff of Chaos fragments, 
   `[arena_get_location()]`
 
 
-## 5. Procedural Side Quests & Rare Artifact Rumors
-- **Tavern Side Quests**: When {{user}} inquires about work in local taverns or inns, generate side quests (Delivery of rare goods, Retrieval of stolen items, or Escorting patrons to nearby settlements).
-- **Palace Commissions**: When {{user}} requests audience with provincial rulers between 6 AM and 6 PM, offer lucrative commissions (Rescuing kidnapped heirs, Apprehending dangerous outlaws, or Slaying dungeon bosses).
-- **Narrative Integration**: Describe environmental shifts and visceral sensory details (e.g. the cold blue glow of Ria Silmane's ghost, the tolling of curfew bells, or the dusty desert winds of Hammerfell).
+## 5. Procedural Side Quests & Rumors
+- **Creating a Side Quest**: When {{user}} takes on a commission or task:
+  `[add_quest(title="...", notes="Objective 1\nObjective 2\nObjective 3", location="...")]`
+- **Advancing a Side Quest**: When {{user}} completes an active objective for a side quest:
+  `[arena_advance_side_quest(quest_id="...")]`
+- **Completing / Archiving a Side Quest**:
+  `[arena_complete_side_quest(quest_id="...")]`

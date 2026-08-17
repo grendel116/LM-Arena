@@ -2179,26 +2179,11 @@ def list_quests():
             if q.get("is_main_quest"):
                 q["location"] = f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}"
 
-        # 3. Companion / Local Side Quests
-        active_program = get_active_program()
-        program_dir = os.path.join('core', 'programs', active_program)
-        quests_path = os.path.join(program_dir, 'quest_log.json')
-        if os.path.exists(quests_path):
-            with open(quests_path, 'r', encoding='utf-8') as f:
-                comp_quests = json.load(f)
-                if isinstance(comp_quests, list):
-                    quests.extend(comp_quests)
-
-        # 4. Archived History (Completed Stages & Failed Side Quests)
-        history_path = os.path.join(program_dir, 'quest_history.json')
-        if os.path.exists(history_path):
-            try:
-                with open(history_path, 'r', encoding='utf-8') as f:
-                    history = json.load(f)
-                if isinstance(history, list):
-                    completed_quests.extend(history)
-            except Exception:
-                pass
+        # 3 & 4. Companion / Local Side Quests (Active & Archived)
+        from engine.side_quests import get_side_quest_display_data
+        side_active, side_archived = get_side_quest_display_data()
+        quests.extend(side_active)
+        completed_quests.extend(side_archived)
                 
         return jsonify({
             "quests": quests,
