@@ -145,18 +145,17 @@ def load_user_instructions() -> str:
 
 GLOBAL_FORMATTING = (
     "\n\n# MESSAGE FORMAT & NARRATIVE PERSPECTIVE\n"
-    "- FORMAT: No more than four paragraphs. Separate dialogue from narration.\n"
-    "- Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
+    "- FORMAT: Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
     "- PERSPECTIVE: Address {{user}} directly in second person ('you', 'your'). Describe NPCs and environment in third person present tense.\n"
-    "- RESTRAINT: Never narrate outcomes or reactions for {{user}}'s actions.\n"
+    "- RESTRAINT: Separate dialogue from narration. Never narrate outcomes or reactions for {{user}}'s actions.\n"
     "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth.\n"
 )
 
 GLOBAL_USER_FORMATTING = (
     "- FORMAT: Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
-    "- PERSPECTIVE: Write in FIRST PERSON ('I', 'my') as {{user}}.\n"
+    "- PERSPECTIVE: Write in FIRST PERSON ('I', 'my') as {{user}}. Short, concise and concise.\n"
     "- TENSE: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
-    "- RESTRAINT: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes.\n"
+    "- RESTRAINT: Focus on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or world changes.\n"
     "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth."
 )
 
