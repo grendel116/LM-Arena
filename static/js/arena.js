@@ -225,12 +225,11 @@ function updateProvinceInfoContent(pName, showFloating = true, e = null) {
     const tooltip = document.getElementById('map-cursor-tooltip');
     const html = getProvinceInfoHtml(pName);
 
+    const isMobile = window.innerWidth <= 768;
     if (infoPanel) {
         infoPanel.innerHTML = html;
-        infoPanel.style.display = 'block';
+        infoPanel.style.display = isMobile ? 'block' : 'none';
     }
-
-    const isMobile = window.innerWidth <= 768;
     if (!isMobile && showFloating && tooltip && e) {
         tooltip.innerHTML = html;
         positionMapProvinceTooltip(e);
