@@ -2980,7 +2980,21 @@ function getLogIconSvg(name) {
         search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
         edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>`,
         command: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>`,
-        gear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`
+        gear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`,
+        'crossed-swords': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"></path><path d="M13 19l6-6"></path><path d="M16 16l4 4"></path><path d="M19 21l2-2"></path><path d="M9.5 17.5L21 6V3h-3L6.5 14.5"></path><path d="M11 19L5 13"></path><path d="M8 16l-4 4"></path><path d="M5 21l-2-2"></path></svg>`,
+        d20: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4" ry="4"></rect><circle cx="8" cy="8" r="1.2" fill="currentColor"></circle><circle cx="16" cy="8" r="1.2" fill="currentColor"></circle><circle cx="12" cy="12" r="1.2" fill="currentColor"></circle><circle cx="8" cy="16" r="1.2" fill="currentColor"></circle><circle cx="16" cy="16" r="1.2" fill="currentColor"></circle></svg>`,
+        'heart-crack': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path><path d="M12 5l-2 5h4l-2 5"></path></svg>`,
+        'heart-plus': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path><line x1="12" y1="9" x2="12" y2="15"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>`,
+        activity: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`,
+        moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
+        wand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l-2 2 4 4 2-2z"></path><path d="M13 6L3 16v4h4l10-10"></path><line x1="19" y1="2" x2="21" y2="4"></line></svg>`,
+        compass: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>`,
+        star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+        sparkle: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M6 6l12 12M6 18L18 6"></path></svg>`,
+        coin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="7" x2="12" y2="17"></line></svg>`,
+        backpack: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10z"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><path d="M8 14h8"></path></svg>`,
+        droplet: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>`,
+        users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`
     };
     return svgs[name] || svgs.command;
 }
@@ -5315,6 +5329,43 @@ function formatMessageTimestamp(timestamp, msg = null) {
     return "1 Morning Star, 3E 389 • 6:00 AM";
 }
 
+// --- Tool Metadata & Human Labels ---
+const arenaToolMetaMap = {
+    'arena_roll_combat': { label: 'Roll Combat', icon: 'crossed-swords', category: 'combat' },
+    'arena_request_skill_check': { label: 'Skill Check', icon: 'd20', category: 'info' },
+    'arena_roll_check': { label: 'Roll Check', icon: 'd20', category: 'info' },
+    'arena_roll_skill': { label: 'Skill Roll', icon: 'd20', category: 'info' },
+    'arena_roll_initiative': { label: 'Initiative Roll', icon: 'd20', category: 'info' },
+    'arena_take_damage': { label: 'Take Damage', icon: 'heart-crack', category: 'combat' },
+    'arena_heal': { label: 'Heal', icon: 'heart-plus', category: 'vitals' },
+    'arena_spend_magicka': { label: 'Exertion', icon: 'activity', category: 'vitals' },
+    'arena_restore_magicka': { label: 'Exertion', icon: 'activity', category: 'vitals' },
+    'arena_spend_spell_points': { label: 'Exertion', icon: 'activity', category: 'vitals' },
+    'arena_spend_stamina': { label: 'Exertion', icon: 'activity', category: 'vitals' },
+    'arena_restore_stamina': { label: 'Exertion', icon: 'activity', category: 'vitals' },
+    'arena_rest': { label: 'Rest', icon: 'moon', category: 'vitals' },
+    'arena_travel': { label: 'Travel', icon: 'compass', category: 'world' },
+    'arena_set_location': { label: 'Set Location', icon: 'compass', category: 'world' },
+    'arena_advance_stage': { label: 'Quest Advance', icon: 'star', category: 'world' },
+    'arena_set_quest_stage': { label: 'Set Quest Stage', icon: 'star', category: 'world' },
+    'arena_add_gold': { label: 'Gold Gain', icon: 'coin', category: 'loot' },
+    'arena_spend_gold': { label: 'Gold Spent', icon: 'coin', category: 'loot' },
+    'arena_add_item': { label: 'Add Item', icon: 'backpack', category: 'loot' },
+    'arena_remove_item': { label: 'Remove Item', icon: 'backpack', category: 'loot' },
+    'arena_create_spell': { label: 'Create Spell', icon: 'wand', category: 'magic' },
+    'arena_learn_spell': { label: 'Learn Spell', icon: 'wand', category: 'magic' },
+    'arena_sorcerer_absorb': { label: 'Sorcerer Absorb', icon: 'wand', category: 'magic' },
+    'arena_add_effect': { label: 'Add Effect', icon: 'droplet', category: 'vitals' },
+    'arena_remove_effect': { label: 'Remove Effect', icon: 'droplet', category: 'vitals' },
+    'arena_add_experience': { label: 'Experience', icon: 'sparkle', category: 'loot' },
+    'arena_recruit_follower': { label: 'Recruit Follower', icon: 'users', category: 'info' }
+};
+
+const hiddenPassiveTools = new Set([
+    'arena_get_character_context',
+    'arena_get_location'
+]);
+
 // --- renderCompletedLogs ---
 function renderCompletedLogs(bubble, toolCalls, duration = null) {
     if (!toolCalls || toolCalls.length === 0) return;
@@ -5334,6 +5385,7 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
     
     toolCalls.forEach(tc => {
         if (tc.type === 'call') {
+            if (hiddenPassiveTools.has(tc.name)) return;
             const sig = tc.name + '::' + JSON.stringify(tc.args || {});
             if (seenCallSignatures.has(sig)) return;
             seenCallSignatures.add(sig);
@@ -5346,6 +5398,7 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
             pairedTools.push(callInfo);
             callsMap[tc.id] = callInfo;
         } else if (tc.type === 'response') {
+            if (hiddenPassiveTools.has(tc.name)) return;
             if (callsMap[tc.id]) {
                 callsMap[tc.id].response = tc.response;
             } else {
@@ -5359,303 +5412,85 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
         }
     });
 
-    if (pairedTools.length > 0) {
-        const getBasename = (pathStr) => {
-            if (!pathStr) return '';
-            if (pathStr.startsWith('http://') || pathStr.startsWith('https://')) {
-                try {
-                    const url = new URL(pathStr);
-                    return url.hostname + url.pathname;
-                } catch(e) {
-                    return pathStr;
-                }
-            }
-            const parts = pathStr.split(/[\\/]/);
-            return parts[parts.length - 1] || pathStr;
-        };
-
-        const parseResultCount = (toolName, responseText) => {
-            if (!responseText) return null;
-            const trimmed = responseText.trim();
-            if (trimmed === "No search results found." || trimmed === "No search results found") {
-                return 0;
-            }
-            if (trimmed.startsWith("Error")) {
-                return 0;
-            }
-            try {
-                if (trimmed.startsWith('{') || trimmed.trim().startsWith('[')) {
-                    const parsed = JSON.parse(trimmed);
-                    if (Array.isArray(parsed)) return parsed.length;
-                    if (parsed.results && Array.isArray(parsed.results)) return parsed.results.length;
-                    if (parsed.matches && Array.isArray(parsed.matches)) return parsed.matches.length;
-                }
-            } catch(e) {}
-            
-            if (toolName === 'web_search' || toolName === 'google_search') {
-                const blocks = responseText.split('\n\n').filter(b => b.trim().length > 0);
-                return blocks.length;
-            }
-            
-            const lines = responseText.split('\n').filter(l => l.trim().length > 0);
-            if (lines.length > 0 && lines.length < 50) {
-                return lines.length;
-            }
-            return null;
-        };
-
-        const escapeHtml = (text) => {
-            if (!text) return '';
-            return String(text)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
-
-        const createLogItemElement = (item) => {
-            const itemEl = document.createElement('div');
-            itemEl.className = 'antigravity-log-item';
-            itemEl.innerHTML = `
-                <span class="ag-log-icon">${item.icon}</span>
-                <span class="ag-log-action">${item.action}</span>
-                <span class="ag-log-target">${item.target}</span>
-                <span class="ag-log-suffix">${item.suffix}</span>
-            `;
-
-            const detailEl = document.createElement('div');
-            detailEl.className = 'antigravity-log-detail';
-            detailEl.style.display = 'none';
-            
-            let argsFormatted = '';
-            if (item.args && Object.keys(item.args).length > 0) {
-                argsFormatted = `Parameters:\n${JSON.stringify(item.args, null, 2)}\n\n`;
-            }
-            
-            let responseText = item.response || 'No response data';
-            
-            detailEl.innerHTML = `
-                <pre><code>${argsFormatted}Response:\n${escapeHtml(responseText)}</code></pre>
-            `;
-
-            itemEl.onclick = (e) => {
-                e.stopPropagation();
-                const isExpanded = detailEl.style.display === 'block';
-                detailEl.style.display = isExpanded ? 'none' : 'block';
-            };
-
-            return { item: itemEl, detail: detailEl };
-        };
-
-        const formattedItems = pairedTools.map(tool => {
-            let category = 'explore';
-            let icon = getLogIconSvg('file');
-            let action = 'Analyzed';
-            let target = '';
-            let suffix = '';
-            let isMutation = false;
-            
-            const name = tool.name;
-            const args = tool.args || {};
-            
-            if (name === 'read_file' || name === 'view_file' || name === 'read_webpage') {
-                category = 'file';
-                icon = name === 'read_webpage' ? getLogIconSvg('webpage') : getLogIconSvg('file');
-                action = 'Analyzed';
-                
-                let pathVal = args.path || args.AbsolutePath || args.url || '';
-                target = getBasename(pathVal);
-                
-                let start = args.StartLine || args.start_line || '';
-                let end = args.EndLine || args.end_line || '';
-                if (start && end) {
-                    suffix = ` #L${start}-${end}`;
-                } else if (start) {
-                    suffix = ` #L${start}`;
-                }
-            } 
-            else if (name === 'get_workspace_structure' || name === 'list_dir') {
-                category = 'folder';
-                icon = getLogIconSvg('folder');
-                action = 'Analyzed';
-                let pathVal = args.path || args.DirectoryPath || '';
-                target = pathVal || 'workspace';
-                suffix = ' >';
-            }
-            else if (name === 'search_codebase' || name === 'grep_search' || name === 'web_search' || name === 'google_search' || name === 'search_github' || name === 'search_arxiv' || name === 'search_hacker_news') {
-                category = 'search';
-                icon = getLogIconSvg('search');
-                action = 'Searched';
-                target = args.query || args.keyword || args.Query || '';
-                
-                if (tool.response) {
-                    let count = parseResultCount(tool.name, tool.response);
-                    if (count !== null) {
-                        suffix = ` ${count} result${count !== 1 ? 's' : ''}`;
-                    }
-                }
-            }
-            else if (name === 'write_file' || name === 'write_to_file') {
-                category = 'edit';
-                icon = getLogIconSvg('edit');
-                isMutation = true;
-                
-                let pathVal = args.path || args.TargetFile || '';
-                target = getBasename(pathVal);
-                
-                let contentVal = args.content || args.CodeContent || '';
-                let linesCount = contentVal ? contentVal.split('\n').length : 0;
-                
-                action = args.Overwrite ? 'Edited' : 'Created';
-                suffix = ` +${linesCount} -0`;
-            }
-            else if (name === 'replace_in_file' || name === 'replace_file_content' || name === 'multi_replace_file_content') {
-                category = 'edit';
-                icon = getLogIconSvg('edit');
-                isMutation = true;
-                
-                let pathVal = args.path || args.TargetFile || '';
-                target = getBasename(pathVal);
-                action = 'Edited';
-                
-                let linesAdded = 0;
-                let linesRemoved = 0;
-                if (name === 'replace_file_content' && args.ReplacementContent) {
-                    linesAdded = args.ReplacementContent.split('\n').length;
-                }
-                if (name === 'replace_file_content' && args.TargetContent) {
-                    linesRemoved = args.TargetContent.split('\n').length;
-                }
-                
-                if (linesAdded || linesRemoved) {
-                    suffix = ` +${linesAdded} -${linesRemoved}`;
-                }
-            }
-            else if (name === 'run_shell_command' || name === 'run_command') {
-                category = 'command';
-                icon = getLogIconSvg('command');
-                isMutation = true;
-                action = 'Ran';
-                target = args.command || args.CommandLine || '';
-                if (target.length > 50) {
-                    target = target.substring(0, 47) + '...';
-                }
-            }
-            else {
-                category = 'other';
-                icon = getLogIconSvg('gear');
-                action = 'Ran';
-                target = name;
-                isMutation = true;
-            }
-            
-            return {
-                id: tool.id || 'call_' + Math.random().toString(36).substring(2, 6),
-                name: tool.name,
-                args: tool.args,
-                response: tool.response,
-                category,
-                icon,
-                action,
-                target,
-                suffix,
-                isMutation
-            };
-        });
-
-        const explorationItems = formattedItems.filter(item => !item.isMutation);
-        const mutationItems = formattedItems.filter(item => item.isMutation);
-
-        const uniqueFiles = new Set();
-        const uniqueFolders = new Set();
-        let searchesCount = 0;
-
-        explorationItems.forEach(item => {
-            if (item.category === 'file') {
-                uniqueFiles.add(item.target);
-            } else if (item.category === 'folder') {
-                uniqueFolders.add(item.target);
-            } else if (item.category === 'search') {
-                searchesCount++;
-            }
-        });
-
-        const filesCount = uniqueFiles.size;
-        const foldersCount = uniqueFolders.size;
-        const parts = [];
-        if (filesCount > 0) parts.push(`${filesCount} file${filesCount > 1 ? 's' : ''}`);
-        if (foldersCount > 0) parts.push(`${foldersCount} folder${foldersCount > 1 ? 's' : ''}`);
-        if (searchesCount > 0) parts.push(`${searchesCount} search${searchesCount > 1 ? 'es' : ''}`);
-
-        const subheaderText = parts.length > 0 ? `Explored ${parts.join(', ')}` : 'Explored workspace';
-
-        const logsCard = document.createElement('div');
-        logsCard.className = 'antigravity-logs-card';
-
-        const header = document.createElement('div');
-        header.className = 'antigravity-logs-header';
-        const durationText = duration ? `Worked for ${duration}s` : 'Activity Log';
-        header.innerHTML = `
-            <span class="ag-timer-icon">${getLogIconSvg('timer')}</span>
-            <span>${durationText}</span>
-            <span class="ag-header-chevron">▼</span>
-        `;
-
-        const body = document.createElement('div');
-        body.className = 'antigravity-logs-body';
-        body.style.display = 'none';
-
-        if (explorationItems.length > 0) {
-            const exploreContainer = document.createElement('div');
-            exploreContainer.className = 'antigravity-explore-container';
-
-            const exploreHeader = document.createElement('div');
-            exploreHeader.className = 'antigravity-explore-header';
-            exploreHeader.innerHTML = `
-                <span>${subheaderText}</span>
-                <span class="ag-explore-chevron">▼</span>
-            `;
-
-            const exploreBody = document.createElement('div');
-            exploreBody.className = 'antigravity-explore-body';
-            exploreBody.style.display = 'none';
-
-            explorationItems.forEach(item => {
-                const itemEl = createLogItemElement(item);
-                exploreBody.appendChild(itemEl.item);
-                exploreBody.appendChild(itemEl.detail);
-            });
-
-            exploreHeader.onclick = (e) => {
-                e.stopPropagation();
-                const isExpanded = exploreBody.style.display === 'flex' || exploreBody.style.display === 'block';
-                exploreBody.style.display = isExpanded ? 'none' : 'flex';
-                exploreHeader.querySelector('.ag-explore-chevron').classList.toggle('expanded', !isExpanded);
-            };
-
-            exploreContainer.appendChild(exploreHeader);
-            exploreContainer.appendChild(exploreBody);
-            body.appendChild(exploreContainer);
+    if (pairedTools.length === 0) {
+        if (logsContainer.parentElement) {
+            logsContainer.remove();
         }
+        return;
+    }
 
-        mutationItems.forEach(item => {
-            const itemEl = createLogItemElement(item);
-            itemEl.item.classList.add('mutation-item');
-            body.appendChild(itemEl.item);
-            body.appendChild(itemEl.detail);
-        });
+    const escapeHtml = (text) => {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
 
-        header.onclick = () => {
-            const isExpanded = body.style.display === 'flex' || body.style.display === 'block';
-            body.style.display = isExpanded ? 'none' : 'flex';
-            header.querySelector('.ag-header-chevron').classList.toggle('expanded', !isExpanded);
+    const pillsWrapper = document.createElement('div');
+    pillsWrapper.className = 'arena-tool-pills-container';
+
+    const pillsRow = document.createElement('div');
+    pillsRow.className = 'arena-tool-pills-row';
+
+    const detailDrawer = document.createElement('div');
+    detailDrawer.className = 'arena-pill-detail-drawer';
+    detailDrawer.style.display = 'none';
+
+    let activePill = null;
+
+    pairedTools.forEach(tool => {
+        const meta = arenaToolMetaMap[tool.name] || {
+            label: tool.name,
+            icon: (tool.name.includes('read') || tool.name.includes('view')) ? 'file' :
+                  (tool.name.includes('search') || tool.name.includes('grep')) ? 'search' :
+                  (tool.name.includes('write') || tool.name.includes('replace')) ? 'edit' :
+                  (tool.name.includes('dir') || tool.name.includes('structure')) ? 'folder' : 'gear',
+            category: 'other'
         };
 
-        logsCard.appendChild(header);
-        logsCard.appendChild(body);
-        logsContainer.appendChild(logsCard);
-    }
+        const pill = document.createElement('div');
+        pill.className = 'arena-tool-pill';
+        pill.dataset.category = meta.category;
+        pill.title = meta.label;
+        pill.innerHTML = getLogIconSvg(meta.icon);
+
+        pill.onclick = (e) => {
+            e.stopPropagation();
+            if (activePill === pill && detailDrawer.style.display !== 'none') {
+                detailDrawer.style.display = 'none';
+                pill.classList.remove('active');
+                activePill = null;
+            } else {
+                if (activePill) activePill.classList.remove('active');
+                pill.classList.add('active');
+                activePill = pill;
+
+                let argsFormatted = '';
+                if (tool.args && Object.keys(tool.args).length > 0) {
+                    argsFormatted = `Parameters:\n${JSON.stringify(tool.args, null, 2)}\n\n`;
+                }
+                const responseText = tool.response || 'No response data';
+
+                detailDrawer.innerHTML = `
+                    <div class="arena-pill-detail-header">
+                        <span>${escapeHtml(meta.label)}</span>
+                        <span style="font-size: 0.68rem; opacity: 0.6; font-family: monospace;">${escapeHtml(tool.name)}</span>
+                    </div>
+                    <pre><code>${argsFormatted}Response:\n${escapeHtml(responseText)}</code></pre>
+                `;
+                detailDrawer.style.display = 'flex';
+            }
+        };
+
+        pillsRow.appendChild(pill);
+    });
+
+    pillsWrapper.appendChild(pillsRow);
+    pillsWrapper.appendChild(detailDrawer);
+    logsContainer.appendChild(pillsWrapper);
 }
 
 // --- computeContentHash ---

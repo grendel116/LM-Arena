@@ -1164,13 +1164,151 @@ body::-webkit-scrollbar-thumb:hover,
 
 /* Unified Antigravity Activity Log Design */
 .antigravity-logs-container {
-    margin-top: 2px;
-    margin-bottom: 2px;
+    margin-top: 4px;
+    margin-bottom: 4px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     width: 100%;
 }
+
+/* Gamified Icon Pill Tool Display */
+.arena-tool-pills-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.arena-tool-pills-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.arena-tool-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: hsla(var(--slate-h), var(--slate-s), 12%, 0.5);
+    border: 1px solid hsla(var(--slate-h), 5%, 100%, 0.08);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    position: relative;
+    user-select: none;
+}
+
+.arena-tool-pill:hover {
+    color: var(--text-main);
+    transform: translateY(-1px);
+    background: hsla(var(--slate-h), var(--slate-s), 18%, 0.7);
+    border-color: hsla(215, 5%, 100%, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.arena-tool-pill.active {
+    border-color: var(--primary-accent);
+    box-shadow: 0 0 8px var(--primary-glow);
+    color: var(--primary-accent);
+}
+
+.arena-tool-pill svg {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
+}
+
+/* Category Tints */
+.arena-tool-pill[data-category="combat"] {
+    background: hsla(var(--red-h), 65%, 20%, 0.35);
+    border-color: hsla(var(--red-h), 65%, 45%, 0.3);
+    color: hsla(var(--red-h), 80%, 75%, 0.9);
+}
+.arena-tool-pill[data-category="combat"]:hover {
+    border-color: hsla(var(--red-h), 75%, 55%, 0.6);
+    box-shadow: 0 0 10px hsla(var(--red-h), 75%, 50%, 0.3);
+}
+
+.arena-tool-pill[data-category="vitals"] {
+    background: hsla(var(--green-h), 60%, 18%, 0.35);
+    border-color: hsla(var(--green-h), 60%, 40%, 0.3);
+    color: hsla(var(--green-h), 75%, 70%, 0.9);
+}
+.arena-tool-pill[data-category="vitals"]:hover {
+    border-color: hsla(var(--green-h), 70%, 50%, 0.6);
+    box-shadow: 0 0 10px hsla(var(--green-h), 70%, 45%, 0.3);
+}
+
+.arena-tool-pill[data-category="magic"] {
+    background: hsla(var(--blue-h), 70%, 22%, 0.35);
+    border-color: hsla(var(--blue-h), 70%, 45%, 0.3);
+    color: hsla(var(--blue-h), 85%, 75%, 0.9);
+}
+.arena-tool-pill[data-category="magic"]:hover {
+    border-color: hsla(var(--blue-h), 80%, 55%, 0.6);
+    box-shadow: 0 0 10px hsla(var(--blue-h), 80%, 50%, 0.3);
+}
+
+.arena-tool-pill[data-category="world"] {
+    background: hsla(var(--gold-h), 70%, 20%, 0.35);
+    border-color: hsla(var(--gold-h), 70%, 45%, 0.3);
+    color: hsla(var(--gold-h), 85%, 70%, 0.9);
+}
+.arena-tool-pill[data-category="world"]:hover {
+    border-color: hsla(var(--gold-h), 80%, 55%, 0.6);
+    box-shadow: 0 0 10px hsla(var(--gold-h), 80%, 50%, 0.3);
+}
+
+.arena-tool-pill[data-category="loot"] {
+    background: hsla(38, 75%, 20%, 0.35);
+    border-color: hsla(38, 75%, 45%, 0.3);
+    color: hsla(38, 85%, 70%, 0.9);
+}
+.arena-tool-pill[data-category="loot"]:hover {
+    border-color: hsla(38, 85%, 55%, 0.6);
+    box-shadow: 0 0 10px hsla(38, 85%, 50%, 0.3);
+}
+
+/* Expanded Detail Drawer */
+.arena-pill-detail-drawer {
+    background: hsla(var(--slate-h), var(--slate-s), 5%, 0.85);
+    border: 1px solid hsla(var(--slate-h), 5%, 100%, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.arena-pill-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: var(--primary-accent);
+    border-bottom: 1px solid hsla(215, 5%, 100%, 0.06);
+    padding-bottom: 4px;
+}
+
+.arena-pill-detail-drawer pre {
+    margin: 0;
+    font-family: monospace;
+    font-size: 0.72rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--text-muted);
+}
+
 
 .antigravity-logs-card {
     background: hsla(var(--slate-h), var(--slate-s), 9%, 0.3);
