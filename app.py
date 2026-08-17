@@ -922,8 +922,10 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
     if seed_text:
         system_instruction = (
             "Rewrite and rephrase the player's action for the roleplay while maintaining strict narrative continuity.\n"
-            "Preserve story fidelity, resolve typos or awkward phrasing, and retain player intent.\n"
-            "Format: Use *Italics* for narration. Render dialogue as plain text without quotation marks. Keep actions expressive and in character."
+            "Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}, who is the active speaker/actor.\n"
+            "Tense: Strict PRESENT TENSE (e.g. 'I inspect the wall...', 'I reach for the key...'). Never use past tense.\n"
+            "Format: Use *Italics* for narration and plain text without quotation marks for dialogue.\n"
+            "Preserve story fidelity, resolve typos or awkward phrasing, and retain player intent."
         )
         prompt = (
             f"### USER CHARACTER PROFILE & STATUS\n"
@@ -932,19 +934,22 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
             f"{replace_placeholders(history_text)}\n\n"
             f"### ORIGINAL USER ACTION\n"
             f"{replace_placeholders(seed_text)}\n\n"
-            f"Rephrase and refine the user action above preserving story fidelity:"
+            f"Rephrase and refine the user action above in first person present tense, preserving story fidelity:"
         )
     else:
         system_instruction = (
-            "Generate the player next first person action in the roleplay.\n"
-            "Format: Use *Italics* for narration. Render dialogue as plain text without quotation marks. Keep actions actionable and in character."
+            "Generate the player's next action in the roleplay.\n"
+            "Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}, who is the active speaker/actor.\n"
+            "Tense: Strict PRESENT TENSE (e.g. 'I examine the lock...', 'I ask Ria about the gate...'). Never use past tense.\n"
+            "Format: Use *Italics* for narration and plain text without quotation marks for dialogue.\n"
+            "Keep actions actionable and in character."
         )
         prompt = (
             f"### USER CHARACTER PROFILE & STATUS\n"
             f"{replace_placeholders(full_profile_block)}\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{replace_placeholders(history_text)}\n\n"
-            f"Generate a succinct first person action for the character:"
+            f"Generate a succinct first person present tense action for {{user}}:"
         )
     
     try:
@@ -1045,8 +1050,8 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
         print(f"Error getting character context for skill check: {e}")
 
     system_instruction = (
-        "Generate the User character's immediate reaction in first person.\n"
-        f"1 concise *italicized* narrative sentence matching the {roll_res['degree']} outcome."
+        "Generate {{user}}'s immediate reaction in FIRST PERSON PRESENT TENSE.\n"
+        f"1 concise *italicized* narrative sentence in present tense (e.g. 'I slip on the damp stone...', 'I catch my balance...') matching the {roll_res['degree']} outcome."
     )
     try:
         from utils.banned_words import get_banned_words_directive, sanitize_text
@@ -1064,7 +1069,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
             f"- Flat d20 Roll: {roll_res['roll']} (Outcome: {roll_res['degree'].upper()})\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{history_text}\n\n"
-            f"Generate a single in character narrative sentence describing the character's immediate action reflecting this {roll_res['degree']} outcome:"
+            f"Generate a single first person present tense narrative sentence describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
         )
     else:
         prompt = (
@@ -1079,7 +1084,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
             f"- Context: {reason}\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{history_text}\n\n"
-            f"Generate a single in character narrative sentence describing the character's immediate action reflecting this {roll_res['degree']} outcome:"
+            f"Generate a single first person present tense narrative sentence describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
         )
 
     action_text = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
