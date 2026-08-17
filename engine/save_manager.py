@@ -324,6 +324,8 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
         "memories": {"documents": [], "chunks": []},
         "databank": {"documents": [], "chunks": []},
         "journals": [],
+        "side_quests": [],
+        "archived_side_quests": [],
         "profile": profile_content
     }
     return bundle

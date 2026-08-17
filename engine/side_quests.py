@@ -8,46 +8,57 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
 
-def _get_paths():
-    from utils.program import get_active_program
-    prog = get_active_program()
-    prog_dir = BASE_DIR / "core" / "programs" / prog
-    prog_dir.mkdir(parents=True, exist_ok=True)
-    log_path = prog_dir / "quest_log.json"
-    hist_path = prog_dir / "quest_history.json"
-    return log_path, hist_path
-
 def load_active_side_quests() -> list:
-    log_path, _ = _get_paths()
-    if not log_path.exists():
-        return []
+    """Loads active side quests from the active save bundle."""
     try:
-        with open(log_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-    except Exception:
-        return []
+        from engine.save_manager import get_active_save_id, read_save
+        save_id = get_active_save_id()
+        if save_id:
+            bundle = read_save(save_id)
+            if bundle and isinstance(bundle.get("side_quests"), list):
+                return bundle["side_quests"]
+    except Exception as e:
+        print(f"[load_active_side_quests] Error reading save bundle: {e}")
+    return []
 
 def save_active_side_quests(quests: list) -> None:
-    log_path, _ = _get_paths()
-    with open(log_path, "w", encoding="utf-8") as f:
-        json.dump(quests, f, indent=2, ensure_ascii=False)
+    """Saves active side quests directly to the active save bundle."""
+    try:
+        from engine.save_manager import get_active_save_id, read_save, write_save
+        save_id = get_active_save_id()
+        if save_id:
+            bundle = read_save(save_id)
+            if bundle:
+                bundle["side_quests"] = quests
+                write_save(save_id, bundle)
+    except Exception as e:
+        print(f"[save_active_side_quests] Error writing save bundle: {e}")
 
 def load_archived_side_quests() -> list:
-    _, hist_path = _get_paths()
-    if not hist_path.exists():
-        return []
+    """Loads archived side quests from the active save bundle."""
     try:
-        with open(hist_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
-    except Exception:
-        return []
+        from engine.save_manager import get_active_save_id, read_save
+        save_id = get_active_save_id()
+        if save_id:
+            bundle = read_save(save_id)
+            if bundle and isinstance(bundle.get("archived_side_quests"), list):
+                return bundle["archived_side_quests"]
+    except Exception as e:
+        print(f"[load_archived_side_quests] Error reading save bundle: {e}")
+    return []
 
 def save_archived_side_quests(history: list) -> None:
-    _, hist_path = _get_paths()
-    with open(hist_path, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
+    """Saves archived side quests directly to the active save bundle."""
+    try:
+        from engine.save_manager import get_active_save_id, read_save, write_save
+        save_id = get_active_save_id()
+        if save_id:
+            bundle = read_save(save_id)
+            if bundle:
+                bundle["archived_side_quests"] = history
+                write_save(save_id, bundle)
+    except Exception as e:
+        print(f"[save_archived_side_quests] Error writing save bundle: {e}")
 
 def parse_objectives_into_stages(raw_notes: str) -> list:
     """Parses raw text into discrete sequential stages (10, 20, 30...)."""

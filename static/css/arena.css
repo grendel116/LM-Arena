@@ -3442,7 +3442,7 @@ input.onboarding-input {
     --arena-surface:        hsl(var(--slate-h), var(--slate-s), 11%);             /* Stone gray surface hsl(var(--slate-h), var(--slate-s), 11%) */
     --arena-surface-raised: hsl(var(--slate-h), var(--slate-s), 14%);             /* Stone gray elevated hsl(var(--slate-h), var(--slate-s), 14%) */
     --arena-border:         hsla(var(--slate-h), 5%, 100%, 0.08);
-    --arena-gold:           var(--primary-accent);             /* Standard bright gold */
+    --arena-gold:           hsl(var(--gold-h), var(--gold-s), 52%);             /* Standard bright gold */
     --arena-gold-dim:       hsl(42, 40%, 32%);
     --arena-dull-gold:      hsl(var(--gold-h), 48%, 56%);             /* Dull gold for italics/narration */
     --arena-text:           hsl(38, 15%, 84%);
