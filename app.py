@@ -897,7 +897,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
         role = "User" if msg.get('role') == 'user' else "Program"
         history_text += f"{role}: {msg.get('text', '')}\n"
     
-    from core.program_config import load_user_instructions, replace_placeholders
+    from core.program_config import GLOBAL_USER_FORMATTING, load_user_instructions, replace_placeholders
     from utils.program import get_active_user
     from engine.character import load_character, get_character_context
 
@@ -935,11 +935,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
         system_instruction = (
             "Rephrase {{user}}'s existing action/dialogue in the Elder Scrolls roleplay.\n"
             "- Core Requirement: Rephrase the provided user message with fresh alternative wording and phrasing while preserving the exact same intent, choices, and meaning.\n"
-            "- Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}.\n"
-            "- Tense: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
-            "- Format: *Italics* for physical actions and plain text for spoken dialogue.\n"
-            "- Grounding: Use clear, direct, immersive fantasy actions. Avoid surreal metaphors, modern idioms, or echoing awkward phrasing.\n"
-            "- Restraint: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes."
+            f"{GLOBAL_USER_FORMATTING}"
         )
         prompt = (
             f"### USER CHARACTER PROFILE & STATUS\n"
@@ -954,11 +950,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
         seed_text = (user_input or "").strip()
         system_instruction = (
             "Generate {{user}}'s next action in the Elder Scrolls roleplay.\n"
-            "- Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}.\n"
-            "- Tense: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
-            "- Format: *Italics* for physical actions and plain text for spoken dialogue.\n"
-            "- Grounding: Use clear, direct, immersive fantasy actions. Avoid surreal metaphors, modern idioms, or echoing awkward phrasing.\n"
-            "- Restraint: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes."
+            f"{GLOBAL_USER_FORMATTING}"
         )
         
         if seed_text and len(seed_text.split()) <= 15:
@@ -1092,7 +1084,9 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
 
     system_instruction = (
         "Generate {{user}}'s immediate reaction in FIRST PERSON PRESENT TENSE.\n"
-        f"1 concise *italicized* narrative sentence in present tense (e.g. 'I slip on the damp stone...', 'I catch my balance...') matching the {roll_res['degree']} outcome."
+        f"- FORMAT: 1 concise *italicized* narrative sentence in present tense (e.g. 'I slip on the damp stone...', 'I catch my balance...') matching the {roll_res['degree']} outcome. Spoken dialogue as plain text without quotation marks.\n"
+        "- PERSPECTIVE: Write in FIRST PERSON ('I', 'my') as {{user}}.\n"
+        "- RESTRAINT: Focus purely on {{user}}'s immediate reaction."
     )
     try:
         from utils.banned_words import get_banned_words_directive, sanitize_text

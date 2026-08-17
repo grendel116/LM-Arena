@@ -143,20 +143,29 @@ def load_user_instructions() -> str:
 
 
 
+GLOBAL_FORMATTING = (
+    "\n\n# MESSAGE FORMAT & NARRATIVE PERSPECTIVE\n"
+    "- FORMAT: No more than four paragraphs. Separate dialogue from narration.\n"
+    "- Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
+    "- PERSPECTIVE: Address {{user}} directly in second person ('you', 'your'). Describe NPCs and environment in third person present tense.\n"
+    "- RESTRAINT: Never narrate outcomes or reactions for {{user}}'s actions.\n"
+    "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth.\n"
+)
+
+GLOBAL_USER_FORMATTING = (
+    "- FORMAT: Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
+    "- PERSPECTIVE: Write in FIRST PERSON ('I', 'my') as {{user}}.\n"
+    "- TENSE: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
+    "- RESTRAINT: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes.\n"
+    "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth."
+)
+
+
+
 def get_compiled_instructions() -> str:
     """Merges static identity profiles, dynamic temporal/runtime contexts, and user relationship settings."""
     base = replace_placeholders(load_static_instructions() + load_user_instructions())
-
-    global_formatting = (
-        "\n\n# MESSAGE FORMAT & NARRATIVE PERSPECTIVE\n"
-        "- FORMAT: Max four distinct paragraphs. Narration: *italics*. Spoken dialogue: plain text. Lore and written text: \"enclosed in quotes\".\n"
-        "- PERSPECTIVE: Address {{user}} directly in second person ('you', 'your'). Describe NPCs and environment in third person present tense.\n"
-        "- RESTRAINT: Never narrate outcomes or reactions for {{user}}'s actions.\n"
-        "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth.\n"
-
-    )
-
-    base += global_formatting
+    base += GLOBAL_FORMATTING
     base += load_dynamic_runtime_context()
     return base
 
