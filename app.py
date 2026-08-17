@@ -871,16 +871,29 @@ def edit():
         from runner_interface import cancelled_sessions
         cancelled_sessions.discard(session_id)
 
-def generate_impersonated_message(session_id, user_profile, model, user_input=""):
+def generate_impersonated_message(session_id, user_profile, model, user_input="", msg_id=None, is_reroll=False, original_text=""):
     # Retrieve history
     chat_history = asyncio.run(runner.get_history(session_id))
     
     temperature = load_temperature()
             
-    # Format only the most recent history turns to keep token count low and prevent context overflow
-    recent_history = chat_history[-6:] if len(chat_history) > 6 else chat_history
+    target_text = ""
+    history_slice = []
+    if is_reroll:
+        if msg_id:
+            for idx, msg in enumerate(chat_history):
+                if str(msg.get('id', '')) == str(msg_id):
+                    target_text = msg.get('text', '').strip()
+                    history_slice = chat_history[max(0, idx - 6):idx]
+                    break
+        if not target_text:
+            target_text = (original_text or user_input).strip()
+            history_slice = chat_history[-6:] if len(chat_history) > 6 else chat_history
+    else:
+        history_slice = chat_history[-6:] if len(chat_history) > 6 else chat_history
+
     history_text = ""
-    for msg in recent_history:
+    for msg in history_slice:
         role = "User" if msg.get('role') == 'user' else "Program"
         history_text += f"{role}: {msg.get('text', '')}\n"
     
@@ -918,37 +931,56 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
     if not full_profile_block.strip():
         full_profile_block = "Character: Eternal Champion, Adventurer in Tamriel."
 
-    seed_text = (user_input or "").strip()
-    
-    system_instruction = (
-        "Generate {{user}}'s next action in the Elder Scrolls roleplay.\n"
-        "- Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}.\n"
-        "- Tense: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
-        "- Format: *Italics* for physical actions and plain text for spoken dialogue.\n"
-        "- Grounding: Use clear, direct, immersive fantasy actions. Avoid surreal metaphors, modern idioms, or echoing awkward phrasing.\n"
-        "- Restraint: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes."
-    )
-    
-    if seed_text and len(seed_text.split()) <= 15:
-        # Short player guidance / seed intent
+    if is_reroll and target_text:
+        system_instruction = (
+            "Rephrase {{user}}'s existing action/dialogue in the Elder Scrolls roleplay.\n"
+            "- Core Requirement: Rephrase the provided user message with fresh alternative wording and phrasing while preserving the exact same intent, choices, and meaning.\n"
+            "- Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}.\n"
+            "- Tense: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
+            "- Format: *Italics* for physical actions and plain text for spoken dialogue.\n"
+            "- Grounding: Use clear, direct, immersive fantasy actions. Avoid surreal metaphors, modern idioms, or echoing awkward phrasing.\n"
+            "- Restraint: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes."
+        )
         prompt = (
             f"### USER CHARACTER PROFILE & STATUS\n"
             f"{replace_placeholders(full_profile_block)}\n\n"
-            f"### RECENT CHAT HISTORY\n"
+            f"### CONTEXT (PRIOR CHAT HISTORY)\n"
             f"{replace_placeholders(history_text)}\n\n"
-            f"### PLAYER INTENT\n"
-            f"{replace_placeholders(seed_text)}\n\n"
-            f"Generate a natural first-person present-tense action for {{user}} carrying out this intent (avoid narrating outcomes):"
+            f"### ORIGINAL USER MESSAGE TO REPHRASE\n"
+            f"{replace_placeholders(target_text)}\n\n"
+            f"Rephrase {{user}}'s original message above into an alternative phrasing with the same core intent and action (avoid narrating outcomes):"
         )
     else:
-        # Fresh action or reroll alternative
-        prompt = (
-            f"### USER CHARACTER PROFILE & STATUS\n"
-            f"{replace_placeholders(full_profile_block)}\n\n"
-            f"### RECENT CHAT HISTORY\n"
-            f"{replace_placeholders(history_text)}\n\n"
-            f"Generate a fresh, natural first-person present-tense action for {{user}} responding to the current situation (avoid narrating outcomes):"
+        seed_text = (user_input or "").strip()
+        system_instruction = (
+            "Generate {{user}}'s next action in the Elder Scrolls roleplay.\n"
+            "- Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}.\n"
+            "- Tense: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
+            "- Format: *Italics* for physical actions and plain text for spoken dialogue.\n"
+            "- Grounding: Use clear, direct, immersive fantasy actions. Avoid surreal metaphors, modern idioms, or echoing awkward phrasing.\n"
+            "- Restraint: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes."
         )
+        
+        if seed_text and len(seed_text.split()) <= 15:
+            # Short player guidance / seed intent
+            prompt = (
+                f"### USER CHARACTER PROFILE & STATUS\n"
+                f"{replace_placeholders(full_profile_block)}\n\n"
+                f"### RECENT CHAT HISTORY\n"
+                f"{replace_placeholders(history_text)}\n\n"
+                f"### PLAYER INTENT\n"
+                f"{replace_placeholders(seed_text)}\n\n"
+                f"Generate a natural first-person present-tense action for {{user}} carrying out this intent (avoid narrating outcomes):"
+            )
+        else:
+            # Fresh action
+            prompt = (
+                f"### USER CHARACTER PROFILE & STATUS\n"
+                f"{replace_placeholders(full_profile_block)}\n\n"
+                f"### RECENT CHAT HISTORY\n"
+                f"{replace_placeholders(history_text)}\n\n"
+                f"Generate a fresh, natural first-person present-tense action for {{user}} responding to the current situation (avoid narrating outcomes):"
+            )
     
     try:
         from utils.banned_words import get_banned_words_directive, sanitize_text
@@ -977,9 +1009,20 @@ def generate_user_message():
     model = request.json.get('model')
     user_profile = request.json.get('user_profile', '').strip()
     user_input = request.json.get('current_input', request.json.get('user_input', '')).strip()
+    msg_id = request.json.get('msg_id')
+    is_reroll = request.json.get('is_reroll', False)
+    original_text = request.json.get('original_text', '').strip()
         
     try:
-        generated_msg = generate_impersonated_message(session_id, user_profile, model, user_input=user_input)
+        generated_msg = generate_impersonated_message(
+            session_id,
+            user_profile,
+            model,
+            user_input=user_input,
+            msg_id=msg_id,
+            is_reroll=is_reroll,
+            original_text=original_text
+        )
         return jsonify({'status': 'success', 'message': generated_msg})
     except Exception as e:
         print(f"Error generating impersonated user message: {e}")

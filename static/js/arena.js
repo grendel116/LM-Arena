@@ -7051,6 +7051,8 @@ async function rerollUserMessage(button) {
             body: JSON.stringify({
                 session_id: sessionId,
                 model: selectedModel,
+                msg_id: msgId,
+                original_text: origRawText,
                 is_reroll: true
             })
         });
