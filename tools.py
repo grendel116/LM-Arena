@@ -2473,15 +2473,9 @@ def arena_travel(destination_province, destination_city, **kwargs):
     return travel_summary
 
 @track_tool_activity
-def arena_advance_stage(target_stage=None, *args, **kwargs):
-    """Advances the main quest stage to the next chapter upon milestone completion."""
-    stage = target_stage or kwargs.get("next_stage") or kwargs.get("stage") or kwargs.get("stage_number") or kwargs.get("new_stage")
-    if stage is not None:
-        try:
-            stage = int(stage)
-        except (ValueError, TypeError):
-            stage = None
-    return advance_quest_stage(stage)
+def arena_advance_stage(*args, **kwargs):
+    """Advances the main quest stage to the immediate next sequential chapter upon milestone completion."""
+    return advance_quest_stage()
 
 @track_tool_activity
 def arena_set_quest_stage(stage_number=None, *args, **kwargs):

@@ -1,0 +1,186 @@
+{
+  "name": "Oblivion",
+  "description": "Comprehensive canonical lore on the seventeen Daedric Princes, their Oblivion realms, planar cosmology, and pocket dimensions across the Elder Scrolls universe",
+  "entries": [
+    {
+      "uid": 8201,
+      "key": ["oblivion", "planes of oblivion", "waters of oblivion", "chaotic creatia", "liminal barrier", "oblivion gate", "padomay", "aetherius"],
+      "secondary_key": ["cosmology", "planes", "realm", "dimension"],
+      "content": "COSMOLOGY OF OBLIVION & PLANAR STRUCTURE:\n• Oblivion: The infinite void of pure Padomaic chaos that surrounds the mortal plane of Mundus. Unlike the static perfection of Aetherius, Oblivion is fluid, mutable, and composed of Chaotic Creatia (the primordial substance from which Daedra and planar matter are molded).\n• Planar Realms: There are sixteen major realms of Oblivion corresponding to the primary Daedric Princes, alongside tens of thousands of pocket planes, sub-realms, and liminal voids. Each realm is a physical manifestation of its ruling Prince's will and consciousness.\n• Liminal Barrier: The metaphysical shield separating Mundus from direct Daedric invasion, historically maintained by the divine covenant of the Dragonfires and Amulet of Kings in the Imperial City.\n• Daedric Immortality: Daedra possess no mortal souls (Anuic animus); when their physical forms are destroyed in Mundus or Oblivion, their consciousness (vestige) returns to the Waters of Oblivion to reform from Chaotic Creatia.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8202,
+      "key": ["daedric prince", "daedric princes", "daedra lord", "daedric lords", "daedric shrine", "summoning day", "daedric pact"],
+      "secondary_key": ["prince", "worship", "cult", "daedra"],
+      "content": "THE SEVENTEEN DAEDRIC PRINCES:\n• Nature of the Princes: Powerful immortal et'Ada (original spirits) aligned with Padomay who refused to sacrifice their divine power to create the mortal world (Mundus). Instead, they sculpted their own infinite realms in the void.\n• Morality & Spheres: Daedric Princes are beyond mortal concepts of good and evil; they represent primal cosmic forces—destruction, knowledge, madness, twilight, hunt, domination, and decay. They cannot be truly killed, only banished or bound.\n• Shrines & Summoning: Mortals worship Princes at remote stone shrines across Tamriel. On specific calendar summoning days, summoners and covens can establish a liminal conduit to petition the Prince, often earning legendary Daedric artifacts in exchange for treacherous trials or binding soul contracts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8203,
+      "key": ["molag bal", "coldharbour", "god of schemes", "king of rape", "lord of domination", "soul shriven", "mace of molag bal"],
+      "secondary_key": ["oblivion", "prince", "realm", "vampire"],
+      "content": "MOLAG BAL & COLDHARBOUR:\n• Sphere: The Prince of Domination, Enslavement, and the Harvest of Souls. Creator of the first Vampires (Purebloods / Daughters of Coldharbour) via the defilement of Lamae Beolfag.\n• Realm (Coldharbour): A horrifying, desolate mirror of Tamriel where the sky burns with cold blue flame, the ground is scorched sludge and jagged bone, and the air is bitter freezing smog. The landscape features ruined imperial cities and vast soul-pits filled with Azure Plasma.\n• Soul Shriven: Mortals whose souls are stripped by Molag Bal become withered, mindless husks enslaved to endlessly toil across the wastes of Coldharbour.\n• Artifact: The Mace of Molag Bal, an ebony mace that traps souls and drains the strength and magicka of victims.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8204,
+      "key": ["mehrunes dagon", "deadlands", "prince of destruction", "dagon", "dagon's cleaver", "mehrunes' razor"],
+      "secondary_key": ["oblivion", "prince", "destruction", "fire"],
+      "content": "MEHRUNES DAGON & THE DEADLANDS:\n• Sphere: The Prince of Destruction, Change, Revolution, Energy, and Ambition. A four-armed, red-skinned giant wielding a battleaxe and clawed scythe, perpetually seeking to tear down mortal kingdoms and annex Mundus.\n• Realm (The Deadlands): A violent inferno of roaring volcanic seas of molten lava, jagged islands of black obsidian crags, howling ash storms, and towering iron citadels crowned with burning spikes.\n• Servants: Commands legions of disciplined Dremora (Kyn), ferocious Clannfears, four-armed Ruinachs, and fire-breathing Scamps.\n• Artifact: Mehrunes' Razor, a legendary daedric dagger capable of instantly slaying any mortal target with a single piercing strike.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8205,
+      "key": ["hermaeus mora", "apocrypha", "prince of fate", "gardener of men", "oghma infinium", "black books"],
+      "secondary_key": ["oblivion", "knowledge", "memory", "books"],
+      "content": "HERMAEUS MORA & APOCRYPHA:\n• Sphere: The Prince of Fate, Knowledge, Memory, and the Scrying of the Tides of Destiny. Manifests as a grotesque, formless mass of writhing black tentacles, floating claws, and unblinking golden eyes.\n• Realm (Apocrypha): An infinite, labyrinthine subterranean library beneath a swirling green sky. Endless stacks of ancient leather-bound tomes and forbidden scrolls tower over churning seas of toxic black ink.\n• Servants: Guarded by floating multi-eyed Watchers, lurking acidic Lurkers, and robed, levitating Seekers chanting forgotten spells.\n• Artifact: The Oghma Infinium, a tome of boundless cosmic knowledge penned by Xarxes that bestows immense permanent attribute mastery upon readers.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8206,
+      "key": ["sheogorath", "shivering isles", "prince of madness", "madgod", "wabbajack", "mania", "dementia", "new sheoth"],
+      "secondary_key": ["oblivion", "madness", "chaos", "cheese"],
+      "content": "SHEOGORATH & THE SHIVERING ISLES:\n• Sphere: The Prince of Madness, Creative Genius, and Unpredictable Lunacy. An eccentric gentleman dressed in half-purple, half-amber aristocratic finery holding a carved cane.\n• Realm (The Shivering Isles / The Madhouse): A realm split into two stark ideological halves—Mania (a colorful, kaleidoscopic land of vibrant flora, exuberant artists, and frantic euphoric madness) and Dementia (a bleak, rotting swamp of gnarled brambles, paranoid gloom, and sadistic torturers). The capital, New Sheoth, sits on the border.\n• Servants: Golden Saints (Aureals) patrol Mania, while Dark Seducers (Mazken) police Dementia.\n• Artifact: The Wabbajack, a whimsical staff with three screaming faces that transforms targets into random creatures, sweetrolls, gold piles, or elemental blasts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8207,
+      "key": ["jyggalag", "realm of order", "prince of order", "greymarch", "knights of order"],
+      "secondary_key": ["oblivion", "order", "logic", "crystals"],
+      "content": "JYGGALAG & THE REALM OF ORDER:\n• Sphere: The Prince of Order, Deduction, Rigid Logic, and Absolute Determinism. The original form of Sheogorath, cursed by the other Daedric Princes who feared his unstoppable expansion.\n• The Greymarch: At the end of every cosmic era, Sheogorath transforms back into Jyggalag to burn the Shivering Isles with white crystalline obelisks and silent Knights of Order, before succumbing to madness once more.\n• Realm: Pristine, geometric planes of white stone and razor-sharp crystal monoliths without emotion, decay, or deviation.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8208,
+      "key": ["hircine", "hunting grounds", "father of manbeasts", "lord of the hunt", "savior's hide", "ring of hircine", "bloodmoon"],
+      "secondary_key": ["oblivion", "hunt", "werewolf", "beast"],
+      "content": "HIRCINE & THE HUNTING GROUNDS:\n• Sphere: The Prince of the Hunt, Sport, Predation, and the Father of Manbeasts. Manifests as a towering horned hunter with a stag skull helm, accompanied by spectral hunting hounds.\n• Realm (The Hunting Grounds): Endless, untamed primordial wilderness comprising dense boreal forests, sweeping savannas, craggy canyons, and marshes under a blood-red moon. Mortals and beasts trapped here are hunted eternally by Hircine's pack.\n• Lycanthropy: Afflicts mortals with were-curses (Werewolves, Werebears, Wereboars). In death, the souls of all lycanthropes belong to Hircine's hunt.\n• Artifacts: The Savior's Hide (armor granting supreme magic and poison resistance) and the Ring of Hircine (granting controlled lycanthropic transformations).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8209,
+      "key": ["malacath", "ashpit", "mauloch", "god of curses", "prince of the spurned", "volendrung"],
+      "secondary_key": ["oblivion", "orc", "curse", "oath"],
+      "content": "MALACATH & THE ASHPIT:\n• Sphere: The Prince of the Spurned, Ostracized, Curses, and Bloody Oaths. Formerly the Aldmeri champion god Trinimac, devoured and transformed by Boethiah during the Chimeri exodus. Revered by the Orsimer (Orcs) as their patron and code-giver (The Code of Malacath).\n• Realm (The Ashpit): An endless, swirling void of choking grey ash, sulfur vapors, and smoke with no solid ground except for floating iron keeps and the grand fortress of the Ashpit where Orc heroes feast and battle forever.\n• Servants: Ogrim (colossal, potbellied horned Daedra) serve Malacath's will across planar boundaries.\n• Artifact: Volendrung, the legendary Dwemer warhammer imbued with Malacath's fury, paralyzing targets and siphoning stamina.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8210,
+      "key": ["azura", "moonshadow", "queen of dawn and dusk", "mother of the rose", "azura's star"],
+      "secondary_key": ["oblivion", "twilight", "khajiit", "dunmer", "prophecy"],
+      "content": "AZURA & MOONSHADOW:\n• Sphere: The Daedric Prince of Dusk and Dawn, Mystery, Magic, Vanity, and Prophecy. One of the 'Good Daedra' of the Dunmer and revered by the Khajiit as Azurah, Mother of All Khajiit.\n• Realm (Moonshadow): A breathtakingly beautiful sanctuary of perpetual twilight. Fragrant rose gardens, shimmering silver palaces, crystal waterfalls, and pastel skies where colors blend beyond mortal comprehension.\n• Servants: Winged Twilights, majestic avian-daedric skirmishers with razor talons.\n• Artifact: Azura's Star, a reusable soul gem that never breaks upon enchanting, capturing white souls infinitely.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8211,
+      "key": ["nocturnal", "evergloam", "mistress of shadows", "lady luck", "ur-dra", "nightingales", "skeleton key", "ebonmere"],
+      "secondary_key": ["oblivion", "shadow", "thief", "stealth"],
+      "content": "NOCTURNAL & THE EVERGLOAM:\n• Sphere: The Prince of Night, Shadows, Darkness, Mystery, and Luck. Acknowledged as the 'Ur-Dra'—the oldest and most primal of the Daedric Lords. Patron of thieves, spies, and the Nightingale Trinity.\n• Realm (The Evergloam): A realm of perpetual, starless midnight shrouded in dark violet mist, twisting shadow forests, and sunken gothic ruins. At its heart lies the Twilight Sepulcher and the conduit known as the Ebonmere.\n• Servants: Grievous Twilights, Crow Daedra, and shadow wraiths.\n• Artifact: The Skeleton Key, an unbreakable master key capable of unlocking any physical, magical, or metaphysical potential.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8212,
+      "key": ["meridia", "colored rooms", "lady of light", "glister witch", "dawnbreaker"],
+      "secondary_key": ["oblivion", "light", "energy", "undead"],
+      "content": "MERIDIA & THE COLORED ROOMS:\n• Sphere: The Prince of Life, Living Energies, Radiance, and Sacred Light. Originally a Magna Ge (star-orphan spirit) named Merid-Nunda cast down from Aetherius for consorting with illicit spectra.\n• Hatred of Undead: Holds total, unrelenting hatred for necromancy, vampires, liches, and all forms of undead, demanding their total eradication with divine solar fire.\n• Realm (The Colored Rooms): A crystalline prism of magnified pure light where vibrant spectral colors refract across floating garden islands.\n• Servants: Aurorans, golden-armored shock soldiers wielding axes of blinding lightning.\n• Artifact: Dawnbreaker, an enchanted blade that burns enemies with golden fire and triggers explosive solar novas upon slaying undead.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8213,
+      "key": ["mephala", "spiral skein", "webspinner", "spider god", "whisperer", "ebony blade", "ring of the khajiiti"],
+      "secondary_key": ["oblivion", "secret", "murder", "spider"],
+      "content": "MEPHALA & THE SPIRAL SKEIN:\n• Sphere: The Prince of Lies, Secrets, Murder, Sex, and Intrigue. Revered as one of the Three Good Daedra by the Dunmer and ancient patron of the Morag Tong assassin guild.\n• Realm (The Spiral Skein): A vast eight-spoke planar web of shadow threads, echoing chasm galleries, and webbed chambers where every strand represents a mortal conspiracy or hidden truth.\n• Servants: Spider Daedra (half-woman, half-arachnid centaurs) and venomous Spiderkith.\n• Artifacts: The Ebony Blade (a parasitic katana that grows stronger by slaying friends and allies) and the Ring of the Khajiiti (granting invisibility and speed).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8214,
+      "key": ["boethiah", "attribution's share", "snake mount", "prince of plots", "prince of warriors", "ebony mail", "goldbrand"],
+      "secondary_key": ["oblivion", "treason", "combat", "chimer"],
+      "content": "BOETHIAH & ATTRIBUTION'S SHARE:\n• Sphere: The Prince of Plots, Deceit, Treason, Overthrow of Authority, and Martial Ascendancy. Led the Prophet Veloth and the Chimer out of Summerset to Morrowind.\n• Realm (Attribution's Share / Snake Mount): A savage storm-wracked landscape of jagged stone pillars, blood-soaked gladiatorial arenas, and labyrinthine conspiratorial towers where Daedra and mortal champions battle to prove supreme martial fitness.\n• Servants: Hungers (emaciated spell-draining horrors) and Clan Boethiah warriors.\n• Artifacts: The Ebony Mail (shadow-cloaked heavy armor dealing poison damage to nearby enemies and silencing footfalls) and Goldbrand (flaming golden katana).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8215,
+      "key": ["clavicus vile", "fields of regret", "barbas", "prince of bargains", "masque of clavicus vile", "bittercup", "rueful axe"],
+      "secondary_key": ["oblivion", "pact", "deal", "wish"],
+      "content": "CLAVICUS VILE & THE FIELDS OF REGRET:\n• Sphere: The Prince of Bargains, Pacts, Wishes, and Power. Manifests as a small horned imp or nobleman alongside his companion Barbas, a shapeshifting hound who embodies half of Vile's divine power.\n• Deceptive Deals: Vile grants mortal desires with ironic, devastating loopholes that invariably ruin the petitioner (granting immortality as a paralyzed statue or curing lycanthropy through death).\n• Realm (The Fields of Regret): An idyllic, tranquil countryside of green rolling hills, tranquil streams, and charming cottages—a deceptive façade concealing sulfur pits and trapped, screaming debtors.\n• Artifact: The Masque of Clavicus Vile, granting the bearer supernatural charisma and unmatched mercantile bartering skill.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8216,
+      "key": ["vaermina", "quagmire", "weaver of dreams", "mistress of nightmares", "skull of corruption"],
+      "secondary_key": ["oblivion", "nightmare", "sleep", "fear"],
+      "content": "VAERMINA & QUAGMIRE:\n• Sphere: The Prince of Nightmares, Psychological Terrors, Sleep Paralysis, and Stolen Memories. Her worshippers consume torpor potions to enter dream-strides.\n• Realm (Quagmire): A shifting, terrifying nightmare realm that constantly changes into the specific personal phobias and worst horrors of whoever visits it—turning from castle corridors into pits of writhing leeches, bleeding walls, and suffocating darkness.\n• Servants: Mind Terrors, Night Terrors, and dream-stalking Daedra.\n• Artifact: The Skull of Corruption, a dark sorcerous staff that siphons the dreams of sleeping mortals to blast enemies with illusory necrotic energy.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8217,
+      "key": ["namira", "scuttling void", "lady of decay", "ancient darkness", "ring of namira"],
+      "secondary_key": ["oblivion", "decay", "cannibal", "darkness", "vermin"],
+      "content": "NAMIRA & THE SCUTTLING VOID:\n• Sphere: The Prince of Ancient Darkness, Decay, Cannibalism, Insects, and all things that inspire visceral revulsion. Associated with the Void (Great Darkness) in ancient Khajiiti theology.\n• Cults: Her followers are beggars, lepers, cannibals, and outcast recluses who find divine transcendence in filth, rot, and flesh-eating.\n• Realm (The Scuttling Void): An oppressive, pitch-black abyss devoid of light, where swarms of chittering centipedes, maggots, and carrion crawlers carpet cold, slimy cavern walls.\n• Artifact: The Ring of Namira, granting the bearer increased stamina and health regeneration whenever they consume the fresh flesh of a fallen humanoid corpse.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8218,
+      "key": ["peryite", "the pits", "the taskmaster", "lord of pestilence", "spell breaker", "spellbreaker"],
+      "secondary_key": ["oblivion", "disease", "plague", "order"],
+      "content": "PERYITE & THE PITS:\n• Sphere: The Prince of Pestilence, Disease, Natural Order, and Administrative Balance. Depicted as a green, four-legged dragon with tattered wings, tasked with managing the lower tiers of Oblivion.\n• Divine Purpose: Peryite uses plagues and disease not for wanton slaughter, but as a cleansing cosmic pruning mechanism to maintain ecological balance.\n• Realm (The Pits): The lowest, most toxic plane of Oblivion, filled with boiling plague vats, steaming chemical fissures, and labyrinthine pipes overseen by diseased overseers.\n• Artifact: Spell Breaker, an ancient Dwemer heavy shield that projects a magical ward, silencing mages and reflecting hostile spells.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8219,
+      "key": ["sanguine", "myriad realms of revelry", "lord of debauchery", "prince of hedonism", "sanguine rose"],
+      "secondary_key": ["oblivion", "revelry", "wine", "party", "lust"],
+      "content": "SANGUINE & THE MYRIAD REALMS OF REVELRY:\n• Sphere: The Prince of Debauchery, Hedonism, Drunken Revelry, and the Dark Pleasures of the Flesh. Appears as a horned, jovial red-skinned satyr holding a tankard of spiced wine.\n• Realm (The Myriad Realms of Revelry): A pocket network of over one hundred thousand interconnected pleasure palaces, banquet halls, and taverns where endless feasts, masquerades, wine fountains, and unrestrained indulgences take place forever.\n• Artifact: The Sanguine Rose, a blooming magical rose staff that summons a powerful, battle-ready Dremora warrior to defend the wielder before the flower wilts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8220,
+      "key": ["soul cairn", "ideal masters", "battlespire", "slipstream realm", "pocket realm", "imperial simulacrum", "uriel septim vii prison"],
+      "secondary_key": ["oblivion", "tharn", "necromancy", "prison"],
+      "content": "POCKET REALMS, SOUL CAIRN & THE IMPERIAL PRISON:\n• The Soul Cairn: A bleak, necrotic pocket realm ruled by the enigmatic Ideal Masters. A desolate expanse of black soul gems, lightning spires, and skeletal mist where black souls harvested by Necromancers are imprisoned for eternity.\n• Battlespire & Slipstream: Imperial battlemage training academies constructed in the slipstream void between Mundus and Oblivion.\n• The Emperor's Oblivion Prison: During the Imperial Simulacrum (3E 389–399), Imperial Battlemage Jagar Tharn used the Staff of Chaos to banish Emperor Uriel Septim VII into a nightmare-locked dimensional cell deep within the chaotic void of Oblivion, maintaining a temporal stasis while Tharn ruled disguised in the Imperial Palace.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

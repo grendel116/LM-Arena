@@ -20,36 +20,66 @@ def get_embedding_model():
 
 
 class DataBankManager:
-    def __init__(self, db_dir=None):
+    def __init__(self, program_id: str = None, save_id: str = None, db_dir=None):
+        from utils.program import get_active_program
         from engine.save_manager import get_active_save_id
-        self.save_id = get_active_save_id()
-        self.db_path = "databank"
-        self.memories_path = "memories"
+        self.program_id = program_id or get_active_program()
+        self.save_id = save_id or get_active_save_id()
+        
+        # Follower-bound databank file path (core/programs/<program_id>/databank.json)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        self.follower_dir = os.path.join(base_dir, "core", "programs", self.program_id)
+        self.db_path = os.path.join(self.follower_dir, "databank.json")
+        self.memories_path = "memories"  # Save-bound key
 
     def _load_data(self, path):
-        try:
-            from engine.save_manager import read_save, get_active_save_id
-            bundle = read_save(self.save_id or get_active_save_id())
-            key = "memories" if "memories" in str(path) else "databank"
-            val = bundle.get(key)
-            if isinstance(val, dict):
-                return val
-            if isinstance(val, list):
-                return {"documents": val, "chunks": []}
-        except Exception as e:
-            print(f"Error loading databank data: {e}")
-        return {"documents": [], "chunks": []}
+        if str(path) == "memories":
+            # Save-bound memory compactions
+            try:
+                from engine.save_manager import read_save, get_active_save_id
+                save_id = self.save_id or get_active_save_id()
+                bundle = read_save(save_id)
+                val = bundle.get("memories")
+                if isinstance(val, dict):
+                    val.setdefault("documents", [])
+                    val.setdefault("chunks", [])
+                    return val
+            except Exception as e:
+                print(f"Error loading save memories data: {e}")
+            return {"documents": [], "chunks": []}
+        else:
+            # Follower-bound databank JSON file
+            try:
+                if os.path.exists(self.db_path):
+                    with open(self.db_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    if isinstance(data, dict):
+                        data.setdefault("documents", [])
+                        data.setdefault("chunks", [])
+                        return data
+            except Exception as e:
+                print(f"Error loading follower databank from {self.db_path}: {e}")
+            return {"documents": [], "chunks": []}
 
     def _save_data(self, path, data):
-        try:
-            from engine.save_manager import read_save, write_save, get_active_save_id
-            save_id = self.save_id or get_active_save_id()
-            bundle = read_save(save_id)
-            key = "memories" if "memories" in str(path) else "databank"
-            bundle[key] = data
-            write_save(save_id, bundle)
-        except Exception as e:
-            print(f"Error saving databank data: {e}")
+        if str(path) == "memories":
+            # Save-bound memory compactions
+            try:
+                from engine.save_manager import read_save, write_save, get_active_save_id
+                save_id = self.save_id or get_active_save_id()
+                bundle = read_save(save_id)
+                bundle["memories"] = data
+                write_save(save_id, bundle)
+            except Exception as e:
+                print(f"Error saving save memories data: {e}")
+        else:
+            # Follower-bound databank JSON file
+            try:
+                os.makedirs(self.follower_dir, exist_ok=True)
+                with open(self.db_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print(f"Error saving follower databank to {self.db_path}: {e}")
 
     def clean_html(self, html_content: str) -> str:
         """Parses HTML and extracts clean readable text, removing boilerplate markup."""
@@ -229,28 +259,30 @@ class DataBankManager:
         data = self._load_data(self.db_path)
         
         chunk_counts = {}
-        for chunk in data["chunks"]:
-            doc_id = chunk["doc_id"]
-            chunk_counts[doc_id] = chunk_counts.get(doc_id, 0) + 1
+        for chunk in data.get("chunks", []):
+            doc_id = chunk.get("doc_id")
+            if doc_id:
+                chunk_counts[doc_id] = chunk_counts.get(doc_id, 0) + 1
             
         results = []
-        for doc in data["documents"]:
-            if doc["source_type"] != 'chat_history':
+        for doc in data.get("documents", []):
+            if doc.get("source_type") != 'chat_history':
                 doc_copy = doc.copy()
-                doc_copy["chunk_count"] = chunk_counts.get(doc["id"], 0)
+                doc_copy["chunk_count"] = chunk_counts.get(doc.get("id"), 0)
+                doc_copy["source_type"] = doc.get("source_type", "file")
                 results.append(doc_copy)
                 
-        results.sort(key=lambda x: x["timestamp"], reverse=True)
+        results.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
         return results
 
     def delete_document(self, doc_id: str) -> bool:
         """Removes a document and all its chunks from the databank.json file."""
         data = self._load_data(self.db_path)
         
-        original_doc_count = len(data["documents"])
+        original_doc_count = len(data.get("documents", []))
         
-        data["documents"] = [d for d in data["documents"] if d["id"] != doc_id]
-        data["chunks"] = [c for c in data["chunks"] if c["doc_id"] != doc_id]
+        data["documents"] = [d for d in data.get("documents", []) if d.get("id") != doc_id]
+        data["chunks"] = [c for c in data.get("chunks", []) if c.get("doc_id") != doc_id]
         
         self._save_data(self.db_path, data)
         return len(data["documents"]) < original_doc_count
@@ -261,14 +293,14 @@ class DataBankManager:
         
         prefix = f"chat_history_archive_{session_id}_"
         doc_ids_to_delete = [
-            d["id"] for d in data["documents"] 
-            if d["source_type"] == 'chat_history' and d["name"].startswith(prefix)
+            d.get("id") for d in data.get("documents", []) 
+            if d.get("source_type") == 'chat_history' and d.get("name", "").startswith(prefix) and d.get("id")
         ]
         
         if doc_ids_to_delete:
             doc_ids_set = set(doc_ids_to_delete)
-            data["documents"] = [d for d in data["documents"] if d["id"] not in doc_ids_set]
-            data["chunks"] = [c for c in data["chunks"] if c["doc_id"] not in doc_ids_set]
+            data["documents"] = [d for d in data.get("documents", []) if d.get("id") not in doc_ids_set]
+            data["chunks"] = [c for c in data.get("chunks", []) if c.get("doc_id") not in doc_ids_set]
             self._save_data(self.memories_path, data)
             
     def update_memory_document(self, doc_name: str, new_text: str) -> bool:
@@ -432,21 +464,22 @@ class DataBankManager:
         
         data = self._load_data(path)
         
-        if not data["chunks"]:
+        if not data.get("chunks"):
             return ""
             
-        docs_map = {d["id"]: d for d in data["documents"]}
+        docs_map = {d.get("id"): d for d in data.get("documents", []) if d.get("id")}
         
         filtered_chunks = []
-        for chunk in data["chunks"]:
-            doc = docs_map.get(chunk["doc_id"])
+        for chunk in data.get("chunks", []):
+            doc = docs_map.get(chunk.get("doc_id"))
             if not doc:
                 continue
-            if exclude_source_type and doc["source_type"] == exclude_source_type:
+            doc_source = doc.get("source_type", "file")
+            if exclude_source_type and doc_source == exclude_source_type:
                 continue
-            if include_source_type and doc["source_type"] != include_source_type:
+            if include_source_type and doc_source != include_source_type:
                 continue
-            filtered_chunks.append((doc["name"], chunk["text"], chunk["vector"]))
+            filtered_chunks.append((doc.get("name", "Document"), chunk.get("text", ""), chunk.get("vector", [])))
             
         if not filtered_chunks:
             return ""

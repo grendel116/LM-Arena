@@ -44,29 +44,26 @@ def check_stage_conditions(state: dict, stage: dict) -> bool:
 
 
 def advance_stage(state: dict, stages: list, force: bool = True) -> tuple[dict, list]:
-    """Advances the quest stage and executes on_complete actions."""
+    """Advances the quest stage to the immediate next sequential chapter and executes on_complete actions."""
     stage_num = state.get("quest_stage", 10)
     stage = get_current_stage(stage_num, stages)
     
     fired_actions = []
     
+    # Determine the immediate next sequential stage
+    sorted_stages = sorted(stages, key=lambda x: x.get("stage", 0))
     next_stage_num = stage_num + 10
+    for s in sorted_stages:
+        if s.get("stage", 0) > stage_num:
+            next_stage_num = s.get("stage", 0)
+            break
+            
     if stage:
         for action in stage.get("on_complete", []):
             state = execute_action(state, action)
             fired_actions.append(action)
-            act_type = action.get("action") or action.get("type")
-            params = action.get("params") or action
-            if act_type == "advance_stage":
-                if "next_stage" in params:
-                    next_stage_num = params["next_stage"]
-                elif "next" in params:
-                    next_stage_num = params["next"]
                     
-        state["quest_stage"] = next_stage_num
-    else:
-        state["quest_stage"] = next_stage_num
-        
+    state["quest_stage"] = next_stage_num
     return state, fired_actions
 
 def execute_action(state: dict, action: dict) -> dict:

@@ -1,84 +1,156 @@
 {
   "name": "Bestiary",
-  "description": "Canonical UESP taxonomy of creatures, beasts, undead, and daedric entities across Tamriel",
+  "description": "Comprehensive canonical UESP taxonomy of creatures, beasts, monsters, undead, and daedric entities across Tamriel",
   "entries": [
     {
       "uid": 8001,
-      "key": ["mammal", "mammals", "wolf", "wolves", "snow wolf", "dire wolf", "rat", "giant rat", "sewer rat", "senche", "senche-raht"],
-      "secondary_key": [],
-      "content": "MAMMALS OF TAMRIEL (Canines, Rodents, Felines):\n• Wolves & Snow Wolves: Pack predators common to the boreal pine forests and arctic wastes of Skyrim and High Rock. Alpha wolves coordinate swift flanking strikes, circling prey in blinding snowstorms.\n• Giant Rats: Ubiquitous scavengers infesting dungeon cellars, sewers, and ancient tombs. Though individually fragile, they attack in rabid swarms and transmit Red Fever and swamp rot.\n• Senche-Raht: Colossal quadrupedal Khajiit morphs native to Elsweyr's savanna and jungle heartlands. Formidable apex predators with bone-crushing jaws and acute predatory intelligence.",
+      "key": ["ogrim", "ogrims", "daedroth", "daedroths", "ruinach", "ruinachs", "infernium"],
+      "secondary_key": ["daedra", "oblivion", "malacath", "dagon", "molag bal"],
+      "content": "DAEDRIC BRUTES & HEAVY BEASTS:\n• Ogrim: Colossal, dim-witted, bipedal Daedra servants to Malacath. Highly distinct from mortal Orcs (Orsimer) or Ogres, Ogrim possess huge green/grey scaly hides, massive protruding lower tusks, clawed four-toed feet, small horned heads, and prominent rotund bellies. They gleefully pound their bellies to mock foes, charging with bone-shattering brute force and crushing ground slams.\n• Daedroth (pl. Daedroths): Bipedal, crocodile-snouted reptilian Daedra servants to Molag Bal and Mehrunes Dagon. Possess armored scaly green hide, muscular frames, razor talons, and the ability to belch torrents of continuous flame while tearing through armor with jaws.\n• Ruinach: Massive four-armed tauric Daedric brutes servant to Mehrunes Dagon, capable of dual-wielding heavy weapons and pummeling foes with four fists simultaneously.\n• Infernium: Colossal multi-legged mechanical-daedric siege engines deployed from the Deadlands, spewing molten slag.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8002,
-      "key": ["reptile", "reptiles", "lizardman", "lizardmen", "cliff racer", "cliff racers", "dune ripper", "dune rippers"],
-      "secondary_key": [],
-      "content": "REPTILES & AVIAN PREDATORS OF TAMRIEL:\n• Lizardmen: Primitive, semi-aquatic reptilian humanoids inhabiting the dense bayous of Black Marsh and tropical marshlands. Armed with serrated spears and tough scaly hide.\n• Cliff Racers: Aggressive, leathery-winged avian predators dominating the skies and ash barrens of Morrowind and Red Mountain. They descend in relentless screeching dives, attacking in numbers.\n• Dune Rippers: Massive carnivorous burrowers native to the scorching wastes of Hammerfell and the Alik'r Desert. They surface from beneath the sands in sudden subterranean ambushes.",
+      "key": ["scamp", "scamps", "banekin", "clannfear", "clannfears", "hellhound", "hellhounds", "daedrat", "daedrats"],
+      "secondary_key": ["daedra", "oblivion", "dagon"],
+      "content": "LESSER & PACK DAEDRA:\n• Scamps: Diminutive, mischievous, foul-smelling lesser Daedra servant to Mehrunes Dagon. Agile skirmishers with leathery brown skin, sharp claws, and the ability to lob explosive firebolts while chattering in guttural shrieks.\n• Banekin: Spiteful, winged imp-like Daedra who dart through the air casting debilitating lightning zaps and draining magicka.\n• Clannfears: Bipedal, raptor-like saurian Daedra with bird-like beaks and massive armored bony frills. Ferocious pack hunters that charge at terrifying speeds, knocking targets prone and ripping them with sickle claws.\n• Hellhounds: Demonic, glowing-eyed canines composed of living brimstone and ash, exhaling bursts of fire in melee combat.\n• Daedrats: Scurrying, rat-like vermin of Oblivion with glowing eyes and spiky tails, acting as pests and scavengers across Daedric realms.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8003,
-      "key": ["arthropod", "arthropods", "invertebrate", "invertebrates", "spider", "giant spider", "nix hound", "nix hounds", "dreugh", "land dreugh"],
-      "secondary_key": [],
-      "content": "INVERTEBRATES & ARTHROPODS OF TAMRIEL:\n• Giant Spiders: Chitinous hunters spinning webbed labyrinths in deep caverns and crypts. Their mandibles inject paralyzing neurotoxin that drains agility and vitality.\n• Nix-Hounds: Carnivorous eight-legged arthropods native to Morrowind. They hunt in ashland packs, using tubular proboscises to drain stamina and bodily fluids.\n• Dreugh & Land Dreugh: Ancient armored aquatic abominations inhabiting coastal reefs and estuaries. Wielding crushing chitinous pincer-claws, they undergo a terrestrial metamorphosis during their annual karvinasim cycle.",
+      "key": ["atronach", "atronachs", "flame atronach", "frost atronach", "storm atronach", "iron atronach", "stone atronach", "flesh atronach", "air atronach"],
+      "secondary_key": ["elemental", "daedra", "summon"],
+      "content": "ELEMENTAL & CONSTRUCT ATRONACHS:\n• Flame Atronachs: Female-shaped spirits of pure fire clad in floating obsidian armor plates. Hover above ground, hurling fiery projectiles and triggering a concussive firestorm explosion upon death.\n• Frost Atronachs: Towering humanoid monoliths of jagged glacial ice. Possess monumental physical strength, natural frost armor, and ground-shaking foot-stomps that freeze surrounding terrain.\n• Storm Atronachs: Colossal swirling vortexes of lightning and magnetic boulders bound in humanoid form. Cast chained lightning bolts and emanate electrical auras that disrupt spellcasting.\n• Iron & Stone Atronachs: Heavy planar constructs forged from scorched iron or bedrock, exhibiting extreme resilience to blade and blunt force.\n• Flesh Atronachs: Profane golems stitched together from mortal skin, muscles, and necrotic limbs, bound with Daedric spirits. Channel raw necrotic poison and lightning.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8004,
-      "key": ["undead", "skeleton", "skeletons", "zombie", "zombies", "ghoul", "ghouls", "wraith", "wraiths", "ghost", "ghosts", "lich", "liches", "draugr", "ayleid wight", "wight", "vampire", "vampires"],
-      "secondary_key": [],
-      "content": "UNDEAD & VAMPIRES OF TAMRIEL:\n• Corporeal Undead (Skeletons, Zombies, Ghouls, Draugr, Ayleid Wights): Reanimated corpses bound by profane necromancy or ancient curses. Immune to poison, disease, and paralysis. Vulnerable to blunt crushing force and silver.\n• Incorporeal Undead (Wraiths, Ghosts, Spectres): Ethereal phantoms of malevolent souls. Immune to normal iron/steel weapons; can ONLY be harmed by Silver, Elven, Dwarven, Mithril, Adamantium, Ebony, or Magic spells. They emit an aura of freezing dread that saps willpower.\n• Vampires & Vampire Lords: Immortal predators cursed by Molag Bal. Masters of blood magic, illusion, and superhuman strength. Highly resistant to physical trauma, vulnerable to sunlight, fire, and sacred magic.\n• Liches & Nether Liches: Supreme sorcerers who severed their souls into phylacteries. Capable of unleashing catastrophic destruction magic and commanding legionnaires of the dead.",
+      "key": ["hunger", "hungers", "harvester", "harvesters", "spider daedra", "watcher", "watchers", "lurker", "lurkers", "seeker", "seekers", "mind terror"],
+      "secondary_key": ["daedra", "oblivion", "hermaeus mora", "boethiah", "mephala"],
+      "content": "ELDRITCH & ABYSSAL DAEDRA:\n• Hungers: Gaunt, emaciated Daedra servant to Boethiah and Sheogorath. Features elongated limbs, ribbed torsos, a gaping circular maw lined with needle teeth, and a prehensile paralyzing tongue that drains magicka and stamina.\n• Harvesters: Four-armed, serpentine-tailed Daedric priestesses of Molag Bal. Masters of soul subjugation and dark illusion, capable of summoning orbiting 'Feast' vitality orbs to heal themselves.\n• Spider Daedra: Arachnid-humanoid centaurs servant to Mephala, possessing the torso of an elven woman atop the eight-legged body of a giant armored spider. Spits webs and paralyzing venom.\n• Watchers & Mind Terrors: Floating, tentacled aberrations with a massive central eye and numerous eyestalks servant to Hermaeus Mora. Fire searing eyebeams and dispel magical enchantments.\n• Lurkers & Seekers: Eldritch inhabitants of Apocrypha. Lurkers are gigantic amphibious humanoids spewing acidic sludge, while Seekers are levitating multi-armed scholars cloaked in shadow magic.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8005,
-      "key": ["daedra", "lesser daedra", "elemental daedra", "atronach", "fire atronach", "flame atronach", "frost atronach", "storm atronach", "hellhound", "winged twilight", "clannfear", "homunculus"],
-      "secondary_key": [],
-      "content": "DAEDRA & OBLIVION ENTITIES:\n• Elemental Atronachs (Fire, Frost, Storm): Unaligned lesser daedra formed of pure elemental energy and planar mineral. Immune to mundane weapons, poison, paralysis, and their native element. They detonate violently upon destruction.\n• Hellhounds: Demonic fiery canines servant to Mehrunes Dagon. They breathe jets of molten flame and ignite foes in close melee.\n• Winged Twilights & Homunculi: Bat-winged daedric messengers servant to Azura and Nocturnal. Agile aerial skirmishers armed with razor talons and natural spell absorption.\n• Clannfears: Beaked, bipedal saurian daedra boasting armored bone crests. They charge with ferocious momentum, tearing through plate armor.",
+      "key": ["daedric titan", "titan", "winged twilight", "grievous twilight", "xivilai", "dremora", "auroran", "golden saint", "dark seducer", "wraith-of-crows"],
+      "secondary_key": ["daedra", "prince", "lord"],
+      "content": "GREATER DAEDRA & NOBLE ENTITIES:\n• Daedric Titans: Massive four-winged skeletal dragons resurrected in the azure soul-pits of Coldharbour. Unleash blue soulflame breath, earth-shaking shockwaves, and crushing jaw bites.\n• Winged Twilights & Grievous Twilights: Bat-winged, bird-footed Daedra servants of Azura and Nocturnal. Deadly aerial skirmishers wielding razor talons and innate spell absorption.\n• Xivilai & Dremora: Highly intelligent, honor-bound Daedric warrior castes. Dremora (Kyn) are disciplined legionnaires in spiky Daedric armor; Xivilai are towering spellswords who wield greatswords with one hand and summon lesser Daedra.\n• Aurorans, Golden Saints & Dark Seducers: Planar humanoid warriors serving Meridia, Sheogorath, and Nocturnal, mastering light, golden armaments, and shadow illusions.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8006,
-      "key": ["hybrid", "magical hybrid", "monstrous", "troll", "trolls", "minotaur", "minotaurs", "medusa", "gorgon", "harpy", "harpies"],
-      "secondary_key": [],
-      "content": "MAGICAL HYBRIDS & MONSTROUS BEASTS:\n• Trolls & Frost Trolls: Savage, three-eyed ape-like carnivores inhabiting caves and mountains. Renowned for miraculous flesh regeneration; wounds close instantly unless cauterized with Fire spells or burning torches.\n• Minotaurs: Massive bull-headed humanoids boasting enormous muscle and natural armor. Once honored descendants of Morihaus and Alessia, now feral guardians of labyrinthine ruins wielding giant clubs and warhammers.\n• Medusas: Cursed serpentine monstrosities dwelling in subterranean grottos. Their petrifying gaze freezes victims into solid stone while their poisoned arrows strike at range.\n• Harpies: Ravenous bird-women nesting in cliffside crags throughout High Rock and Hammerfell. They emit piercing sonic shrieks to disorient travelers before diving to scavenge.",
+      "key": ["ogre", "ogres", "troll", "trolls", "frost troll", "cave troll", "giant", "giants", "sea giant"],
+      "secondary_key": ["monster", "beast", "regenerate"],
+      "content": "OGRES, GIANTS & TROLLS:\n• Ogres: Large, primitive, thick-hided mortal humanoids dwelling in caves and hills. Highly distinct from Daedric Ogrim and civilized Orsimer (Orcs). Ogres have brutish grey-brown faces, huge bellies, and wield tree-trunk clubs.\n• Trolls & Frost Trolls: Three-eyed, ape-like carnivorous horrors dwelling across Tamriel. Possess legendary rapid tissue regeneration—wounds seal within seconds unless cauterized with Fire spells or torches. Frost trolls in Skyrim's glaciers are larger and exceptionally lethal.\n• Giants & Sea Giants: Colossal nomadic humanoids herding mammoths in Skyrim's tundras and coasts. Wield giant carved clubs capable of launching targets into the sky; peaceful unless their mammoth herds or camps are threatened.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8007,
-      "key": ["golem", "golems", "construct", "constructs", "animunculi", "stone golem", "iron golem", "dwemer animunculi"],
-      "secondary_key": [],
-      "content": "GOLEMS & MAGICAL CONSTRUCTS:\n• Stone & Iron Golems: Colossal artificial automata sculpted from bedrock, obsidian, or enchanted metals and given artificial life through high-tier binding magic. Possess monumental strength, extreme natural damage resistance, and total immunity to bleeding, disease, poison, paralysis, and mind magic.",
+      "key": ["minotaur", "minotaurs", "chimera", "mantikora", "harpy", "harpies", "gargoyle", "gargoyles", "medusa", "lamia", "lamias", "faun", "fauns"],
+      "secondary_key": ["monster", "hybrid", "ruins"],
+      "content": "MONSTROUS HYBRIDS & CHIMERAS:\n• Minotaurs: Bull-headed, horned humanoids with enormous physical strength, descendants of Morihaus. Guardian protectors of ancient ruins and glades, wielding massive warhammers.\n• Chimeras & Mantikoras: Terrible composite beasts blending lion, serpent, gryphon, and scorpion traits, capable of sweeping tail venom and triple-element breath attacks.\n• Harpies: Carnivorous bird-women nesting in coastal crags of High Rock and Hammerfell. Emit sonic shrieks to disorient prey before diving with talons.\n• Gargoyles: Stone-skinned vampiric gargoyles that remain dormant as statues until prey nears, draining health through claw slashes and petrifying bursts.\n• Lamias & Medusas: Serpentine humanoids with female torsos and scaly snake tails, inhabiting swamps and ruins. Lamias cast shock magic and aquatic shrieks; Medusas petrify with gaze.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8008,
-      "key": ["nature spirit", "nature spirits", "spriggan", "spriggans", "faerie", "faeries", "nymph"],
-      "secondary_key": [],
-      "content": "NATURE SPIRITS & FAERIES:\n• Spriggans: Guardians of pristine forests, glades, and sacred groves in Valenwood and High Rock. Formed of living wood, vines, and sap, they heal wounds rapidly and command local wildlife. Highly susceptible to Fire and axe cleaves.\n• Faeries & Nymphs: Enigmatic nature spirits speaking ancient tongues. Playful or hostile tricksters wielding nature illusions and charm magic.",
+      "key": ["wamasu", "haj mota", "hadolid", "argonian behemoth", "dune ripper", "duneracer", "wormmouth", "lizardman", "lizardmen", "reef viper"],
+      "secondary_key": ["reptile", "swamp", "black marsh", "hammerfell"],
+      "content": "REPTILES, SWAMP BEASTS & DESERT PREDATORS:\n• Wamasu: Gigantic, four-legged electrical reptilian leviathans native to the swamplands of Black Marsh. Discharge arcing lightning from dorsal spines and deliver crushing jaw snaps.\n• Haj Mota: Carnivorous shelled ambush reptiles dwelling in Murkmire and Black Marsh bogs. Submerge beneath mud and burst upward to crush prey within spiked carapaces.\n• Hadolids: Armored crustacean-amphibious humanoids from the Systres Archipelago, wielding coral tridents.\n• Dune Rippers & Duneracers: Armored predatory subterranean beasts tunneling beneath Hammerfell and Alik'r sands to swallow unwary desert travelers.\n• Wormmouths: Bipedal, beakless reptilian horrors with gaping circular mouths, native to Hammerfell's crags and badlands.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 8009,
-      "key": ["werebeast", "werebeasts", "lycanthrope", "lycanthropes", "werewolf", "werewolves", "wereboar", "wereboars", "lycanthropy"],
-      "secondary_key": [],
-      "content": "WEREBEASTS & LYCANTHROPY:\n• Werewolves & Wereboars: Mortals afflicted with the curse of Hircine (Sanies Lupinus). In beast form, they gain supernatural speed, night vision, and devastating claw attacks. Highly resistant to physical trauma, vulnerable only to Silver weaponry and wolfsbane remedies.",
+      "key": ["guar", "kagouti", "alit", "netch", "bull netch", "nix-hound", "nix-ox", "silt strider", "durzog", "durzogs", "echatere"],
+      "secondary_key": ["morrowind", "ashland", "wrothgar"],
+      "content": "EXOTIC PROVINCIAL BEASTS & FAUNA:\n• Guar: Bipedal, docile reptilian pack beasts and mounts across Morrowind and Black Marsh, possessing rounded snouts and stout legs.\n• Kagouti & Alit: Aggressive bipedal reptilian predators of Morrowind. Kagouti have massive tusks and armored crests; Alit consist of a giant toothy head on two powerful leaping legs.\n• Netch & Bull Netch: Floating, gas-filled aerial creatures drifting over Vvardenfell. Bull netches are aggressively territorial, shocking intruders with poisonous electric tentacles.\n• Nix-Hounds & Nix-Oxen: Arthropods of Morrowind. Nix-hounds are predatory eight-legged stalkers draining bodily fluids; Nix-oxen are massive six-legged beetles used for heavy hauling.\n• Silt Striders: Giant domesticated arthropods towering over towns, used for swift transport throughout Morrowind.\n• Durzog: Armored reptilian hound-beasts of Wrothgar, trained by Goblins and Reachmen for tracking.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8010,
+      "key": ["spriggan", "spriggans", "lurcher", "lurchers", "wispmother", "wispmothers", "wisp", "wisps", "hagraven", "hagravens", "gryphon", "gryphons", "indrik", "indriks"],
+      "secondary_key": ["nature", "spirit", "forest", "magic"],
+      "content": "FOREST SPIRITS, WITCHES & AVIAN BEASTS:\n• Spriggans: Guardians of sacred woodlands, carved of living wood, bark, and glowing green sap. Heal nearby fauna and cast blinding swarms of stinging insects. Vulnerable to Fire spells.\n• Lurchers: Corrupted plant abominations animated by dark nature magic, resembling lumbering tree-giants with glowing blighted cores.\n• Wispmothers & Wisps: Ghostly, floating frost entities haunting freezing mountains and ruins. They lure mortals with glowing wisp lights before freezing them with blizzard illusions.\n• Hagravens: Cursed bird-crone witches who traded humanity for avian feathers and dark reach magic, commanding briarhearts and blood rituals.\n• Gryphons & Indriks: Majestic beasts of Summerset; Gryphons are winged avian-feline apex predators, while Indriks are enchanted four-antlered deer channeling elemental magic.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8011,
+      "key": ["undead", "skeleton", "skeletons", "zombie", "zombies", "ghoul", "ghouls", "draugr", "mummy", "mummies", "bone colossus", "flesh colossus", "ayleid wight"],
+      "secondary_key": ["necromancy", "corpse", "tomb", "crypt"],
+      "content": "CORPOREAL UNDEAD & BONE TITANS:\n• Skeletons & Zombies: Animated skeletal remains and decaying cadavers summoned by necromancers. Immune to bleeding, disease, poison, and paralysis. Vulnerable to blunt bludgeoning damage and holy magic.\n• Draugr & Ayleid Wights: Ancient cursed warriors entombed in Nordic barrows and Ayleid crypts. Retain weapon mastery, heavy armor, and in rare cases, devastating Thu'um shouts.\n• Mummies: Embalmed ancient corpses preserving dark curses, vulnerable to flame.\n• Bone Colossi: Gigantic juggernauts assembled from hundreds of fused human skeletons, animated by high necromancy to crush entire battle lines.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8012,
+      "key": ["ghost", "ghosts", "wraith", "wraiths", "spectre", "spectres", "shade", "mournful aegis", "forest wraith", "ice wraith"],
+      "secondary_key": ["incorporeal", "spirit", "phantom", "silver"],
+      "content": "INCORPOREAL UNDEAD & SPECTRES:\n• Ghosts & Spectres: Translucent phantom spirits bound to earth by trauma or unfinished deeds. Immune to mundane iron and steel weapons; can ONLY be harmed by Silver, Elven, Dwarven, Mithril, Adamantium, Ebony, Daedric weapons, or Magical destruction spells.\n• Wraiths: Malevolent, hooded spectral horrors radiating an aura of freezing gloom that drains willpower and vitality.\n• Mournful Aegis: Spectral floating suits of enchanted armor wielding multiple spirit swords simultaneously.\n• Ice Wraiths: Undulating serpents of pure glacial cold soaring through blizzards to impale victims.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8013,
+      "key": ["vampire", "vampires", "vampire lord", "bloodknight", "death hound", "lich", "liches", "nether lich", "dragon priest", "dragon priests"],
+      "secondary_key": ["undead", "blood", "magic", "phylactery"],
+      "content": "VAMPIRIC LORDS & SUPREME LICHES:\n• Vampires & Bloodknights: Immortal predators afflicted with vampirism from Molag Bal. Wield illusion, superhuman agility, mist transformation, and blood drain magic.\n• Vampire Lords: Monstrous bat-winged humanoid forms assumed by pure-blood vampires, hovering above combat while casting soul-draining blood magic.\n• Death Hounds: Vampiric canines with frost-coated fangs and glowing crimson eyes.\n• Liches & Nether Liches: Supreme sorcerers who achieved immortality by binding their souls into phylacteries. Cast apocalyptic destruction magic and command legions of undead.\n• Dragon Priests: Ancient Nordic warlords entombed in golden masks and ceremonial robes, commanding draconic fire, frost, and shock staves.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8014,
+      "key": ["dwarven automaton", "dwemer automaton", "dwarven centurion", "dwarven colossus", "dwarven sphere", "dwarven spider", "dwarven arquebus", "dwarven sentry", "animunculi"],
+      "secondary_key": ["dwemer", "steam", "construct", "metal"],
+      "content": "DWARVEN AUTOMATONS (ANIMUNCULI):\n• Dwarven Centurions: Massive steam-powered brass titans guarding Dwemer ruins. Armed with heavy warhammers and axes, venting scalding steam and high-pressure steam blasts.\n• Dwarven Colossi: Immense bipedal siege constructs armed with flamethrowers and sweeping blade arms.\n• Dwarven Spheres: Fast, gyroscopic rolling spheres that unfold into bipedal clockwork warriors wielding a sword arm and built-in repeating crossbow.\n• Dwarven Spiders: Multi-legged arachnid constructs serving as scouts and repair units, leaping to shock intruders with electricity.\n• Dwarven Arquebuses & Sentries: Specialized flying or stationary turrets discharging flame, gas, and electrical bolts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8015,
+      "key": ["dreugh", "land dreugh", "spider", "giant spider", "chaurus", "hoarvor", "hoarvors", "assassin beetle", "thunderbug", "shalk", "voriplasm", "yaghra"],
+      "secondary_key": ["invertebrate", "chitin", "poison", "insect"],
+      "content": "INVERTEBRATES, CHITIN PREDATORS & SWARMS:\n• Dreugh & Land Dreugh: Ancient armored aquatic horrors that undergo annual land metamorphosis (karvinasim), attacking with heavy chitin pincer-claws and shock magic.\n• Giant Spiders: Venomous web-spinners lurking in caverns, injecting paralyzing venom that degrades agility.\n• Chaurus: Blind, armored subterranean insect predators bred by Falmer, spitting corrosive acid and striking with mandibles.\n• Hoarvors: Bloated, tick-like parasites infesting marshlands and caves, draining blood and spreading virulent rot.\n• Shalk & Thunderbugs: Ash beetles spitting fire in Morrowind, and blue-shelled beetles discharging electric arcs in deserts.\n• Voriplasms: Sentient, acidic green slime puddles in Black Marsh capable of absorbing corpses and melting metal.\n• Yaghra: Abyssal sea-chitin monstrosities emerging from the ocean depths with barnacle-encrusted limbs.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8016,
+      "key": ["wolf", "wolves", "snow wolf", "dire wolf", "sabre cat", "bear", "cave bear", "snow bear", "lion", "senche", "senche-raht", "mammoth", "skeever", "giant rat"],
+      "secondary_key": ["mammal", "predator", "beast"],
+      "content": "MAMMALS & APEX PREDATORS OF TAMRIEL:\n• Wolves & Dire Wolves: Pack hunters common to forests and mountains. Coordinate flanking charges and alpha howls.\n• Sabre Cats & Snow Sabre Cats: Massive felines with curved dagger fangs, ambushing prey in Skyrim and High Rock mountains with pounces.\n• Bears (Black, Brown, Cave, Snow): Enormous territorial beasts with thick fur and bone-crushing paw swipes.\n• Senche & Senche-Raht: Quadrupedal feline Khajiit morphs of Elsweyr, formidable apex hunters with predatory cunning.\n• Mammoths: Colossal woolly herbivores with quadruple tusks, roaming Skyrim's tundra under Giant protection.\n• Skeevers & Giant Rats: Large, aggressive rodents infesting sewers and dungeons, transmitting Swamp Rot and Ataxia.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8017,
+      "key": ["werewolf", "werewolves", "werebear", "werebears", "wereboar", "wereboars", "werewolf behemoth", "lycanthrope", "lycanthropes", "lycanthropy"],
+      "secondary_key": ["hircine", "curse", "silver", "beast form"],
+      "content": "WEREBEASTS & LYCANTHROPES:\n• Werewolves & Wereboars: Mortals cursed by Hircine with Sanies Lupinus. In beast form, they gain supernatural leaping speed, nocturnal vision, and devastating claw mauls. Immune to disease; highly resistant to standard weapons, vulnerable to Silver weaponry.\n• Werebears: Massive Ursine lycanthropes native to Skyrim and Solstheim, possessing immense brute power.\n• Werewolf Behemoths: Hulking, mutated lycanthropic titans with thickened hide and elongated limbs, capable of tearing through fortification gates.",
       "enabled": true,
       "priority": 10,
       "probability": 100

@@ -919,37 +919,35 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
         full_profile_block = "Character: Eternal Champion, Adventurer in Tamriel."
 
     seed_text = (user_input or "").strip()
-    if seed_text:
-        system_instruction = (
-            "Rewrite and rephrase the player's action for the roleplay while maintaining strict narrative continuity.\n"
-            "Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}, who is the active speaker/actor.\n"
-            "Tense: Strict PRESENT TENSE (e.g. 'I inspect the wall...', 'I reach for the key...'). Never use past tense.\n"
-            "Format: Use *Italics* for narration and plain text without quotation marks for dialogue.\n"
-            "Preserve story fidelity, resolve typos or awkward phrasing, and retain player intent."
-        )
+    
+    system_instruction = (
+        "Generate {{user}}'s next action in the Elder Scrolls roleplay.\n"
+        "- Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}.\n"
+        "- Tense: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
+        "- Format: *Italics* for physical actions and plain text for spoken dialogue.\n"
+        "- Grounding: Use clear, direct, immersive fantasy actions. Avoid surreal metaphors, modern idioms, or echoing awkward phrasing.\n"
+        "- Restraint: Focus purely on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or DM-level world changes."
+    )
+    
+    if seed_text and len(seed_text.split()) <= 15:
+        # Short player guidance / seed intent
         prompt = (
             f"### USER CHARACTER PROFILE & STATUS\n"
             f"{replace_placeholders(full_profile_block)}\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{replace_placeholders(history_text)}\n\n"
-            f"### ORIGINAL USER ACTION\n"
+            f"### PLAYER INTENT\n"
             f"{replace_placeholders(seed_text)}\n\n"
-            f"Rephrase and refine the user action above in first person present tense, preserving story fidelity:"
+            f"Generate a natural first-person present-tense action for {{user}} carrying out this intent (avoid narrating outcomes):"
         )
     else:
-        system_instruction = (
-            "Generate the player's next action in the roleplay.\n"
-            "Perspective: Always write in the FIRST PERSON ('I', 'my') as {{user}}, who is the active speaker/actor.\n"
-            "Tense: Strict PRESENT TENSE (e.g. 'I examine the lock...', 'I ask Ria about the gate...'). Never use past tense.\n"
-            "Format: Use *Italics* for narration and plain text without quotation marks for dialogue.\n"
-            "Keep actions actionable and in character."
-        )
+        # Fresh action or reroll alternative
         prompt = (
             f"### USER CHARACTER PROFILE & STATUS\n"
             f"{replace_placeholders(full_profile_block)}\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{replace_placeholders(history_text)}\n\n"
-            f"Generate a succinct first person present tense action for {{user}}:"
+            f"Generate a fresh, natural first-person present-tense action for {{user}} responding to the current situation (avoid narrating outcomes):"
         )
     
     try:
@@ -1037,7 +1035,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
     chat_history = asyncio.run(runner.get_history(session_id))
     temperature = load_temperature()
 
-    recent_history = chat_history[-6:] if len(chat_history) > 6 else chat_history
+    recent_history = chat_history[-2:] if len(chat_history) > 2 else chat_history
     history_text = ""
     for msg in recent_history:
         role = "User" if msg.get('role') == 'user' else "Program"
@@ -1841,7 +1839,9 @@ from core.skills.vectorized_databank.databank import DataBankManager
 @requires_auth
 def databank_list_files():
     try:
-        manager = DataBankManager()
+        from utils.program import get_active_program
+        prog_id = request.args.get('program_id') or get_active_program()
+        manager = DataBankManager(program_id=prog_id)
         files = manager.list_documents()
         return jsonify({"files": files})
     except Exception as e:
@@ -1860,6 +1860,8 @@ def databank_upload():
         
     temp_path = None
     try:
+        from utils.program import get_active_program
+        prog_id = request.form.get('program_id') or get_active_program()
         # Create temp folder inside workspace for uploads
         temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_uploads")
         os.makedirs(temp_dir, exist_ok=True)
@@ -1870,7 +1872,7 @@ def databank_upload():
         temp_path = os.path.join(temp_dir, filename)
         uploaded_file.save(temp_path)
         
-        manager = DataBankManager()
+        manager = DataBankManager(program_id=prog_id)
         doc_id = manager.ingest_file(temp_path, uploaded_file.filename)
         return jsonify({"status": "success", "id": doc_id})
     except Exception as e:
@@ -1889,12 +1891,15 @@ def databank_upload():
 @app.route('/api/databank/scrape', methods=['POST'])
 @requires_auth
 def databank_scrape():
-    url = request.json.get('url')
+    req_json = request.get_json(silent=True) or {}
+    url = req_json.get('url')
     if not url:
         return jsonify({"error": "Missing URL"}), 400
         
     try:
-        manager = DataBankManager()
+        from utils.program import get_active_program
+        prog_id = req_json.get('program_id') or get_active_program()
+        manager = DataBankManager(program_id=prog_id)
         doc_id = manager.ingest_url(url)
         return jsonify({"status": "success", "id": doc_id})
     except Exception as e:
@@ -1904,12 +1909,15 @@ def databank_scrape():
 @app.route('/api/databank/delete', methods=['POST'])
 @requires_auth
 def databank_delete():
-    doc_id = request.json.get('id')
+    req_json = request.get_json(silent=True) or {}
+    doc_id = req_json.get('id')
     if not doc_id:
         return jsonify({"error": "Missing document ID"}), 400
         
     try:
-        manager = DataBankManager()
+        from utils.program import get_active_program
+        prog_id = req_json.get('program_id') or get_active_program()
+        manager = DataBankManager(program_id=prog_id)
         success = manager.delete_document(doc_id)
         if success:
             return jsonify({"status": "success"})
@@ -1923,11 +1931,15 @@ def databank_delete():
 @requires_auth
 def databank_purge():
     try:
-        manager = DataBankManager()
+        from utils.program import get_active_program
+        req_json = request.get_json(silent=True) or {}
+        prog_id = req_json.get('program_id') or request.args.get('program_id') or get_active_program()
+        manager = DataBankManager(program_id=prog_id)
         manager.purge_all()
         return jsonify({"status": "success"})
     except Exception as e:
         print(f"Error purging databank: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # ---------------------------------------------------------------------------
 # Lorebook routes
@@ -2167,10 +2179,9 @@ def list_quests():
         if current_stage:
             quests.append({
                 "id": f"main_quest_stage_{current_stage_num}",
-                "title": f"Main Quest: {current_stage.get('label', 'Escape the Imperial Dungeon')}",
+                "title": current_stage.get('label', 'Escape the Imperial Dungeon'),
                 "stage_number": current_stage_num,
                 "objectives": current_stage.get("objectives", []),
-                "due": "Active Chapter",
                 "location": f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}",
                 "is_main_quest": True
             })
@@ -2181,19 +2192,31 @@ def list_quests():
             if s_num < current_stage_num:
                 completed_quests.append({
                     "id": f"main_quest_stage_{s_num}",
-                    "title": f"Main Quest: {s.get('label', f'Stage {s_num}')}",
+                    "title": s.get('label', f'Stage {s_num}'),
                     "stage_number": s_num,
                     "objectives": s.get("objectives", [])
                 })
 
         # 3. Companion / Local Side Quests
         active_program = get_active_program()
-        quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
+        program_dir = os.path.join('core', 'programs', active_program)
+        quests_path = os.path.join(program_dir, 'quest_log.json')
         if os.path.exists(quests_path):
             with open(quests_path, 'r', encoding='utf-8') as f:
                 comp_quests = json.load(f)
                 if isinstance(comp_quests, list):
                     quests.extend(comp_quests)
+
+        # 4. Archived History (Completed Stages & Failed Side Quests)
+        history_path = os.path.join(program_dir, 'quest_history.json')
+        if os.path.exists(history_path):
+            try:
+                with open(history_path, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                if isinstance(history, list):
+                    completed_quests.extend(history)
+            except Exception:
+                pass
                 
         return jsonify({
             "quests": quests,
@@ -2225,45 +2248,60 @@ def delete_quest(quest_id):
         print(f"Error deleting quest {quest_id}: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/quests/<quest_id>/complete', methods=['POST'])
+
+@app.route('/api/quests/<quest_id>/abandon', methods=['POST'])
 @requires_auth
-def complete_quest(quest_id):
+def abandon_quest(quest_id):
     try:
         from utils.program import get_active_program
         active_program = get_active_program()
-        quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
+        program_dir = os.path.join('core', 'programs', active_program)
+        quests_path = os.path.join(program_dir, 'quest_log.json')
+        history_path = os.path.join(program_dir, 'quest_history.json')
         quest_data = None
         
         if os.path.exists(quests_path):
             with open(quests_path, 'r', encoding='utf-8') as f:
                 quests = json.load(f)
-            quest_data = next((q for q in quests if q['id'] == quest_id), None)
+            quest_data = next((q for q in quests if q.get('id') == quest_id), None)
             if quest_data:
-                quests = [q for q in quests if q['id'] != quest_id]
+                quests = [q for q in quests if q.get('id') != quest_id]
                 with open(quests_path, 'w', encoding='utf-8') as f:
                     json.dump(quests, f, indent=2, ensure_ascii=False)
         
         if not quest_data:
             return jsonify({"error": "Quest not found"}), 404
+
+        # Archive as failed in quest_history.json
+        quest_data["status"] = "failed"
+        history = []
+        if os.path.exists(history_path):
+            try:
+                with open(history_path, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                if not isinstance(history, list):
+                    history = []
+            except Exception:
+                history = []
+        history.append(quest_data)
+        with open(history_path, 'w', encoding='utf-8') as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
             
         session_id = 'default'
         if request.is_json:
             session_id = request.json.get('session_id', 'default')
             
         title = quest_data.get("title", "")
-        objectives = quest_data.get("objectives", [])
-        obj_text = f" with objectives: {', '.join(objectives)}" if objectives else ""
-        system_message = f"[SYSTEM: User has completed the quest: \"{title}\"{obj_text}]"
+        system_message = f"[SYSTEM: Player has abandoned and failed the side quest: \"{title}\"]"
         
         asyncio.run(runner.append_message_to_session(session_id, "user", system_message))
         
         return jsonify({
             "status": "success",
-            "title": title,
-            "objectives": objectives
+            "title": title
         })
     except Exception as e:
-        print(f"Error completing quest {quest_id}: {e}")
+        print(f"Error abandoning quest {quest_id}: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/quests/<quest_id>/download', methods=['GET'])

@@ -1,20 +1,31 @@
 """
-utils/lorebook.py — ST-compatible lorebook engine.
+utils/lorebook.py — ST-compatible hybrid lorebook engine (Keyword + Vector).
 
 Loads World Info entries from:
   1. data.character_book in the active program's card JSON
   2. Standalone .json files in core/programs/<program>/lorebooks/
+  3. Global World & Mechanics Lorebooks (core/lorebooks/)
 
 Normalizes both ST standalone dict-of-entries and chara_card_v3
-list-of-entries formats into a single internal schema, then
-keyword-scans recent chat messages to return triggered content.
+list-of-entries formats into a single internal schema, then executes
+hybrid matching:
+  - Deterministic: Constant entries & exact keyword matching (keys + secondary_keys)
+  - Semantic: Vector embeddings via SentenceTransformer / MiniLM-L6 with in-memory caching
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import random
+from typing import Any
+
+# In-memory vector cache keyed by entry content hash: {hash: np.ndarray}
+_entry_vector_cache: dict[str, Any] = {}
+SEMANTIC_THRESHOLD: float = 0.38
+MAX_SEMANTIC_MATCHES: int = 4
+DEFAULT_SCAN_DEPTH: int = 4  # messages (not turns)
 
 
 # ---------------------------------------------------------------------------
@@ -71,14 +82,14 @@ def _parse_lorebook(book: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Matching
+# Matching: Keyword & Vector
 # ---------------------------------------------------------------------------
 
 def _matches_keys(keys: list[str], scan_text: str) -> bool:
     return any(k and k in scan_text for k in keys)
 
 
-def _entry_triggers(entry: dict, scan_text: str) -> bool:
+def _entry_keyword_triggers(entry: dict, scan_text: str) -> bool:
     if entry["constant"]:
         return True
     if not _matches_keys(entry["keys"], scan_text):
@@ -92,12 +103,97 @@ def _entry_triggers(entry: dict, scan_text: str) -> bool:
     return True
 
 
+def _compute_entry_hash(entry: dict) -> str:
+    key_str = ",".join(entry["keys"])
+    raw = f"{key_str}::{entry['content']}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _get_embedding_model():
+    try:
+        from core.skills.vectorized_databank.databank import get_embedding_model
+        return get_embedding_model()
+    except Exception as e:
+        print(f"[lorebook] Embedding model unavailable for vector retrieval: {e}")
+        return None
+
+
+def _perform_vector_scan(
+    candidate_entries: list[dict],
+    query_text: str,
+    threshold: float = SEMANTIC_THRESHOLD,
+    max_matches: int = MAX_SEMANTIC_MATCHES,
+) -> list[dict]:
+    """Computes semantic similarity for candidate lorebook entries against query text."""
+    if not candidate_entries or not query_text.strip():
+        return []
+
+    try:
+        import numpy as np
+        model = _get_embedding_model()
+        if model is None:
+            return []
+
+        # 1. Encode query
+        query_vec = model.encode(query_text)
+        query_norm = np.linalg.norm(query_vec)
+        if query_norm == 0:
+            return []
+
+        # 2. Ensure all candidate entries have cached embeddings
+        uncached_entries = []
+        uncached_texts = []
+        uncached_hashes = []
+
+        for entry in candidate_entries:
+            e_hash = _compute_entry_hash(entry)
+            if e_hash not in _entry_vector_cache:
+                uncached_entries.append(entry)
+                # Combine keys and content for comprehensive representation
+                keys_prefix = f"Keys: {', '.join(entry['keys'])}\n" if entry["keys"] else ""
+                uncached_texts.append(f"{keys_prefix}{entry['content']}")
+                uncached_hashes.append(e_hash)
+
+        if uncached_texts:
+            new_vectors = model.encode(uncached_texts)
+            for h, vec in zip(uncached_hashes, new_vectors):
+                _entry_vector_cache[h] = vec
+
+        # 3. Calculate cosine similarity
+        scored_entries: list[tuple[float, dict]] = []
+        for entry in candidate_entries:
+            if entry["probability"] < 100:
+                if random.randint(1, 100) > entry["probability"]:
+                    continue
+
+            e_hash = _compute_entry_hash(entry)
+            vec = _entry_vector_cache.get(e_hash)
+            if vec is None:
+                continue
+
+            entry_norm = np.linalg.norm(vec)
+            if entry_norm == 0:
+                continue
+
+            similarity = float(np.dot(query_vec, vec) / (query_norm * entry_norm))
+            if similarity >= threshold:
+                # If selective is set, ensure secondary keys are respected if present
+                if entry["selective"] and entry["secondary_keys"]:
+                    if not _matches_keys(entry["secondary_keys"], query_text.lower()):
+                        continue
+                scored_entries.append((similarity, entry))
+
+        scored_entries.sort(key=lambda item: item[0], reverse=True)
+        return [item[1] for item in scored_entries[:max_matches]]
+
+    except Exception as e:
+        print(f"[lorebook] Vector search error: {e}")
+        return []
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-
-DEFAULT_SCAN_DEPTH = 4  # messages (not turns)
-
 
 def get_active_lore(
     program_id: str,
@@ -106,7 +202,7 @@ def get_active_lore(
 ) -> tuple[list[str], list[str]]:
     """
     Return (before_entries, after_entries) — triggered lore content strings.
-    before: injected before character block; after: injected after.
+    Hybrid matching: Evaluates keyword triggers, then semantic vector triggers.
     Scans:
       1. Global World & Mechanics Lorebooks (core/lorebooks/)
       2. Follower Card character_book
@@ -173,14 +269,21 @@ def get_active_lore(
         (m.get("text") or "").lower() for m in scan_msgs[-max_depth:]
     )
 
-    # 5. Evaluate and sort
-    triggered = sorted(
-        [e for e in all_entries if _entry_triggers(e, scan_text)],
-        key=lambda e: e["order"],
-    )
+    # 5. Hybrid matching:
+    # A. Deterministic keyword / constant pass
+    keyword_triggered = [e for e in all_entries if _entry_keyword_triggers(e, scan_text)]
+    keyword_set = set(id(e) for e in keyword_triggered)
 
-    before = [e["content"] for e in triggered if e["position"] == "before"]
-    after  = [e["content"] for e in triggered if e["position"] == "after"]
+    # B. Vector semantic pass for non-triggered entries
+    non_triggered_candidates = [e for e in all_entries if id(e) not in keyword_set and not e["constant"]]
+    vector_triggered = _perform_vector_scan(non_triggered_candidates, scan_text)
+
+    # Combine all triggered entries and sort by order
+    combined_triggered = keyword_triggered + [e for e in vector_triggered if id(e) not in keyword_set]
+    combined_triggered.sort(key=lambda e: e["order"])
+
+    before = [e["content"] for e in combined_triggered if e["position"] == "before"]
+    after  = [e["content"] for e in combined_triggered if e["position"] == "after"]
     return before, after
 
 

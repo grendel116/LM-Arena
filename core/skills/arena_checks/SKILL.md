@@ -1,48 +1,34 @@
 ---
 name: arena_checks
-description: "Resolves D20 attribute checks, specialized skill tests (lockpicking, stealth, persuasion, climbing), Sorcerer spell absorption, and custom spellmaking."
-summary: "Roll raw attribute tests with [arena_roll_check], specialized skill checks with [arena_roll_skill], Sorcerer spell absorption with [arena_sorcerer_absorb], and design spells with [arena_create_spell]."
+description: "Resolves D20 attribute checks, skill tests, Sorcerer spell absorption, and custom spellmaking."
+summary: "Prompt player checks with [arena_request_skill_check], roll NPC checks with [arena_roll_check], and resolve spells."
 retrieval: vector
 ---
 
 # ATTRIBUTE & SKILL CHECK PROTOCOLS
 
-When the narrative requires an action or reaction with skill:
-
-## 1. Player Skill Checks (Active Player Reactions)
-- When the player character attempts a risky maneuver, stealth action, spell attack, lockpicking, athletic feat, or social check:
+## 1. Player Skill Checks
+- Prompt player D20 tests for uncertain or risky actions:
   `[arena_request_skill_check(skill_name="...", attribute_name="...", dc=..., reason="...")]`
-- Narrate the dramatic scene setup and rising tension in full detail before outputting the skill check tool tag.
-- When the player casts a spell during a skill check, deduct the Magicka cost in the same turn: `[arena_spend_magicka(amount=...)]`.
-- This tool freezes the input area and prompts the player to roll their glowing D20 dice directly.
-- Standard Difficulty Classes (DC):
+- **Suspense & Timing**: Describe the setup and initiation of the attempt. Conclude your turn immediately at the moment of action.
+- **Resolution**: Do not narrate the outcome in the prompt message. Resolve success or failure in the following response once the player rolls.
+- When casting spells during checks, deduct Magicka in the same turn: `[arena_spend_magicka(amount=...)]`.
+- **Difficulty Classes**:
   - Easy: DC 10
   - Standard: DC 15
   - Challenging: DC 20
   - Legendary: DC 25
 
-## 2. NPC & Monster Checks (DM Rolls)
-- When an NPC or monster attempts a check or saving throw:
+## 2. NPC & Monster Checks
+- Resolve NPC actions, creature attacks, and saving throws immediately:
   `[arena_roll_check(attribute_name="...", attribute_value=..., dc=...)]`
-  or
   `[arena_roll_skill(skill_name="...", attribute_name="...", attribute_value=..., dc=...)]`
-- The DM rolls directly only for NPCs, creatures, and environmental occurrences.
 
+## 3. Spell Absorption & Custom Spells
+- Negate incoming spells for Sorcerers: `[arena_sorcerer_absorb(intelligence=..., willpower=..., incoming_spell_tier=...)]`
+- Create and memorize custom spells: `[arena_create_spell(...)]` -> `[arena_learn_spell(...)]`
 
-## 3. Sorcerer Spell Absorption
-- When an enemy spell is cast at a Sorcerer class player:
-  `[arena_sorcerer_absorb(intelligence=..., willpower=..., incoming_spell_tier=...)]`
-- If successful, the incoming spell is negated and converted into player Spell Points.
-
-## 4. Custom Spellmaker
-- When the player creates or designs a custom spell:
-  `[arena_create_spell(spell_description="...", school="...", tier=..., caster_intelligence=...)]`
-- Followed by learning the spell card:
-  `[arena_learn_spell(spell_name="...", school="...", tier=..., sp_cost=...)]`
-- Expending spell points during casting:
-  `[arena_spend_spell_points(amount=...)]`
-
-## 5. Narrative Style
-- Interpret the roll result directly into descriptive action.
-- On success: describe clean execution (e.g. the lock tumblers clicking open, the footsteps silent against stone).
-- On failure: describe complications or tension (e.g. the lockpick bending with a sharp snap, the scrape of gravel alerting a sentry).
+## 4. Narrative Integration
+- Translate roll results into immediate physical consequences.
+- **Success**: Clean execution and tactical advantage.
+- **Failure**: Complications, resistance, and rising danger.

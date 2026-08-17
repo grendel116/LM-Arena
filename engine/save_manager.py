@@ -131,8 +131,9 @@ def read_save(save_id: str = None) -> dict:
             "character": {},
             "world": {},
             "history": [],
-            "memories": [],
-            "databank": [],
+            "memories": {"documents": [], "chunks": []},
+            "databank": {"documents": [], "chunks": []},
+            "journals": [],
             "profile": ""
         }
         
@@ -320,8 +321,9 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
         "character": sheet,
         "world": world_state,
         "history": history,
-        "memories": [],
-        "databank": [],
+        "memories": {"documents": [], "chunks": []},
+        "databank": {"documents": [], "chunks": []},
+        "journals": [],
         "profile": profile_content
     }
     return bundle

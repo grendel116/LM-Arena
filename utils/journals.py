@@ -8,13 +8,27 @@ from variables import PROGRAMS_DIR
 
 def get_journal_entries(program_id: str = None) -> list:
     try:
-        from engine.save_manager import get_active_save_id, read_save
-        bundle = read_save(get_active_save_id())
-        entries = bundle.get("databank", []) or bundle.get("journals", [])
-        if isinstance(entries, list):
-            return entries
-        if isinstance(entries, dict):
-            return entries.get("documents", [])
+        from engine.save_manager import get_active_save_id, read_save, write_save
+        save_id = get_active_save_id()
+        bundle = read_save(save_id)
+        
+        # 1. Direct journals key
+        journals = bundle.get("journals")
+        if isinstance(journals, list) and journals:
+            return journals
+            
+        # 2. Check if legacy save placed journal entries inside databank
+        db_val = bundle.get("databank")
+        if isinstance(db_val, list) and db_val:
+            # Check if these are journal entries (with 'keyphrases' or 'content')
+            if any("keyphrases" in e or "content" in e for e in db_val if isinstance(e, dict)):
+                bundle["journals"] = db_val
+                bundle["databank"] = {"documents": [], "chunks": []}
+                write_save(save_id, bundle)
+                return db_val
+                
+        if isinstance(journals, list):
+            return journals
     except Exception as e:
         print(f"Error loading journals from save bundle: {e}")
     return []
@@ -24,8 +38,10 @@ def save_journal_entries(entries: list, program_id: str = None):
         from engine.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()
         bundle = read_save(save_id)
-        bundle["databank"] = entries
         bundle["journals"] = entries
+        # Ensure databank is properly structured if it was previously a list
+        if isinstance(bundle.get("databank"), list):
+            bundle["databank"] = {"documents": [], "chunks": []}
         write_save(save_id, bundle)
     except Exception as e:
         print(f"Error saving journals to save bundle: {e}")

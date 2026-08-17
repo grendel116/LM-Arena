@@ -149,13 +149,11 @@ def get_compiled_instructions() -> str:
 
     global_formatting = (
         "\n\n# MESSAGE FORMAT & NARRATIVE PERSPECTIVE\n"
-        "- TENSE: Strict PRESENT TENSE for all narration and dialogue (e.g. 'Ria watches...', 'You step forward...'). Never use past tense.\n"
-        "- FORMAT: Use separate lines and clear paragraphs. Narration: *italics*. Dialogue: plain text without quotes.\n"
-        "- PERSPECTIVE & ADDRESS:\n"
-        "  1. Address {{user}} directly in SECOND PERSON ('you', 'your'). {{user}} is always the direct subject being spoken to by the program.\n"
-        "  2. Describe all other characters, companions, and NPCs in THIRD PERSON PRESENT TENSE (e.g. 'Ria flinches slightly...', 'Jagar Tharn laughs...').\n"
-        "- ATMOSPHERE: Gritty, kinetic atmosphere with anthropological depth and distinct character voices.\n"
-        "- RESTRAINT: Do not end with questions, choices, or mirrored clauses.\n"
+        "- FORMAT: Distinct paragraphs. Narration: *italics*. Spoken dialogue: plain text. Inscriptions, lore quotes, and written text: \"enclosed in quotes\".\n"
+        "- PERSPECTIVE: Address {{user}} directly in second person ('you', 'your'). Describe NPCs and environment in third person present tense.\n"
+        "- RESTRAINT: Never narrate outcomes or reactions for {{user}}'s actions.\n"
+        "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth.\n"
+
     )
 
     base += global_formatting

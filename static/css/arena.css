@@ -48,7 +48,7 @@ Theme overrides (Jinja) remain inline in the HTML template.
     --text-muted:       hsl(var(--slate-h), 10%, 65%);
     --text-dim:         hsl(var(--slate-h), 10%, 45%);
     --arena-narration:  hsl(var(--gold-h), 45%, 58%);
-    --arena-dialogue:   hsl(var(--gold-h), 92%, 72%);
+    --arena-dialogue:   hsl(var(--gold-h), 80%, 58%);
     --quote-blue:       hsl(var(--blue-h), var(--blue-s), 72%);
 
     /* ═══════════════════════════════════════════════════════════════════════
@@ -862,8 +862,9 @@ body::-webkit-scrollbar-thumb:hover,
     stroke: var(--stamina-color) !important;
 }
 
-/* Pulsing Green Send Button on New Game Start (Exact 1:1 copy of dice button pulse) */
-.send-btn.start-game-pulse {
+/* Pulsing Green Send Button on New Game Start / Staged Skill Check Action */
+.send-btn.start-game-pulse,
+.send-btn.skill-check-send-pulse {
     position: relative;
     z-index: 5;
     opacity: 1 !important;
@@ -876,7 +877,8 @@ body::-webkit-scrollbar-thumb:hover,
     animation: radialSendGreenPulse 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.send-btn.start-game-pulse::after {
+.send-btn.start-game-pulse::after,
+.send-btn.skill-check-send-pulse::after {
     content: '';
     position: absolute;
     top: -2px;
@@ -889,7 +891,8 @@ body::-webkit-scrollbar-thumb:hover,
     animation: sendPulseRingExpand 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.send-btn.start-game-pulse:hover {
+.send-btn.start-game-pulse:hover,
+.send-btn.skill-check-send-pulse:hover {
     background: hsla(var(--green-h), var(--green-s), 50%, 0.28) !important;
     border-color: hsla(var(--green-h), var(--green-s), 60%, 0.9) !important;
     color: var(--stamina-color) !important;
@@ -897,11 +900,13 @@ body::-webkit-scrollbar-thumb:hover,
     transform: scale(1.08) !important;
 }
 
-.send-btn.start-game-pulse:active {
+.send-btn.start-game-pulse:active,
+.send-btn.skill-check-send-pulse:active {
     transform: scale(0.95) !important;
 }
 
-.send-btn.start-game-pulse svg {
+.send-btn.start-game-pulse svg,
+.send-btn.skill-check-send-pulse svg {
     stroke: var(--stamina-color) !important;
 }
 
@@ -3444,7 +3449,7 @@ input.onboarding-input {
     --arena-text-muted:     hsl(var(--slate-h), 11%, 65%);
     --arena-text-dim:       hsl(var(--slate-h), 9%, 46%);
     --arena-narration:      var(--arena-dull-gold); /* Dull gold for italics/narration */
-    --arena-dialogue:       hsl(var(--gold-h), 92%, 72%); /* Bright luminous gold for dialogue/quotes */
+    --arena-dialogue:       hsl(var(--gold-h), 80%, 58%); /* Radiant true gold for dialogue/quotes */
     --arena-system:         hsl(30, 25%, 60%);
     --arena-success:        hsl(120, 35%, 52%);
     --arena-danger:         hsl(0, 55%, 52%);
@@ -4458,6 +4463,39 @@ body, #app-container, #chat-container, .chat-container {
 
 .milestone-card.quest-complete::before {
     background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+}
+
+/* Tamriel Map Province Tooltip & Info Panel */
+#map-cursor-tooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 1000;
+    background: hsla(var(--slate-h), var(--slate-s), 9%, 0.96);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsla(var(--gold-h), var(--gold-s), 50%, 0.45);
+    border-radius: 8px;
+    padding: 8px 12px;
+    max-width: 260px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.85), 0 0 10px hsla(var(--gold-h), var(--gold-s), 50%, 0.2);
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+#map-province-info-panel {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: hsla(var(--slate-h), var(--slate-s), 9%, 0.85);
+    border: 1px solid hsla(var(--gold-h), var(--gold-s), 50%, 0.25);
+    border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+    #map-cursor-tooltip {
+        display: none !important;
+    }
 }
 
 .milestone-card.quest-complete .milestone-card-header {

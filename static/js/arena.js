@@ -171,19 +171,25 @@ async function renderTamrielMap() {
             </g>
         </svg>
 
-        <!-- Floating Cursor Tooltip -->
-        <div id="map-cursor-tooltip" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1000; background: hsla(var(--slate-h), var(--slate-s), 9%, 0.96); backdrop-filter: blur(12px); border: 1px solid hsla(var(--gold-h), var(--gold-s), 50%, 0.45); border-radius: 8px; padding: 10px 13px; max-width: 290px; box-shadow: 0 8px 24px rgba(0,0,0,0.85), 0 0 10px hsla(var(--gold-h), var(--gold-s), 50%, 0.2); opacity: 0; transform: scale(0.96); transition: opacity 0.12s ease, transform 0.12s ease;"></div>
+        <!-- Floating Cursor Tooltip (Desktop Hover Only) -->
+        <div id="map-cursor-tooltip" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1000; background: hsla(var(--slate-h), var(--slate-s), 9%, 0.96); backdrop-filter: blur(12px); border: 1px solid hsla(var(--gold-h), var(--gold-s), 50%, 0.45); border-radius: 8px; padding: 8px 12px; max-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,0.85), 0 0 10px hsla(var(--gold-h), var(--gold-s), 50%, 0.2); opacity: 0; transform: scale(0.96); transition: opacity 0.12s ease, transform 0.12s ease;"></div>
     `;
+
+    // Ensure dedicated province info panel exists underneath the map for mobile and clear inspection
+    let infoPanel = document.getElementById('map-province-info-panel');
+    if (!infoPanel) {
+        infoPanel = document.createElement('div');
+        infoPanel.id = 'map-province-info-panel';
+        container.parentElement.appendChild(infoPanel);
+    }
+
+    // Initialize info panel with current location
+    updateProvinceInfoContent(curProvince, false);
 }
 
 let activeMapHoverProvince = null;
 
-function showMapProvinceTooltip(e, pName) {
-    const container = document.getElementById('arena-map-container');
-    const tooltip = document.getElementById('map-cursor-tooltip');
-    if (!container || !tooltip) return;
-
-    activeMapHoverProvince = pName;
+function getProvinceInfoHtml(pName) {
     const prov = (cachedProvincesData || []).find(p => p.name.toLowerCase() === pName.toLowerCase()) || {
         name: pName,
         dominant_race: "Inhabitants of Tamriel",
@@ -195,9 +201,9 @@ function showMapProvinceTooltip(e, pName) {
     const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
     const isCurrent = (world.current_province || '').toLowerCase() === pName.toLowerCase();
 
-    tooltip.innerHTML = `
+    return `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <h4 style="margin: 0; font-size: 0.94rem; color: var(--gold-bright); font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 0.8px;">
+            <h4 style="margin: 0; font-size: 0.92rem; color: var(--gold-bright); font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 0.8px;">
                 ${prov.name}
             </h4>
             ${isCurrent ? '<span style="font-size: 0.58rem; padding: 1px 6px; border-radius: 3px; background: hsla(var(--green-h), 70%, 45%, 0.2); color: var(--success-bright); border: 1px solid hsla(var(--green-h), 70%, 45%, 0.4); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Current</span>' : ''}
@@ -212,23 +218,45 @@ function showMapProvinceTooltip(e, pName) {
             <strong style="color: var(--text-muted);">Cities:</strong> ${(prov.cities || []).join(', ') || 'Settlements'}
         </div>
     `;
+}
 
-    positionMapProvinceTooltip(e);
-    tooltip.style.opacity = '1';
-    tooltip.style.transform = 'scale(1)';
+function updateProvinceInfoContent(pName, showFloating = true, e = null) {
+    const infoPanel = document.getElementById('map-province-info-panel');
+    const tooltip = document.getElementById('map-cursor-tooltip');
+    const html = getProvinceInfoHtml(pName);
+
+    if (infoPanel) {
+        infoPanel.innerHTML = html;
+        infoPanel.style.display = 'block';
+    }
+
+    const isMobile = window.innerWidth <= 768;
+    if (!isMobile && showFloating && tooltip && e) {
+        tooltip.innerHTML = html;
+        positionMapProvinceTooltip(e);
+        tooltip.style.opacity = '1';
+        tooltip.style.transform = 'scale(1)';
+    } else if (tooltip) {
+        tooltip.style.opacity = '0';
+    }
+}
+
+function showMapProvinceTooltip(e, pName) {
+    activeMapHoverProvince = pName;
+    updateProvinceInfoContent(pName, true, e);
 }
 
 function positionMapProvinceTooltip(e) {
     const container = document.getElementById('arena-map-container');
     const tooltip = document.getElementById('map-cursor-tooltip');
-    if (!container || !tooltip || !activeMapHoverProvince) return;
+    if (!container || !tooltip || !activeMapHoverProvince || window.innerWidth <= 768) return;
 
     const rect = container.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const tooltipWidth = tooltip.offsetWidth || 280;
-    const tooltipHeight = tooltip.offsetHeight || 140;
+    const tooltipWidth = tooltip.offsetWidth || 260;
+    const tooltipHeight = tooltip.offsetHeight || 130;
 
     let left = mouseX + 14;
     let top = mouseY + 14;
@@ -498,10 +526,8 @@ async function softReloadApp() {
             }
         });
         
-        // Clean onboarding or welcome if we now have messages
+        // Clean onboarding if we now have messages
         if (newHistory.length > 0) {
-            const welcome = document.getElementById('welcome-message');
-            if (welcome) welcome.remove();
             const onboarding = document.getElementById('onboarding-container');
             if (onboarding) onboarding.remove();
         } else {
@@ -5158,9 +5184,7 @@ async function loadHistory() {
         const hasUserMessages = (data.history || []).some(msg => msg.role === 'user' || msg.role === 'user_action');
         if (hasUserMessages) {
             unlockControlsFromNewGame();
-            // Remove welcome message or onboarding card
-            const welcome = document.getElementById('welcome-message');
-            if (welcome) welcome.remove();
+            // Remove onboarding card if present
             const onboarding = document.getElementById('onboarding-container');
             if (onboarding) onboarding.remove();
             
@@ -5470,7 +5494,13 @@ const arenaToolMetaMap = {
 
 const hiddenPassiveTools = new Set([
     'arena_get_character_context',
-    'arena_get_location'
+    'arena_get_location',
+    'generate_local_image',
+    'generate_imagen',
+    'generate_program_portrait',
+    'generate_general_image',
+    'apply_comfy_workflow',
+    'generate_video_from_image'
 ]);
 
 function formatToolOutcomeSummary(toolName, args = {}, response = null) {
@@ -5566,7 +5596,8 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
 
 // --- renderCompletedLogs ---
 function renderCompletedLogs(bubble, toolCalls, duration = null) {
-    if (!toolCalls || toolCalls.length === 0) return;
+    if (!toolCalls || toolCalls.length === 0 || !bubble) return;
+    if (bubble.classList.contains('image-message') || bubble.querySelector('.message-image-container') || bubble.querySelector('.message-video-container')) return;
 
     let logsContainer = bubble.querySelector('.antigravity-logs-container');
     if (logsContainer) {
@@ -5749,8 +5780,6 @@ function normalizeChatResponse(data) {
 
 // --- renderVoiceCallRow ---
 function renderVoiceCallRow(msg) {
-    const welcome = document.getElementById('welcome-message');
-    if (welcome) welcome.remove();
     const onboarding = document.getElementById('onboarding-container');
     if (onboarding) onboarding.remove();
 
@@ -5886,8 +5915,6 @@ function renderMessage(msg, isLive = false) {
     if (msg.id && _hiddenPrefixes.some(p => msg.id.startsWith(p))) return null;
     if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:") || text.includes("[GENERATE_IMAGEN:"))) return null;
 
-    const welcome = document.getElementById('welcome-message');
-    if (welcome) welcome.remove();
     const onboarding = document.getElementById('onboarding-container');
     if (onboarding) onboarding.remove();
 
@@ -6214,10 +6241,6 @@ function renderMessage(msg, isLive = false) {
                 imgContainer.appendChild(img);
                 bubble.appendChild(imgContainer);
             }
-
-            if (isTextEmpty && idx === bubblesToCreate.length - 1 && msg.tool_calls && msg.tool_calls.length > 0) {
-                renderCompletedLogs(bubble, msg.tool_calls, msg.duration);
-            }
         }
 
         bubblesContainer.appendChild(bubble);
@@ -6530,6 +6553,12 @@ async function sendMessage() {
 
     hasApprovedToolThisTurn = false;
     hasStagedRollMessage = false;
+    const sendBtnEl = document.querySelector('.send-btn');
+    if (sendBtnEl && !isNewGamePendingStart) {
+        sendBtnEl.classList.remove('skill-check-send-pulse');
+        sendBtnEl.classList.remove('start-game-pulse');
+        sendBtnEl.title = "Send";
+    }
     setGenerating(true);
     userInput.disabled = true;
     userInput.placeholder = "";
@@ -7023,7 +7052,7 @@ async function rerollUserMessage(button) {
             body: JSON.stringify({
                 session_id: sessionId,
                 model: selectedModel,
-                current_input: origRawText
+                is_reroll: true
             })
         });
 
@@ -8020,6 +8049,11 @@ function resetSkillCheckUI() {
         sendBtn.disabled = false;
         sendBtn.style.opacity = '';
         sendBtn.style.pointerEvents = '';
+        if (!isNewGamePendingStart) {
+            sendBtn.classList.remove('skill-check-send-pulse');
+            sendBtn.classList.remove('start-game-pulse');
+            sendBtn.title = "Send";
+        }
     }
 }
 
@@ -8119,12 +8153,13 @@ async function resolvePlayerSkillCheck() {
                 imgUploadBtn.style.pointerEvents = 'none';
             }
 
-            // Unlock and focus the send button so the user can send with one click or Enter
+            // Unlock, pulse green, and focus the send button so the user can send with one click or Enter
             const sendBtn = document.querySelector('.send-btn');
             if (sendBtn) {
                 sendBtn.disabled = false;
                 sendBtn.style.opacity = '';
                 sendBtn.style.pointerEvents = '';
+                sendBtn.classList.add('skill-check-send-pulse');
                 sendBtn.focus();
             }
 
@@ -8201,37 +8236,6 @@ async function regenerateImage(buttonElement, oldImageUrl, prompt) {
             img.src = data.new_image_url;
             img.onclick = () => expandImage(data.new_image_url);
             await loadServerImages();
-
-            // Re-render Activity Log in completed ("Ran...") state
-            try {
-                const bubble = buttonElement.closest('.message.program');
-                if (bubble) {
-                    const logRes = await fetch(`/api/session_tool_calls?session_id=${sessionId}`);
-                    const logData = await logRes.json();
-                    if (logData.tool_calls && logData.tool_calls.length > 0) {
-                        // Convert Python session tool calls to Gemini type/format
-                        const geminiToolCalls = [];
-                        logData.tool_calls.forEach(tc => {
-                            geminiToolCalls.push({
-                                type: 'call',
-                                name: tc.name,
-                                args: tc.args ? { prompt: tc.args } : {},
-                                id: tc.id
-                            });
-                            geminiToolCalls.push({
-                                type: 'response',
-                                name: tc.name,
-                                response: tc.response || '',
-                                id: tc.id
-                            });
-                        });
-                        const totalDur = logData.tool_calls.reduce((sum, tc) => sum + (tc.duration || 0), 0);
-                        renderCompletedLogs(bubble, geminiToolCalls, totalDur ? Math.round(totalDur * 10) / 10 : null);
-                    }
-                }
-            } catch (err) {
-                console.error("Error finalizing activity logs after reroll:", err);
-            }
         } else {
             let errorMsg = data.error || 'Unknown error';
             if (typeof marked !== 'undefined' && marked.parse) {
@@ -8973,27 +8977,38 @@ async function loadQuests() {
 
         // Active quests
         if (quests.length === 0 && completedQuests.length === 0) {
-            container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin: 20px 0;">No active quests. Ask your program to assign you one!</p>`;
+            container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin: 20px 0;">No active quests.</p>`;
             return;
         }
         
         html += quests.map(quest => {
+            const isMain = !!quest.is_main_quest;
             const objectivesHtml = (quest.objectives || []).map(obj => 
                 `<li style="margin-bottom: 8px; color: var(--text-main); font-size: 0.84rem; line-height: 1.4; display: flex; align-items: flex-start; gap: 8px;">
-                    <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid hsla(42, 90%, 56%, 0.6); border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: hsla(42, 90%, 56%, 0.08);"></span>
+                    <span style="display: inline-block; width: 12px; height: 12px; border: 1.5px solid ${isMain ? 'hsla(42, 90%, 56%, 0.6)' : 'hsla(215, 60%, 50%, 0.6)'}; border-radius: 2px; margin-top: 3px; flex-shrink: 0; background: ${isMain ? 'hsla(42, 90%, 56%, 0.08)' : 'hsla(215, 60%, 50%, 0.08)'};"></span>
                     <span>${obj}</span>
                 </li>`
             ).join('');
             
+            const badgeHtml = isMain
+                ? `<span style="font-size: 0.62rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: hsla(var(--green-h), 50%, 30%, 0.2); color: hsla(var(--green-h), 50%, 65%, 0.95); border: 1px solid hsla(var(--green-h), 50%, 40%, 0.3); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; line-height: 1.2;">MAIN QUEST</span>`
+                : `<div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.62rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: hsla(215, 60%, 40%, 0.18); color: hsla(215, 80%, 70%, 0.95); border: 1px solid hsla(215, 60%, 40%, 0.4); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; line-height: 1.2;">SIDE QUEST</span>
+                    <button onclick="abandonQuest('${quest.id}')" title="Abandon this side quest" style="background: hsla(0, 60%, 40%, 0.15); border: 1px solid hsla(0, 60%, 40%, 0.4); color: hsla(0, 75%, 65%, 0.9); padding: 2px 6px; border-radius: 3px; font-size: 0.62rem; cursor: pointer; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; transition: all 0.15s ease;">Abandon</button>
+                   </div>`;
+
+            const displayTitle = (quest.title || 'Quest').replace(/^Main Quest:\s*/i, '');
+            const showStatus = !isMain && quest.due && quest.due !== 'Active Chapter';
+
             return `
                 <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                        <h4 style="margin: 0; color: var(--primary-accent); font-size: 0.98rem; font-weight: 600; letter-spacing: 0.01em;">${quest.title}</h4>
-                        <span style="font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--primary-glow); color: var(--primary-accent); border: 1px solid var(--border-color);">ACTIVE</span>
+                        <h4 style="margin: 0; color: ${isMain ? 'var(--primary-accent)' : 'var(--text-main)'}; font-size: 0.98rem; font-weight: 600; letter-spacing: 0.01em;">${displayTitle}</h4>
+                        ${badgeHtml}
                     </div>
                     <div style="display: flex; gap: 16px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap;">
                         ${quest.location ? `<div><strong style="color: var(--text-muted);">Location:</strong> <span style="color: var(--text-main);">${quest.location}</span></div>` : ''}
-                        ${quest.due ? `<div><strong style="color: var(--text-muted);">Status:</strong> <span style="color: var(--text-main);">${quest.due}</span></div>` : ''}
+                        ${showStatus ? `<div><strong style="color: var(--text-muted);">Status:</strong> <span style="color: var(--text-main);">${quest.due}</span></div>` : ''}
                     </div>
                     <div style="margin-top: 4px; padding-top: 8px; border-top: 1px solid hsla(215, 5%, 100%, 0.06);">
                         <ul style="margin: 6px 0 0 0; padding: 0; list-style: none;">
@@ -9004,13 +9019,22 @@ async function loadQuests() {
             `;
         }).join('');
 
-        // Completed quests
+        // Completed & Archived quests
         if (completedQuests.length > 0) {
             const completedItemsHtml = completedQuests.map(cq => {
+                const isFailed = cq.status === 'failed';
+                const badgeColor = isFailed ? 'hsla(0, 60%, 40%, 0.2)' : 'hsla(var(--green-h), 50%, 30%, 0.2)';
+                const badgeText = isFailed ? 'hsla(0, 75%, 65%, 0.9)' : 'hsla(var(--green-h), 50%, 55%, 0.9)';
+                const badgeBorder = isFailed ? 'hsla(0, 60%, 40%, 0.3)' : 'hsla(var(--green-h), 50%, 40%, 0.2)';
+                const badgeLabel = isFailed ? 'FAILED' : 'DONE';
+                
                 const objHtml = (cq.objectives || []).map(obj =>
                     `<li style="margin-bottom: 4px; color: var(--text-muted); font-size: 0.78rem; line-height: 1.3; display: flex; align-items: flex-start; gap: 7px; text-decoration: line-through; opacity: 0.7;">
-                        <span style="display: inline-block; width: 11px; height: 11px; border: 1.5px solid hsla(var(--green-h), 60%, 40%, 0.5); border-radius: 2px; margin-top: 2px; flex-shrink: 0; background: hsla(var(--green-h), 60%, 40%, 0.15); position: relative;">
-                            <svg width="9" height="9" viewBox="0 0 12 12" style="position: absolute; top: 0; left: 0;" fill="none" stroke="hsla(var(--green-h), 60%, 50%, 0.8)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5 6 5 8.5 9.5 3.5"></polyline></svg>
+                        <span style="display: inline-block; width: 11px; height: 11px; border: 1.5px solid ${isFailed ? 'hsla(0, 60%, 40%, 0.5)' : 'hsla(var(--green-h), 60%, 40%, 0.5)'}; border-radius: 2px; margin-top: 2px; flex-shrink: 0; background: ${isFailed ? 'hsla(0, 60%, 40%, 0.15)' : 'hsla(var(--green-h), 60%, 40%, 0.15)'}; position: relative;">
+                            ${isFailed 
+                                ? `<svg width="9" height="9" viewBox="0 0 12 12" style="position: absolute; top: 0; left: 0;" fill="none" stroke="hsla(0, 75%, 65%, 0.8)" stroke-width="2.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"></line><line x1="10" y1="2" x2="2" y2="10"></line></svg>`
+                                : `<svg width="9" height="9" viewBox="0 0 12 12" style="position: absolute; top: 0; left: 0;" fill="none" stroke="hsla(var(--green-h), 60%, 50%, 0.8)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2.5 6 5 8.5 9.5 3.5"></polyline></svg>`
+                            }
                         </span>
                         <span>${obj}</span>
                     </li>`
@@ -9018,8 +9042,8 @@ async function loadQuests() {
                 return `
                     <div style="padding: 8px 0; border-bottom: 1px solid hsla(215, 5%, 100%, 0.04);">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                            <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500; opacity: 0.8;">${cq.title}</span>
-                            <span style="font-size: 0.62rem; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: hsla(var(--green-h), 50%, 30%, 0.2); color: hsla(var(--green-h), 50%, 55%, 0.9); border: 1px solid hsla(var(--green-h), 50%, 40%, 0.2); flex-shrink: 0;">DONE</span>
+                            <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500; opacity: 0.8; text-decoration: ${isFailed ? 'line-through' : 'none'};">${cq.title}</span>
+                            <span style="font-size: 0.62rem; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: ${badgeColor}; color: ${badgeText}; border: 1px solid ${badgeBorder}; flex-shrink: 0;">${badgeLabel}</span>
                         </div>
                         ${objHtml ? `<ul style="margin: 6px 0 0 0; padding: 0; list-style: none;">${objHtml}</ul>` : ''}
                     </div>
@@ -9031,7 +9055,7 @@ async function loadQuests() {
                     <button onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.querySelector('.caret').style.transform = this.nextElementSibling.style.display === 'none' ? '' : 'rotate(90deg)';"
                         style="background: none; border: none; color: var(--text-muted); font-size: 0.78rem; cursor: pointer; padding: 6px 0; display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; opacity: 0.7;">
                         <span class="caret" style="display: inline-block; transition: transform 0.2s ease; font-size: 0.65rem;">&#9654;</span>
-                        Completed Quests (${completedQuests.length})
+                        Quest Archive (${completedQuests.length})
                     </button>
                     <div style="display: none; background: rgba(0,0,0,0.2); border: 1px solid hsla(215, 5%, 100%, 0.05); border-radius: 8px; padding: 10px 14px;">
                         ${completedItemsHtml}
@@ -9076,34 +9100,37 @@ async function deleteQuest(questId) {
     );
 }
 
-// --- completeQuest ---
-async function completeQuest(questId) {
-    
-    try {
-        const response = await fetch(`/api/quests/${questId}/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        
-        const title = data.title || "Quest";
-        const objectives = data.objectives || [];
-        const objText = objectives.length > 0 ? ` with objectives: ${objectives.join(', ')}` : "";
-        const systemMessage = `[SYSTEM: User has completed the quest: "${title}"${objText}]`;
-        const questMsgId = 'quest_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-        
-        // Append message locally (invisible/hidden user message)
-        appendMessage('user', systemMessage, null, null, false, Date.now() / 1000, null, false, questMsgId);
-        
-        // Reload quest list UI
-        await loadQuests();
-        
-    } catch (error) {
-        console.error("Error completing quest:", error);
-        showCustomAlert("Error", "Error completing quest: " + error.message);
-    }
+// --- abandonQuest ---
+async function abandonQuest(questId) {
+    showCustomConfirm(
+        "Abandon Quest",
+        "Are you sure you want to abandon this quest? It will be marked as failed and your companion will be notified.",
+        async () => {
+            try {
+                const response = await fetch(`/api/quests/${questId}/abandon`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                
+                const title = data.title || "Quest";
+                const systemMessage = `[SYSTEM: Player has abandoned and failed the side quest: "${title}"]`;
+                const questMsgId = 'quest_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+                
+                // Append hidden user message to notify companion
+                appendMessage('user', systemMessage, null, null, false, Date.now() / 1000, null, false, questMsgId);
+                
+                // Reload quest list UI
+                await loadQuests();
+                
+            } catch (error) {
+                console.error("Error abandoning quest:", error);
+                showCustomAlert("Error", "Error abandoning quest: " + error.message);
+            }
+        }
+    );
 }
 
 // --- switchDataBankTab ---
@@ -9563,10 +9590,12 @@ async function removeProjectFolder(folder) {
 
 // --- loadDataBankFiles ---
 async function loadDataBankFiles() {
+    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
     const container = document.getElementById('databank-files-container');
+    if (!container) return;
     container.innerHTML = '<div style="padding: 15px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">Loading files...</div>';
     try {
-        const res = await fetch('/api/databank/files');
+        const res = await fetch(`/api/databank/files?program_id=${encodeURIComponent(progId)}&t=${Date.now()}`);
         const data = await res.json();
         if (data.error) {
             container.innerHTML = `<div style="padding: 15px; color: var(--danger-bright); font-size: 0.8rem; text-align: center;">Error: ${data.error}</div>`;
@@ -9592,7 +9621,7 @@ async function loadDataBankFiles() {
             };
             
             const docTypeIcon = `<span style="display: inline-flex; align-items: center; width: 14px; height: 14px; color: var(--text-muted); opacity: 0.85; vertical-align: middle; margin-right: 6px;">${file.source_type === 'url' ? getLogIconSvg('webpage') : getLogIconSvg('file')}</span>`;
-            const fileDate = new Date(file.timestamp * 1000).toLocaleDateString();
+            const fileDate = new Date((file.timestamp || Date.now() / 1000) * 1000).toLocaleDateString();
             
             row.innerHTML = `
                 <div style="flex: 1; min-width: 0; padding-right: 10px;">
@@ -9600,8 +9629,8 @@ async function loadDataBankFiles() {
                         ${docTypeIcon}${file.name}
                     </div>
                     <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; display: flex; gap: 10px;">
-                        <span>Size: ${formatBytes(file.size)}</span>
-                        <span>Chunks: ${file.chunk_count}</span>
+                        <span>Size: ${formatBytes(file.size || 0)}</span>
+                        <span>Chunks: ${file.chunk_count || 0}</span>
                         <span>Added: ${fileDate}</span>
                     </div>
                 </div>
@@ -9622,6 +9651,7 @@ async function loadDataBankFiles() {
 
 // --- uploadDataBankFile ---
 async function uploadDataBankFile(event) {
+    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
     const file = event.target.files[0];
     if (!file) return;
     
@@ -9629,11 +9659,12 @@ async function uploadDataBankFile(event) {
     const loaderText = document.getElementById('databank-loader-text');
     const input = document.getElementById('databank-file-input');
     
-    loaderText.textContent = `Indexing file '${file.name}'... (First boot may download sentence-transformers model)`;
+    loaderText.textContent = `Indexing file '${file.name}'...`;
     loader.style.display = 'flex';
     
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('program_id', progId);
     
     try {
         const res = await fetch('/api/databank/upload', {
@@ -9656,6 +9687,7 @@ async function uploadDataBankFile(event) {
 
 // --- scrapeDataBankUrl ---
 async function scrapeDataBankUrl() {
+    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
     const input = document.getElementById('databank-url-input');
     const url = input.value.trim();
     if (!url) return;
@@ -9670,7 +9702,7 @@ async function scrapeDataBankUrl() {
         const res = await fetch('/api/databank/scrape', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: url })
+            body: JSON.stringify({ url: url, program_id: progId })
         });
         const data = await res.json();
         if (data.error) {
@@ -9689,12 +9721,13 @@ async function scrapeDataBankUrl() {
 
 // --- deleteDataBankFile ---
 async function deleteDataBankFile(docId, event) {
+    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
     event.stopPropagation();
     try {
         const res = await fetch('/api/databank/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: docId })
+            body: JSON.stringify({ id: docId, program_id: progId })
         });
         const data = await res.json();
         if (data.error) {
@@ -9709,13 +9742,18 @@ async function deleteDataBankFile(docId, event) {
 
 // --- purgeDataBank ---
 function purgeDataBank() {
-    showCustomConfirm("Purge Knowledge Base", "Are you sure you want to delete all indexed files and empty the program's vectorized memory?", async () => {
+    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
+    showCustomConfirm("Purge Knowledge Base", "Are you sure you want to delete all indexed files and empty this follower's vectorized databank?", async () => {
         const loader = document.getElementById('databank-loader');
         const loaderText = document.getElementById('databank-loader-text');
         loaderText.textContent = "Purging knowledge index...";
         loader.style.display = 'flex';
         try {
-            await fetch('/api/databank/purge', { method: 'POST' });
+            await fetch('/api/databank/purge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ program_id: progId })
+            });
         } catch (e) {
             console.error("Error purging database:", e);
         } finally {
