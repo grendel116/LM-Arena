@@ -82,6 +82,24 @@
       "enabled": true,
       "priority": 10,
       "probability": 100
+    },
+    {
+      "uid": 5010,
+      "key": ["soul gem", "soul gems", "soul trap", "charging magic", "recharge", "enchanting", "petty soul gem", "lesser soul gem", "common soul gem", "greater soul gem", "grand soul gem", "black soul gem", "azura's star"],
+      "secondary_key": ["magic", "mysticism", "soul", "gem", "charge"],
+      "content": "SOUL GEMS & MAGICAL CHARGING:\n• Nature of Soul Gems: Naturally crystalline morpholiths capable of capturing and storing spiritual energy (animus) upon a target's death via the Mysticism spell 'Soul Trap'.\n• Magical Recharging & Enchanting: Soul gems are the fundamental power source for enchanting new gear and recharging depleted magical weapons, staves, and relics. Releasing the trapped energy restores an enchanted weapon's magical charges.\n• White Souls: Derived from creatures and non-sentient beasts. Stored in five standard gem tiers: Petty (mudcrabs, rats), Lesser (wolves, goblins), Common (bears, skeletons), Greater (giants, minor daedra), and Grand (mammoths, liches, golden saints).\n• Black Souls & Black Soul Gems: Sentient mortal races (men, mer, and beastfolk) possess complex black souls protected by the Arkayian divine ward. Only artificial Black Soul Gems or forbidden Daedric vessels can trap mortal souls for necromantic rituals and extreme enchantments.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5011,
+      "key": ["soul", "souls", "animus", "vestige", "ideal masters", "eternal masters", "soul cairn", "necromancy", "mortal soul"],
+      "secondary_key": ["oblivion", "magic", "spirit", "undead"],
+      "content": "SOULS, ANIMUS & THE IDEAL MASTERS:\n• Mortal Animus: Mortals possess an Anuic animus—a divine spark of creation granted at birth that journeys to Aetherius upon natural death unless forcibly trapped or bargained away.\n• Daedric Vestiges: Daedra lack mortal souls; their consciousness is a Padomaic vestige that reforms from Chaotic Creatia in the Waters of Oblivion whenever destroyed.\n• The Ideal Masters (Eternal Masters): Ancient mortal sorcerers from the early Merethic Era who shed their physical bodies to transcend mortality, becoming vast, disembodied crystalline intelligences ruling the pocket realm of the Soul Cairn. They trade dark necromantic power, summoning rituals, and forgotten arcane secrets to mortal sorcerers in exchange for a constant harvest of trapped mortal souls.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
     }
   ]
 }

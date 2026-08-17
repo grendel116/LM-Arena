@@ -6546,27 +6546,29 @@ async function sendMessage() {
         return;
     }
 
+    // Safety check: if last message is a user message, never append a second user message
+    let lastRow = chatContainer ? chatContainer.lastElementChild : null;
+    while (lastRow && !lastRow.classList.contains('message-row')) {
+        lastRow = lastRow.previousElementSibling;
+    }
+    while (lastRow && lastRow.classList.contains('program-row')) {
+        const bubble = lastRow.querySelector('.message.program');
+        if (bubble && bubble.dataset.isTransient === 'true') {
+            lastRow = lastRow.previousElementSibling;
+        } else {
+            break;
+        }
+    }
+    if (lastRow && lastRow.classList.contains('user-row')) {
+        const userBubble = lastRow.querySelector('.message.user');
+        if (userBubble) {
+            return resendUserMessage(userBubble);
+        }
+        return;
+    }
+
     const text = userInput.value.trim();
     if (!text && !attachedBase64 && !attachedMediaPath) {
-        // Walk backwards past bottom-sentinel and transient/ghost program rows
-        let lastRow = chatContainer.lastElementChild;
-        while (lastRow && !lastRow.classList.contains('message-row')) {
-            lastRow = lastRow.previousElementSibling;
-        }
-        while (lastRow && lastRow.classList.contains('program-row')) {
-            const bubble = lastRow.querySelector('.message.program');
-            if (bubble && bubble.dataset.isTransient === 'true') {
-                lastRow = lastRow.previousElementSibling;
-            } else {
-                break;
-            }
-        }
-        if (lastRow && lastRow.classList.contains('user-row')) {
-            const userBubble = lastRow.querySelector('.message.user');
-            if (userBubble) {
-                return resendUserMessage(userBubble);
-            }
-        }
         return;
     }
 
@@ -6713,12 +6715,7 @@ async function sendMessage() {
         }
     } finally {
         setGenerating(false);
-        if (!activePlayerSkillCheck && !hasStagedRollMessage) {
-            userInput.disabled = false;
-            userInput.placeholder = "What do you do?";
-            userInput.classList.remove('user-input-frozen');
-            userInput.focus();
-        }
+        evaluateLatestMessageForSkillCheck();
         updateInputGlow();
         stopToolPolling();
         if (heartElement) {
@@ -7029,8 +7026,7 @@ async function resendUserMessage(bubble) {
     } finally {
         stopToolPolling();
         setGenerating(false);
-        userInput.disabled = false;
-        userInput.placeholder = "What do you do?";
+        evaluateLatestMessageForSkillCheck();
         if (heartElement) {
             heartElement.classList.remove('jiggling');
         }
@@ -7221,8 +7217,7 @@ async function rerollFromMessage(button) {
     } finally {
         stopToolPolling();
         setGenerating(false);
-        userInput.disabled = false;
-        userInput.placeholder = "What do you do?";
+        evaluateLatestMessageForSkillCheck();
         if (heartElement) {
             heartElement.classList.remove('jiggling');
         }
@@ -7879,6 +7874,11 @@ function handleSwipeGesture() {
 // --- generatePortraitPrompt ---
 async function generatePortraitPrompt() {
     if (isGenerating) return;
+    if (chatContainer) {
+        const allRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)'));
+        const lastRow = allRows[allRows.length - 1];
+        if (lastRow && lastRow.classList.contains('user-row')) return;
+    }
     if (useImagenMode) {
         userInput.value = "[GENERATE_IMAGEN: Render an image of the active companion using Google Imagen. Do not narrate new story events or call mechanics tools.]";
     } else {
@@ -7890,7 +7890,12 @@ async function generatePortraitPrompt() {
 // --- autoGenerateUserMessage ---
 async function autoGenerateUserMessage() {
     const btn = document.getElementById('auto-generate-user-btn');
-    if (!btn || btn.disabled) return;
+    if (!btn || btn.disabled || isGenerating) return;
+    if (chatContainer) {
+        const allRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)'));
+        const lastRow = allRows[allRows.length - 1];
+        if (lastRow && lastRow.classList.contains('user-row')) return;
+    }
     
     const currentInput = userInput ? userInput.value : '';
 
@@ -7940,8 +7945,7 @@ async function autoGenerateUserMessage() {
         btn.style.opacity = '0.5';
         btn.title = "Impersonate";
         btn.innerHTML = origIcon;
-        userInput.disabled = false;
-        userInput.placeholder = "What do you do?";
+        evaluateLatestMessageForSkillCheck();
     }
 }
 
@@ -7957,6 +7961,9 @@ function activateSkillCheckUI(checkData) {
     if (diceBtn) {
         diceBtn.classList.add('skill-check-active');
         diceBtn.title = "Skill Check";
+        diceBtn.disabled = false;
+        diceBtn.style.opacity = '';
+        diceBtn.style.pointerEvents = '';
     }
 
     if (userInput) {
@@ -7979,12 +7986,73 @@ function activateSkillCheckUI(checkData) {
         portraitBtn.style.pointerEvents = 'none';
     }
 
+    const imgUploadBtn = document.getElementById('image-upload-btn');
+    if (imgUploadBtn) {
+        imgUploadBtn.disabled = true;
+        imgUploadBtn.style.opacity = '0.25';
+        imgUploadBtn.style.pointerEvents = 'none';
+    }
+
     const sendBtn = document.querySelector('.send-btn');
     if (sendBtn) {
         sendBtn.disabled = true;
         sendBtn.style.opacity = '0.25';
         sendBtn.style.pointerEvents = 'none';
     }
+}
+
+function lockInputForPendingUserMessage() {
+    activePlayerSkillCheck = null;
+    hasStagedRollMessage = false;
+
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (diceBtn) {
+        diceBtn.classList.remove('skill-check-active');
+        diceBtn.classList.remove('rolling');
+        diceBtn.disabled = true;
+        diceBtn.style.opacity = '0.35';
+        diceBtn.style.pointerEvents = 'none';
+        diceBtn.title = "Awaiting response...";
+    }
+
+    if (userInput) {
+        userInput.disabled = true;
+        userInput.placeholder = "Awaiting response...";
+        userInput.classList.add('user-input-frozen');
+    }
+
+    const autoGenBtn = document.getElementById('auto-generate-user-btn');
+    if (autoGenBtn) {
+        autoGenBtn.disabled = true;
+        autoGenBtn.style.opacity = '0.35';
+        autoGenBtn.style.pointerEvents = 'none';
+    }
+
+    const portraitBtn = document.getElementById('generate-portrait-btn');
+    if (portraitBtn) {
+        portraitBtn.disabled = true;
+        portraitBtn.style.opacity = '0.35';
+        portraitBtn.style.pointerEvents = 'none';
+    }
+
+    const imgUploadBtn = document.getElementById('image-upload-btn');
+    if (imgUploadBtn) {
+        imgUploadBtn.disabled = true;
+        imgUploadBtn.style.opacity = '0.35';
+        imgUploadBtn.style.pointerEvents = 'none';
+    }
+
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '';
+        sendBtn.style.pointerEvents = '';
+        sendBtn.classList.remove('skill-check-send-pulse');
+        sendBtn.classList.remove('start-game-pulse');
+        sendBtn.title = "Generate Response";
+    }
+
+    updateInputGlow();
 }
 
 function evaluateLatestMessageForSkillCheck() {
@@ -7997,6 +8065,11 @@ function evaluateLatestMessageForSkillCheck() {
     }
     
     const lastRow = allRows[allRows.length - 1];
+    if (lastRow && lastRow.classList.contains('user-row')) {
+        lockInputForPendingUserMessage();
+        return;
+    }
+
     if (!lastRow || !lastRow.classList.contains('program-row')) {
         resetSkillCheckUI();
         return;
@@ -10097,6 +10170,8 @@ async function cancelGeneration() {
     } catch (e) {
         console.error("Error cancelling chat:", e);
     }
+    setGenerating(false);
+    evaluateLatestMessageForSkillCheck();
 }
 
 // Better textarea handling for mobile and desktop

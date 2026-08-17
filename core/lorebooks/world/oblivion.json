@@ -175,9 +175,9 @@
     },
     {
       "uid": 8220,
-      "key": ["soul cairn", "ideal masters", "battlespire", "slipstream realm", "pocket realm", "imperial simulacrum", "uriel septim vii prison"],
-      "secondary_key": ["oblivion", "tharn", "necromancy", "prison"],
-      "content": "POCKET REALMS, SOUL CAIRN & THE IMPERIAL PRISON:\n• The Soul Cairn: A bleak, necrotic pocket realm ruled by the enigmatic Ideal Masters. A desolate expanse of black soul gems, lightning spires, and skeletal mist where black souls harvested by Necromancers are imprisoned for eternity.\n• Battlespire & Slipstream: Imperial battlemage training academies constructed in the slipstream void between Mundus and Oblivion.\n• The Emperor's Oblivion Prison: During the Imperial Simulacrum (3E 389–399), Imperial Battlemage Jagar Tharn used the Staff of Chaos to banish Emperor Uriel Septim VII into a nightmare-locked dimensional cell deep within the chaotic void of Oblivion, maintaining a temporal stasis while Tharn ruled disguised in the Imperial Palace.",
+      "key": ["soul cairn", "ideal masters", "eternal masters", "battlespire", "slipstream realm", "pocket realm", "imperial simulacrum", "uriel septim vii prison", "black soul gems"],
+      "secondary_key": ["oblivion", "tharn", "necromancy", "prison", "soul"],
+      "content": "POCKET REALMS, SOUL CAIRN & THE IMPERIAL PRISON:\n• The Soul Cairn: A bleak, necrotic pocket realm ruled by the enigmatic Ideal Masters (Eternal Masters). A desolate expanse of black soul gems, lightning spires, bone mounds, and skeletal mist where black souls traded by Necromancers are imprisoned for eternity.\n• The Ideal Masters: Ancient early mortal sorcerers who shed their flesh to become giant floating crystalline entities. They sustain themselves on harvested mortal souls in exchange for granting mortals forbidden necromantic spells and summoning powers.\n• Battlespire & Slipstream: Imperial battlemage training academies constructed in the slipstream void between Mundus and Oblivion.\n• The Emperor's Oblivion Prison: During the Imperial Simulacrum (3E 389–399), Imperial Battlemage Jagar Tharn used the Staff of Chaos to banish Emperor Uriel Septim VII into a nightmare-locked dimensional cell deep within the chaotic void of Oblivion, maintaining a temporal stasis while Tharn ruled disguised in the Imperial Palace.",
       "enabled": true,
       "priority": 10,
       "probability": 100
