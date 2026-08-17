@@ -149,7 +149,7 @@ def get_compiled_instructions() -> str:
 
     global_formatting = (
         "\n\n# MESSAGE FORMAT & NARRATIVE PERSPECTIVE\n"
-        "- FORMAT: Distinct paragraphs. Narration: *italics*. Spoken dialogue: plain text. Inscriptions, lore quotes, and written text: \"enclosed in quotes\".\n"
+        "- FORMAT: Max four distinct paragraphs. Narration: *italics*. Spoken dialogue: plain text. Lore and written text: \"enclosed in quotes\".\n"
         "- PERSPECTIVE: Address {{user}} directly in second person ('you', 'your'). Describe NPCs and environment in third person present tense.\n"
         "- RESTRAINT: Never narrate outcomes or reactions for {{user}}'s actions.\n"
         "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth.\n"

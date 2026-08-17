@@ -475,11 +475,6 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
                 snapshot["location"] = str(val).strip()
             elif key in ("bgm", "music", "track"):
                 snapshot["bgm"] = str(val).strip()
-            elif key in ("quest_stage", "stage"):
-                try:
-                    snapshot["quest_stage"] = int(val)
-                except Exception:
-                    pass
             elif key == "hour":
                 try:
                     snapshot.setdefault("date", {})["hour"] = int(val) % 24

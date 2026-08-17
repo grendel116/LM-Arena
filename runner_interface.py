@@ -361,7 +361,7 @@ _ARENA_DIRECTIVE_PROMPT = (
     "- NPC ROLLS: Resolve NPC and creature actions instantly with [arena_roll_combat] or [arena_roll_check].\n"
     "- VITALS: Deduct MP for magic, Stamina for physical exertion, and HP for wounds alongside narrative action.\n"
     "- INVENTORY: Track all item and gold transactions precisely with tools or state comments.\n"
-    "- STATE: Conclude state shifts with <!-- state: province=\"...\", location=\"...\", hours=..., quest_stage=... -->.\n"
+    "- STATE: Conclude environmental shifts with <!-- state: province=\"...\", location=\"...\", hours=... --> when location or time changes. Quest progression is handled strictly via [arena_advance_stage].\n"
     "- NARRATION: Deliver vivid sensory prose. Do not pose questions or choices to {{user}}.\n"
     "- LORE & NAMING: Adhere strictly to canonical Elder Scrolls lore and racial nomenclature.\n"
 )
@@ -940,9 +940,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             day = t_date.get("day", 1)
             month = t_date.get("month", "Morning Star")
             year = t_date.get("year", 389)
-            q_stage = world.get("quest_stage", 10)
             
-            state_tag = f'<!-- state: province="{prov}", location="{loc}", date="{day} {month}, 3E {year}", hour={hour}, time="{time_display}", quest_stage={q_stage} -->'
+            state_tag = f'<!-- state: province="{prov}", location="{loc}", date="{day} {month}, 3E {year}", hour={hour}, time="{time_display}" -->'
             
             post_blocks = []
             if char_ctx:
