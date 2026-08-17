@@ -1197,10 +1197,30 @@ body::-webkit-scrollbar-thumb:hover,
     background: hsla(var(--slate-h), var(--slate-s), 12%, 0.5);
     border: 1px solid hsla(var(--slate-h), 5%, 100%, 0.08);
     color: var(--text-muted);
-    cursor: default;
+    cursor: pointer;
     transition: all 0.18s ease;
     position: relative;
     user-select: none;
+}
+
+/* Low-Profile 1-Line Outcome Popover Badge */
+.arena-pill-popover-badge {
+    background: hsla(var(--slate-h), var(--slate-s), 7%, 0.55);
+    border: 1px solid hsla(215, 5%, 100%, 0.05);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(6px);
+    align-self: flex-start;
+    animation: popoverFadeIn 0.12s ease-out;
+}
+
+@keyframes popoverFadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .arena-tool-pill:hover {
@@ -1223,56 +1243,7 @@ body::-webkit-scrollbar-thumb:hover,
     stroke-width: 2;
 }
 
-/* Category Tints */
-.arena-tool-pill[data-category="combat"] {
-    background: hsla(var(--red-h), 65%, 20%, 0.35);
-    border-color: hsla(var(--red-h), 65%, 45%, 0.3);
-    color: hsla(var(--red-h), 80%, 75%, 0.9);
-}
-.arena-tool-pill[data-category="combat"]:hover {
-    border-color: hsla(var(--red-h), 75%, 55%, 0.6);
-    box-shadow: 0 0 10px hsla(var(--red-h), 75%, 50%, 0.3);
-}
 
-.arena-tool-pill[data-category="vitals"] {
-    background: hsla(var(--green-h), 60%, 18%, 0.35);
-    border-color: hsla(var(--green-h), 60%, 40%, 0.3);
-    color: hsla(var(--green-h), 75%, 70%, 0.9);
-}
-.arena-tool-pill[data-category="vitals"]:hover {
-    border-color: hsla(var(--green-h), 70%, 50%, 0.6);
-    box-shadow: 0 0 10px hsla(var(--green-h), 70%, 45%, 0.3);
-}
-
-.arena-tool-pill[data-category="magic"] {
-    background: hsla(var(--blue-h), 70%, 22%, 0.35);
-    border-color: hsla(var(--blue-h), 70%, 45%, 0.3);
-    color: hsla(var(--blue-h), 85%, 75%, 0.9);
-}
-.arena-tool-pill[data-category="magic"]:hover {
-    border-color: hsla(var(--blue-h), 80%, 55%, 0.6);
-    box-shadow: 0 0 10px hsla(var(--blue-h), 80%, 50%, 0.3);
-}
-
-.arena-tool-pill[data-category="world"] {
-    background: hsla(var(--gold-h), 70%, 20%, 0.35);
-    border-color: hsla(var(--gold-h), 70%, 45%, 0.3);
-    color: hsla(var(--gold-h), 85%, 70%, 0.9);
-}
-.arena-tool-pill[data-category="world"]:hover {
-    border-color: hsla(var(--gold-h), 80%, 55%, 0.6);
-    box-shadow: 0 0 10px hsla(var(--gold-h), 80%, 50%, 0.3);
-}
-
-.arena-tool-pill[data-category="loot"] {
-    background: hsla(38, 75%, 20%, 0.35);
-    border-color: hsla(38, 75%, 45%, 0.3);
-    color: hsla(38, 85%, 70%, 0.9);
-}
-.arena-tool-pill[data-category="loot"]:hover {
-    border-color: hsla(38, 85%, 55%, 0.6);
-    box-shadow: 0 0 10px hsla(38, 85%, 50%, 0.3);
-}
 
 
 .antigravity-logs-card {

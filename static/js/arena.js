@@ -5366,6 +5366,93 @@ const hiddenPassiveTools = new Set([
     'arena_get_location'
 ]);
 
+// --- formatToolOutcomeSummary ---
+function formatToolOutcomeSummary(toolName, args = {}, response = null) {
+    const a = args || {};
+    let resObj = null;
+    if (response) {
+        if (typeof response === 'object') {
+            resObj = response;
+        } else if (typeof response === 'string') {
+            try {
+                if (response.trim().startsWith('{') || response.trim().startsWith('[')) {
+                    resObj = JSON.parse(response);
+                }
+            } catch(e) {}
+        }
+    }
+
+    switch(toolName) {
+        case 'arena_add_item':
+            return `+${a.quantity || 1} ${a.item_name || 'Item'}`;
+        case 'arena_remove_item':
+            return `-${a.quantity || 1} ${a.item_name || 'Item'}`;
+        case 'arena_add_gold':
+            return `+${a.amount || a.gold_amount || 0} Gold`;
+        case 'arena_spend_gold':
+            return `-${a.amount || a.cost || a.gold_amount || 0} Gold`;
+        case 'arena_take_damage':
+            return `-${a.amount || a.damage_amount || a.damage || 0} HP`;
+        case 'arena_heal':
+            return `+${a.amount || a.heal_amount || a.healing || 0} HP`;
+        case 'arena_spend_magicka':
+        case 'arena_spend_spell_points':
+            return `-${a.amount || a.mp_amount || a.cost || 0} MP`;
+        case 'arena_restore_magicka':
+            return `+${a.amount || a.mp_amount || 0} MP`;
+        case 'arena_spend_stamina':
+            return `-${a.amount || a.stamina_amount || a.cost || 0} SP`;
+        case 'arena_restore_stamina':
+            return `+${a.amount || a.stamina_amount || 0} SP`;
+        case 'arena_rest':
+            return `Rested ${a.hours || 8}h`;
+        case 'arena_request_skill_check':
+        case 'arena_roll_skill':
+            return `${a.skill_name || 'Skill'}${a.dc ? ` (DC ${a.dc})` : ''}`;
+        case 'arena_roll_check':
+            return `${a.attribute_name || 'Check'}${a.dc ? ` (DC ${a.dc})` : ''}`;
+        case 'arena_roll_combat':
+            return `vs ${a.target_name || 'Enemy'}${a.weapon_name ? ` with ${a.weapon_name}` : ''}`;
+        case 'arena_roll_initiative':
+            return `Initiative Roll`;
+        case 'arena_travel':
+            return `${a.destination_city || ''}${a.destination_city && a.destination_province ? ', ' : ''}${a.destination_province || ''}`;
+        case 'arena_set_location':
+            return `${a.location_name || ''}${a.location_name && a.province ? ', ' : ''}${a.province || ''}`;
+        case 'arena_advance_stage':
+        case 'arena_set_quest_stage':
+            if (resObj && resObj.stage_label) return resObj.stage_label;
+            return a.target_stage ? `Stage ${a.target_stage}` : `Quest Advance`;
+        case 'arena_add_experience':
+            return `+${a.amount || a.xp_amount || 0} XP`;
+        case 'arena_create_spell':
+        case 'arena_learn_spell':
+            return `Spell: ${a.spell_name || 'New Spell'}`;
+        case 'arena_add_effect':
+            return `Effect: ${a.effect_name || 'Buff'}`;
+        case 'arena_remove_effect':
+            return `Removed: ${a.effect_name || 'Effect'}`;
+        case 'arena_recruit_follower':
+            return `Follower: ${a.follower_name || 'Companion'}`;
+        case 'arena_sorcerer_absorb':
+            return `Sorcerer Absorb`;
+        default:
+            if (a.path || a.AbsolutePath || a.TargetFile) {
+                const p = a.path || a.AbsolutePath || a.TargetFile;
+                const parts = p.split(/[\\/]/);
+                return parts[parts.length - 1] || p;
+            }
+            if (a.query || a.Query || a.keyword) {
+                return `"${a.query || a.Query || a.keyword}"`;
+            }
+            if (a.command || a.CommandLine) {
+                const cmd = a.command || a.CommandLine;
+                return cmd.length > 30 ? cmd.substring(0, 27) + '...' : cmd;
+            }
+            return toolName;
+    }
+}
+
 // --- renderCompletedLogs ---
 function renderCompletedLogs(bubble, toolCalls, duration = null) {
     if (!toolCalls || toolCalls.length === 0) return;
@@ -5435,6 +5522,12 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
     const pillsRow = document.createElement('div');
     pillsRow.className = 'arena-tool-pills-row';
 
+    const popoverBadge = document.createElement('div');
+    popoverBadge.className = 'arena-pill-popover-badge';
+    popoverBadge.style.display = 'none';
+
+    let activePill = null;
+
     pairedTools.forEach(tool => {
         const meta = arenaToolMetaMap[tool.name] || {
             label: tool.name,
@@ -5445,16 +5538,35 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
             category: 'other'
         };
 
+        const summaryText = formatToolOutcomeSummary(tool.name, tool.args, tool.response);
+
         const pill = document.createElement('div');
         pill.className = 'arena-tool-pill';
         pill.dataset.category = meta.category;
-        pill.title = meta.label;
+        pill.title = `${meta.label}: ${summaryText}`;
         pill.innerHTML = getLogIconSvg(meta.icon);
+
+        pill.onclick = (e) => {
+            e.stopPropagation();
+            if (activePill === pill && popoverBadge.style.display !== 'none') {
+                popoverBadge.style.display = 'none';
+                pill.classList.remove('active');
+                activePill = null;
+            } else {
+                if (activePill) activePill.classList.remove('active');
+                pill.classList.add('active');
+                activePill = pill;
+
+                popoverBadge.textContent = `${meta.label}: ${summaryText}`;
+                popoverBadge.style.display = 'inline-block';
+            }
+        };
 
         pillsRow.appendChild(pill);
     });
 
     pillsWrapper.appendChild(pillsRow);
+    pillsWrapper.appendChild(popoverBadge);
     logsContainer.appendChild(pillsWrapper);
 }
 
