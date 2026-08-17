@@ -2159,13 +2159,49 @@ function triggerInputPulse(pulseType) {
     const inputWrapper = document.querySelector('.input-wrapper');
     if (!inputWrapper) return;
 
-    const pulseClass = `input-pulse-${pulseType}`;
-    inputWrapper.classList.remove(pulseClass);
-    void inputWrapper.offsetWidth;
-    inputWrapper.classList.add(pulseClass);
+    // Map pulse types to localized section positions
+    const sectionMap = {
+        'mp':      { position: 'left',   color: `hsla(var(--blue-h), 83%, 53%, 0.35)` },
+        'hp-down': { position: 'center', color: `hsla(var(--red-h), 75%, 50%, 0.35)` },
+        'hp-up':   { position: 'center', color: `hsla(var(--gold-h), 98%, 64%, 0.35)` },
+        'sp':      { position: 'right',  color: `hsla(var(--green-h), 76%, 36%, 0.35)` }
+    };
+    const section = sectionMap[pulseType];
+    if (!section) return;
+
+    // Remove any existing overlay for this section
+    const existingId = `input-pulse-overlay-${section.position}`;
+    const existing = inputWrapper.querySelector(`#${existingId}`);
+    if (existing) existing.remove();
+
+    // Create a localized flash overlay inside the input wrapper
+    const overlay = document.createElement('div');
+    overlay.id = existingId;
+    overlay.className = 'input-pulse-overlay';
+    overlay.dataset.section = section.position;
+    overlay.style.setProperty('--pulse-color', section.color);
+    inputWrapper.appendChild(overlay);
+
+    // Trigger the animation
+    void overlay.offsetWidth;
+    overlay.classList.add('active');
+
     setTimeout(() => {
-        inputWrapper.classList.remove(pulseClass);
-    }, 850);
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.remove(), 400);
+    }, 600);
+}
+
+let _revealBarsTimer = null;
+function revealResourceBars() {
+    const barContainer = document.getElementById('input-resource-bars');
+    if (!barContainer) return;
+    barContainer.classList.add('resource-change-visible');
+    if (_revealBarsTimer) clearTimeout(_revealBarsTimer);
+    _revealBarsTimer = setTimeout(() => {
+        barContainer.classList.remove('resource-change-visible');
+        _revealBarsTimer = null;
+    }, 1800);
 }
 
 function triggerBagPulse() {
@@ -2194,7 +2230,7 @@ function updatePlayerHeartState(char, world) {
     const inventory = char.inventory || [];
     const currentItemCount = inventory.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-    // Trigger input wrapper glow pulse on resource changes
+    // Trigger localized input pulse and bar reveal on resource changes
     if (_lastTrackedVitals.hp !== null) {
         const dHp = hpCurrent - _lastTrackedVitals.hp;
         const dMp = mpCurrent - _lastTrackedVitals.mp;
@@ -2202,13 +2238,12 @@ function updatePlayerHeartState(char, world) {
         const dGold = (_lastTrackedVitals.gold !== null && goldCurrent !== undefined) ? (goldCurrent - _lastTrackedVitals.gold) : 0;
         const dItems = (_lastTrackedVitals.itemCount !== null) ? (currentItemCount - _lastTrackedVitals.itemCount) : 0;
 
-        if (dHp !== 0) {
-            triggerInputPulse(dHp > 0 ? 'hp-up' : 'hp-down');
-        } else if (dMp !== 0) {
-            triggerInputPulse('mp');
-        } else if (dStamina !== 0) {
-            triggerInputPulse('sp');
-        }
+        const anyResourceChanged = dHp !== 0 || dMp !== 0 || dStamina !== 0;
+        if (anyResourceChanged) revealResourceBars();
+
+        if (dHp !== 0) triggerInputPulse(dHp > 0 ? 'hp-up' : 'hp-down');
+        if (dMp !== 0) triggerInputPulse('mp');
+        if (dStamina !== 0) triggerInputPulse('sp');
         
         if (dItems !== 0) {
             triggerBagPulse();
@@ -6896,15 +6931,22 @@ async function rerollUserMessage(button) {
     const origRawText = bubble.dataset.rawText || bubble.textContent || '';
     if (!msgId || !origRawText.trim()) return;
 
-    const origHtml = button.innerHTML;
+    const origBtnHtml = button.innerHTML;
     button.disabled = true;
-    button.innerHTML = `
-        <div class="typing-indicator" style="padding: 0; gap: 2px; display: flex; align-items: center; justify-content: center; height: 14px;">
-            <div class="typing-dot" style="width: 3px; height: 3px; background-color: var(--text-muted);"></div>
-            <div class="typing-dot" style="width: 3px; height: 3px; background-color: var(--text-muted); animation-delay: -0.16s;"></div>
-            <div class="typing-dot" style="width: 3px; height: 3px; background-color: var(--text-muted); animation-delay: -0.32s;"></div>
-        </div>
-    `;
+
+    // Show typing indicator inside the user bubble itself
+    const textElement = bubble.querySelector('.message-text');
+    let origTextHtml = '';
+    if (textElement) {
+        origTextHtml = textElement.innerHTML;
+        textElement.innerHTML = `
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+    }
 
     try {
         const genResponse = await fetch('/api/generate_user_message', {
@@ -6919,7 +6961,9 @@ async function rerollUserMessage(button) {
 
         const genData = await genResponse.json();
         if (!genData.message) {
-            button.innerHTML = origHtml;
+            // Restore original text on failure
+            if (textElement) textElement.innerHTML = origTextHtml;
+            button.innerHTML = origBtnHtml;
             button.disabled = false;
             if (genData.error) {
                 showCustomAlert("Reroll Failed", genData.error);
@@ -6931,100 +6975,31 @@ async function rerollUserMessage(button) {
         
         // Update user bubble DOM content
         bubble.dataset.rawText = newText;
-        const textElement = bubble.querySelector('.message-text');
         if (textElement) {
             textElement.innerHTML = marked.parse(newText);
             postProcessMessageHTML(textElement);
         }
 
-        // Truncate any messages after this user turn
-        truncateChatAfter(row);
-
-        // Regenerate assistant response via /edit
-        hasApprovedToolThisTurn = false;
-        const heartElement = document.querySelector('.heart-pulse');
-        if (heartElement) {
-            heartElement.classList.add('jiggling');
-        }
-
-        const typingIndicatorRow = document.createElement('div');
-        typingIndicatorRow.className = 'message-row program-row';
-        const profileUrl = getProfileUrl();
-        typingIndicatorRow.innerHTML = `
-            <div class="avatar-container">
-                <img class="avatar program-avatar" src="${profileUrl}" alt="Program" onclick="expandImage('${profileUrl}')">
-            </div>
-            <div class="message program">
-                <div class="typing-indicator">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            </div>
-        `;
-        chatContainer.appendChild(typingIndicatorRow);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-
-        userInput.disabled = true;
-        userInput.placeholder = "";
-
-        setGenerating(true);
-        startToolPolling();
-        if (chatAbortController) {
-            chatAbortController.abort();
-        }
-        chatAbortController = new AbortController();
-
-        const editResponse = await fetch('/edit', {
+        // Persist the updated text to the backend without truncating or regenerating
+        await fetch('/update_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: sessionId,
                 msg_id: msgId,
-                new_text: newText,
-                model: selectedModel
-            }),
-            signal: chatAbortController.signal
+                new_text: newText
+            })
         });
 
-        if (chatContainer.contains(typingIndicatorRow)) {
-            chatContainer.removeChild(typingIndicatorRow);
-        }
-
-        const editData = await editResponse.json();
-        if (editData.response !== undefined) {
-            appendMessage('program', editData.response, null, editData.tool_calls, true, editData.timestamp, editData.duration, false, editData.program_msg_id);
-        } else if (editData.error) {
-            let errMsg = editData.error;
-            if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
-                errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
-            }
-            appendMessage('program', errMsg);
-        }
-        fetchCharacterStatus();
-        handleSuccessReload(editData);
     } catch (error) {
-        if (chatContainer.contains(typingIndicatorRow)) {
-            chatContainer.removeChild(typingIndicatorRow);
-        }
-        if (error.name === 'AbortError') {
-            // Cancelled cleanly
-        } else {
-            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
-            handleToolReloadOrRecovery();
+        // Restore original text on error
+        if (textElement) textElement.innerHTML = origTextHtml;
+        if (error.name !== 'AbortError') {
+            showCustomAlert("Reroll Failed", `Connection error: ${error.message || 'The model was unreachable'}. Please try again.`);
         }
     } finally {
-        button.innerHTML = origHtml;
+        button.innerHTML = origBtnHtml;
         button.disabled = false;
-        stopToolPolling();
-        setGenerating(false);
-        userInput.disabled = false;
-        userInput.placeholder = "What do you do?";
-        const heartElement = document.querySelector('.heart-pulse');
-        if (heartElement) {
-            heartElement.classList.remove('jiggling');
-        }
-        await initializeModelSelect();
     }
 }
 

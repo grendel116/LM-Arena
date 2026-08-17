@@ -614,6 +614,7 @@ body::-webkit-scrollbar-thumb:hover,
     padding: 6px 16px;
     transition: all 0.25s ease;
     min-width: 0;
+    overflow: hidden;
     box-shadow: 0 2px 10px hsla(var(--slate-h), var(--slate-s), 0%, 0.4), inset 0 1px 3px hsla(var(--slate-h), var(--slate-s), 0%, 0.5);
     backdrop-filter: blur(8px);
 }
@@ -3878,25 +3879,38 @@ body, #app-container, #chat-container, .chat-container {
     transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
-/* Input Area Pulse Glow on Stat Changes */
-.input-wrapper.input-pulse-hp-down {
-    border-color: hsla(var(--red-h), 75%, 50%, 0.9) !important;
-    box-shadow: 0 0 20px hsla(var(--red-h), 75%, 50%, 0.6), 0 2px 10px hsla(var(--slate-h), var(--slate-s), 0%, 0.2) !important;
+/* Localized Input Pulse Overlays (section-based flashes) */
+.input-pulse-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 20px;
+    background: radial-gradient(ellipse at center, var(--pulse-color, transparent), transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.4s ease-out;
 }
 
-.input-wrapper.input-pulse-hp-up {
-    border-color: hsla(var(--gold-h), 98%, 77%, 0.95) !important;
-    box-shadow: 0 0 22px hsla(var(--gold-h), 98%, 64%, 0.6), 0 0 10px hsla(var(--slate-h), 5%, 100%, 0.4), 0 2px 10px hsla(var(--slate-h), var(--slate-s), 0%, 0.2) !important;
+.input-pulse-overlay[data-section="left"] {
+    left: 0;
+    width: 40%;
 }
 
-.input-wrapper.input-pulse-mp {
-    border-color: hsla(var(--blue-h), 83%, 53%, 0.9) !important;
-    box-shadow: 0 0 20px hsla(var(--blue-h), 83%, 53%, 0.6), 0 2px 10px hsla(var(--slate-h), var(--slate-s), 0%, 0.2) !important;
+.input-pulse-overlay[data-section="center"] {
+    left: 25%;
+    width: 50%;
 }
 
-.input-wrapper.input-pulse-sp {
-    border-color: hsla(var(--green-h), 76%, 36%, 0.9) !important;
-    box-shadow: 0 0 20px hsla(var(--green-h), 76%, 36%, 0.6), 0 2px 10px hsla(var(--slate-h), var(--slate-s), 0%, 0.2) !important;
+.input-pulse-overlay[data-section="right"] {
+    right: 0;
+    left: auto;
+    width: 40%;
+}
+
+.input-pulse-overlay.active {
+    opacity: 1;
+    transition: opacity 0.08s ease-in;
 }
 
 /* Input Area Minimalist Resource Bars on Hover */
@@ -3921,6 +3935,13 @@ body, #app-container, #chat-container, .chat-container {
     opacity: 0.95;
     transform: translateY(0);
     pointer-events: auto;
+}
+
+/* Temporarily reveal bars on resource changes */
+.input-resource-bars.resource-change-visible {
+    opacity: 0.95;
+    transform: translateY(0);
+    transition: opacity 0.15s ease-in, transform 0.15s ease-in;
 }
 
 .input-resource-bars .resource-bar {
@@ -3955,7 +3976,7 @@ body, #app-container, #chat-container, .chat-container {
 .input-resource-bars .resource-bar-fill {
     height: 100%;
     border-radius: 3px;
-    transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .input-resource-bars .resource-bar-fill.magicka {
