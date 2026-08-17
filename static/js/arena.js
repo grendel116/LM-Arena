@@ -5435,12 +5435,6 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
     const pillsRow = document.createElement('div');
     pillsRow.className = 'arena-tool-pills-row';
 
-    const detailDrawer = document.createElement('div');
-    detailDrawer.className = 'arena-pill-detail-drawer';
-    detailDrawer.style.display = 'none';
-
-    let activePill = null;
-
     pairedTools.forEach(tool => {
         const meta = arenaToolMetaMap[tool.name] || {
             label: tool.name,
@@ -5457,39 +5451,10 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
         pill.title = meta.label;
         pill.innerHTML = getLogIconSvg(meta.icon);
 
-        pill.onclick = (e) => {
-            e.stopPropagation();
-            if (activePill === pill && detailDrawer.style.display !== 'none') {
-                detailDrawer.style.display = 'none';
-                pill.classList.remove('active');
-                activePill = null;
-            } else {
-                if (activePill) activePill.classList.remove('active');
-                pill.classList.add('active');
-                activePill = pill;
-
-                let argsFormatted = '';
-                if (tool.args && Object.keys(tool.args).length > 0) {
-                    argsFormatted = `Parameters:\n${JSON.stringify(tool.args, null, 2)}\n\n`;
-                }
-                const responseText = tool.response || 'No response data';
-
-                detailDrawer.innerHTML = `
-                    <div class="arena-pill-detail-header">
-                        <span>${escapeHtml(meta.label)}</span>
-                        <span style="font-size: 0.68rem; opacity: 0.6; font-family: monospace;">${escapeHtml(tool.name)}</span>
-                    </div>
-                    <pre><code>${argsFormatted}Response:\n${escapeHtml(responseText)}</code></pre>
-                `;
-                detailDrawer.style.display = 'flex';
-            }
-        };
-
         pillsRow.appendChild(pill);
     });
 
     pillsWrapper.appendChild(pillsRow);
-    pillsWrapper.appendChild(detailDrawer);
     logsContainer.appendChild(pillsWrapper);
 }
 

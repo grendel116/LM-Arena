@@ -1197,7 +1197,7 @@ body::-webkit-scrollbar-thumb:hover,
     background: hsla(var(--slate-h), var(--slate-s), 12%, 0.5);
     border: 1px solid hsla(var(--slate-h), 5%, 100%, 0.08);
     color: var(--text-muted);
-    cursor: pointer;
+    cursor: default;
     transition: all 0.18s ease;
     position: relative;
     user-select: none;
@@ -1272,41 +1272,6 @@ body::-webkit-scrollbar-thumb:hover,
 .arena-tool-pill[data-category="loot"]:hover {
     border-color: hsla(38, 85%, 55%, 0.6);
     box-shadow: 0 0 10px hsla(38, 85%, 50%, 0.3);
-}
-
-/* Expanded Detail Drawer */
-.arena-pill-detail-drawer {
-    background: hsla(var(--slate-h), var(--slate-s), 5%, 0.85);
-    border: 1px solid hsla(var(--slate-h), 5%, 100%, 0.08);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 0.75rem;
-    color: var(--text-main);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 250px;
-    overflow-y: auto;
-}
-
-.arena-pill-detail-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-weight: 600;
-    font-size: 0.78rem;
-    color: var(--primary-accent);
-    border-bottom: 1px solid hsla(215, 5%, 100%, 0.06);
-    padding-bottom: 4px;
-}
-
-.arena-pill-detail-drawer pre {
-    margin: 0;
-    font-family: monospace;
-    font-size: 0.72rem;
-    white-space: pre-wrap;
-    word-break: break-all;
-    color: var(--text-muted);
 }
 
 
