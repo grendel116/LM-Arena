@@ -5532,8 +5532,16 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
         case 'arena_spend_gold':
             return `-${a.amount || a.cost || a.gold_amount || 0} Gold`;
         case 'arena_take_damage':
+            if (resObj && (resObj.damage_inflicted !== undefined || resObj.damage !== undefined)) {
+                const dmg = resObj.damage_inflicted !== undefined ? resObj.damage_inflicted : resObj.damage;
+                return `-${dmg} HP`;
+            }
             return `-${a.amount || a.damage_amount || a.damage || 0} HP`;
         case 'arena_heal':
+            if (resObj && (resObj.hp_restored !== undefined || resObj.healed !== undefined)) {
+                const healed = resObj.hp_restored !== undefined ? resObj.hp_restored : resObj.healed;
+                return `+${healed} HP`;
+            }
             return `+${a.amount || a.heal_amount || a.healing || 0} HP`;
         case 'arena_spend_magicka':
         case 'arena_spend_spell_points':
@@ -5548,10 +5556,22 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
             return `Rested ${a.hours || 8}h`;
         case 'arena_request_skill_check':
         case 'arena_roll_skill':
+            if (resObj && resObj.degree) {
+                return `${a.skill_name || 'Skill'}: ${resObj.degree}`;
+            }
             return `${a.skill_name || 'Skill'}${a.dc ? ` (DC ${a.dc})` : ''}`;
         case 'arena_roll_check':
+            if (resObj && resObj.degree) {
+                return `${a.attribute_name || 'Check'}: ${resObj.degree}`;
+            }
             return `${a.attribute_name || 'Check'}${a.dc ? ` (DC ${a.dc})` : ''}`;
         case 'arena_roll_combat':
+            if (resObj && typeof resObj.hit === 'boolean') {
+                const target = a.target_name || resObj.target_name || 'Enemy';
+                if (!resObj.hit) return `Miss vs ${target}`;
+                const dmg = resObj.damage_dealt !== undefined ? resObj.damage_dealt : (resObj.damage || 0);
+                return `${dmg} DMG vs ${target}`;
+            }
             return `vs ${a.target_name || 'Enemy'}${a.weapon_name ? ` with ${a.weapon_name}` : ''}`;
         case 'arena_roll_initiative':
             return `Initiative Roll`;

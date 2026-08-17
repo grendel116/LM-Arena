@@ -1104,7 +1104,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
             f"- Flat d20 Roll: {roll_res['roll']} (Outcome: {roll_res['degree'].upper()})\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{history_text}\n\n"
-            f"Generate a single first person present tense narrative sentence describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
+            f"NO dialogue! Generate ONLY a single sentence of narration describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
         )
     else:
         prompt = (
@@ -1119,7 +1119,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
             f"- Context: {reason}\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{history_text}\n\n"
-            f"Generate a single first person present tense narrative sentence describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
+            f"NO dialogue! Generate ONLY a single sentence of narration describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
         )
 
     action_text = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
@@ -1385,7 +1385,7 @@ def run_background_video_gen(task_id, session_id, image_url, local_path, prompt)
 def animate_image():
     session_id = request.json.get('session_id', 'default')
     image_url = request.json.get('image_url')
-    prompt = request.json.get('prompt', 'gentle head turn, smiling, blinking, looking at camera')
+    prompt = request.json.get('prompt')
     
     if not image_url:
         return jsonify({'error': 'Missing image_url'}), 400

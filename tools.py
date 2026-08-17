@@ -2466,7 +2466,7 @@ def arena_take_damage(amount=0, damage_amount=None, damage=None, **kwargs):
     """Apply damage to the character. Updates HP on the character sheet."""
     import os
     actual_amount = amount if amount else (damage_amount if damage_amount is not None else (damage if damage is not None else 0))
-    inc_mult = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "3.0"))
+    inc_mult = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "1.0"))
     scaled_amount = max(1, int(round(int(actual_amount) * inc_mult))) if int(actual_amount) > 0 else 0
     sheet = load_character()
     sheet = take_damage(sheet, scaled_amount)
