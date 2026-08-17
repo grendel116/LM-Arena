@@ -316,8 +316,11 @@ function replacePlaceholders(text) {
     if (!text) return text;
     const displayUser = getUserDisplayName();
     const displayChar = activeProgramName || "Program";
-    return text.replace(new RegExp("{" + "{" + "user" + "}" + "}", "gi"), displayUser)
-               .replace(new RegExp("{" + "{" + "char" + "}" + "}", "gi"), displayChar);
+    return String(text)
+        .replace(/\{\{user\}\}/gi, displayUser)
+        .replace(/\{user\}/gi, displayUser)
+        .replace(/\{\{char\}\}/gi, displayChar)
+        .replace(/\{char\}/gi, displayChar);
 }
 
 let isAtBottom = true;
@@ -4941,9 +4944,14 @@ function renderOpeningLoreCard() {
     }
 }
 
+// --- New Game Locked Start Controls ---
+let isNewGamePendingStart = false;
+
 // --- showWelcomeMessage ---
 function showWelcomeMessage() {
     renderOpeningLoreCard();
+    if (isNewGamePendingStart) return;
+    
     // Do not show welcome message if there is already active chat history visible
     const visibleMessages = chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)');
     if (visibleMessages.length > 0) return;
@@ -4985,6 +4993,98 @@ function showWelcomeMessage() {
         if (textDiv) {
             textDiv.innerHTML = parsedText;
         }
+    }
+}
+
+// --- New Game Locked Start Controls ---
+function prepareNewGameStart() {
+    isNewGamePendingStart = true;
+    
+    // Ensure welcome message is removed so only the Opening Lore Card is visible
+    const welcome = document.getElementById('welcome-message');
+    if (welcome) welcome.remove();
+
+    // Lock text input
+    const userInput = document.getElementById('user-input');
+    if (userInput) {
+        userInput.disabled = true;
+        userInput.placeholder = "Click send to begin...";
+        userInput.value = "";
+        userInput.classList.add('user-input-frozen');
+    }
+
+    // Lock all auxiliary input buttons
+    const autoGenBtn = document.getElementById('auto-generate-user-btn');
+    if (autoGenBtn) {
+        autoGenBtn.disabled = true;
+        autoGenBtn.style.opacity = '0.25';
+        autoGenBtn.style.pointerEvents = 'none';
+    }
+
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (diceBtn) {
+        diceBtn.disabled = true;
+        diceBtn.style.opacity = '0.25';
+        diceBtn.style.pointerEvents = 'none';
+    }
+
+    const portraitBtn = document.getElementById('generate-portrait-btn');
+    if (portraitBtn) {
+        portraitBtn.disabled = true;
+        portraitBtn.style.opacity = '0.25';
+        portraitBtn.style.pointerEvents = 'none';
+    }
+
+    // Enable Send Button & set pulsing luminous green state
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.classList.add('start-game-pulse');
+        sendBtn.title = "Click to Begin Adventure";
+    }
+
+    // Anchor scroll to top so the intro card is 100% displayed
+    const container = document.getElementById('chat-container');
+    if (container) {
+        container.scrollTop = 0;
+    }
+}
+
+function unlockControlsFromNewGame() {
+    isNewGamePendingStart = false;
+
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.classList.remove('start-game-pulse');
+        sendBtn.title = "Send";
+    }
+
+    const userInput = document.getElementById('user-input');
+    if (userInput) {
+        userInput.disabled = false;
+        userInput.placeholder = "What do you do?";
+        userInput.classList.remove('user-input-frozen');
+    }
+
+    const autoGenBtn = document.getElementById('auto-generate-user-btn');
+    if (autoGenBtn) {
+        autoGenBtn.disabled = false;
+        autoGenBtn.style.opacity = '';
+        autoGenBtn.style.pointerEvents = '';
+    }
+
+    const diceBtn = document.getElementById('dice-skill-btn');
+    if (diceBtn) {
+        diceBtn.disabled = false;
+        diceBtn.style.opacity = '';
+        diceBtn.style.pointerEvents = '';
+    }
+
+    const portraitBtn = document.getElementById('generate-portrait-btn');
+    if (portraitBtn) {
+        portraitBtn.disabled = false;
+        portraitBtn.style.opacity = '';
+        portraitBtn.style.pointerEvents = '';
     }
 }
 
@@ -5045,7 +5145,7 @@ async function loadHistory() {
             }
             
             const userInput = document.getElementById('user-input');
-            if (userInput) {
+            if (userInput && !isNewGamePendingStart) {
                 userInput.placeholder = "What do you do?";
             }
         }
@@ -5054,7 +5154,10 @@ async function loadHistory() {
             container.innerHTML = '';
         }
         renderOpeningLoreCard();
-        if (data.history && data.history.length > 0) {
+        
+        const hasUserMessages = (data.history || []).some(msg => msg.role === 'user' || msg.role === 'user_action');
+        if (hasUserMessages) {
+            unlockControlsFromNewGame();
             // Remove welcome message or onboarding card
             const welcome = document.getElementById('welcome-message');
             if (welcome) welcome.remove();
@@ -5070,7 +5173,7 @@ async function loadHistory() {
             evaluateLatestMessageForSkillCheck();
             updateMusicFromWorldState();
         } else {
-            // History is empty! Wait for model initialization and health checks to complete if they haven't yet
+            // History has no user actions yet (new/unstarted game)! Wait for model initialization if needed
             if (modelInitPromise) {
                 try {
                     // Wait at most 2 seconds for model initialization status
@@ -5087,7 +5190,7 @@ async function loadHistory() {
             if (!connectionStatus.remote_configured  && !connectionStatus.local_online) {
                 showOnboardingCard();
             } else {
-                showWelcomeMessage();
+                prepareNewGameStart();
                 // On a new chat session (no history), default to local model
                 const defaultModel = safeLocalStorage.getItem('program_default_model') || 'local-llm';
                 selectedModel = defaultModel;
@@ -5102,15 +5205,19 @@ async function loadHistory() {
 
         // Restore scroll position
         if (container) {
-            const savedScrollPos = safeSessionStorage.getItem('chat_scroll_pos');
-            const wasAtBottom = safeSessionStorage.getItem('chat_was_at_bottom');
+            if (isNewGamePendingStart) {
+                container.scrollTop = 0;
+            } else {
+                const savedScrollPos = safeSessionStorage.getItem('chat_scroll_pos');
+                const wasAtBottom = safeSessionStorage.getItem('chat_was_at_bottom');
 
-            if (wasAtBottom === 'true' || wasAtBottom === null) {
-                container.scrollTop = container.scrollHeight;
-                isAtBottom = true;
-            } else if (savedScrollPos) {
-                container.scrollTop = parseInt(savedScrollPos, 10);
-                isAtBottom = false;
+                if (wasAtBottom === 'true' || wasAtBottom === null) {
+                    container.scrollTop = container.scrollHeight;
+                    isAtBottom = true;
+                } else if (savedScrollPos) {
+                    container.scrollTop = parseInt(savedScrollPos, 10);
+                    isAtBottom = false;
+                }
             }
         }
     } catch (error) {
@@ -5366,8 +5473,12 @@ const hiddenPassiveTools = new Set([
     'arena_get_location'
 ]);
 
-// --- formatToolOutcomeSummary ---
 function formatToolOutcomeSummary(toolName, args = {}, response = null) {
+    const res = _computeToolOutcomeSummary(toolName, args, response);
+    return replacePlaceholders(res);
+}
+
+function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
     const a = args || {};
     let resObj = null;
     if (response) {
@@ -6348,6 +6459,51 @@ function handleToolReloadOrRecovery() {
 // --- sendMessage ---
 async function sendMessage() {
     hideThoughtBubbleOverlay();
+
+    if (isNewGamePendingStart) {
+        unlockControlsFromNewGame();
+
+        // Render typing indicator row in chat container for a moment before sending first message
+        const typingRow = document.createElement('div');
+        typingRow.className = 'message-row program-row';
+        const profileUrl = getProfileUrl();
+        typingRow.innerHTML = `
+            <div class="avatar-container">
+                <img class="avatar program-avatar" src="${profileUrl}" alt="Program">
+            </div>
+            <div class="message program">
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        `;
+        if (chatContainer) {
+            chatContainer.appendChild(typingRow);
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1400));
+
+        if (typingRow.parentElement) {
+            typingRow.remove();
+        }
+
+        showWelcomeMessage();
+
+        if (chatContainer) {
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+        return;
+    }
+
     const text = userInput.value.trim();
     if (!text && !attachedBase64 && !attachedMediaPath) {
         // Walk backwards past bottom-sentinel and transient/ghost program rows
@@ -8467,114 +8623,8 @@ function startToolPolling() {
 }
 
 function updateLiveLogs(bubble, toolCalls) {
-    if (!toolCalls || toolCalls.length === 0) return;
-    
-    let logsContainer = bubble.querySelector('.antigravity-logs-container');
-    if (!logsContainer) {
-        logsContainer = document.createElement('div');
-        logsContainer.className = 'antigravity-logs-container';
-        bubble.appendChild(logsContainer);
-    }
-    
-    let logsCard = logsContainer.querySelector('.antigravity-logs-card');
-    if (!logsCard) {
-        logsCard = document.createElement('div');
-        logsCard.className = 'antigravity-logs-card';
-        logsContainer.appendChild(logsCard);
-    }
-    
-    let header = logsCard.querySelector('.antigravity-logs-header');
-    if (!header) {
-        header = document.createElement('div');
-        header.className = 'antigravity-logs-header';
-        header.innerHTML = `
-            <span class="ag-timer-icon">${getLogIconSvg('timer')}</span>
-            <span class="ag-timer-text">Working...</span>
-            <span class="ag-header-chevron">▼</span>
-        `;
-        logsCard.appendChild(header);
-        
-        header.onclick = (e) => {
-            e.stopPropagation();
-            const body = logsCard.querySelector('.antigravity-logs-body');
-            if (body) {
-                const isExpanded = body.style.display === 'flex' || body.style.display === 'block';
-                body.style.display = isExpanded ? 'none' : 'flex';
-                header.querySelector('.ag-header-chevron').classList.toggle('expanded', !isExpanded);
-            }
-        };
-    }
-    
-    let body = logsCard.querySelector('.antigravity-logs-body');
-    if (!body) {
-        body = document.createElement('div');
-        body.className = 'antigravity-logs-body';
-        body.style.display = 'none'; // Collapsed by default during live generation
-        logsCard.appendChild(body);
-    }
-    
-    body.innerHTML = '';
-    
-    toolCalls.forEach(tc => {
-        const itemEl = document.createElement('div');
-        itemEl.className = 'antigravity-log-item';
-        
-        let icon = getLogIconSvg('gear');
-        let action = 'Running';
-        let target = tc.name;
-        
-        if (tc.status === 'completed') {
-            action = 'Completed';
-        } else if (tc.status === 'failed') {
-            action = 'Failed';
-        }
-        
-        const name = tc.name;
-        if (name.includes('search')) {
-            icon = getLogIconSvg('search');
-            action = tc.status === 'running' ? 'Searching' : (tc.status === 'completed' ? 'Searched' : 'Search failed');
-        } else if (name.includes('read_file') || name.includes('view_file')) {
-            icon = getLogIconSvg('file');
-            action = tc.status === 'running' ? 'Reading' : (tc.status === 'completed' ? 'Read' : 'Read failed');
-        } else if (name.includes('write_file') || name.includes('replace') || name.includes('edit')) {
-            icon = getLogIconSvg('edit');
-            action = tc.status === 'running' ? 'Writing' : (tc.status === 'completed' ? 'Wrote' : 'Write failed');
-        } else if (name.includes('command') || name.includes('shell')) {
-            icon = getLogIconSvg('command');
-            action = tc.status === 'running' ? 'Running' : (tc.status === 'completed' ? 'Ran' : 'Execution failed');
-        }
-        
-        target = tc.args || '';
-        if (target.length > 50) {
-            target = target.substring(0, 47) + '...';
-        }
-        
-        let durText = tc.duration ? ` (${tc.duration}s)` : '';
-        itemEl.innerHTML = `
-            <span class="ag-log-icon">${icon}</span>
-            <span class="ag-log-action" style="font-weight: 500;">${action}</span>
-            <span class="ag-log-target" style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted); opacity: 0.85; margin-left: 4px;">${tc.name}(${target})</span>
-            <span class="ag-log-suffix" style="margin-left: auto; font-size: 0.7rem; color: var(--text-muted);">${durText}</span>
-        `;
-        
-        const detailEl = document.createElement('div');
-        detailEl.className = 'antigravity-log-detail';
-        detailEl.style.display = 'none';
-        
-        const responseText = tc.response || 'Running...';
-        detailEl.innerHTML = `
-            <pre><code>${responseText}</code></pre>
-        `;
-        
-        itemEl.onclick = (e) => {
-            e.stopPropagation();
-            const isExpanded = detailEl.style.display === 'block';
-            detailEl.style.display = isExpanded ? 'none' : 'block';
-        };
-        
-        body.appendChild(itemEl);
-        body.appendChild(detailEl);
-    });
+    // Live "Working..." accordion suppressed per user request
+    return;
 }
 
 // --- stopToolPolling ---

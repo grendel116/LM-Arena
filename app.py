@@ -3346,7 +3346,7 @@ def list_user_profiles():
         
         saves = list_saves()
         if not saves:
-            create_save(save_id="eternal_champion_001")
+            create_save(save_id="eternal_champion")
             saves = list_saves()
             
         active_id = get_active_save_id()

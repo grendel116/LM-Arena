@@ -52,7 +52,7 @@ def get_active_save_id() -> str:
         if item.is_dir():
             return item.name
 
-    return "eternal_champion_001"
+    return "eternal_champion"
 
 
 def set_active_save_id(save_id: str) -> None:
@@ -534,6 +534,6 @@ def delete_save(save_id: str, force_delete: bool = True) -> bool:
         if remaining:
             set_active_save_id(remaining[0]["id"])
         else:
-            create_save(save_id="eternal_champion_001")
+            create_save(save_id=save_id)
             
     return True
