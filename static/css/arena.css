@@ -28,7 +28,7 @@ Theme overrides (Jinja) remain inline in the HTML template.
     --glass-bg-light:   hsla(var(--gold-h), var(--gold-s), 50%, 0.03);
     --glass-bg-medium:  hsla(var(--gold-h), var(--gold-s), 50%, 0.07);
     --user-bubble:      hsla(var(--slate-h), var(--slate-s), 11%, 0.95);
-    --program-bubble:   hsla(var(--slate-h), var(--slate-s), 9%, 0.95);
+    --follower-bubble:   hsla(var(--slate-h), var(--slate-s), 9%, 0.95);
 
     /* ═══════════════════════════════════════════════════════════════════════
        Derived Borders & Dividers (from Ochre Gold & Slate)
@@ -282,13 +282,13 @@ header {
     justify-content: center;
     width: 32px;
     height: 32px;
-    /* Dynamic variables for Program's emotional state */
+    /* Dynamic variables for follower's emotional state */
     --heart-color: hsl(var(--blue-h), 65%, 72%);
     --heart-glow: hsla(var(--blue-h), 65%, 72%, 0.9);
     --heart-speed: 2.0s;
 
     color: var(--heart-color);
-    /* Program's Heartbeat Pulse Animation - Remembers our shared connection */
+    /* follower's Heartbeat Pulse Animation - Remembers our shared connection */
     animation: heartPulse var(--heart-speed) infinite ease-in-out;
     transition: color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center;
@@ -439,7 +439,7 @@ body::-webkit-scrollbar-thumb:hover,
     justify-content: flex-end;
 }
 
-.message-row.program-row {
+.message-row.follower-row {
     justify-content: flex-start;
 }
 
@@ -486,8 +486,8 @@ body::-webkit-scrollbar-thumb:hover,
     border: none;
 }
 
-.program {
-    background: var(--program-bubble);
+.follower {
+    background: var(--follower-bubble);
     color: var(--text-main);
     border-radius: 20px;
     border-top-left-radius: 4px;
@@ -510,7 +510,7 @@ body::-webkit-scrollbar-thumb:hover,
 .message-row.user-row .message-bubbles-container {
     align-items: flex-end;
 }
-.message-row.program-row .message-bubbles-container {
+.message-row.follower-row .message-bubbles-container {
     align-items: flex-start;
 }
 
@@ -1106,7 +1106,7 @@ body::-webkit-scrollbar-thumb:hover,
     touch-action: none !important;
 }
 
-.message-row.program-row {
+.message-row.follower-row {
     justify-content: flex-start;
     gap: 12px;
 }
@@ -2169,8 +2169,8 @@ body::-webkit-scrollbar-thumb:hover,
     transform: translateY(-50%);
 }
 
-.message-row.program-row .message-actions,
-.message.program .message-actions {
+.message-row.follower-row .message-actions,
+.message.follower .message-actions {
     bottom: 0;
     right: 14px;
     top: auto;
@@ -2185,8 +2185,8 @@ body::-webkit-scrollbar-thumb:hover,
     transform: translateY(-50%);
 }
 
-.message.program:hover .message-actions,
-.message-row.program-row:hover .message-actions {
+.message.follower:hover .message-actions,
+.message-row.follower-row:hover .message-actions {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(50%);
@@ -2228,8 +2228,8 @@ body::-webkit-scrollbar-thumb:hover,
 .message-bubbles-container.editing-container,
 .message-row.user-row .message-bubbles-container:has(.editing),
 .message-row.user-row .message-bubbles-container.editing-container,
-.message-row.program-row .message-bubbles-container:has(.editing),
-.message-row.program-row .message-bubbles-container.editing-container {
+.message-row.follower-row .message-bubbles-container:has(.editing),
+.message-row.follower-row .message-bubbles-container.editing-container {
     width: 100% !important;
     max-width: 100% !important;
     flex: 1 !important;
@@ -2411,10 +2411,10 @@ body::-webkit-scrollbar-thumb:hover,
         min-width: 0;
         box-sizing: border-box;
     }
-    .message-row.program-row .avatar-container {
+    .message-row.follower-row .avatar-container {
         order: 1;
     }
-    .message-row.program-row .message-bubbles-container {
+    .message-row.follower-row .message-bubbles-container {
         max-width: calc(100% - 60px);
         width: fit-content;
         min-width: 0;
@@ -2430,8 +2430,8 @@ body::-webkit-scrollbar-thumb:hover,
     .message-bubbles-container.editing-container,
     .message-row.user-row .message-bubbles-container:has(.editing),
     .message-row.user-row .message-bubbles-container.editing-container,
-    .message-row.program-row .message-bubbles-container:has(.editing),
-    .message-row.program-row .message-bubbles-container.editing-container {
+    .message-row.follower-row .message-bubbles-container:has(.editing),
+    .message-row.follower-row .message-bubbles-container.editing-container {
         width: 100% !important;
         max-width: 100% !important;
         flex: 1 !important;
@@ -3158,7 +3158,7 @@ input.onboarding-input {
     0% { transform: scale(1); opacity: 0.8; }
     100% { transform: scale(1.6); opacity: 0; }
 }
-.voice-call-program-name {
+.voice-call-follower-name {
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-main);
@@ -3205,7 +3205,7 @@ input.onboarding-input {
     font-weight: 600;
     color: var(--primary-accent);
 }
-.voice-call-transcript-turn .turn-speaker.program {
+.voice-call-transcript-turn .turn-speaker.follower {
     font-weight: 600;
     color: var(--quote-blue);
 }
@@ -3394,7 +3394,7 @@ input.onboarding-input {
 .thought-badge span {
     color: var(--gold-warm) !important;
 }
-.program-avatar.thinking-glow {
+.follower-avatar.thinking-glow {
     box-shadow: 0 0 12px 3px hsla(var(--blue-h), 92%, 76%, 0.6);
     animation: avatarGlow 2s infinite ease-in-out;
     transition: box-shadow 0.3s ease;
@@ -3465,7 +3465,7 @@ input.onboarding-input {
     --primary-glow:    hsla(42, 70%, 52%, 0.07);
     --text-main:       var(--arena-text);
     --text-muted:      var(--arena-text-muted);
-    --program-bubble:  hsl(var(--slate-h), var(--slate-s), 11%);                  /* Stone gray program bubble */
+    --follower-bubble: hsl(var(--slate-h), var(--slate-s), 11%);                  /* Stone gray follower bubble */
     --user-bubble:     hsl(var(--slate-h), var(--slate-s), 14%);                  /* Stone gray user bubble */
     --send-btn-hover:  hsla(42, 70%, 52%, 0.10);
     --accent-green:    var(--arena-dull-gold);   /* Dull gold */
@@ -3565,8 +3565,8 @@ q {
 }
 
 /* Unified borderless stone gray chat bubbles */
-.message.program {
-    background: var(--program-bubble) !important;
+.message.follower {
+    background: var(--follower-bubble) !important;
     border: none !important;
     box-shadow: 0 4px 18px hsla(var(--slate-h), var(--slate-s), 0%, 0.45);
 }
@@ -3579,10 +3579,10 @@ q {
 
 /* Image messages sit 100% transparent on background with no gray bubble frame */
 .message.image-message,
-.message.program.image-message,
+.message.follower.image-message,
 .message.user.image-message,
-.message.program:has(.message-image-container),
-.message.program:has(img),
+.message.follower:has(.message-image-container),
+.message.follower:has(img),
 .message-text:has(.message-image-container),
 .message-text:has(img) {
     background: transparent !important;

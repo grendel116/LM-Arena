@@ -615,8 +615,6 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// Update heart icon to reflect follower's current emotional state
-
 /* ==========================================================================
    II. 1. UTILITY HELPERS & COMMON MIDDLEWARE
    ========================================================================== */
@@ -3076,33 +3074,13 @@ function updateProfileImages() {
 // --- applyTheme ---
 function applyTheme(followerId, theme) {
     document.body.className = followerId;
-    const root = document.documentElement;
-    if (theme) {
-        if (theme.main_color) root.style.setProperty('--main-color', theme.main_color);
-        if (theme.accent_color_a) root.style.setProperty('--accent-color-a', theme.accent_color_a);
-        if (theme.accent_color_b) root.style.setProperty('--accent-color-b', theme.accent_color_b);
-        if (theme.primary_accent) root.style.setProperty('--primary-accent', theme.primary_accent);
-        if (theme.primary_glow) root.style.setProperty('--primary-glow', theme.primary_glow);
-        if (theme.follower_bubble) root.style.setProperty('--follower-bubble', theme.follower_bubble);
-        if (theme.send_btn_hover) root.style.setProperty('--send-btn-hover', theme.send_btn_hover);
-        if (theme.accent_green) {
-            root.style.setProperty('--accent-green', theme.accent_green);
-        }
-        if (theme.quote_blue) root.style.setProperty('--quote-blue', theme.quote_blue);
-        if (theme.primary_btn_text) root.style.setProperty('--primary-btn-text', theme.primary_btn_text);
-    } else {
-        // Default theme values
-        root.style.setProperty('--main-color', '#8b5cf6');
-        root.style.setProperty('--accent-color-a', '#b19cd9');
-        root.style.setProperty('--accent-color-b', '#79aeff');
-        root.style.setProperty('--primary-accent', '#8b5cf6');
-        root.style.setProperty('--primary-glow', 'rgba(139, 92, 246, 0.08)');
-        root.style.setProperty('--follower-bubble', 'rgba(24, 22, 28, 0.85)');
-        root.style.setProperty('--send-btn-hover', 'rgba(45, 38, 56, 0.75)');
-        root.style.setProperty('--accent-green', '#b19cd9');
-        root.style.setProperty('--quote-blue', '#79aeff');
-        root.style.setProperty('--primary-btn-text', 'var(--text-bright)');
-    }
+    // Clears any previously set inline styles on :root so CSS stylesheet takes over completely
+    const propertiesToClear = [
+        '--main-color', '--accent-color-a', '--accent-color-b',
+        '--primary-accent', '--primary-glow', '--follower-bubble',
+        '--send-btn-hover', '--accent-green', '--quote-blue', '--primary-btn-text'
+    ];
+    propertiesToClear.forEach(prop => document.documentElement.style.removeProperty(prop));
 }
 
 // --- updateConnectionStatus ---

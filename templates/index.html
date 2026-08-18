@@ -25,22 +25,6 @@
     <script defer src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/highlight.min.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/cropper.min.js') }}"></script>
-    <!-- Dynamic theme overrides from core/followers/{active_follower}/theme.json -->
-    {% if theme %}
-<style>
-    :root {
-        {% if theme.main_color %}--main-color: {{ theme.main_color }};{% endif %}
-        {% if theme.accent_color_a %}--accent-color-a: {{ theme.accent_color_a }};{% endif %}
-        {% if theme.accent_color_b %}--accent-color-b: {{ theme.accent_color_b }};{% endif %}
-        {% if theme.primary_accent %}--primary-accent: {{ theme.primary_accent }};{% endif %}
-        {% if theme.primary_glow %}--primary-glow: {{ theme.primary_glow }};{% endif %}
-        {% if theme.follower_bubble %}--follower-bubble: {{ theme.follower_bubble }};{% endif %}
-        {% if theme.send_btn_hover %}--send-btn-hover: {{ theme.send_btn_hover }};{% endif %}
-        {% if theme.accent_green %}--accent-green: {{ theme.accent_green }};{% endif %}
-    }
-</style>
-    {% endif %}
-
 <!-- Server-side configuration bridge -->
 <script>
     window.__ARENA_CONFIG = {
@@ -997,55 +981,6 @@
     </div>
 
     <!-- Consolidating user profile modal into assistant modal -->
-
-    <!-- Voice Call Overlay -->
-    <div id="voice-call-overlay" class="voice-call-modal">
-        <div class="voice-call-card">
-            <!-- Pulsing follower Avatar -->
-            <div class="voice-call-avatar-container">
-                <div class="voice-call-pulse-ring ring1"></div>
-                <div class="voice-call-pulse-ring ring2"></div>
-                <img id="voice-call-follower-avatar" class="voice-call-avatar" src="" alt="follower">
-            </div>
-            
-            <h2 id="voice-call-follower-name" class="voice-call-follower-name">follower</h2>
-            <div id="voice-call-status" class="voice-call-status">Connecting...</div>
-            
-
-            
-            <!-- Control Action Buttons -->
-            <div class="voice-call-controls">
-                <button id="voice-call-mute-btn" class="voice-call-btn" onclick="toggleCallMute()" title="Mute Microphone">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                        <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
-                        <line x1="12" y1="19" x2="12" y2="23"></line>
-                        <line x1="8" y1="23" x2="16" y2="23"></line>
-                    </svg>
-                </button>
-                
-                <button id="voice-call-hangup-btn" class="voice-call-btn hangup" onclick="endVoiceCall()" title="End Call">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" style="transform: rotate(135deg); transform-origin: center;"></path>
-                    </svg>
-                </button>
-                
-                <button id="voice-call-speaker-btn" class="voice-call-btn" onclick="toggleCallSpeaker()" title="Toggle Speaker/Audio">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                    </svg>
-                </button>
-            </div>
-            
-            <!-- Live rolling mini-transcript -->
-            <div id="voice-call-transcript" class="voice-call-transcript">
-                <div id="voice-call-transcript-turns" class="voice-call-transcript-turns">
-                    <!-- Turns will be appended here dynamically -->
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- follower Profile Editor Modal -->
     <div id="follower-profile-modal" class="modal" onclick="closefollowerProfileModal()">
