@@ -344,26 +344,13 @@ def strip_narration(text: str) -> str:
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG DIRECTIVES\n"
-    "Tools:\n"
-    "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` Trigger player D20 check.\n"
-    "- `[arena_spend_magicka(amount=...)]` Deduct spell MP cost.\n"
-    "- `[arena_spend_stamina(amount=...)]` Deduct exertion Stamina.\n"
-    "- `[arena_take_damage(amount=...)]` Deduct injury HP.\n"
-    "- `[arena_heal(amount=...)]` Restore HP.\n"
-    "- `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` NPC/monster attack.\n"
-    "- `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` NPC/monster check.\n"
-    "- `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` Recruit permanent companion.\n"
-    "- `[generate_local_image(prompt=\"...\")]` / `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` Generate visual art.\n"
-    "- `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` / `[arena_remove_item(...)]` Inventory changes.\n"
-    "- `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` / `[arena_spend_gold(...)]` Currency changes.\n\n"
-    "Rules:\n"
     "- SKILL CHECKS: Describe the attempt, call [arena_request_skill_check], and stop at the moment of action. Await the player's roll. Narrate success or failure only in the subsequent response.\n"
     "- NPC ROLLS: Resolve NPC and creature actions instantly with [arena_roll_combat] or [arena_roll_check].\n"
     "- VITALS: Deduct MP for magic, Stamina for physical exertion, and HP for wounds alongside narrative action.\n"
-    "- INVENTORY: Track all item and gold transactions precisely with tools or state comments.\n"
-    "- STATE: Conclude environmental shifts with <!-- state: province=\"...\", location=\"...\", hours=... --> when location or time changes. Quest progression is handled strictly via [arena_advance_stage].\n"
-    "- NARRATION: Deliver vivid sensory prose. Do not pose questions or choices to {{user}}.\n"
-    "- LORE & NAMING: Adhere strictly to canonical Elder Scrolls lore and racial nomenclature.\n"
+    "- INVENTORY: Track all item and gold transactions precisely, with the [arena_inventory] skill.\n"
+    "- STATE: Resolve environment shifts with <!-- state: province=\"...\", location=\"...\", hours=... --> when location or time changes. Quest progression is handled strictly via [arena_advance_stage].\n"
+    "- NARRATION: Use gitty, kinetic prose with anthropological weighht. Do not pose questions or choices to {{user}}.\n"
+    "- LORE & NAMING: Adhere strictly to canonical Elder Scrolls lore and nomenclature.\n"
 )
 
 def is_real_user_msg(msg: dict) -> bool:
