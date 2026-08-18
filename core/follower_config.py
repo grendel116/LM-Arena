@@ -36,7 +36,7 @@ def get_follower_name() -> str:
     # v3: data.name / legacy: name
     return card.get("name") or active_follower.title()
 
-get_program_name = get_follower_name
+get_follower_name = get_follower_name
 
 def replace_placeholders(text: str, user_name: str = None, comp_name: str = None) -> str:
     """Replaces {{user}} and {{char}} placeholders (case-insensitive) with their actual values."""
@@ -61,7 +61,7 @@ def get_follower_greeting() -> str:
     greeting = card.get("first_mes") or card.get("operation", {}).get("example_message", "")
     return greeting.strip() if greeting.strip() else "Hello, {{user}}."
 
-get_program_greeting = get_follower_greeting
+get_follower_greeting = get_follower_greeting
 
 def compile_instructions_from_card(card: dict) -> str:
     """Compiles a system prompt from a chara_card_v3 data block."""
@@ -174,7 +174,7 @@ def get_compiled_instructions() -> str:
 
 # Determine follower name dynamically from the active follower configuration
 follower_name = get_follower_name()
-program_name = follower_name
+follower_name = follower_name
 
 # LlmAgent requires the name to be a valid identifier. Sanitize it.
 sanitized_agent_name = re.sub(r'[^a-zA-Z0-9_]', '_', follower_name)

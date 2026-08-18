@@ -5,12 +5,12 @@ import json
 import argparse
 from datetime import datetime, timezone
 
-# Resolve quest log path under the active program directory
+# Resolve quest log path under the active follower directory
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
-from utils.program import get_active_program
-active_program = get_active_program()
-QUEST_LOG_PATH = os.path.join(PROJECT_ROOT, "core", "programs", active_program, "quest_log.json")
+from utils.follower import get_active_follower
+active_follower = get_active_follower()
+QUEST_LOG_PATH = os.path.join(PROJECT_ROOT, "core", "followers", active_follower, "quest_log.json")
 
 def main():
     parser = argparse.ArgumentParser(description="Arena Local Quest Manager")

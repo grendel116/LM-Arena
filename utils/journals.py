@@ -6,7 +6,7 @@ import re
 from utils.follower import get_active_follower
 from variables import FOLLOWERS_DIR
 
-def get_journal_entries(follower_id: str = None, program_id: str = None) -> list:
+def get_journal_entries(follower_id: str = None) -> list:
     try:
         from engine.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()
@@ -33,7 +33,7 @@ def get_journal_entries(follower_id: str = None, program_id: str = None) -> list
         print(f"Error loading journals from save bundle: {e}")
     return []
 
-def save_journal_entries(entries: list, program_id: str = None):
+def save_journal_entries(entries: list, follower_id: str = None):
     try:
         from engine.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()
@@ -46,8 +46,8 @@ def save_journal_entries(entries: list, program_id: str = None):
     except Exception as e:
         print(f"Error saving journals to save bundle: {e}")
 
-def add_journal_entry(keyphrases_str: str, content: str, program_id: str = None) -> dict:
-    entries = get_journal_entries(program_id)
+def add_journal_entry(keyphrases_str: str, content: str, follower_id: str = None) -> dict:
+    entries = get_journal_entries(follower_id)
     
     # Normalize keyphrases to lowercase list
     keyphrases = [k.strip().lower() for k in keyphrases_str.split(",") if k.strip()]
@@ -59,24 +59,24 @@ def add_journal_entry(keyphrases_str: str, content: str, program_id: str = None)
         "timestamp": time.time()
     }
     entries.append(entry)
-    save_journal_entries(entries, program_id)
+    save_journal_entries(entries, follower_id)
     return entry
 
-def delete_journal_entry(entry_id: str, program_id: str = None) -> bool:
-    entries = get_journal_entries(program_id)
+def delete_journal_entry(entry_id: str, follower_id: str = None) -> bool:
+    entries = get_journal_entries(follower_id)
     initial_len = len(entries)
     entries = [e for e in entries if e.get("id") != entry_id]
     if len(entries) < initial_len:
-        save_journal_entries(entries, program_id)
+        save_journal_entries(entries, follower_id)
         return True
     return False
 
-def match_journals(user_message: str, program_id: str = None) -> list:
+def match_journals(user_message: str, follower_id: str = None) -> list:
     """Finds top 3 matching journal entries using keyword matching with vector similarity fallback."""
     if not user_message:
         return []
         
-    entries = get_journal_entries(program_id)
+    entries = get_journal_entries(follower_id)
     if not entries:
         return []
         

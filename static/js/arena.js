@@ -336,13 +336,13 @@ const appConfig = window.__ARENA_CONFIG || {};
 const localIp = appConfig.localIp || "127.0.0.1";
 let chatContainer = document.getElementById('chat-container');
 let userInput = document.getElementById('user-input');
-let programWelcomeMessage = null;
+let followerWelcomeMessage = null;
 let activePlayerName = (appConfig && appConfig.userName) || "";
 
 function replacePlaceholders(text) {
     if (!text) return text;
     const displayUser = getUserDisplayName();
-    const displayChar = activeProgramName || "Program";
+    const displayChar = activefollowerName || "follower";
     return String(text)
         .replace(/\{\{user\}\}/gi, displayUser)
         .replace(/\{user\}/gi, displayUser)
@@ -426,22 +426,22 @@ async function softReloadApp() {
         const data = await historyRes.json();
         
         if (data.welcome_message) {
-            programWelcomeMessage = data.welcome_message;
+            followerWelcomeMessage = data.welcome_message;
         } else {
-            programWelcomeMessage = null;
+            followerWelcomeMessage = null;
         }
         
-        if (data.active_program) {
-            applyTheme(data.active_program, data.theme);
+        if (data.active_follower) {
+            applyTheme(data.active_follower, data.theme);
         }
         if (data.character_name) {
-            activeProgramName = data.character_name;
-            const programTitle = "LM Arena";
-            document.title = programTitle;
+            activefollowerName = data.character_name;
+            const followerTitle = "LM Arena";
+            document.title = followerTitle;
             
             const headerTitle = document.querySelector('.header-title-area h1');
             if (headerTitle) {
-                headerTitle.textContent = programTitle;
+                headerTitle.textContent = followerTitle;
             }
             
             const userInput = document.getElementById('user-input');
@@ -615,7 +615,7 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// Update heart icon to reflect Program's current emotional state
+// Update heart icon to reflect follower's current emotional state
 
 /* ==========================================================================
    II. 1. UTILITY HELPERS & COMMON MIDDLEWARE
@@ -641,10 +641,10 @@ function getRelativePath(url) {
 // --- generateMessageId ---
 function generateMessageId(text, role = 'user') {
     let prefix = 'msg_';
-    if (role === 'program' || role === 'user') {
+    if (role === 'follower' || role === 'user') {
         if (text && text.trim().startsWith('![') && text.trim().endsWith(')')) {
             prefix = 'img_';
-        } else if (role === 'program') {
+        } else if (role === 'follower') {
             if (text && (text.includes('Error') || text.includes('failed') || text.includes('momentarily overwhelmed'))) {
                 prefix = 'err_';
             } else {
@@ -897,13 +897,13 @@ async function initializeModelSelect() {
             }
 
             const defaultModel = data.default || 'local-llm';
-            safeLocalStorage.setItem('program_default_model', defaultModel);
+            safeLocalStorage.setItem('follower_default_model', defaultModel);
 
-            let storedModel = safeLocalStorage.getItem('program_selected_model');
+            let storedModel = safeLocalStorage.getItem('follower_selected_model');
             const isValid = availableModels.some(m => m.value === storedModel) || (storedModel === 'local-llm' && availableModels.length === 0);
             if (!isValid) {
                 storedModel = defaultModel;
-                safeLocalStorage.setItem('program_selected_model', storedModel);
+                safeLocalStorage.setItem('follower_selected_model', storedModel);
             }
             
             selectedModel = storedModel;
@@ -988,7 +988,7 @@ function showOnboardingCard() {
     onboarding.innerHTML = `
         <div class="onboarding-header">
             <h2>👾 LM-Arena Connection Guide</h2>
-            <p>Your program needs a language model "brain" to speak. Choose one or both options below to connect.</p>
+            <p>Your follower needs a language model "brain" to speak. Choose one or both options below to connect.</p>
         </div>
         
         <div class="onboarding-options">
@@ -3038,7 +3038,7 @@ function updateAvatarElement(el, newSrc) {
         const img = document.createElement('img');
         img.className = el.className.replace('avatar-fallback', '').trim();
         img.src = newSrc;
-        img.alt = el.getAttribute('alt') || 'Program';
+        img.alt = el.getAttribute('alt') || 'follower';
         
         // Copy all attributes back
         for (let attr of el.attributes) {
@@ -3052,14 +3052,14 @@ function updateAvatarElement(el, newSrc) {
         
         if (el.onclick) {
             img.onclick = el.onclick;
-        } else if (el.classList.contains('program-avatar')) {
+        } else if (el.classList.contains('follower-avatar')) {
             img.onclick = () => expandImage(newSrc);
         }
         
         el.replaceWith(img);
     } else {
         el.src = newSrc;
-        if (el.classList.contains('program-avatar')) {
+        if (el.classList.contains('follower-avatar')) {
             el.onclick = () => expandImage(newSrc);
         }
     }
@@ -3068,14 +3068,14 @@ function updateAvatarElement(el, newSrc) {
 // --- updateProfileImages ---
 function updateProfileImages() {
     const url = getProfileUrl();
-    document.querySelectorAll('.program-avatar').forEach(img => {
+    document.querySelectorAll('.follower-avatar').forEach(img => {
         updateAvatarElement(img, url);
     });
 }
 
 // --- applyTheme ---
-function applyTheme(programId, theme) {
-    document.body.className = programId;
+function applyTheme(followerId, theme) {
+    document.body.className = followerId;
     const root = document.documentElement;
     if (theme) {
         if (theme.main_color) root.style.setProperty('--main-color', theme.main_color);
@@ -3083,7 +3083,7 @@ function applyTheme(programId, theme) {
         if (theme.accent_color_b) root.style.setProperty('--accent-color-b', theme.accent_color_b);
         if (theme.primary_accent) root.style.setProperty('--primary-accent', theme.primary_accent);
         if (theme.primary_glow) root.style.setProperty('--primary-glow', theme.primary_glow);
-        if (theme.program_bubble) root.style.setProperty('--program-bubble', theme.program_bubble);
+        if (theme.follower_bubble) root.style.setProperty('--follower-bubble', theme.follower_bubble);
         if (theme.send_btn_hover) root.style.setProperty('--send-btn-hover', theme.send_btn_hover);
         if (theme.accent_green) {
             root.style.setProperty('--accent-green', theme.accent_green);
@@ -3097,7 +3097,7 @@ function applyTheme(programId, theme) {
         root.style.setProperty('--accent-color-b', '#79aeff');
         root.style.setProperty('--primary-accent', '#8b5cf6');
         root.style.setProperty('--primary-glow', 'rgba(139, 92, 246, 0.08)');
-        root.style.setProperty('--program-bubble', 'rgba(24, 22, 28, 0.85)');
+        root.style.setProperty('--follower-bubble', 'rgba(24, 22, 28, 0.85)');
         root.style.setProperty('--send-btn-hover', 'rgba(45, 38, 56, 0.75)');
         root.style.setProperty('--accent-green', '#b19cd9');
         root.style.setProperty('--quote-blue', '#79aeff');
@@ -3401,7 +3401,7 @@ async function updateComfyModalStatus(skipFetch = false) {
                                  ${comfyStatus.running === 'starting' ? 'Starting...' : (comfyStatus.running === 'stopping' ? 'Stopping...' : (comfyStatus.running ? 'Running' : 'Offline'))}
                              </span>
                          </div>
-                         <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 10px 0;">Generate program portraits locally using ComfyUI.</p>
+                         <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 10px 0;">Generate follower portraits locally using ComfyUI.</p>
                          
                          <div id="comfy-engine-controls">
                              ${comfyStatus.running === true || comfyStatus.running === 'online' ? `
@@ -3479,7 +3479,7 @@ function closeConnectionModal() {
 
 // --- openUserProfileModal ---
 function openUserProfileModal() {
-    openAssistantModal('program');
+    openAssistantModal('follower');
 }
 
 // --- closeUserProfileModal ---
@@ -3493,7 +3493,7 @@ async function changeModel() {
     if (select) {
         const val = select.value;
         selectedModel = val;
-        localStorage.setItem('program_selected_model', selectedModel);
+        localStorage.setItem('follower_selected_model', selectedModel);
     }
 }
 
@@ -3763,7 +3763,7 @@ function renderUserProfilesList() {
         leftArea.appendChild(info);
         card.appendChild(leftArea);
 
-        // Right side action area (matching program profile rows)
+        // Right side action area (matching follower profile rows)
         const rightArea = document.createElement('div');
         rightArea.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-left: auto;';
 
@@ -4093,20 +4093,20 @@ async function deleteSelectedUserProfile() {
 
 
 /* ==========================================================================
-   VII. 6. PROGRAM / PROGRAM SELECTION
+   VII. 6. follower / follower SELECTION
    ========================================================================== */
 
 // --- openAssistantModal ---
-async function openAssistantModal(defaultTab = 'program') {
+async function openAssistantModal(defaultTab = 'follower') {
     document.getElementById('assistant-modal').style.display = 'flex';
     switchAssistantModalTab(defaultTab);
     try {
         let res = await fetch('/api/followers');
-        if (!res.ok) res = await fetch('/api/programs');
+        if (!res.ok) res = await fetch('/api/followers');
         const data = await res.json();
-        const list = data.followers || data.programs;
+        const list = data.followers || data.followers;
         if (list) {
-            renderProgramsList(list, data.active);
+            renderfollowersList(list, data.active);
         }
     } catch (e) {
         console.error("Error loading followers list:", e);
@@ -4121,10 +4121,10 @@ function closeAssistantModal() {
 
 // --- switchAssistantModalTab ---
 function switchAssistantModalTab(tab) {
-    const compBtn = document.getElementById('assistant-tab-btn-program');
+    const compBtn = document.getElementById('assistant-tab-btn-follower');
     const userBtn = document.getElementById('assistant-tab-btn-user');
     const sessBtn = document.getElementById('assistant-tab-btn-sessions');
-    const compTab = document.getElementById('assistant-tab-content-program');
+    const compTab = document.getElementById('assistant-tab-content-follower');
     const userTab = document.getElementById('assistant-tab-content-user');
     const sessTab = document.getElementById('assistant-tab-content-sessions');
     
@@ -4144,7 +4144,7 @@ function switchAssistantModalTab(tab) {
         if (panel) panel.style.display = 'none';
     });
     
-    if (tab === 'program') {
+    if (tab === 'follower') {
         compBtn.style.background = 'hsla(215, 5%, 100%, 0.08)';
         compBtn.style.color = 'var(--primary-accent)';
         compBtn.style.border = '1px solid var(--primary-accent)';
@@ -4159,24 +4159,24 @@ function switchAssistantModalTab(tab) {
     }
 }
 
-// --- openImportProgramModal ---
-function openImportProgramModal() {
+// --- openImportfollowerModal ---
+function openImportfollowerModal() {
     closeAssistantModal();
-    document.getElementById('import-program-modal').style.display = 'flex';
+    document.getElementById('import-follower-modal').style.display = 'flex';
     
     // Clear inputs
     selectedTavernCardFile = null;
     document.getElementById('tavern-card-input').value = '';
     const nameEl = document.getElementById('tavern-file-name');
     if (nameEl) { nameEl.textContent = '+ Select PNG Card'; nameEl.style.color = ''; nameEl.style.fontWeight = ''; }
-    document.getElementById('describe-program-name').value = '';
-    document.getElementById('describe-program-desc').value = '';
+    document.getElementById('describe-follower-name').value = '';
+    document.getElementById('describe-follower-desc').value = '';
     switchImportTab('tavern');
 }
 
-// --- closeImportProgramModal ---
-function closeImportProgramModal() {
-    document.getElementById('import-program-modal').style.display = 'none';
+// --- closeImportfollowerModal ---
+function closeImportfollowerModal() {
+    document.getElementById('import-follower-modal').style.display = 'none';
 }
 
 // --- switchImportTab ---
@@ -4242,7 +4242,7 @@ async function submitTavernCardImport() {
     formData.append('model', selectedModel);
     
     try {
-        const response = await fetch('/api/programs/import/tavern', {
+        const response = await fetch('/api/followers/import/tavern', {
             method: 'POST',
             body: formData
         });
@@ -4251,21 +4251,21 @@ async function submitTavernCardImport() {
             throw new Error(data.error);
         }
         
-        showCustomAlert("Success", `Program '${data.name}' imported successfully!`);
-        closeImportProgramModal();
+        showCustomAlert("Success", `follower '${data.name}' imported successfully!`);
+        closeImportfollowerModal();
         openAssistantModal();
     } catch (e) {
         showCustomAlert("Error", e.message || "Failed to import character card.");
     } finally {
         btn.disabled = false;
-        btn.textContent = "Import Program";
+        btn.textContent = "Import follower";
     }
 }
 
 // --- submitDescriptionImport ---
 async function submitDescriptionImport() {
-    const name = document.getElementById('describe-program-name').value.trim();
-    const desc = document.getElementById('describe-program-desc').value.trim();
+    const name = document.getElementById('describe-follower-name').value.trim();
+    const desc = document.getElementById('describe-follower-desc').value.trim();
     
     if (!name || !desc) {
         showCustomAlert("Error", "Please provide a name and character description.");
@@ -4277,7 +4277,7 @@ async function submitDescriptionImport() {
     btn.textContent = "Generating Persona...";
     
     try {
-        const response = await fetch('/api/programs/import/describe', {
+        const response = await fetch('/api/followers/import/describe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: name, description: desc, model: selectedModel })
@@ -4287,19 +4287,19 @@ async function submitDescriptionImport() {
             throw new Error(data.error);
         }
         
-        showCustomAlert("Success", `Program '${data.name}' generated successfully!`);
-        closeImportProgramModal();
+        showCustomAlert("Success", `follower '${data.name}' generated successfully!`);
+        closeImportfollowerModal();
         openAssistantModal();
     } catch (e) {
-        showCustomAlert("Error", e.message || "Failed to generate program.");
+        showCustomAlert("Error", e.message || "Failed to generate follower.");
     } finally {
         btn.disabled = false;
-        btn.textContent = "Generate Program";
+        btn.textContent = "Generate follower";
     }
 }
 
-// --- renderProgramsList ---
-function renderProgramsList(assistants, activeId) {
+// --- renderfollowersList ---
+function renderfollowersList(assistants, activeId) {
     const container = document.getElementById('assistants-list-container');
     container.innerHTML = '';
 
@@ -4340,10 +4340,10 @@ function renderProgramsList(assistants, activeId) {
         const leftArea = document.createElement('div');
         leftArea.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
-        // Custom program icon image
+        // Custom follower icon image
         const img = document.createElement('img');
-        img.className = 'program-list-avatar';
-        img.src = `/programs/${assistant.id}/profile.png?t=${profileCacheBuster}`;
+        img.className = 'follower-list-avatar';
+        img.src = `/followers/${assistant.id}/profile.png?t=${profileCacheBuster}`;
         img.alt = assistant.name;
         img.setAttribute('data-name', assistant.name);
         img.setAttribute('data-color', assistant.theme_color || '#4a3520');
@@ -4401,7 +4401,7 @@ function renderProgramsList(assistants, activeId) {
         editBtn.style.flexShrink = '0';
         editBtn.onclick = (e) => {
             e.stopPropagation();
-            openProgramProfileModal(assistant.id);
+            openfollowerProfileModal(assistant.id);
         };
         div.appendChild(editBtn);
 
@@ -4434,10 +4434,10 @@ function renderProgramsList(assistants, activeId) {
 // --- selectAssistant ---
 async function selectAssistant(assistantId) {
     try {
-        const res = await fetch('/api/programs/select', {
+        const res = await fetch('/api/followers/select', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ program_id: assistantId })
+            body: JSON.stringify({ follower_id: assistantId })
         });
         if (!res.ok) {
             const text = await res.text();
@@ -4480,59 +4480,59 @@ async function selectAssistant(assistantId) {
             loadHistory();
             loadServerImages();
         } else {
-            showCustomAlert("Switch Failed", `Could not select program: ${data.error}`);
+            showCustomAlert("Switch Failed", `Could not select follower: ${data.error}`);
         }
     } catch (e) {
         console.error("Error switching assistant:", e);
-        showCustomAlert("Error", "Could not connect to the server to switch programs.");
+        showCustomAlert("Error", "Could not connect to the server to switch followers.");
     }
 }
 
 // --- deleteAssistant ---
 async function deleteAssistant(assistantId, name) {
     showCustomConfirm(
-        "Delete Program",
-        `Are you sure you want to permanently delete program <strong>${name}</strong>? This will remove all their configs, databank documents, and portraits.`,
+        "Delete follower",
+        `Are you sure you want to permanently delete follower <strong>${name}</strong>? This will remove all their configs, databank documents, and portraits.`,
         async () => {
             try {
-                const res = await fetch('/api/programs/delete', {
+                const res = await fetch('/api/followers/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ program_id: assistantId })
+                    body: JSON.stringify({ follower_id: assistantId })
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    showCustomAlert("Deleted", `Program <strong>${name}</strong> has been deleted.`);
-                    if (data.switched_to === 'ria_silmane' || (typeof activeProgram !== 'undefined' && activeProgram === assistantId)) {
+                    showCustomAlert("Deleted", `follower <strong>${name}</strong> has been deleted.`);
+                    if (data.switched_to === 'ria_silmane' || (typeof activefollower !== 'undefined' && activefollower === assistantId)) {
                         selectAssistant('ria_silmane');
                     } else {
                         const listRes = await fetch('/api/followers');
                         const listData = await listRes.json();
-                        const list = listData.followers || listData.programs;
+                        const list = listData.followers || listData.followers;
                         if (list) {
-                            renderProgramsList(list, listData.active);
+                            renderfollowersList(list, listData.active);
                         }
                     }
                 } else {
-                    showCustomAlert("Error", `Could not delete program: ${data.error}`);
+                    showCustomAlert("Error", `Could not delete follower: ${data.error}`);
                 }
             } catch (e) {
                 console.error("Error deleting assistant:", e);
-                showCustomAlert("Error", "Could not connect to server to delete program.");
+                showCustomAlert("Error", "Could not connect to server to delete follower.");
             }
         }
     );
 }
 
-// --- PROGRAM PROFILE EDITOR JS METHODS ---
-let currentEditingProgramId = null;
-let currentEditingProgramOriginalName = '';
+// --- follower PROFILE EDITOR JS METHODS ---
+let currentEditingfollowerId = null;
+let currentEditingfollowerOriginalName = '';
 
-async function openProgramProfileModal(programId) {
-    currentEditingProgramId = programId;
+async function openfollowerProfileModal(followerId) {
+    currentEditingfollowerId = followerId;
     closeAssistantModal();
-    document.getElementById('program-profile-modal').style.display = 'flex';
-    switchProgramProfileTab('core');
+    document.getElementById('follower-profile-modal').style.display = 'flex';
+    switchfollowerProfileTab('core');
     
     // Clear inputs
     document.getElementById('comp-name').value = '';
@@ -4546,13 +4546,13 @@ async function openProgramProfileModal(programId) {
     document.getElementById('comp-negative-details').value = '';
     
     try {
-        const res = await fetch(`/api/programs/profile?program_id=${programId}&t=${Date.now()}`);
+        const res = await fetch(`/api/followers/profile?follower_id=${followerId}&t=${Date.now()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
         // v3 fields
-        currentEditingProgramOriginalName = data.name || '';
-        document.getElementById('comp-name').value = currentEditingProgramOriginalName;
+        currentEditingfollowerOriginalName = data.name || '';
+        document.getElementById('comp-name').value = currentEditingfollowerOriginalName;
         document.getElementById('comp-personality-type').value = data.personality || '';
         document.getElementById('comp-backstory').value = data.description || '';
         document.getElementById('comp-scenario').value = data.scenario || '';
@@ -4566,23 +4566,23 @@ async function openProgramProfileModal(programId) {
         document.getElementById('comp-image-details').value = imgDetails.positive || '';
         document.getElementById('comp-negative-details').value = imgDetails.negative || '';
         
-        await loadProgramJournals();
+        await loadfollowerJournals();
     } catch (e) {
-        console.error('Error loading program profile:', e);
-        showCustomAlert('Error', 'Could not load program profile: ' + e.message);
+        console.error('Error loading follower profile:', e);
+        showCustomAlert('Error', 'Could not load follower profile: ' + e.message);
     }
 }
 
 
 
     
-function closeProgramProfileModal() {
-    document.getElementById('program-profile-modal').style.display = 'none';
+function closefollowerProfileModal() {
+    document.getElementById('follower-profile-modal').style.display = 'none';
     openAssistantModal();
 }
 
 
-function switchProgramProfileTab(tab) {
+function switchfollowerProfileTab(tab) {
     const tabs = ['core', 'phys'];
     tabs.forEach(t => {
         const content = document.getElementById(`comp-tab-content-${t}`);
@@ -4605,30 +4605,30 @@ function switchProgramProfileTab(tab) {
     });
 }
 
-function exportProgramCard() {
-    if (!currentEditingProgramId) return;
-    window.location.href = `/api/programs/${encodeURIComponent(currentEditingProgramId)}/export/card`;
+function exportfollowerCard() {
+    if (!currentEditingfollowerId) return;
+    window.location.href = `/api/followers/${encodeURIComponent(currentEditingfollowerId)}/export/card`;
 }
 
-async function saveProgramProfile() {
-    if (!currentEditingProgramId) return;
+async function savefollowerProfile() {
+    if (!currentEditingfollowerId) return;
     
     const newName = document.getElementById('comp-name').value.trim();
     if (!newName) {
-        showCustomAlert("Error", "Program Name cannot be empty.");
+        showCustomAlert("Error", "follower Name cannot be empty.");
         return;
     }
     
-    let targetProgramId = currentEditingProgramId;
+    let targetfollowerId = currentEditingfollowerId;
     let wasActive = false;
     
-    if (newName !== currentEditingProgramOriginalName) {
+    if (newName !== currentEditingfollowerOriginalName) {
         try {
-            const renameRes = await fetch('/api/programs/rename', {
+            const renameRes = await fetch('/api/followers/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    program_id: currentEditingProgramId,
+                    follower_id: currentEditingfollowerId,
                     new_name: newName
                 })
             });
@@ -4637,16 +4637,16 @@ async function saveProgramProfile() {
                 showCustomAlert("Rename Failed", renameData.error);
                 return;
             }
-            targetProgramId = renameData.new_id;
+            targetfollowerId = renameData.new_id;
             wasActive = renameData.was_active;
         } catch (e) {
-            showCustomAlert("Error", "Failed to rename program: " + e.message);
+            showCustomAlert("Error", "Failed to rename follower: " + e.message);
             return;
         }
     }
     
     const payload = {
-        program_id: targetProgramId,
+        follower_id: targetfollowerId,
         name: newName,
         tts_voice: document.getElementById('comp-tts-voice').value,
         description: document.getElementById('comp-backstory').value.trim(),
@@ -4656,7 +4656,7 @@ async function saveProgramProfile() {
         system_prompt: document.getElementById('comp-directives').value.trim(),
         extensions: {
             arena: {
-                program_id: targetProgramId,
+                follower_id: targetfollowerId,
                 image_details: {
                     positive: document.getElementById('comp-image-details').value.trim(),
                     negative: document.getElementById('comp-negative-details').value.trim()
@@ -4666,7 +4666,7 @@ async function saveProgramProfile() {
     };
     
     try {
-        const res = await fetch('/api/programs/profile/save', {
+        const res = await fetch('/api/followers/profile/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -4676,26 +4676,26 @@ async function saveProgramProfile() {
             throw new Error(data.error);
         }
         
-        document.getElementById('program-profile-modal').style.display = 'none';
+        document.getElementById('follower-profile-modal').style.display = 'none';
         
-        // If the edited program is currently active, reload active session details
-        const activeProgramText = document.getElementById('user-input');
-        if (wasActive || (activeProgramText && (activeProgramText.placeholder.toLowerCase().includes(currentEditingProgramId) || activeProgramText.placeholder.toLowerCase().includes(targetProgramId)))) {
-            await selectAssistant(targetProgramId);
+        // If the edited follower is currently active, reload active session details
+        const activefollowerText = document.getElementById('user-input');
+        if (wasActive || (activefollowerText && (activefollowerText.placeholder.toLowerCase().includes(currentEditingfollowerId) || activefollowerText.placeholder.toLowerCase().includes(targetfollowerId)))) {
+            await selectAssistant(targetfollowerId);
         } else {
             openAssistantModal();
         }
     } catch (e) {
-        console.error("Error saving program profile:", e);
-        showCustomAlert("Error", "Could not save program profile: " + e.message);
+        console.error("Error saving follower profile:", e);
+        showCustomAlert("Error", "Could not save follower profile: " + e.message);
     }
 }
 
-async function loadProgramJournals() {
-    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
+async function loadfollowerJournals() {
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
     if (!progId) return;
-    const journalsContainer = document.getElementById('program-journals-list');
-    const memoriesContainer = document.getElementById('program-memories-list');
+    const journalsContainer = document.getElementById('follower-journals-list');
+    const memoriesContainer = document.getElementById('follower-memories-list');
     if (journalsContainer) {
         journalsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 10px;">Loading journals...</div>';
     }
@@ -4705,7 +4705,7 @@ async function loadProgramJournals() {
     
     try {
         // 1. Fetch Keyphrase-Triggered Journals
-        const res = await fetch(`/api/programs/journals?program_id=${progId}&t=${Date.now()}`);
+        const res = await fetch(`/api/followers/journals?follower_id=${progId}&t=${Date.now()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
@@ -4713,7 +4713,7 @@ async function loadProgramJournals() {
         if (journalsContainer) {
             journalsContainer.innerHTML = '';
             if (entries.length === 0) {
-                journalsContainer.innerHTML = '<div class="empty-state">No memory journals saved for this program yet.</div>';
+                journalsContainer.innerHTML = '<div class="empty-state">No memory journals saved for this follower yet.</div>';
             } else {
                 entries.forEach(e => {
                     const row = document.createElement('div');
@@ -4742,7 +4742,7 @@ async function loadProgramJournals() {
                     deleteBtn.style.height = '26px';
                     deleteBtn.style.borderRadius = '6px';
                     deleteBtn.style.flexShrink = '0';
-                    deleteBtn.onclick = () => deleteProgramJournalEntry(e.id);
+                    deleteBtn.onclick = () => deletefollowerJournalEntry(e.id);
                     header.appendChild(deleteBtn);
                     
                     row.appendChild(header);
@@ -4751,8 +4751,8 @@ async function loadProgramJournals() {
                     text.className = 'list-entry-content';
                     let displayContent = e.content || '';
                     const userDisplayName = getUserDisplayName();
-                    const programDisplayName = activeProgramName || 'Program';
-                    displayContent = displayContent.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, programDisplayName);
+                    const followerDisplayName = activefollowerName || 'follower';
+                    displayContent = displayContent.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, followerDisplayName);
                     text.textContent = displayContent;
                     row.appendChild(text);
                     
@@ -4761,16 +4761,16 @@ async function loadProgramJournals() {
             }
         }
         
-        // 2. Fetch Chat Compaction Memories (from memories.json for this program)
+        // 2. Fetch Chat Compaction Memories (from memories.json for this follower)
         if (memoriesContainer) {
             memoriesContainer.innerHTML = '';
-            const memoriesRes = await fetch(`/api/programs/memories?program_id=${currentEditingProgramId}&t=${Date.now()}`);
+            const memoriesRes = await fetch(`/api/followers/memories?follower_id=${currentEditingfollowerId}&t=${Date.now()}`);
             const memoriesData = await memoriesRes.json();
             
             const memoryList = memoriesData.memories || [];
             
             if (memoryList.length === 0) {
-                memoriesContainer.innerHTML = '<div class="empty-state">No consolidated memories created for this program yet.</div>';
+                memoriesContainer.innerHTML = '<div class="empty-state">No consolidated memories created for this follower yet.</div>';
             } else {
                 memoryList.forEach(msg => {
                     // Clean up text
@@ -4827,8 +4827,8 @@ async function loadProgramJournals() {
                     text.className = 'list-entry-content italic';
                     let displayMem = cleanText;
                     const userDisplayName = getUserDisplayName();
-                    const programDisplayName = activeProgramName || 'Program';
-                    displayMem = displayMem.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, programDisplayName);
+                    const followerDisplayName = activefollowerName || 'follower';
+                    displayMem = displayMem.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, followerDisplayName);
                     text.textContent = displayMem;
                     row.appendChild(text);
                     
@@ -4838,7 +4838,7 @@ async function loadProgramJournals() {
         }
         
     } catch (e) {
-        console.error("Error in loadProgramJournals:", e);
+        console.error("Error in loadfollowerJournals:", e);
         if (journalsContainer) {
             journalsContainer.innerHTML = '<div style="color: var(--danger-bright); font-size: 0.75rem; text-align: center; padding: 10px;">Failed to load journals.</div>';
         }
@@ -4849,7 +4849,7 @@ async function loadProgramJournals() {
 }
 
 async function addManualJournalEntry() {
-    if (!currentEditingProgramId) return;
+    if (!currentEditingfollowerId) return;
     const kpInput = document.getElementById('journal-keyphrases-input');
     const cInput = document.getElementById('journal-content-input');
     if (!kpInput || !cInput) return;
@@ -4862,11 +4862,11 @@ async function addManualJournalEntry() {
     }
     
     try {
-        const res = await fetch('/api/programs/journals/save', {
+        const res = await fetch('/api/followers/journals/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                program_id: currentEditingProgramId,
+                follower_id: currentEditingfollowerId,
                 keyphrases: keyphrases,
                 content: content
             })
@@ -4876,30 +4876,30 @@ async function addManualJournalEntry() {
         
         kpInput.value = '';
         cInput.value = '';
-        await loadProgramJournals();
+        await loadfollowerJournals();
     } catch (e) {
         showCustomAlert("Error", "Could not add journal: " + e.message);
     }
 }
 
-async function deleteProgramJournalEntry(entryId) {
-    if (!currentEditingProgramId) return;
+async function deletefollowerJournalEntry(entryId) {
+    if (!currentEditingfollowerId) return;
     showCustomConfirm(
         "Delete Memory Entry",
-        "Are you sure you want to permanently delete this memory entry? The program will forget this context immediately.",
+        "Are you sure you want to permanently delete this memory entry? The follower will forget this context immediately.",
         async () => {
             try {
-                const res = await fetch('/api/programs/journals/delete', {
+                const res = await fetch('/api/followers/journals/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        program_id: currentEditingProgramId,
+                        follower_id: currentEditingfollowerId,
                         id: entryId
                     })
                 });
                 const data = await res.json();
                 if (data.error) throw new Error(data.error);
-                await loadProgramJournals();
+                await loadfollowerJournals();
             } catch (e) {
                 showCustomAlert("Error", "Could not delete memory entry: " + e.message);
             }
@@ -4910,10 +4910,10 @@ async function deleteProgramJournalEntry(entryId) {
 async function deleteConsolidatedMemory(session_id, timestamp) {
     showCustomConfirm(
         "Delete Consolidated Memory",
-        "Are you sure you want to permanently delete this compacted chat history block? Your program will lose this memory immediately.",
+        "Are you sure you want to permanently delete this compacted chat history block? Your follower will lose this memory immediately.",
         async () => {
             try {
-                const res = await fetch('/api/programs/memories/delete', {
+                const res = await fetch('/api/followers/memories/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -4923,7 +4923,7 @@ async function deleteConsolidatedMemory(session_id, timestamp) {
                 });
                 const data = await res.json();
                 if (data.error) throw new Error(data.error);
-                await loadProgramJournals();
+                await loadfollowerJournals();
             } catch (e) {
                 showCustomAlert("Error", "Could not delete memory: " + e.message);
             }
@@ -4986,7 +4986,7 @@ function showWelcomeMessage() {
 
     let welcome = document.getElementById('welcome-message');
     const displayUser = getUserDisplayName();
-    const greetingText = programWelcomeMessage || ("Hello, " + "{" + "{" + "user" + "}" + "}.");
+    const greetingText = followerWelcomeMessage || ("Hello, " + "{" + "{" + "user" + "}" + "}.");
     const resolvedGreeting = replacePlaceholders(greetingText);
     
     let parsedText = resolvedGreeting;
@@ -5002,14 +5002,14 @@ function showWelcomeMessage() {
 
     if (!welcome) {
         welcome = document.createElement('div');
-        welcome.className = 'message-row program-row';
+        welcome.className = 'message-row follower-row';
         welcome.id = 'welcome-message';
         const profileUrl = getProfileUrl();
         welcome.innerHTML = `
             <div class="avatar-container">
-                <img class="avatar program-avatar" src="${profileUrl}" alt="Program" onclick="expandImage('${profileUrl}')">
+                <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
             </div>
-            <div class="message program">
+            <div class="message follower">
                 <div class="message-text">
                     ${parsedText}
                 </div>
@@ -5133,7 +5133,7 @@ async function loadHistory() {
                 if (data.sessions && !data.sessions.includes(sessionId)) {
                     console.warn(`Last opened session "${sessionId}" is missing on the server. Falling back to default.`);
                     sessionId = 'default';
-                    safeLocalStorage.setItem('program_session_id', 'default');
+                    safeLocalStorage.setItem('follower_session_id', 'default');
                     
                     // Update the UI header ID display if it exists
                     const sessionDisplay = document.getElementById('session-id-display');
@@ -5152,24 +5152,24 @@ async function loadHistory() {
         const historyRes = await fetch(`/history?session_id=${sessionId}&t=${Date.now()}`);
         const data = await historyRes.json();
         if (data.welcome_message) {
-            programWelcomeMessage = data.welcome_message;
+            followerWelcomeMessage = data.welcome_message;
         } else {
-            programWelcomeMessage = null;
+            followerWelcomeMessage = null;
         }
         if (data.user_name) {
             activePlayerName = data.user_name;
         }
-        if (data.active_program) {
-            applyTheme(data.active_program, data.theme);
+        if (data.active_follower) {
+            applyTheme(data.active_follower, data.theme);
         }
         if (data.character_name) {
-            activeProgramName = data.character_name;
-            const programTitle = "LM Arena";
-            document.title = programTitle;
+            activefollowerName = data.character_name;
+            const followerTitle = "LM Arena";
+            document.title = followerTitle;
             
             const headerTitle = document.querySelector('.header-title-area h1');
             if (headerTitle) {
-                headerTitle.textContent = programTitle;
+                headerTitle.textContent = followerTitle;
             }
             
             const userInput = document.getElementById('user-input');
@@ -5218,9 +5218,9 @@ async function loadHistory() {
             } else {
                 prepareNewGameStart();
                 // On a new chat session (no history), default to local model
-                const defaultModel = safeLocalStorage.getItem('program_default_model') || 'local-llm';
+                const defaultModel = safeLocalStorage.getItem('follower_default_model') || 'local-llm';
                 selectedModel = defaultModel;
-                safeLocalStorage.setItem('program_selected_model', selectedModel);
+                safeLocalStorage.setItem('follower_selected_model', selectedModel);
                 const modelSelectElement = document.getElementById('model-select');
                 if (modelSelectElement) {
                     modelSelectElement.value = selectedModel;
@@ -5301,8 +5301,8 @@ async function resetSession() {
         } catch (e) {
             console.error("Failed to reset session on server:", e);
         }
-        localStorage.removeItem('program_session_id');
-        localStorage.removeItem('program_selected_model');
+        localStorage.removeItem('follower_session_id');
+        localStorage.removeItem('follower_selected_model');
         reloadApp(true, true);
     });
 }
@@ -5499,7 +5499,7 @@ const hiddenPassiveTools = new Set([
     'arena_get_location',
     'generate_local_image',
     'generate_imagen',
-    'generate_program_portrait',
+    'generate_follower_portrait',
     'generate_general_image',
     'apply_comfy_workflow',
     'generate_video_from_image'
@@ -5774,7 +5774,7 @@ function normalizeChatResponse(data) {
     let imagePrompt = null;
     const toolCalls = data.tool_calls || [];
     const imgCall = toolCalls.find(tc => tc.type === 'call' && [
-        'generate_program_portrait', 'generate_local_image',
+        'generate_follower_portrait', 'generate_local_image',
         'generate_imagen', 'generate_general_image'
     ].includes(tc.name));
     if (imgCall && imgCall.args && imgCall.args.prompt) {
@@ -5788,8 +5788,8 @@ function normalizeChatResponse(data) {
     }
 
     return {
-        id: data.program_msg_id,
-        role: 'program',
+        id: data.follower_msg_id,
+        role: 'follower',
         text: cleanText,
         media: media,
         tool_calls: toolCalls,
@@ -5840,7 +5840,7 @@ function renderVoiceCallRow(msg) {
     const textDiv = document.createElement('div');
     const title = document.createElement('h4');
     title.className = 'voice-call-record-title';
-    title.textContent = `Voice Call with ${activeProgramName || 'Program'}`;
+    title.textContent = `Voice Call with ${activefollowerName || 'follower'}`;
     
     const meta = document.createElement('p');
     meta.className = 'voice-call-record-meta';
@@ -5887,7 +5887,7 @@ function renderVoiceCallRow(msg) {
             
             const speakerSpan = document.createElement('span');
             speakerSpan.className = `turn-speaker ${turn.speaker}`;
-            speakerSpan.textContent = turn.speaker === 'user' ? `${getUserDisplayName()}:` : `${activeProgramName || 'Program'}:`;
+            speakerSpan.textContent = turn.speaker === 'user' ? `${getUserDisplayName()}:` : `${activefollowerName || 'follower'}:`;
             
             const textSpan = document.createElement('span');
             textSpan.textContent = ` ${turn.text}`;
@@ -5940,7 +5940,7 @@ function renderMessage(msg, isLive = false) {
     const onboarding = document.getElementById('onboarding-container');
     if (onboarding) onboarding.remove();
 
-    const isMsgTransient = msg.isTransient || (role === 'program' && (
+    const isMsgTransient = msg.isTransient || (role === 'follower' && (
         text === '*(Generation stopped)*' || 
         text === '*(Generation cancelled)*' || 
         text === 'Error connecting to the Arena.' ||
@@ -5952,7 +5952,7 @@ function renderMessage(msg, isLive = false) {
     let portraitPrompt = null;
     if (msg.tool_calls && msg.tool_calls.length > 0) {
         const call = msg.tool_calls.find(tc => tc.type === 'call' && (
-            tc.name === 'generate_program_portrait' ||
+            tc.name === 'generate_follower_portrait' ||
             tc.name === 'generate_local_image' ||
             tc.name === 'generate_imagen' ||
             tc.name === 'generate_general_image'
@@ -5975,15 +5975,15 @@ function renderMessage(msg, isLive = false) {
     row.dataset.msgId = msgId;
     row.dataset.contentHash = computeContentHash(msg);
 
-    if (role === 'program') {
+    if (role === 'follower') {
         const avatarContainer = document.createElement('div');
         avatarContainer.className = 'avatar-container';
 
         const avatar = document.createElement('img');
-        avatar.className = 'avatar program-avatar';
+        avatar.className = 'avatar follower-avatar';
         const profileUrl = getProfileUrl();
         avatar.src = profileUrl;
-        avatar.alt = 'Program';
+        avatar.alt = 'follower';
         avatar.title = 'Click to expand profile';
         avatar.onclick = () => expandImage(profileUrl);
         avatarContainer.appendChild(avatar);
@@ -6060,7 +6060,7 @@ function renderMessage(msg, isLive = false) {
                     rerollBtn.onclick = () => rerollUserMessage(rerollBtn);
                     actions.appendChild(rerollBtn);
                 }
-            } else if (role === 'program' && !text.startsWith("Hello, " + getUserDisplayName())) {
+            } else if (role === 'follower' && !text.startsWith("Hello, " + getUserDisplayName())) {
                 if (!isMsgTransient && !isImageOnly && item.type === 'text') {
                     const rerollBtn = document.createElement('button');
                     rerollBtn.className = 'action-icon-btn';
@@ -6094,7 +6094,7 @@ function renderMessage(msg, isLive = false) {
 
         if (item.type === 'text') {
             let actualResponse = item.content || '';
-            if (role === 'program' && actualResponse) {
+            if (role === 'follower' && actualResponse) {
                 const cleaned = actualResponse.replace(/<think>[\s\S]*?<\/think>/gi, '')
                                               .replace(/\[think\][\s\S]*?\[\/think\]/gi, '')
                                               .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
@@ -6111,7 +6111,7 @@ function renderMessage(msg, isLive = false) {
                 actualResponse = replacePlaceholders(actualResponse);
                 const textDiv = document.createElement('div');
                 textDiv.className = 'message-text';
-                if (role === 'program' || role === 'user') {
+                if (role === 'follower' || role === 'user') {
                     let parsedHtml = actualResponse;
                     if (typeof marked !== 'undefined' && marked.parse) {
                         try {
@@ -6135,7 +6135,7 @@ function renderMessage(msg, isLive = false) {
                     textDiv.textContent = actualResponse;
                 }
                 bubble.appendChild(textDiv);
-                if (role === 'program' && isLive) {
+                if (role === 'follower' && isLive) {
                     const toolCtx = (msg.tool_calls || []).map(tc => `${tc.name || ''} ${JSON.stringify(tc.args || {})}`).join(' ');
                     evaluateSceneBGM(item.content || actualResponse, toolCtx);
                 }
@@ -6273,7 +6273,7 @@ function renderMessage(msg, isLive = false) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
     evaluateLatestMessageForSkillCheck();
 
-    if (role === 'program' && isLive && ttsAutoSpeak) {
+    if (role === 'follower' && isLive && ttsAutoSpeak) {
         setTimeout(() => {
             const speakBtn = bubblesContainer.querySelector('.speak-btn');
             if (speakBtn) speakMessage(speakBtn);
@@ -6293,7 +6293,7 @@ function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = f
         });
     }
     let cleanText = text || '';
-    if (role === 'user' || role === 'program') {
+    if (role === 'user' || role === 'follower') {
         const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
         let match;
         while ((match = imgRegex.exec(cleanText)) !== null) {
@@ -6494,7 +6494,7 @@ function handleToolReloadOrRecovery() {
                 if (checkAttempts > 20) {
                     clearInterval(checkInterval);
                     document.getElementById('reconnect-modal').style.display = 'none';
-                    appendMessage('program', 'The Arena is taking a while to restart. Please refresh manually.');
+                    appendMessage('follower', 'The Arena is taking a while to restart. Please refresh manually.');
                 }
             }
         }, 2000);
@@ -6510,13 +6510,13 @@ async function sendMessage() {
 
         // Render typing indicator row in chat container for a moment before sending first message
         const typingRow = document.createElement('div');
-        typingRow.className = 'message-row program-row';
+        typingRow.className = 'message-row follower-row';
         const profileUrl = getProfileUrl();
         typingRow.innerHTML = `
             <div class="avatar-container">
-                <img class="avatar program-avatar" src="${profileUrl}" alt="Program">
+                <img class="avatar follower-avatar" src="${profileUrl}" alt="follower">
             </div>
-            <div class="message program">
+            <div class="message follower">
                 <div class="typing-indicator">
                     <div class="typing-dot"></div>
                     <div class="typing-dot"></div>
@@ -6554,8 +6554,8 @@ async function sendMessage() {
     while (lastRow && !lastRow.classList.contains('message-row')) {
         lastRow = lastRow.previousElementSibling;
     }
-    while (lastRow && lastRow.classList.contains('program-row')) {
-        const bubble = lastRow.querySelector('.message.program');
+    while (lastRow && lastRow.classList.contains('follower-row')) {
+        const bubble = lastRow.querySelector('.message.follower');
         if (bubble && bubble.dataset.isTransient === 'true') {
             lastRow = lastRow.previousElementSibling;
         } else {
@@ -6618,7 +6618,7 @@ async function sendMessage() {
     } : null;
     const userMsgRow = appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals);
 
-    // Trigger heart jiggle on high user interaction or when Program is generating/responding
+    // Trigger heart jiggle on high user interaction or when follower is generating/responding
     const heartElement = document.querySelector('.heart-pulse');
     if (heartElement) {
         heartElement.classList.add('jiggling');
@@ -6641,13 +6641,13 @@ async function sendMessage() {
     updateInputGlow();
 
     const typingIndicatorRow = document.createElement('div');
-    typingIndicatorRow.className = 'message-row program-row';
+    typingIndicatorRow.className = 'message-row follower-row';
     const profileUrl = getProfileUrl();
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
-            <img class="avatar program-avatar" src="${profileUrl}" alt="Program" onclick="expandImage('${profileUrl}')">
+            <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
         </div>
-        <div class="message program">
+        <div class="message follower">
             <div class="typing-indicator">
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
@@ -6696,13 +6696,13 @@ async function sendMessage() {
         }
         
         if (data.response !== undefined) {
-            appendMessage('program', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.program_msg_id);
+            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id);
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
                 errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
-            appendMessage('program', errMsg);
+            appendMessage('follower', errMsg);
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
@@ -6713,7 +6713,7 @@ async function sendMessage() {
         if (error.name === 'AbortError') {
             // Cancelled cleanly: user message remains in chat ready for Send/reroll
         } else {
-            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+            appendMessage('follower', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
             handleToolReloadOrRecovery();
         }
     } finally {
@@ -6962,13 +6962,13 @@ async function resendUserMessage(bubble) {
     }
 
     const typingIndicatorRow = document.createElement('div');
-    typingIndicatorRow.className = 'message-row program-row';
+    typingIndicatorRow.className = 'message-row follower-row';
     const profileUrl = getProfileUrl();
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
-            <img class="avatar program-avatar" src="${profileUrl}" alt="Program" onclick="expandImage('${profileUrl}')">
+            <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
         </div>
-        <div class="message program">
+        <div class="message follower">
             <div class="typing-indicator">
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
@@ -7006,13 +7006,13 @@ async function resendUserMessage(bubble) {
         
         const data = await response.json();
         if (data.response !== undefined) {
-            appendMessage('program', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.program_msg_id);
+            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id);
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
                 errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
-            appendMessage('program', errMsg);
+            appendMessage('follower', errMsg);
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
@@ -7023,7 +7023,7 @@ async function resendUserMessage(bubble) {
         if (error.name === 'AbortError') {
             // Cancelled cleanly
         } else {
-            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+            appendMessage('follower', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
             handleToolReloadOrRecovery();
         }
     } finally {
@@ -7123,7 +7123,7 @@ async function rerollUserMessage(button) {
 // --- rerollFromMessage ---
 async function rerollFromMessage(button) {
     const bubble = button.closest('.message');
-    const row = bubble.closest('.message-row.program-row');
+    const row = bubble.closest('.message-row.follower-row');
     if (!row) return;
     
     let prevRow = row.previousElementSibling;
@@ -7152,13 +7152,13 @@ async function rerollFromMessage(button) {
     }
 
     const typingIndicatorRow = document.createElement('div');
-    typingIndicatorRow.className = 'message-row program-row';
+    typingIndicatorRow.className = 'message-row follower-row';
     const profileUrl = getProfileUrl();
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
-            <img class="avatar program-avatar" src="${profileUrl}" alt="Program" onclick="expandImage('${profileUrl}')">
+            <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
         </div>
-        <div class="message program">
+        <div class="message follower">
             <div class="typing-indicator">
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
@@ -7197,13 +7197,13 @@ async function rerollFromMessage(button) {
         
         const data = await response.json();
         if (data.response !== undefined) {
-            appendMessage('program', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.program_msg_id);
+            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id);
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
                 errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
-            appendMessage('program', errMsg);
+            appendMessage('follower', errMsg);
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
@@ -7214,7 +7214,7 @@ async function rerollFromMessage(button) {
         if (error.name === 'AbortError') {
             // Cancelled cleanly
         } else {
-            appendMessage('program', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+            appendMessage('follower', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
             handleToolReloadOrRecovery();
         }
     } finally {
@@ -7453,7 +7453,7 @@ function expandImage(src) {
     const pathOnly = getRelativePath(src);
     
     // If the user clicked a profile avatar picture, show the first available portrait/media image
-    const isProfile = pathOnly.includes('profile.png') || pathOnly.includes('profile.svg') || pathOnly.startsWith('/programs/');
+    const isProfile = pathOnly.includes('profile.png') || pathOnly.includes('profile.svg') || pathOnly.startsWith('/followers/');
     if (isProfile) {
         const profileIndex = galleryImages.findIndex(img => img.includes('profile.png'));
         if (profileIndex !== -1) {
@@ -7821,7 +7821,7 @@ async function saveCroppedProfile(event) {
     closeCropModal();
     
     try {
-        const response = await fetch('/api/programs/profile_picture/crop', {
+        const response = await fetch('/api/followers/profile_picture/crop', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -7836,7 +7836,7 @@ async function saveCroppedProfile(event) {
         if (response.ok) {
             profileCacheBuster = Date.now();
             updateProfileImages();
-            document.querySelectorAll('.program-list-avatar').forEach(img => {
+            document.querySelectorAll('.follower-list-avatar').forEach(img => {
                 const originalSrc = img.tagName === 'DIV' ? img.getAttribute('src') : img.src;
                 if (originalSrc) {
                     const newSrc = originalSrc.split('?')[0] + `?t=${profileCacheBuster}`;
@@ -8073,7 +8073,7 @@ function evaluateLatestMessageForSkillCheck() {
         return;
     }
 
-    if (!lastRow || !lastRow.classList.contains('program-row')) {
+    if (!lastRow || !lastRow.classList.contains('follower-row')) {
         resetSkillCheckUI();
         return;
     }
@@ -8447,7 +8447,7 @@ function showImageErrorOverlay(container, error) {
 }
 
 function swapImageWithVideo(container, videoUrl) {
-    const bubble = container.closest('.message.program');
+    const bubble = container.closest('.message.follower');
     if (bubble) {
         container.remove();
         
@@ -8659,7 +8659,7 @@ function startToolPolling() {
             // Update activity exclamation badge on the avatar if typing indicator exists
             const typingIndicator = document.querySelector('.typing-indicator');
             if (typingIndicator) {
-                const row = typingIndicator.closest('.program-row');
+                const row = typingIndicator.closest('.follower-row');
                 if (row) {
                     const avatarContainer = row.querySelector('.avatar-container');
                     if (avatarContainer) {
@@ -8695,7 +8695,7 @@ function startToolPolling() {
                     }
                 }
                 
-                const bubble = typingIndicator.closest('.message.program');
+                const bubble = typingIndicator.closest('.message.follower');
                 if (bubble) {
                     try {
                         const logRes = await fetch(`/api/session_tool_calls?session_id=${sessionId}`);
@@ -8788,18 +8788,18 @@ async function openDataBank() {
     switchDataBankTab('upload');
     loadDataBankFiles();
     loadProjectSettings();
-    if (!currentEditingProgramId) {
+    if (!currentEditingfollowerId) {
         try {
             const res = await fetch(`/history?session_id=default&t=${Date.now()}`);
             const data = await res.json();
-            if (data.active_program) {
-                currentEditingProgramId = data.active_program;
+            if (data.active_follower) {
+                currentEditingfollowerId = data.active_follower;
             }
         } catch (e) {
-            console.error('openDataBank: failed to resolve active program', e);
+            console.error('openDataBank: failed to resolve active follower', e);
         }
     }
-    loadProgramJournals();
+    loadfollowerJournals();
 }
 
 // --- closeDataBank ---
@@ -9192,7 +9192,7 @@ function downloadQuest(questId) {
 async function deleteQuest(questId) {
     showCustomConfirm(
         "Delete Quest",
-        "Are you sure you want to permanently delete this quest? Your program will not be notified.",
+        "Are you sure you want to permanently delete this quest? Your follower will not be notified.",
         async () => {
             try {
                 const response = await fetch(`/api/quests/${questId}/delete`, { method: 'POST' });
@@ -9296,7 +9296,7 @@ function switchDataBankTab(tab) {
         loadDataBankFiles();
     } else if (tab === 'memories') {
         activate(memoriesTab, memoriesBtn);
-        loadProgramJournals();
+        loadfollowerJournals();
     } else if (tab === 'lorebooks') {
         activate(lorebooksTab, lorebooksBtn);
         loadLorebooks();
@@ -9354,7 +9354,7 @@ function buildLorebookCard(book) {
         exportBtn.title = 'Export embedded lorebook';
         exportBtn.style.cssText = 'width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;';
         exportBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>`;
-        exportBtn.onclick = e => { e.stopPropagation(); window.location.href = `/api/programs/${encodeURIComponent(book.program_id || '')}/export/lorebook`; };
+        exportBtn.onclick = e => { e.stopPropagation(); window.location.href = `/api/followers/${encodeURIComponent(book.follower_id || '')}/export/lorebook`; };
         headerActions.appendChild(exportBtn);
     }
     if (book.source === 'file') {
@@ -9700,12 +9700,12 @@ async function removeProjectFolder(folder) {
 
 // --- loadDataBankFiles ---
 async function loadDataBankFiles() {
-    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
     const container = document.getElementById('databank-files-container');
     if (!container) return;
     container.innerHTML = '<div style="padding: 15px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">Loading files...</div>';
     try {
-        const res = await fetch(`/api/databank/files?program_id=${encodeURIComponent(progId)}&t=${Date.now()}`);
+        const res = await fetch(`/api/databank/files?follower_id=${encodeURIComponent(progId)}&t=${Date.now()}`);
         const data = await res.json();
         if (data.error) {
             container.innerHTML = `<div style="padding: 15px; color: var(--danger-bright); font-size: 0.8rem; text-align: center;">Error: ${data.error}</div>`;
@@ -9761,7 +9761,7 @@ async function loadDataBankFiles() {
 
 // --- uploadDataBankFile ---
 async function uploadDataBankFile(event) {
-    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
     const file = event.target.files[0];
     if (!file) return;
     
@@ -9774,7 +9774,7 @@ async function uploadDataBankFile(event) {
     
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('program_id', progId);
+    formData.append('follower_id', progId);
     
     try {
         const res = await fetch('/api/databank/upload', {
@@ -9797,7 +9797,7 @@ async function uploadDataBankFile(event) {
 
 // --- scrapeDataBankUrl ---
 async function scrapeDataBankUrl() {
-    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
     const input = document.getElementById('databank-url-input');
     const url = input.value.trim();
     if (!url) return;
@@ -9812,7 +9812,7 @@ async function scrapeDataBankUrl() {
         const res = await fetch('/api/databank/scrape', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: url, program_id: progId })
+            body: JSON.stringify({ url: url, follower_id: progId })
         });
         const data = await res.json();
         if (data.error) {
@@ -9831,13 +9831,13 @@ async function scrapeDataBankUrl() {
 
 // --- deleteDataBankFile ---
 async function deleteDataBankFile(docId, event) {
-    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
     event.stopPropagation();
     try {
         const res = await fetch('/api/databank/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: docId, program_id: progId })
+            body: JSON.stringify({ id: docId, follower_id: progId })
         });
         const data = await res.json();
         if (data.error) {
@@ -9852,7 +9852,7 @@ async function deleteDataBankFile(docId, event) {
 
 // --- purgeDataBank ---
 function purgeDataBank() {
-    const progId = currentEditingProgramId || (typeof activeProgram !== 'undefined' ? activeProgram : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
     showCustomConfirm("Purge Knowledge Base", "Are you sure you want to delete all indexed files and empty this follower's vectorized databank?", async () => {
         const loader = document.getElementById('databank-loader');
         const loaderText = document.getElementById('databank-loader-text');
@@ -9862,7 +9862,7 @@ function purgeDataBank() {
             await fetch('/api/databank/purge', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ program_id: progId })
+                body: JSON.stringify({ follower_id: progId })
             });
         } catch (e) {
             console.error("Error purging database:", e);
@@ -9988,16 +9988,16 @@ function purgeDataBank() {
 // --- saveActiveUserProfile ---
 
 /* ==========================================================================
-   VII. 6. PROGRAM / PROGRAM SELECTION
+   VII. 6. follower / follower SELECTION
    ========================================================================== */
 
 // --- openAssistantModal ---
 
 // --- closeAssistantModal ---
 
-// --- openImportProgramModal ---
+// --- openImportfollowerModal ---
 
-// --- closeImportProgramModal ---
+// --- closeImportfollowerModal ---
 
 // --- switchImportTab ---
 
@@ -10009,7 +10009,7 @@ function purgeDataBank() {
 
 // --- submitDescriptionImport ---
 
-// --- renderProgramsList ---
+// --- renderfollowersList ---
 
 // --- selectAssistant ---
 
@@ -10214,14 +10214,14 @@ const urlParams = new URLSearchParams(window.location.search);
 const sessionFromUrl = !!urlParams.get('session_id');
 let sessionId = urlParams.get('session_id');
 if (sessionId) {
-    safeLocalStorage.setItem('program_session_id', sessionId);
+    safeLocalStorage.setItem('follower_session_id', sessionId);
     // Clean up the URL query parameter so page reloads don't force it later
     try {
         window.history.replaceState({}, document.title, window.location.pathname);
     } catch (e) {}
 } else {
-    sessionId = safeLocalStorage.getItem('program_session_id') || 'default';
-    safeLocalStorage.setItem('program_session_id', sessionId);
+    sessionId = safeLocalStorage.getItem('follower_session_id') || 'default';
+    safeLocalStorage.setItem('follower_session_id', sessionId);
 }
 
 // Display session ID signature in header for easy verification
@@ -10232,12 +10232,12 @@ if (sessionDisplay && sessionId) {
 }
 
 // Retrieve selected model from localStorage or use default
-let selectedModel = safeLocalStorage.getItem('program_selected_model') || 'local-llm';
+let selectedModel = safeLocalStorage.getItem('follower_selected_model') || 'local-llm';
 let lastInteractionTime = Date.now();
 let hasTriggeredProactive = false;
 let proactiveAbortController = null;
-let activeProgramName = "";
-let activeProgram = "ria_silmane";
+let activefollowerName = "";
+let activefollower = "ria_silmane";
 let availableModels = [];
 let connectionStatus = { remote_configured: false, gemini_configured: false, local_online: false };
 let modelInitPromise = null;
@@ -10439,7 +10439,7 @@ function showThoughtBubbleOverlay(text) {
     hideThoughtBubbleOverlay(); // Remove existing if any
     
     const row = document.createElement('div');
-    row.className = 'message-row program-row thought-row';
+    row.className = 'message-row follower-row thought-row';
     row.id = 'active-thought-bubble';
     row.onclick = () => hideThoughtBubbleOverlay();
     
@@ -10447,9 +10447,9 @@ function showThoughtBubbleOverlay(text) {
     
     row.innerHTML = `
         <div class="avatar-container" style="opacity: 0.5;">
-            <img class="avatar program-avatar thinking-glow" src="${profileUrl}" alt="Companion">
+            <img class="avatar follower-avatar thinking-glow" src="${profileUrl}" alt="Companion">
         </div>
-        <div class="message program thought-bubble">
+        <div class="message follower thought-bubble">
             <div class="thought-badge">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px; display: inline-block; vertical-align: -1px;">
                     <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26C17.81 13.47 19 11.38 19 9a7 7 0 0 0-7-7z"></path>
@@ -10471,8 +10471,8 @@ function hideThoughtBubbleOverlay() {
     if (bubble) {
         bubble.remove();
     }
-    // Remove glow from all program avatars
-    document.querySelectorAll('.program-avatar.thinking-glow').forEach(img => {
+    // Remove glow from all follower avatars
+    document.querySelectorAll('.follower-avatar.thinking-glow').forEach(img => {
         img.classList.remove('thinking-glow');
     });
 }
@@ -10506,7 +10506,7 @@ if (document.readyState === 'loading') {
 
 // Global error listener to catch image load failures and switch to dynamic colored circles
 window.addEventListener('error', function (e) {
-    if (e.target && e.target.tagName === 'IMG' && (e.target.classList.contains('program-avatar') || e.target.classList.contains('program-list-avatar') || e.target.classList.contains('voice-call-avatar') || e.target.classList.contains('voice-call-program-avatar'))) {
+    if (e.target && e.target.tagName === 'IMG' && (e.target.classList.contains('follower-avatar') || e.target.classList.contains('follower-list-avatar') || e.target.classList.contains('voice-call-avatar') || e.target.classList.contains('voice-call-follower-avatar'))) {
         switchToCircleFallback(e.target);
     }
 }, true);
@@ -10516,11 +10516,11 @@ function switchToCircleFallback(img) {
     let color = '';
     let useAccent = false;
     
-    if (img.classList.contains('program-list-avatar')) {
+    if (img.classList.contains('follower-list-avatar')) {
         name = img.getAttribute('data-name') || '';
         color = img.getAttribute('data-color') || '';
     } else {
-        name = activeProgramName || '';
+        name = activefollowerName || '';
         if (!name) {
             const input = document.getElementById('user-input');
             if (input && input.placeholder && input.placeholder.startsWith('Ask ')) {
@@ -10531,7 +10531,7 @@ function switchToCircleFallback(img) {
         useAccent = true;
     }
     
-    if (!name) name = 'Program';
+    if (!name) name = 'follower';
     if (!color) color = '#4a3520';
     
     const fallback = document.createElement('div');
@@ -10548,9 +10548,9 @@ function switchToCircleFallback(img) {
     
     // Determine size based on element class to prevent copying stretched layout dimensions
     let size = '48px';
-    if (img.classList.contains('program-list-avatar')) {
+    if (img.classList.contains('follower-list-avatar')) {
         size = '44px';
-    } else if (img.classList.contains('voice-call-avatar') || img.classList.contains('voice-call-program-avatar')) {
+    } else if (img.classList.contains('voice-call-avatar') || img.classList.contains('voice-call-follower-avatar')) {
         size = '120px';
     }
     
@@ -10608,7 +10608,7 @@ let currentPendingCallId = null;
 
 // --- VECTORIZED DATA BANK FUNCTIONS ---
 
-// --- PROGRAM ASSISTANT SELECTION FUNCTIONS ---
+// --- follower ASSISTANT SELECTION FUNCTIONS ---
 
 let selectedTavernCardFile = null;
 
@@ -10695,8 +10695,8 @@ function startVoiceCall() {
     const overlay = document.getElementById('voice-call-overlay');
     overlay.style.display = 'flex';
     
-    document.getElementById('voice-call-program-name').textContent = activeProgramName || "Program";
-    const voiceAvatar = document.getElementById('voice-call-program-avatar');
+    document.getElementById('voice-call-follower-name').textContent = activefollowerName || "follower";
+    const voiceAvatar = document.getElementById('voice-call-follower-avatar');
     if (voiceAvatar) {
         updateAvatarElement(voiceAvatar, getProfileUrl());
     }
@@ -10720,8 +10720,8 @@ function startVoiceCall() {
     voiceCallTranscript = [];
     voiceCallMuted = false;
     voiceCallSpeakerMuted = false;
-    isProgramSpeaking = false;
-    isProgramThinking = false;
+    isfollowerSpeaking = false;
+    isfollowerThinking = false;
     consecutiveShortSessions = 0;
     visualizerTime = 0;
     currentSpeechText = "";
@@ -10774,7 +10774,7 @@ function startVoiceCall() {
     };
     
     voiceCallRecognition.onresult = (event) => {
-        if (!isVoiceCallActive || isProgramSpeaking || isProgramThinking || voiceCallMuted) return;
+        if (!isVoiceCallActive || isfollowerSpeaking || isfollowerThinking || voiceCallMuted) return;
         
         let interimTranscript = "";
         let finalTranscript = "";
@@ -10795,7 +10795,7 @@ function startVoiceCall() {
             
             if (silenceTimer) clearTimeout(silenceTimer);
             silenceTimer = setTimeout(() => {
-                if (currentSpeechText && isVoiceCallActive && !isProgramSpeaking && !isProgramThinking) {
+                if (currentSpeechText && isVoiceCallActive && !isfollowerSpeaking && !isfollowerThinking) {
                     const speechToProcess = currentSpeechText;
                     currentSpeechText = "";
                     processUserSpeech(speechToProcess);
@@ -10823,11 +10823,11 @@ function startVoiceCall() {
             return;
         }
         
-        if (isVoiceCallActive && !isProgramSpeaking && !isProgramThinking && !voiceCallMuted) {
+        if (isVoiceCallActive && !isfollowerSpeaking && !isfollowerThinking && !voiceCallMuted) {
             updateVoiceCallStatus("Paused...");
             if (restartTimeout) clearTimeout(restartTimeout);
             restartTimeout = setTimeout(() => {
-                if (isVoiceCallActive && !isProgramSpeaking && !isProgramThinking && !voiceCallMuted) {
+                if (isVoiceCallActive && !isfollowerSpeaking && !isfollowerThinking && !voiceCallMuted) {
                     try {
                         updateVoiceCallStatus("Listening...");
                         voiceCallRecognition.start();
@@ -10887,7 +10887,7 @@ function addVoiceCallTurn(speaker, text) {
     
     const speakerSpan = document.createElement('span');
     speakerSpan.className = `turn-speaker ${speaker}`;
-    speakerSpan.textContent = speaker === 'user' ? `${getUserDisplayName()}: ` : `${activeProgramName || 'Program'}: `;
+    speakerSpan.textContent = speaker === 'user' ? `${getUserDisplayName()}: ` : `${activefollowerName || 'follower'}: `;
     
     const textSpan = document.createElement('span');
     textSpan.textContent = text;
@@ -10914,8 +10914,8 @@ async function processUserSpeech(text) {
     
     addVoiceCallTurn('user', text);
     
-    isProgramThinking = true;
-    updateVoiceCallStatus(`${activeProgramName || 'Program'} is thinking...`);
+    isfollowerThinking = true;
+    updateVoiceCallStatus(`${activefollowerName || 'follower'} is thinking...`);
     
     let shouldResume = false;
     try {
@@ -10948,9 +10948,9 @@ async function processUserSpeech(text) {
         
         let replyText = data.response || "";
         if (replyText) {
-            addVoiceCallTurn('program', replyText);
-            updateVoiceCallStatus(`${activeProgramName || 'Program'} is speaking...`);
-            await playProgramSpeech(replyText);
+            addVoiceCallTurn('follower', replyText);
+            updateVoiceCallStatus(`${activefollowerName || 'follower'} is speaking...`);
+            await playfollowerSpeech(replyText);
         } else {
             updateVoiceCallStatus("Listening...");
             shouldResume = true;
@@ -10960,21 +10960,21 @@ async function processUserSpeech(text) {
         updateVoiceCallStatus("Error. Listening...");
         shouldResume = true;
     } finally {
-        isProgramThinking = false;
+        isfollowerThinking = false;
         if (shouldResume) {
             resumeVoiceRecognition();
         }
     }
 }
 
-async function playProgramSpeech(text) {
+async function playfollowerSpeech(text) {
     if (voiceCallSpeakerMuted) {
         updateVoiceCallStatus("Listening...");
         resumeVoiceRecognition();
         return;
     }
     
-    isProgramSpeaking = true;
+    isfollowerSpeaking = true;
     const tempMsgId = "voice-" + Date.now();
     
     try {
@@ -11011,18 +11011,18 @@ async function playProgramSpeech(text) {
             source.connect(voiceCallAnalyser);
             voiceCallAnalyser.connect(voiceCallAudioContext.destination);
         } catch(ae) {
-            console.warn("Could not setup program audio visualizer node:", ae);
+            console.warn("Could not setup follower audio visualizer node:", ae);
         }
         
         voiceCallActiveAudio.onended = () => {
-            isProgramSpeaking = false;
+            isfollowerSpeaking = false;
             updateVoiceCallStatus("Listening...");
             resumeVoiceRecognition();
         };
         
         voiceCallActiveAudio.onerror = () => {
             console.error("Audio playback error");
-            isProgramSpeaking = false;
+            isfollowerSpeaking = false;
             updateVoiceCallStatus("Listening...");
             resumeVoiceRecognition();
         };
@@ -11030,14 +11030,14 @@ async function playProgramSpeech(text) {
         await voiceCallActiveAudio.play();
     } catch (err) {
         console.error("TTS generation or playback error:", err);
-        isProgramSpeaking = false;
+        isfollowerSpeaking = false;
         updateVoiceCallStatus("Listening...");
         resumeVoiceRecognition();
     }
 }
 
 function resumeVoiceRecognition() {
-    if (!isVoiceCallActive || isProgramSpeaking || isProgramThinking || voiceCallMuted) return;
+    if (!isVoiceCallActive || isfollowerSpeaking || isfollowerThinking || voiceCallMuted) return;
     try {
         if (voiceCallRecognition) {
             voiceCallRecognition.start();
@@ -11075,7 +11075,7 @@ function toggleCallSpeaker() {
     } else {
         btn.classList.remove('disabled');
         btn.title = "Mute Speaker";
-        if (voiceCallActiveAudio && isProgramSpeaking) {
+        if (voiceCallActiveAudio && isfollowerSpeaking) {
             try { voiceCallActiveAudio.play(); } catch(e) {}
         }
     }
@@ -11171,7 +11171,7 @@ function drawVisualizer() {
     const statusEl = document.getElementById('voice-call-status');
     const currentStatus = statusEl ? statusEl.textContent : "";
     
-    if (isProgramSpeaking && !voiceCallSpeakerMuted && voiceCallAnalyser) {
+    if (isfollowerSpeaking && !voiceCallSpeakerMuted && voiceCallAnalyser) {
         const bufferLength = voiceCallAnalyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         voiceCallAnalyser.getByteFrequencyData(dataArray);
@@ -11183,7 +11183,7 @@ function drawVisualizer() {
         const avgVolume = sum / bufferLength; // 0 to 255
         targetAmp = Math.max(3, (avgVolume / 255) * 45);
         speed = 0.05 + (avgVolume / 255) * 0.25;
-    } else if (isProgramThinking) {
+    } else if (isfollowerThinking) {
         targetAmp = 4;
         speed = 0.03;
     } else if (isVoiceCallActive && !voiceCallMuted && currentStatus === "Listening...") {
@@ -11220,7 +11220,7 @@ function drawVisualizer() {
     
     const ring1 = document.querySelector('.voice-call-pulse-ring.ring1');
     const ring2 = document.querySelector('.voice-call-pulse-ring.ring2');
-    const avatar = document.getElementById('voice-call-program-avatar');
+    const avatar = document.getElementById('voice-call-follower-avatar');
     
     if (ring1 && ring2) {
         let scaleVal1 = 1.0;
@@ -11228,7 +11228,7 @@ function drawVisualizer() {
         let scaleVal2 = 1.0;
         let opacityVal2 = 0.0;
         
-        if (isProgramSpeaking) {
+        if (isfollowerSpeaking) {
             // Audio reactive ring pulses + avatar pulsing size (slightly tighter scale)
             const scaleFactor = 1.0 + (visualizerAmplitude / 45) * 0.45;
             const timeScale1 = (Date.now() / 800) % 2.0; // cycle 0 to 2
@@ -11243,7 +11243,7 @@ function drawVisualizer() {
             if (avatar) {
                 avatar.style.transform = `scale(${1.0 + (visualizerAmplitude / 45) * 0.07})`;
             }
-        } else if (isProgramThinking) {
+        } else if (isfollowerThinking) {
             // Rapid circular breath wave for thinking
             const timeVal = Date.now() / 200;
             scaleVal1 = 1.04 + Math.sin(timeVal) * 0.08;

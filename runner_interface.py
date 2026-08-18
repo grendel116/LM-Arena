@@ -84,7 +84,7 @@ def _build_vector_query(history: list, max_messages: int = VECTOR_QUERY_MESSAGES
     messages = []
     for msg in reversed(history):
         role = msg.get('role', '')
-        if role not in ('user', 'program', 'assistant'):
+        if role not in ('user', 'follower', 'assistant'):
             continue
         text = msg.get('text', '').strip()
         if not text or text.startswith('[Tool Response') or text.startswith('[SYSTEM:'):
@@ -157,7 +157,7 @@ def _build_tool_calls_pair(tool_name: str, args: dict, output: str, idx: int = N
 
 def _normalize_tool_name(tool_name: str) -> str:
     """Normalizes tool name aliases to their standard forms."""
-    if tool_name in ("generate_program_portrait", "dalle.text2im", "dalle:text2im", "text2im"):
+    if tool_name in ("generate_follower_portrait", "dalle.text2im", "dalle:text2im", "text2im"):
         return "generate_local_image"
     if tool_name == "generate_general_image":
         return "generate_imagen"
@@ -237,9 +237,9 @@ def _get_safe_local_path(image_url: str) -> str:
             safe_parts.append(safe_p)
     if not safe_parts:
         return None
-    from utils.program import get_active_program
-    active_program = get_active_program()
-    return os.path.normpath(os.path.join("core", "programs", active_program, *safe_parts))
+    from utils.follower import get_active_follower
+    active_follower = get_active_follower()
+    return os.path.normpath(os.path.join("core", "followers", active_follower, *safe_parts))
 
 
 def fallback_system_to_user_messages(messages: list) -> list:
@@ -535,10 +535,10 @@ def _get_base64_image_url(image_source) -> str:
     local_path = image_source
     if str(image_source).startswith("/images/"):
         rel_path = image_source[len("/images/"):]
-        from utils.program import get_active_program
-        active_program = get_active_program()
+        from utils.follower import get_active_follower
+        active_follower = get_active_follower()
         project_root = os.path.dirname(os.path.abspath(__file__))
-        local_path = os.path.normpath(os.path.join(project_root, 'core', 'programs', active_program, rel_path))
+        local_path = os.path.normpath(os.path.join(project_root, 'core', 'followers', active_follower, rel_path))
         
     # Ensure relative paths are resolved relative to project root
     if not os.path.isabs(local_path):
@@ -615,9 +615,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         uncompacted_historical_turns = [msg for msg in historical_turns if not msg.get('compacted')]
         text_to_summarize = ""
         for msg in uncompacted_historical_turns:
-            if msg.get('role') not in ('user', 'program'):
+            if msg.get('role') not in ('user', 'follower'):
                 continue
-            role = "User" if msg.get('role') == 'user' else "Program"
+            role = "User" if msg.get('role') == 'user' else "follower"
             text = (msg.get('text') or '').strip()
             if text:
                 text_to_summarize += f"{role}: {text}\n\n"
@@ -713,7 +713,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             msg for msg in history 
             if msg.get('role') not in ('voice-call', 'system-memory') 
             and not msg.get('compacted')
-            and not (msg.get('role') == 'program' and not (msg.get('text') or '').strip() and not msg.get('tool_calls') and not msg.get('id', '').startswith('first_mes'))
+            and not (msg.get('role') == 'follower' and not (msg.get('text') or '').strip() and not msg.get('tool_calls') and not msg.get('id', '').startswith('first_mes'))
         ]
         if not filtered_history:
             return [{"role": "system", "content": sys_inst}]
@@ -732,11 +732,11 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 break
                 
         for idx, msg in enumerate(filtered_history):
-            role = "assistant" if msg['role'] == 'program' else "user"
-            from core.program_config import replace_placeholders
+            role = "assistant" if msg['role'] == 'follower' else "user"
+            from core.follower_config import replace_placeholders
             if msg.get('id', '').startswith('first_mes'):
-                from core.program_config import get_program_greeting
-                raw_text = get_program_greeting()
+                from core.follower_config import get_follower_greeting
+                raw_text = get_follower_greeting()
             else:
                 raw_text = msg.get('text', '') or msg.get('content', '') or ''
             content_text = replace_placeholders(raw_text)
@@ -823,7 +823,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     clean_text = text.replace("[System Memory of older conversation turns]:", "").strip()
                     latest_memory = clean_text  # last one wins
         if latest_memory:
-            from core.program_config import replace_placeholders
+            from core.follower_config import replace_placeholders
             context_parts.append(f"<conversation_memory>\n{replace_placeholders(latest_memory)}\n</conversation_memory>")
             
         # 2. Recalled journals
@@ -837,11 +837,11 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         if last_user_message:
             try:
                 from utils.journals import match_journals
-                from utils.program import get_active_program
-                active_prog = get_active_program()
+                from utils.follower import get_active_follower
+                active_prog = get_active_follower()
                 matched_entries = match_journals(last_user_message, active_prog)
                 if matched_entries:
-                    from core.program_config import replace_placeholders
+                    from core.follower_config import replace_placeholders
                     for entry in matched_entries:
                         content_resolved = replace_placeholders(entry['content'])
                         recalled_journals.append(f"- {content_resolved}")
@@ -857,7 +857,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             
         # 4. Memory context from archived chat history
         if memory_context:
-            from core.program_config import replace_placeholders
+            from core.follower_config import replace_placeholders
             context_parts.append(f"<archived_memory>\n{replace_placeholders(memory_context)}\n</archived_memory>")
             
         # 5. Vector retrieved skill instructions (Toolbelt tier 2)
@@ -900,7 +900,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
         # Inject Unified Player Character Status & World State verbatim after the chat history
         try:
-            from utils.program import get_active_user
+            from utils.follower import get_active_user
             from engine.save_manager import get_active_save_id
             from engine.world_engine import load_world_state
             from engine.character import load_character, get_character_context
@@ -1023,7 +1023,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         return openai_messages
 
     def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str, intermediate: bool = False):
-        from utils.program import get_active_user
+        from utils.follower import get_active_user
         from engine.world_engine import (
             load_world_state,
             create_state_snapshot,
@@ -1043,7 +1043,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         t_date = (updated_snapshot.get("date") if updated_snapshot else None) or world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
             
         history = self.runner_obj.sessions_history[self.session_id]
-        if history and history[-1]['role'] == 'program':
+        if history and history[-1]['role'] == 'follower':
             history[-1]['text'] = cleaned_text
             history[-1]['tool_calls'] = tool_calls_data
             history[-1]['tamrielic_date'] = t_date
@@ -1059,7 +1059,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             prefix = "prgm_"
         bot_msg = {
             'id': f"{prefix}{uuid.uuid4().hex}",
-            'role': 'program',
+            'role': 'follower',
             'text': cleaned_text,
             'tool_calls': tool_calls_data,
             'tamrielic_date': t_date,
@@ -1105,7 +1105,7 @@ def _is_cloud_model_check(model: str) -> bool:
     return True
 
 
-class BaseProgramRunner:
+class BasefollowerRunner:
     def __init__(self, app_name="LM-Arena"):
         self.app_name = app_name
         self._winning_mode_cache = {}
@@ -1250,19 +1250,19 @@ class BaseProgramRunner:
         remote_key = os.getenv("REMOTE_API_KEY")
         remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
         
-        from utils.program import get_player_name
-        from core.program_config import get_program_name
+        from utils.follower import get_player_name
+        from core.follower_config import get_follower_name
         
         user_name = get_player_name()
         try:
-            program_name = get_program_name()
+            follower_name = get_follower_name()
         except Exception:
-            program_name = "Program"
+            follower_name = "follower"
             
         prompt = (
             "You are a progressive memory compaction assistant for a roleplay adventure.\n"
-            f"Summarize the NEW chapter of events involving {user_name} and {program_name}.\n"
-            f"Always refer to the user/player as '{{{{user}}}}'. Refer to companions, NPCs, and characters by their explicit names (e.g. '{program_name}') and do NOT use '{{{{char}}}}' as memories persist across different companions.\n"
+            f"Summarize the NEW chapter of events involving {user_name} and {follower_name}.\n"
+            f"Always refer to the user/player as '{{{{user}}}}'. Refer to companions, NPCs, and characters by their explicit names (e.g. '{follower_name}') and do NOT use '{{{{char}}}}' as memories persist across different companions.\n"
             "Extract new key developments, decisions, inventory/quest changes, locations reached, and relationship milestones.\n"
             "Write a concise narrative summary (2-3 sentences, up to 500 characters).\n"
             "Focus STRICTLY on the new developments in the recent chat history and do NOT repeat details already recorded in prior memories.\n\n"
@@ -1327,12 +1327,12 @@ class BaseProgramRunner:
 
     async def _distill_epic_chronicle(self, text_to_distill: str, active_model: str) -> str:
         """Condenses an extended multi-chapter historical chronicle into a high-level epic summary."""
-        from utils.program import get_player_name, get_active_program
+        from utils.follower import get_player_name, get_active_follower
         user_name = get_player_name()
-        program_name = get_active_program() or "Program"
+        follower_name = get_active_follower() or "follower"
         
         prompt = (
-            f"You are the campaign chronicler for an ongoing Elder Scrolls adventure starring {user_name} and {program_name}.\n"
+            f"You are the campaign chronicler for an ongoing Elder Scrolls adventure starring {user_name} and {follower_name}.\n"
             "The following text is the accumulated chronicle of earlier story chapters.\n"
             f"Condense these events into a single cohesive, high-level historical narrative (2-3 concise paragraphs, up to 900 characters).\n"
             "Retain major quest milestones, key character relationships, acquired artifacts, and major provincial journeys.\n\n"
@@ -1666,14 +1666,14 @@ class BaseProgramRunner:
                 )
                 
                 if is_image_req:
-                    image_tools = {"generate_local_image", "generate_imagen", "generate_program_portrait", "generate_general_image", "apply_comfy_workflow"}
+                    image_tools = {"generate_local_image", "generate_imagen", "generate_follower_portrait", "generate_general_image", "apply_comfy_workflow"}
                     disallowed = [m for m in matches if _normalize_tool_name(m.group(1)) not in image_tools]
                     for m in disallowed:
                         bot_response_text = bot_response_text.replace(m.group(0), "")
                     matches = [m for m in matches if _normalize_tool_name(m.group(1)) in image_tools]
                 else:
                     arena_allowed = {
-                        "generate_local_image", "generate_program_portrait",
+                        "generate_local_image", "generate_follower_portrait",
                         "generate_imagen", "generate_general_image",
                         "apply_comfy_workflow", "add_journal_entry", "add_quest",
                         "arena_add_side_quest", "arena_advance_side_quest", "arena_complete_side_quest",
@@ -1730,7 +1730,7 @@ class BaseProgramRunner:
                     "arena_set_quest_stage", "arena_recruit_follower",
                     "add_quest", "arena_add_side_quest", "arena_advance_side_quest",
                     "arena_complete_side_quest", "add_journal_entry", "generate_local_image",
-                    "generate_program_portrait", "generate_imagen", "generate_general_image",
+                    "generate_follower_portrait", "generate_imagen", "generate_general_image",
                     "apply_comfy_workflow"
                 }
                 is_all_single_turn = all(
@@ -1761,7 +1761,7 @@ class BaseProgramRunner:
                         for k in dedup_keys:
                             seen_tool_calls.add(k)
                         
-                        if normalized_name in ("generate_local_image", "generate_imagen", "generate_program_portrait", "generate_general_image", "apply_comfy_workflow"):
+                        if normalized_name in ("generate_local_image", "generate_imagen", "generate_follower_portrait", "generate_general_image", "apply_comfy_workflow"):
                             parsed_args, new_markdown = _execute_emulated_tool(t_name, a_str)
                             image_succeeded = new_markdown.startswith("![") and new_markdown.endswith(")")
                             if image_succeeded:
@@ -1858,7 +1858,7 @@ class BaseProgramRunner:
         bot_response_text = self._ensure_images_are_embedded(bot_response_text)
         from engine.world_engine import extract_hidden_state_footer, load_world_state, save_world_state
         from engine.character import load_character, save_character, reconcile_inventory_from_turn
-        from utils.program import get_active_user
+        from utils.follower import get_active_user
         try:
             active_user = get_active_user()
             world_state = load_world_state(active_user)
@@ -1900,7 +1900,7 @@ class BaseProgramRunner:
         raise NotImplementedError()
 
     async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None) -> tuple:
-        """Runs the program with a new turn and returns (response_text, tool_calls, user_msg_id, program_msg_id)."""
+        """Runs the follower with a new turn and returns (response_text, tool_calls, user_msg_id, follower_msg_id)."""
         raise NotImplementedError()
 
     async def edit_turn(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False) -> tuple:
@@ -2027,10 +2027,10 @@ class BaseProgramRunner:
                 profile_data["operation"] = {}
             profile_data["operation"]["response_directive"] = "Super short and succinct messages. Conversational. No narration."
             profile_data["operation"]["example_message"] = ""
-            profile_data["operation"]["scenario"] = f"{program_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time."
+            profile_data["operation"]["scenario"] = f"{follower_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time."
             instructions = compile_instructions_from_json(profile_data)
         else:
-            instructions = f"# IDENTITY: {program_name}\n\n## SCENARIO / CONTEXT\n{program_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time.\n\n## RESPONSE DIRECTIVES (MANDATORY GUIDELINES)\nSuper short and succinct messages. Conversational. No narration."
+            instructions = f"# IDENTITY: {follower_name}\n\n## SCENARIO / CONTEXT\n{follower_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time.\n\n## RESPONSE DIRECTIVES (MANDATORY GUIDELINES)\nSuper short and succinct messages. Conversational. No narration."
         
         src_session_id = session_id[:-6]
         recent_turns = []
@@ -2047,7 +2047,7 @@ class BaseProgramRunner:
                     pass
             for msg in history:
                 if msg.get('role') != 'voice-call':
-                    role = "User" if msg.get('role') == 'user' else program_name
+                    role = "User" if msg.get('role') == 'user' else follower_name
                     text = msg.get('text', '') or msg.get('content', '') or ''
                     if text.strip():
                         recent_turns.append((role, text.strip()))
@@ -2066,7 +2066,7 @@ class BaseProgramRunner:
                             data = json.load(f)
                             for ev_data in data:
                                 if ev_data.get('author', '').lower() != 'voice-call':
-                                    role = "User" if ev_data.get('author', '').lower() == 'user' else program_name
+                                    role = "User" if ev_data.get('author', '').lower() == 'user' else follower_name
                                     parts = ev_data.get('content', {}).get('parts', [])
                                     text = "".join(part.get('text', '') for part in parts if part.get('text'))
                                     if text.strip():
@@ -2076,7 +2076,7 @@ class BaseProgramRunner:
             else:
                 for ev in adk_session.events:
                     if ev.author.lower() != 'voice-call':
-                        role = "User" if ev.author.lower() == 'user' else program_name
+                        role = "User" if ev.author.lower() == 'user' else follower_name
                         text = ""
                         if ev.content and ev.content.parts:
                             text = "".join(p.text for p in ev.content.parts if p.text)
@@ -2106,13 +2106,13 @@ class BaseProgramRunner:
             return instructions
         try:
             from utils.journals import match_journals
-            from utils.program import get_active_program
-            active_prog = get_active_program()
+            from utils.follower import get_active_follower
+            active_prog = get_active_follower()
             matched_entries = match_journals(user_message, active_prog)
             if matched_entries:
                 if "\n\n# RECALLED JOURNALS / MEMORIES\n" not in instructions:
                     instructions += "\n\n# RECALLED JOURNALS / MEMORIES\n"
-                from core.program_config import replace_placeholders
+                from core.follower_config import replace_placeholders
                 for entry in matched_entries:
                     content_resolved = replace_placeholders(entry['content'])
                     instructions += f"- {content_resolved}\n"
@@ -2158,23 +2158,23 @@ class BaseProgramRunner:
         return instructions
 
     def _get_system_instructions(self, session_id, inversion_directive=None, user_message=None) -> str:
-        """Pulls the system prompt directly from the program's JSON profile and appends matched journals."""
+        """Pulls the system prompt directly from the follower's JSON profile and appends matched journals."""
         is_voice = isinstance(session_id, str) and session_id.endswith('_voice')
-        from core.program_config import get_program_name
+        from core.follower_config import get_follower_name
         
         try:
-            program_name = get_program_name()
+            follower_name = get_follower_name()
         except Exception:
-            program_name = "Program"
+            follower_name = "follower"
             
         if is_voice:
-            instructions = self._build_voice_prompt(session_id, program_name)
+            instructions = self._build_voice_prompt(session_id, follower_name)
         else:
             # Non-voice (standard) prompt construction
             import importlib
-            from core import program_config
-            importlib.reload(program_config)
-            instructions = program_config.get_compiled_instructions()
+            from core import follower_config
+            importlib.reload(follower_config)
+            instructions = follower_config.get_compiled_instructions()
             
             conciseness_directive = (
                 "\n\n# STYLE\n"
@@ -2207,9 +2207,9 @@ class BaseProgramRunner:
 
 # (Google ADK Runner removed)
 
-class OpenSourceRunner(BaseProgramRunner):
+class OpenSourceRunner(BasefollowerRunner):
     """This operates independently of google-adk or Google cloud infrastructure, 
-    reading character settings directly from the program's JSON profile.
+    reading character settings directly from the follower's JSON profile.
     """
     def __init__(self, app_name="LM-Arena"):
         super().__init__(app_name)
@@ -2219,7 +2219,7 @@ class OpenSourceRunner(BaseProgramRunner):
         self._lock = threading.RLock()
 
     async def generate_impersonation(self, prompt: str, system_instruction: str, model: str = None, temperature: float = 0.7) -> str:
-        """Generates an impersonated message from the program using the active remote or local model."""
+        """Generates an impersonated message from the follower using the active remote or local model."""
         # Check if we should use the cloud remote endpoint
         remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
         remote_key = os.getenv("REMOTE_API_KEY")
@@ -2337,7 +2337,7 @@ class OpenSourceRunner(BaseProgramRunner):
                 # Scrub ghost cancelled/stopped placeholders from history
                 _ghost_texts = {'*(Generation cancelled)*', '*(Generation stopped)*'}
                 cleaned = [m for m in history if not (
-                    m.get('role') == 'program' and
+                    m.get('role') == 'follower' and
                     (m.get('text', '') or m.get('content', '')).strip() in _ghost_texts
                 )]
                 if len(cleaned) < len(history):
@@ -2379,8 +2379,8 @@ class OpenSourceRunner(BaseProgramRunner):
         if msg.get('text') is not None and str(msg.get('text')).strip() != '':
             text = str(msg.get('text'))
         elif msg_id.startswith('first_mes'):
-            from core.program_config import get_program_greeting, replace_placeholders
-            text = replace_placeholders(get_program_greeting())
+            from core.follower_config import get_follower_greeting, replace_placeholders
+            text = replace_placeholders(get_follower_greeting())
         else:
             text = msg.get('content', '') or ''
         media = []
@@ -2415,7 +2415,7 @@ class OpenSourceRunner(BaseProgramRunner):
         # 4. Detect image prompt from tool calls (for regeneration UI)
         image_prompt = None
         _image_tool_names = ('generate_local_image', 'generate_imagen',
-                             'generate_program_portrait', 'generate_general_image')
+                             'generate_follower_portrait', 'generate_general_image')
         for ts in tool_summary:
             if ts.get('name') in _image_tool_names:
                 image_prompt = (ts.get('args') or {}).get('prompt')
@@ -2433,7 +2433,7 @@ class OpenSourceRunner(BaseProgramRunner):
 
         role = msg.get('role', 'user')
         if role == 'assistant':
-            role = 'program'
+            role = 'follower'
         return {
             'id': msg_id,
             'role': role,
@@ -2459,7 +2459,7 @@ class OpenSourceRunner(BaseProgramRunner):
                     import uuid as _uuid
                     self.sessions_history[session_id].append({
                         'id': f"first_mes_{_uuid.uuid4().hex[:12]}",
-                        'role': 'program',
+                        'role': 'follower',
                         'tool_calls': []
                     })
                     self._save_session_to_disk(session_id)
@@ -2480,8 +2480,8 @@ class OpenSourceRunner(BaseProgramRunner):
                     continue
                 
                 normalized = self._normalize_message(msg)
-                # Skip empty or ghost cancelled program messages
-                if normalized.get('role') == 'program':
+                # Skip empty or ghost cancelled follower messages
+                if normalized.get('role') == 'follower':
                     text = (normalized.get('text') or '').strip()
                     has_tools = bool(normalized.get('tool_calls'))
                     has_media = bool(normalized.get('media'))
@@ -2536,7 +2536,7 @@ class OpenSourceRunner(BaseProgramRunner):
                 import uuid as _uuid
                 self.sessions_history[session_id].append({
                     'id': f"first_mes_{_uuid.uuid4().hex[:12]}",
-                    'role': 'program',
+                    'role': 'follower',
                     'timestamp': time.time(),
                     'tool_calls': []
                 })
@@ -2549,9 +2549,9 @@ class OpenSourceRunner(BaseProgramRunner):
             try:
                 if media_path.startswith('/images/'):
                     rel_path = media_path[len('/images/'):]
-                    from utils.program import get_active_program
-                    active_program = get_active_program()
-                    local_file_path = os.path.normpath(os.path.join('core', 'programs', active_program, rel_path))
+                    from utils.follower import get_active_follower
+                    active_follower = get_active_follower()
+                    local_file_path = os.path.normpath(os.path.join('core', 'followers', active_follower, rel_path))
                     if os.path.exists(local_file_path):
                         import mimetypes
                         mime_type, _ = mimetypes.guess_type(local_file_path)
@@ -2611,15 +2611,15 @@ class OpenSourceRunner(BaseProgramRunner):
             await adapter.compact_history(model)
             
             bot_response_text, tool_calls = res
-            program_msg_id = None
+            follower_msg_id = None
             for msg in reversed(self.sessions_history.get(session_id, [])):
-                if msg.get('role') == 'program':
-                    program_msg_id = msg.get('id')
+                if msg.get('role') == 'follower':
+                    follower_msg_id = msg.get('id')
                     if not bot_response_text and msg.get('text'):
                         bot_response_text = msg['text']
                     break
                         
-            return bot_response_text, tool_calls, user_msg_id, program_msg_id
+            return bot_response_text, tool_calls, user_msg_id, follower_msg_id
         except LocalOffloadTrigger as trigger_exc:
             print(f"[OFFLOAD] Caught LocalOffloadTrigger in OpenSourceRunner: {trigger_exc.reason}. Rolling back local turn and offloading to cloud.", flush=True)
             # Rollback history events to initial state (discarding user message and generated events of this turn)
@@ -2671,8 +2671,8 @@ class OpenSourceRunner(BaseProgramRunner):
             
         orig_msg = history[user_idx]
         
-        # Direct editing of program / assistant messages
-        if orig_msg.get('role') in ('program', 'assistant'):
+        # Direct editing of follower / assistant messages
+        if orig_msg.get('role') in ('follower', 'assistant'):
             if new_text is not None:
                 orig_msg['text'] = new_text.strip()
                 orig_msg['content'] = new_text.strip()
@@ -2906,7 +2906,7 @@ class OpenSourceRunner(BaseProgramRunner):
                         if not msg.get('text') or not msg['text'].strip():
                             indices_to_delete.append(i)
                             
-                # If this program message contains the deleted image, check the preceding user message
+                # If this follower message contains the deleted image, check the preceding user message
                 if has_image and i > 0:
                     prev_msg = history[i-1]
                     if prev_msg.get('role') == 'user' and prev_msg.get('text') and "Send me a portrait of yourself" in prev_msg['text']:
@@ -3026,7 +3026,7 @@ class OpenSourceRunner(BaseProgramRunner):
             history = self.sessions_history[session_id]
             new_msg = {
                 'id': f"{prefix}{uuid.uuid4().hex}",
-                'role': 'user' if role == 'user' else 'program',
+                'role': 'user' if role == 'user' else 'follower',
                 'text': text,
                 'tool_calls': [],
                 'tamrielic_date': t_date,
@@ -3046,11 +3046,11 @@ class OpenSourceRunner(BaseProgramRunner):
             if timestamp is None:
                 timestamp = time.time()
                 
-            # Remove individual user/program messages that were part of this voice call
+            # Remove individual user/follower messages that were part of this voice call
             if start_time is not None:
                 self.sessions_history[session_id] = [
                     msg for msg in self.sessions_history[session_id]
-                    if not (msg.get('role') in ('user', 'program') and msg.get('timestamp', 0) >= start_time)
+                    if not (msg.get('role') in ('user', 'follower') and msg.get('timestamp', 0) >= start_time)
                 ]
                 
             new_msg = {
@@ -3102,7 +3102,7 @@ class OpenSourceRunner(BaseProgramRunner):
                 target_msg = real_history[found_idx]
                 target_msg['text'] = new_text
                 role = target_msg.get('role')
-                if role in ('program', 'model'):
+                if role in ('follower', 'model'):
                     pass
                     
                     prev_user_idx = -1
@@ -3119,7 +3119,7 @@ class OpenSourceRunner(BaseProgramRunner):
                     for k in range(prev_user_idx + 1, next_user_idx):
                         if k != found_idx:
                             m = real_history[k]
-                            if m.get('role') in ('program', 'model'):
+                            if m.get('role') in ('follower', 'model'):
                                 m['text'] = ""
                                 
                 self._save_session_to_disk(session_id)

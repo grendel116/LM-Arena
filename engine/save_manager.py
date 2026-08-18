@@ -281,7 +281,7 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
     history = [
         {
             "id": first_msg_id,
-            "role": "program",
+            "role": "follower",
             "timestamp": time.time()
         }
     ]

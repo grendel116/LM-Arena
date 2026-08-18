@@ -524,7 +524,7 @@ def remove_item(sheet: dict, item_name: str, quantity: int = 1) -> tuple[dict, b
     return sheet, False
 
 
-def reconcile_inventory_from_turn(sheet: dict, user_text: str, program_text: str) -> tuple[dict, list[dict]]:
+def reconcile_inventory_from_turn(sheet: dict, user_text: str, follower_text: str) -> tuple[dict, list[dict]]:
     """
     Reconciles character inventory against the context of the turn.
     Detects if the player explicitly discarded, consumed, or surrendered an item currently held.
@@ -533,7 +533,7 @@ def reconcile_inventory_from_turn(sheet: dict, user_text: str, program_text: str
     if not sheet or "inventory" not in sheet or not sheet["inventory"]:
         return sheet, []
 
-    combined_text = f"{user_text}\n{program_text}"
+    combined_text = f"{user_text}\n{follower_text}"
     if not combined_text.strip():
         return sheet, []
 
@@ -577,7 +577,7 @@ def reconcile_inventory_from_turn(sheet: dict, user_text: str, program_text: str
             full_pattern = rf'{action_pat}{item_escaped}\b'
             matches = list(re.finditer(full_pattern, user_text, re.IGNORECASE))
             if not matches:
-                matches = list(re.finditer(full_pattern, program_text, re.IGNORECASE))
+                matches = list(re.finditer(full_pattern, follower_text, re.IGNORECASE))
                 
             for match in matches:
                 start_pos = max(0, match.start() - 40)

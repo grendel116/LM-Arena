@@ -31,7 +31,7 @@ load_dotenv(override=True)
 
 app = Flask(__name__)
 
-_cached_active_program = None
+_cached_active_follower = None
 _cached_active_user = None
 
 def init_runner():
@@ -129,21 +129,21 @@ init_runner()
 
 def reload_follower_state():
     """Reload follower config, reinitialize the runner, and sync active save session."""
-    from core import follower_config, program_config
+    from core import follower_config, follower_config
     importlib.reload(follower_config)
-    importlib.reload(program_config)
+    importlib.reload(follower_config)
     init_runner()
     if hasattr(runner, '_load_session_from_disk'):
         runner._load_session_from_disk('default')
 
-reload_program_state = reload_follower_state
+reload_follower_state = reload_follower_state
 
 
 def load_theme(follower_id):
     """Load theme.json for a follower, returning the parsed dict or None."""
     theme_path = os.path.join(base_dir, "core", "followers", follower_id, "theme.json")
     if not os.path.exists(theme_path):
-        theme_path = os.path.join(base_dir, "core", "programs", follower_id, "theme.json")
+        theme_path = os.path.join(base_dir, "core", "followers", follower_id, "theme.json")
     if os.path.exists(theme_path):
         try:
             with open(theme_path, "r", encoding="utf-8") as tf:
@@ -186,14 +186,14 @@ def find_image_sidecar_json(image_filename, active_follower):
     return None
 
 
-def sanitize_response(response_text, session_id, program_msg_id):
+def sanitize_response(response_text, session_id, follower_msg_id):
     """Apply banned words filter and update persisted message if sanitized."""
     from utils.banned_words import sanitize_text
     sanitized = sanitize_text(response_text)
     if sanitized != response_text:
         print(f"[BANNED WORDS] Sanitized response in session {session_id}")
-        if program_msg_id:
-            asyncio.run(runner.update_message_text(session_id, program_msg_id, sanitized))
+        if follower_msg_id:
+            asyncio.run(runner.update_message_text(session_id, follower_msg_id, sanitized))
     return sanitized
 
 
@@ -240,8 +240,8 @@ def index():
     
     tts_auto_speak = os.getenv("TTS_AUTO_SPEAK", "false").lower() == "true"
     tts_provider = os.getenv("TTS_PROVIDER", "local").lower()
-    active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
-    theme = load_theme(active_program)
+    active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
+    theme = load_theme(active_follower)
 
     from utils.follower import get_active_user, get_player_name
     active_user = get_active_user()
@@ -252,15 +252,15 @@ def index():
     user_name = get_player_name()
 
     from flask import make_response
-    from core.program_config import get_program_greeting, replace_placeholders
-    welcome_message = replace_placeholders(get_program_greeting(), user_name=user_name)
-    response = make_response(render_template('index.html', local_ip=local_ip, tts_auto_speak=tts_auto_speak, tts_provider=tts_provider, active_program=active_program, theme=theme, active_user=active_user, user_name=user_name, welcome_message=welcome_message))
+    from core.follower_config import get_follower_greeting, replace_placeholders
+    welcome_message = replace_placeholders(get_follower_greeting(), user_name=user_name)
+    response = make_response(render_template('index.html', local_ip=local_ip, tts_auto_speak=tts_auto_speak, tts_provider=tts_provider, active_follower=active_follower, theme=theme, active_user=active_user, user_name=user_name, welcome_message=welcome_message))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
 
 @app.route('/manifest.json')
 def serve_manifest():
-    from core.program_config import program_name
+    from core.follower_config import follower_name
     import json
     try:
         with open('manifest.json', 'r', encoding='utf-8') as f:
@@ -286,9 +286,9 @@ def app_icon():
 
 @app.route('/profile.png')
 def profile_png():
-    from utils.follower import get_active_program
-    active_program = get_active_program()
-    path_png = os.path.join('core', 'programs', active_program, 'portraits', 'profile.png')
+    from utils.follower import get_active_follower
+    active_follower = get_active_follower()
+    path_png = os.path.join('core', 'followers', active_follower, 'portraits', 'profile.png')
     if os.path.exists(path_png):
         response = send_file(path_png)
         from flask import make_response
@@ -300,9 +300,9 @@ def profile_png():
 
 
 @app.route('/followers/<follower_id>/profile.png')
-@app.route('/programs/<program_id>/profile.png')
-def follower_profile_png(follower_id=None, program_id=None):
-    fid = follower_id or program_id
+@app.route('/followers/<follower_id>/profile.png')
+def follower_profile_png(follower_id=None):
+    fid = follower_id
     import re
     if not re.match(r'^[a-zA-Z0-9_\-]+$', fid):
         return "Invalid follower ID", 400
@@ -316,11 +316,11 @@ def follower_profile_png(follower_id=None, program_id=None):
     else:
         return "Profile image not found", 404
 
-program_profile_png = follower_profile_png
+follower_profile_png = follower_profile_png
 
 
 @app.route('/api/followers/profile_picture/save', methods=['POST'])
-@app.route('/api/programs/profile_picture/save', methods=['POST'])
+@app.route('/api/followers/profile_picture/save', methods=['POST'])
 @requires_auth
 def save_profile_picture():
     try:
@@ -334,7 +334,7 @@ def save_profile_picture():
         if not cropped_image_base64:
             return jsonify({'error': 'No cropped_image data provided'}), 400
             
-        follower_id = data.get('follower_id') or data.get('program_id') or get_active_follower()
+        follower_id = data.get('follower_id') or data.get('follower_id') or get_active_follower()
         portraits_dir = os.path.join(FOLLOWERS_DIR, follower_id, 'portraits')
         os.makedirs(portraits_dir, exist_ok=True)
         dest_path = os.path.join(portraits_dir, 'profile.png')
@@ -356,7 +356,7 @@ def save_profile_picture():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/followers/profile_picture/crop', methods=['POST'])
-@app.route('/api/programs/profile_picture/crop', methods=['POST'])
+@app.route('/api/followers/profile_picture/crop', methods=['POST'])
 @requires_auth
 def crop_profile_picture():
     """Server-side crop: receives source image path and crop coordinates, uses PIL to crop and resize."""
@@ -375,7 +375,7 @@ def crop_profile_picture():
         if not source_image or w <= 0 or h <= 0:
             return jsonify({'error': 'Invalid crop parameters'}), 400
         
-        follower_id = data.get('follower_id') or data.get('program_id') or get_active_follower()
+        follower_id = data.get('follower_id') or data.get('follower_id') or get_active_follower()
         follower_dir = os.path.join(FOLLOWERS_DIR, follower_id)
         
         if source_image.startswith('/images/'):
@@ -426,13 +426,13 @@ def serve_image(filename):
         return send_from_directory(static_img_dir, filename)
 
     try:
-        from utils.follower import get_active_program
-        active_program = get_active_program()
+        from utils.follower import get_active_follower
+        active_follower = get_active_follower()
     except Exception:
-        active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
-    program_dir = os.path.join('core', 'programs', active_program)
-    if os.path.exists(os.path.join(program_dir, filename)):
-        return send_from_directory(program_dir, filename)
+        active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
+    follower_dir = os.path.join('core', 'followers', active_follower)
+    if os.path.exists(os.path.join(follower_dir, filename)):
+        return send_from_directory(follower_dir, filename)
     return send_from_directory(static_img_dir, filename)
 
 
@@ -449,8 +449,8 @@ def get_image_prompt():
         
     try:
         import json
-        from utils.follower import get_active_program
-        active_program = get_active_program()
+        from utils.follower import get_active_follower
+        active_follower = get_active_follower()
         
         if image_url.startswith('/images/'):
             img_subpath = image_url[8:]
@@ -459,7 +459,7 @@ def get_image_prompt():
             
         # Security: keep filename only to prevent directory traversal
         img_subpath = os.path.basename(img_subpath)
-        json_path = find_image_sidecar_json(img_subpath, active_program)
+        json_path = find_image_sidecar_json(img_subpath, active_follower)
 
         if json_path and os.path.exists(json_path):
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -487,14 +487,14 @@ def proactive_action():
         active_follower = get_active_follower()
         follower_path = os.path.join(FOLLOWERS_DIR, active_follower)
         
-        name = "Program"
+        name = "follower"
         description = ""
         personality = ""
         scenario = ""
         
-        # Read active program JSON config
-        for filename in [f"{active_program}.json", "character_profile.json"]:
-            json_path = os.path.join(program_path, filename)
+        # Read active follower JSON config
+        for filename in [f"{active_follower}.json", "character_profile.json"]:
+            json_path = os.path.join(follower_path, filename)
             if os.path.exists(json_path):
                 try:
                     with open(json_path, 'r', encoding='utf-8') as f:
@@ -505,7 +505,7 @@ def proactive_action():
                         personality = op.get('personality', '')
                         scenario = op.get('scenario', '')
                 except Exception as ex:
-                    print(f"Error reading program config for proactive action: {ex}")
+                    print(f"Error reading follower config for proactive action: {ex}")
                     
         # Get active player name
         from utils.follower import get_player_name
@@ -518,7 +518,7 @@ def proactive_action():
         for msg in reversed(chat_history):
             if msg.get('role') == 'user':
                 break
-            if msg.get('role') == 'program' and msg.get('is_proactive'):
+            if msg.get('role') == 'follower' and msg.get('is_proactive'):
                 print(f"[PROACTIVE] A proactive message was already sent since the last user message. Skipping.")
                 return jsonify({
                     'status': 'success',
@@ -531,7 +531,7 @@ def proactive_action():
         for msg in chat_history[-10:]:
             role = msg.get('role', 'unknown')
             text = msg.get('text') or msg.get('content') or ""
-            if role in ('user', 'program'):
+            if role in ('user', 'follower'):
                 speaker = user_display_name if role == 'user' else name
                 history_context += f"{speaker}: {text}\n"
                 
@@ -665,17 +665,17 @@ def history():
         from utils.follower import get_player_name
         user_name = get_player_name()
 
-        from core.program_config import program_name, get_program_greeting, replace_placeholders
-        welcome_message = replace_placeholders(get_program_greeting(), user_name=user_name)
-        active_program = os.environ.get("ACTIVE_PROGRAM", "ria_silmane")
+        from core.follower_config import follower_name, get_follower_greeting, replace_placeholders
+        welcome_message = replace_placeholders(get_follower_greeting(), user_name=user_name)
+        active_follower = os.environ.get("ACTIVE_follower", "ria_silmane")
         
-        theme = load_theme(active_program)
+        theme = load_theme(active_follower)
 
         return jsonify({
             'history': chat_history,
-            'character_name': program_name,
+            'character_name': follower_name,
             'user_name': user_name,
-            'active_program': active_program,
+            'active_follower': active_follower,
             'theme': theme,
             'welcome_message': welcome_message
         })
@@ -715,8 +715,8 @@ def upload_media():
     ext = os.path.splitext(filename)[1].lower()
     unique_name = f"upload_{int(time.time())}_{uuid.uuid4().hex}{ext}"
 
-    active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
-    uploads_dir = os.path.normpath(os.path.join('core', 'programs', active_program, 'uploads'))
+    active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
+    uploads_dir = os.path.normpath(os.path.join('core', 'followers', active_follower, 'uploads'))
     os.makedirs(uploads_dir, exist_ok=True)
     
     local_path = os.path.join(uploads_dir, unique_name)
@@ -749,7 +749,7 @@ def chat():
 
     try:
         msg_id = request.json.get('msg_id')
-        response_text, tool_calls, user_msg_id, program_msg_id = asyncio.run(
+        response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
             runner.run_async(
                 session_id=session_id,
                 new_message_text=user_message,
@@ -763,25 +763,25 @@ def chat():
         duration = round(time.time() - start_time, 1)
         
         # Apply banned words filter to output response
-        response_text = sanitize_response(response_text, session_id, program_msg_id)
+        response_text = sanitize_response(response_text, session_id, follower_msg_id)
 
         chat_history = asyncio.run(runner.get_history(session_id))
         
-        # Align timestamp with stored program message
-        program_timestamp = None
-        if program_msg_id:
+        # Align timestamp with stored follower message
+        follower_timestamp = None
+        if follower_msg_id:
             for msg in reversed(chat_history):
-                if msg.get('id') == program_msg_id:
-                    program_timestamp = msg.get('timestamp')
+                if msg.get('id') == follower_msg_id:
+                    follower_timestamp = msg.get('timestamp')
                     break
             
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
-            'timestamp': program_timestamp or time.time(),
+            'timestamp': follower_timestamp or time.time(),
             'duration': duration,
             'user_msg_id': user_msg_id,
-            'program_msg_id': program_msg_id
+            'follower_msg_id': follower_msg_id
         })
     except asyncio.CancelledError:
         print(f"[CANCEL] Chat generation cancelled for session {session_id}")
@@ -819,7 +819,7 @@ def edit():
     start_time = time.time()
 
     try:
-        response_text, tool_calls, user_msg_id, program_msg_id = asyncio.run(
+        response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
             runner.edit_turn(
                 session_id=session_id,
                 msg_id=msg_id,
@@ -832,25 +832,25 @@ def edit():
         print(f"[EDIT ROUTE DONE] len(response_text)={len(response_text)}, tools={len(tool_calls)}, duration={duration}s", flush=True)
         
         # Apply banned words filter to output response
-        response_text = sanitize_response(response_text, session_id, program_msg_id)
+        response_text = sanitize_response(response_text, session_id, follower_msg_id)
 
         chat_history = asyncio.run(runner.get_history(session_id))
 
-        # Align timestamp with stored program message
-        program_timestamp = None
-        if program_msg_id:
+        # Align timestamp with stored follower message
+        follower_timestamp = None
+        if follower_msg_id:
             for msg in reversed(chat_history):
-                if msg.get('id') == program_msg_id:
-                    program_timestamp = msg.get('timestamp')
+                if msg.get('id') == follower_msg_id:
+                    follower_timestamp = msg.get('timestamp')
                     break
 
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
-            'timestamp': program_timestamp or time.time(),
+            'timestamp': follower_timestamp or time.time(),
             'duration': duration,
             'user_msg_id': user_msg_id,
-            'program_msg_id': program_msg_id
+            'follower_msg_id': follower_msg_id
         })
     except asyncio.CancelledError:
         print(f"[CANCEL] Edit generation cancelled for session {session_id}")
@@ -888,10 +888,10 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
 
     history_text = ""
     for msg in history_slice:
-        role = "User" if msg.get('role') == 'user' else "Program"
+        role = "User" if msg.get('role') == 'user' else "follower"
         history_text += f"{role}: {msg.get('text', '')}\n"
     
-    from core.program_config import GLOBAL_USER_FORMATTING, load_user_instructions, replace_placeholders
+    from core.follower_config import GLOBAL_USER_FORMATTING, load_user_instructions, replace_placeholders
     from utils.follower import get_active_user
     from engine.character import load_character, get_character_context
 
@@ -1067,7 +1067,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
     recent_history = chat_history[-2:] if len(chat_history) > 2 else chat_history
     history_text = ""
     for msg in recent_history:
-        role = "User" if msg.get('role') == 'user' else "Program"
+        role = "User" if msg.get('role') == 'user' else "follower"
         history_text += f"{role}: {msg.get('text', '')}\n"
 
     char_context = ""
@@ -1250,12 +1250,12 @@ def regenerate_image():
     if not prompt:
         import os
         filename = os.path.basename(old_image_url)
-        # 1. Try to find the prompt in the program sidecar JSON file (most reliable and clean)
+        # 1. Try to find the prompt in the follower sidecar JSON file (most reliable and clean)
         try:
-            from utils.follower import get_active_program
-            active_program = get_active_program()
+            from utils.follower import get_active_follower
+            active_follower = get_active_follower()
             filename_only = os.path.basename(old_image_url)
-            json_path = find_image_sidecar_json(filename_only, active_program)
+            json_path = find_image_sidecar_json(filename_only, active_follower)
 
             if json_path and os.path.exists(json_path):
                 with open(json_path, 'r', encoding='utf-8') as f:
@@ -1276,14 +1276,14 @@ def regenerate_image():
                         continue
                     calls = {}
                     for tc in tool_calls:
-                        if tc.get('type') == 'call' and tc.get('name') == 'generate_program_portrait':
+                        if tc.get('type') == 'call' and tc.get('name') == 'generate_follower_portrait':
                             call_id = tc.get('id')
                             args = tc.get('args', {})
                             p = args.get('prompt')
                             if call_id and p:
                                 calls[call_id] = p
                     for tc in tool_calls:
-                        if tc.get('type') == 'response' and tc.get('name') == 'generate_program_portrait':
+                        if tc.get('type') == 'response' and tc.get('name') == 'generate_follower_portrait':
                             call_id = tc.get('id')
                             response_val = tc.get('response', '')
                             if call_id in calls and filename in response_val:
@@ -1441,12 +1441,12 @@ def list_generations():
 @requires_auth
 def list_images():
     try:
-        active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
-        program_dir = os.path.join('core', 'programs', active_program)
+        active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
+        follower_dir = os.path.join('core', 'followers', active_follower)
         image_urls = []
         
         for subdir, url_prefix in [('portraits', '/images/portraits'), ('media', '/images/media')]:
-            scan_dir = os.path.join(program_dir, subdir)
+            scan_dir = os.path.join(follower_dir, subdir)
             if not os.path.exists(scan_dir):
                 continue
             files = os.listdir(scan_dir)
@@ -1564,10 +1564,10 @@ def project_settings():
     import json
     settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
     
-    # Get active program
-    from utils.follower import get_active_program
-    active_prog = get_active_program()
-    default_folder = os.path.normpath(os.path.join(os.getcwd(), 'core', 'programs', active_prog))
+    # Get active follower
+    from utils.follower import get_active_follower
+    active_prog = get_active_follower()
+    default_folder = os.path.normpath(os.path.join(os.getcwd(), 'core', 'followers', active_prog))
     
     # Define default settings
     default_settings = {
@@ -1599,12 +1599,12 @@ def project_settings():
                         settings[k] = v
                         dirty = True
                 
-                # Check if the first folder needs to be updated to the new program
+                # Check if the first folder needs to be updated to the new follower
                 if "folders" in settings and len(settings["folders"]) > 0:
                     first_folder = os.path.normpath(settings["folders"][0])
                     cwd = os.path.normpath(os.getcwd())
-                    is_old_program_dir = ("core" in first_folder and "programs" in first_folder) or first_folder == cwd
-                    if is_old_program_dir and first_folder != default_folder:
+                    is_old_follower_dir = ("core" in first_folder and "followers" in first_folder) or first_folder == cwd
+                    if is_old_follower_dir and first_folder != default_folder:
                         settings["folders"][0] = default_folder
                         dirty = True
                 
@@ -1645,7 +1645,7 @@ def project_settings():
                     cleaned_folders.append(norm)
                     seen.add(key)
             
-            # Load existing settings to preserve other keys (active_program, active_user)
+            # Load existing settings to preserve other keys (active_follower, active_user)
             settings = {}
             if os.path.exists(settings_path):
                 try:
@@ -1801,7 +1801,7 @@ def api_tts():
         if not message_id or not text:
             return jsonify({'error': 'Missing message_id or text'}), 400
             
-        from core.program_config import replace_placeholders
+        from core.follower_config import replace_placeholders
         text = replace_placeholders(text)
         
         from core.skills.speech_generation.speech import SpeechManager
@@ -1870,9 +1870,9 @@ from core.skills.vectorized_databank.databank import DataBankManager
 @requires_auth
 def databank_list_files():
     try:
-        from utils.follower import get_active_program
-        prog_id = request.args.get('program_id') or get_active_program()
-        manager = DataBankManager(program_id=prog_id)
+        from utils.follower import get_active_follower
+        prog_id = request.args.get('follower_id') or get_active_follower()
+        manager = DataBankManager(follower_id=prog_id)
         files = manager.list_documents()
         return jsonify({"files": files})
     except Exception as e:
@@ -1891,8 +1891,8 @@ def databank_upload():
         
     temp_path = None
     try:
-        from utils.follower import get_active_program
-        prog_id = request.form.get('program_id') or get_active_program()
+        from utils.follower import get_active_follower
+        prog_id = request.form.get('follower_id') or get_active_follower()
         # Create temp folder inside workspace for uploads
         temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_uploads")
         os.makedirs(temp_dir, exist_ok=True)
@@ -1903,7 +1903,7 @@ def databank_upload():
         temp_path = os.path.join(temp_dir, filename)
         uploaded_file.save(temp_path)
         
-        manager = DataBankManager(program_id=prog_id)
+        manager = DataBankManager(follower_id=prog_id)
         doc_id = manager.ingest_file(temp_path, uploaded_file.filename)
         return jsonify({"status": "success", "id": doc_id})
     except Exception as e:
@@ -1928,9 +1928,9 @@ def databank_scrape():
         return jsonify({"error": "Missing URL"}), 400
         
     try:
-        from utils.follower import get_active_program
-        prog_id = req_json.get('program_id') or get_active_program()
-        manager = DataBankManager(program_id=prog_id)
+        from utils.follower import get_active_follower
+        prog_id = req_json.get('follower_id') or get_active_follower()
+        manager = DataBankManager(follower_id=prog_id)
         doc_id = manager.ingest_url(url)
         return jsonify({"status": "success", "id": doc_id})
     except Exception as e:
@@ -1946,9 +1946,9 @@ def databank_delete():
         return jsonify({"error": "Missing document ID"}), 400
         
     try:
-        from utils.follower import get_active_program
-        prog_id = req_json.get('program_id') or get_active_program()
-        manager = DataBankManager(program_id=prog_id)
+        from utils.follower import get_active_follower
+        prog_id = req_json.get('follower_id') or get_active_follower()
+        manager = DataBankManager(follower_id=prog_id)
         success = manager.delete_document(doc_id)
         if success:
             return jsonify({"status": "success"})
@@ -1962,10 +1962,10 @@ def databank_delete():
 @requires_auth
 def databank_purge():
     try:
-        from utils.follower import get_active_program
+        from utils.follower import get_active_follower
         req_json = request.get_json(silent=True) or {}
-        prog_id = req_json.get('program_id') or request.args.get('program_id') or get_active_program()
-        manager = DataBankManager(program_id=prog_id)
+        prog_id = req_json.get('follower_id') or request.args.get('follower_id') or get_active_follower()
+        manager = DataBankManager(follower_id=prog_id)
         manager.purge_all()
         return jsonify({"status": "success"})
     except Exception as e:
@@ -1987,8 +1987,8 @@ def list_lorebooks_route():
         books = list_lorebooks(follower_id, FOLLOWERS_DIR)
         for b in books:
             b['follower_id'] = follower_id
-            b['program_id'] = follower_id
-        return jsonify({'lorebooks': books, 'follower_id': follower_id, 'program_id': follower_id})
+            b['follower_id'] = follower_id
+        return jsonify({'lorebooks': books, 'follower_id': follower_id, 'follower_id': follower_id})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2069,7 +2069,7 @@ def delete_lorebook_route(filename):
 @app.route('/api/lorebooks/card/entries', methods=['GET'])
 @requires_auth
 def get_card_lorebook_entries():
-    """Return entries from the embedded character_book in the active program card."""
+    """Return entries from the embedded character_book in the active follower card."""
     try:
         from utils.follower import get_active_follower
         from variables import FOLLOWERS_DIR
@@ -2083,7 +2083,7 @@ def get_card_lorebook_entries():
         entries = cb.get('entries', [])
         if isinstance(entries, dict):
             entries = list(entries.values())
-        return jsonify({'name': cb.get('name', program_id), 'entries': entries})
+        return jsonify({'name': cb.get('name', follower_id), 'entries': entries})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2091,7 +2091,7 @@ def get_card_lorebook_entries():
 @app.route('/api/lorebooks/card/save', methods=['POST'])
 @requires_auth
 def save_card_lorebook_entries():
-    """Write updated entries back into character_book in the active program card."""
+    """Write updated entries back into character_book in the active follower card."""
     try:
         from utils.follower import get_active_follower
         from variables import FOLLOWERS_DIR
@@ -2105,7 +2105,7 @@ def save_card_lorebook_entries():
         # Navigate to character_book regardless of v2/v3 wrapping
         data_block = card.get('data', card)
         if 'character_book' not in data_block:
-            data_block['character_book'] = {'name': program_id, 'entries': []}
+            data_block['character_book'] = {'name': follower_id, 'entries': []}
         if 'entries' in data:
             data_block['character_book']['entries'] = data['entries']
         with open(card_path, 'w', encoding='utf-8') as f:
@@ -2162,7 +2162,7 @@ def save_lorebook_entries(filename):
 
 
 @app.route('/api/followers/memories', methods=['GET'])
-@app.route('/api/programs/memories', methods=['GET'])
+@app.route('/api/followers/memories', methods=['GET'])
 @requires_auth
 def get_follower_memories():
     try:
@@ -2173,9 +2173,9 @@ def get_follower_memories():
         print(f"Error loading follower memories: {e}")
         return jsonify({"error": str(e)}), 500
 
-get_program_memories = get_follower_memories
+get_follower_memories = get_follower_memories
 
-@app.route('/api/programs/memories/delete', methods=['POST'])
+@app.route('/api/followers/memories/delete', methods=['POST'])
 @requires_auth
 def delete_memory():
     data = request.json or {}
@@ -2198,7 +2198,7 @@ def delete_memory():
 @requires_auth
 def list_quests():
     try:
-        from utils.follower import get_active_program, get_active_user
+        from utils.follower import get_active_follower, get_active_user
         from engine.quest_tracker import load_quest_stages, get_current_stage, get_quest_display_data, sync_quest_stage_with_location
 
         user = get_active_user()
@@ -2234,9 +2234,9 @@ def list_quests():
 @requires_auth
 def delete_quest(quest_id):
     try:
-        from utils.follower import get_active_program
-        active_program = get_active_program()
-        quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
+        from utils.follower import get_active_follower
+        active_follower = get_active_follower()
+        quests_path = os.path.join('core', 'followers', active_follower, 'quest_log.json')
         
         if os.path.exists(quests_path):
             with open(quests_path, 'r', encoding='utf-8') as f:
@@ -2255,11 +2255,11 @@ def delete_quest(quest_id):
 @requires_auth
 def abandon_quest(quest_id):
     try:
-        from utils.follower import get_active_program
-        active_program = get_active_program()
-        program_dir = os.path.join('core', 'programs', active_program)
-        quests_path = os.path.join(program_dir, 'quest_log.json')
-        history_path = os.path.join(program_dir, 'quest_history.json')
+        from utils.follower import get_active_follower
+        active_follower = get_active_follower()
+        follower_dir = os.path.join('core', 'followers', active_follower)
+        quests_path = os.path.join(follower_dir, 'quest_log.json')
+        history_path = os.path.join(follower_dir, 'quest_history.json')
         quest_data = None
         
         if os.path.exists(quests_path):
@@ -2310,9 +2310,9 @@ def abandon_quest(quest_id):
 @requires_auth
 def download_quest(quest_id):
     try:
-        from utils.follower import get_active_program
-        active_program = get_active_program()
-        quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
+        from utils.follower import get_active_follower
+        active_follower = get_active_follower()
+        quests_path = os.path.join('core', 'followers', active_follower, 'quest_log.json')
         if not os.path.exists(quests_path):
             return jsonify({"error": "No quests found"}), 404
         with open(quests_path, 'r', encoding='utf-8') as f:
@@ -2383,8 +2383,8 @@ END:VCALENDAR"""
 @requires_auth
 def list_sessions():
     try:
-        active_program = os.environ.get("ACTIVE_PROGRAM", "ria_silmane")
-        sessions_dir = os.path.join(base_dir, "core", "programs", active_program, "sessions")
+        active_follower = os.environ.get("ACTIVE_follower", "ria_silmane")
+        sessions_dir = os.path.join(base_dir, "core", "followers", active_follower, "sessions")
         
         sessions = []
         if os.path.exists(sessions_dir):
@@ -2411,7 +2411,7 @@ def list_sessions():
 
 
 @app.route('/api/followers', methods=['GET'])
-@app.route('/api/programs', methods=['GET'])
+@app.route('/api/followers', methods=['GET'])
 @requires_auth
 def list_followers():
     try:
@@ -2481,31 +2481,31 @@ def list_followers():
                         'has_profile': has_profile,
                         'recruited': recruited
                     })
-        return jsonify({'followers': followers, 'programs': followers, 'active': active_follower})
+        return jsonify({'followers': followers, 'followers': followers, 'active': active_follower})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-list_programs = list_followers
+list_followers = list_followers
 
 @app.route('/api/followers/select', methods=['POST'])
-@app.route('/api/programs/select', methods=['POST'])
+@app.route('/api/followers/select', methods=['POST'])
 @requires_auth
 def select_follower():
     try:
         data = request.get_json(silent=True) or {}
-        follower_id = data.get('follower_id') or data.get('program_id')
+        follower_id = data.get('follower_id') or data.get('follower_id')
         if not follower_id:
             return jsonify({'error': 'Missing follower_id'}), 400
             
         follower_path = os.path.join(base_dir, 'core', 'followers', follower_id)
         if not os.path.exists(follower_path):
-            follower_path = os.path.join(base_dir, 'core', 'programs', follower_id)
+            follower_path = os.path.join(base_dir, 'core', 'followers', follower_id)
         if not os.path.exists(follower_path):
             return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
             
         # Update environment variable
         os.environ["ACTIVE_FOLLOWER"] = follower_id
-        os.environ["ACTIVE_PROGRAM"] = follower_id
+        os.environ["ACTIVE_follower"] = follower_id
         
         # Update active follower settings
         try:
@@ -2542,19 +2542,19 @@ def select_follower():
             pass
         return jsonify({'error': str(e)}), 500
 
-select_program = select_follower
+select_follower = select_follower
 
 
-@app.route('/api/programs/palette', methods=['POST'])
+@app.route('/api/followers/palette', methods=['POST'])
 @requires_auth
-def update_program_palette():
+def update_follower_palette():
     try:
         data = request.get_json(silent=True) or {}
-        program_id = data.get('program_id')
+        follower_id = data.get('follower_id')
         color = data.get('color')
         
-        if not program_id:
-            return jsonify({'error': 'Missing program_id'}), 400
+        if not follower_id:
+            return jsonify({'error': 'Missing follower_id'}), 400
         if not color:
             return jsonify({'error': 'Missing color'}), 400
             
@@ -2562,19 +2562,19 @@ def update_program_palette():
         if not re.match(r'^#[0-9a-fA-F]{6}$', color):
             return jsonify({'error': 'Invalid hex color format. Must be #RRGGBB'}), 400
             
-        program_path = os.path.join(base_dir, 'core', 'programs', program_id)
-        if not os.path.exists(program_path):
-            return jsonify({'error': f"Program '{program_id}' does not exist"}), 404
+        follower_path = os.path.join(base_dir, 'core', 'followers', follower_id)
+        if not os.path.exists(follower_path):
+            return jsonify({'error': f"follower '{follower_id}' does not exist"}), 404
             
         # Regenerate theme.json
         theme_data = generate_character_theme(color)
-        theme_path = os.path.join(program_path, "theme.json")
+        theme_path = os.path.join(follower_path, "theme.json")
         with open(theme_path, "w", encoding="utf-8") as tf:
             json.dump(theme_data, tf, indent=2, ensure_ascii=False)
             
         return jsonify({
             'status': 'success',
-            'program_id': program_id,
+            'follower_id': follower_id,
             'color': color,
             'theme': theme_data
         })
@@ -2585,12 +2585,12 @@ def update_program_palette():
 
 
 @app.route('/api/followers/delete', methods=['POST'])
-@app.route('/api/programs/delete', methods=['POST'])
+@app.route('/api/followers/delete', methods=['POST'])
 @requires_auth
 def delete_follower():
     try:
         data = request.get_json(silent=True) or {}
-        follower_id = data.get('follower_id') or data.get('program_id')
+        follower_id = data.get('follower_id') or data.get('follower_id')
         if not follower_id:
             return jsonify({'error': 'Missing follower_id'}), 400
             
@@ -2621,16 +2621,16 @@ def delete_follower():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-delete_program = delete_follower
+delete_follower = delete_follower
 
 
 @app.route('/api/followers/rename', methods=['POST'])
-@app.route('/api/programs/rename', methods=['POST'])
+@app.route('/api/followers/rename', methods=['POST'])
 @requires_auth
 def rename_follower():
     try:
         data = request.get_json(silent=True) or {}
-        follower_id = data.get('follower_id') or data.get('program_id')
+        follower_id = data.get('follower_id') or data.get('follower_id')
         new_name = data.get('new_name', '').strip()
         
         if not follower_id or not new_name:
@@ -2748,11 +2748,11 @@ def rename_follower():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-rename_program = rename_follower
+rename_follower = rename_follower
 
 
 @app.route('/api/followers/profile', methods=['GET'])
-@app.route('/api/programs/profile', methods=['GET'])
+@app.route('/api/followers/profile', methods=['GET'])
 @requires_auth
 def get_follower_profile():
     try:
@@ -2760,7 +2760,7 @@ def get_follower_profile():
         from variables import FOLLOWERS_DIR
         import json
 
-        follower_id = request.args.get('follower_id') or request.args.get('program_id') or get_active_follower()
+        follower_id = request.args.get('follower_id') or request.args.get('follower_id') or get_active_follower()
         json_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, follower_id, f"{follower_id}.json"))
 
         card_data = {}
@@ -2780,11 +2780,11 @@ def get_follower_profile():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-get_program_profile = get_follower_profile
+get_follower_profile = get_follower_profile
 
 
 @app.route('/api/followers/profile/save', methods=['POST'])
-@app.route('/api/programs/profile/save', methods=['POST'])
+@app.route('/api/followers/profile/save', methods=['POST'])
 @requires_auth
 def save_follower_profile():
     try:
@@ -2793,12 +2793,12 @@ def save_follower_profile():
         import json
 
         incoming = request.get_json(silent=True) or {}
-        follower_id = incoming.get('follower_id') or incoming.get('program_id') or get_active_follower()
+        follower_id = incoming.get('follower_id') or incoming.get('follower_id') or get_active_follower()
         json_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, follower_id, f"{follower_id}.json"))
 
         tts_voice = incoming.pop('tts_voice', None)
         incoming.pop('follower_id', None)
-        incoming.pop('program_id', None)
+        incoming.pop('follower_id', None)
 
         if tts_voice:
             set_tts_voice_for_follower(follower_id, tts_voice)
@@ -2831,41 +2831,41 @@ def save_follower_profile():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-save_program_profile = save_follower_profile
+save_follower_profile = save_follower_profile
 
 
 @app.route('/api/followers/journals', methods=['GET'])
-@app.route('/api/programs/journals', methods=['GET'])
+@app.route('/api/followers/journals', methods=['GET'])
 @requires_auth
 def get_follower_journals():
     try:
         from utils.follower import get_active_follower
         from utils.journals import get_journal_entries
         
-        follower_id = request.args.get('follower_id') or request.args.get('program_id') or get_active_follower()
+        follower_id = request.args.get('follower_id') or request.args.get('follower_id') or get_active_follower()
         entries = get_journal_entries(follower_id)
         return jsonify({'journals': entries})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-get_program_journals = get_follower_journals
+get_follower_journals = get_follower_journals
 
 
-@app.route('/api/programs/journals/save', methods=['POST'])
+@app.route('/api/followers/journals/save', methods=['POST'])
 @requires_auth
-def save_program_journals():
+def save_follower_journals():
     try:
-        from utils.follower import get_active_program
+        from utils.follower import get_active_follower
         from utils.journals import get_journal_entries, save_journal_entries, add_journal_entry
         
         data = request.get_json(silent=True) or {}
         entry_id = data.get('id')
         keyphrases_str = data.get('keyphrases', '')
         content = data.get('content', '')
-        program_id = data.get('program_id') or get_active_program()
+        follower_id = data.get('follower_id') or get_active_follower()
         
         if entry_id:
-            entries = get_journal_entries(program_id)
+            entries = get_journal_entries(follower_id)
             found = False
             for entry in entries:
                 if entry.get("id") == entry_id:
@@ -2874,32 +2874,32 @@ def save_program_journals():
                     found = True
                     break
             if found:
-                save_journal_entries(entries, program_id)
+                save_journal_entries(entries, follower_id)
                 return jsonify({'status': 'success'})
             else:
                 return jsonify({'error': 'Journal entry not found'}), 404
         else:
-            add_journal_entry(keyphrases_str, content, program_id)
+            add_journal_entry(keyphrases_str, content, follower_id)
             return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/programs/journals/delete', methods=['POST'])
+@app.route('/api/followers/journals/delete', methods=['POST'])
 @requires_auth
-def delete_program_journals():
+def delete_follower_journals():
     try:
-        from utils.follower import get_active_program
+        from utils.follower import get_active_follower
         from utils.journals import delete_journal_entry
         
         data = request.get_json(silent=True) or {}
         entry_id = data.get('id')
-        program_id = data.get('program_id') or get_active_program()
+        follower_id = data.get('follower_id') or get_active_follower()
         
         if not entry_id:
             return jsonify({'error': 'Missing entry id'}), 400
             
-        success = delete_journal_entry(entry_id, program_id)
+        success = delete_journal_entry(entry_id, follower_id)
         if success:
             return jsonify({'status': 'success'})
         else:
@@ -3023,7 +3023,7 @@ def save_active_game():
         meta = save_game()
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
-        reload_program_state()
+        reload_follower_state()
         return jsonify({
             "status": "success",
             "save": meta
@@ -3047,7 +3047,7 @@ def create_new_save():
         )
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
-        reload_program_state()
+        reload_follower_state()
         return jsonify({
             "status": "success",
             "save": meta
@@ -3070,7 +3070,7 @@ def load_existing_save():
         
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
-        reload_program_state()
+        reload_follower_state()
             
         return jsonify({
             "status": "success",
@@ -3094,7 +3094,7 @@ def delete_existing_save():
         
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
-        reload_program_state()
+        reload_follower_state()
             
         return jsonify({
             "status": "success",
@@ -3431,7 +3431,7 @@ def select_user_profile():
         
         from engine.save_manager import load_save
         load_save(profile_id)
-        reload_program_state()
+        reload_follower_state()
             
         return jsonify({"status": "success", "active": profile_id})
     except Exception as e:
@@ -3496,7 +3496,7 @@ def save_user_profile():
             import uuid, time
             history = [{
                 "id": f"first_mes_{uuid.uuid4().hex[:12]}",
-                "role": "program",
+                "role": "follower",
                 "timestamp": time.time()
             }]
             bundle["history"] = history
@@ -3508,7 +3508,7 @@ def save_user_profile():
         
         # If we edited the active profile, trigger hot reload immediately
         if profile_id == active_user:
-            reload_program_state()
+            reload_follower_state()
                 
         return jsonify({"status": "success", "profile_id": profile_id})
     except Exception as e:
@@ -3537,7 +3537,7 @@ def delete_user_profile():
         if profile_id == active_user:
             set_active_user("eternal_champion")
             set_active_save_id("eternal_champion")
-            reload_program_state()
+            reload_follower_state()
                 
         return jsonify({"status": "success", "deleted": profile_id})
     except Exception as e:
@@ -3588,7 +3588,7 @@ def rename_user_profile():
         if old_profile_id == active_user:
             set_active_user(new_save_id)
             set_active_save_id(new_save_id)
-            reload_program_state()
+            reload_follower_state()
                 
         return jsonify({"status": "success", "profile_id": new_save_id})
     except Exception as e:
@@ -3620,7 +3620,7 @@ def generate_character_theme(main_color, accent_color_a=None, accent_color_b=Non
         "accent_color_a": accent_color_a,
         "accent_color_b": accent_color_b,
         "primary_glow": f"rgba({r}, {g}, {b}, 0.08)",
-        "program_bubble": f"rgba({24 + int(r*0.04)}, {24 + int(g*0.04)}, {28 + int(b*0.04)}, 0.85)",
+        "follower_bubble": f"rgba({24 + int(r*0.04)}, {24 + int(g*0.04)}, {28 + int(b*0.04)}, 0.85)",
         "send_btn_hover": f"rgba({20 + int(r*0.12)}, {20 + int(g*0.12)}, {22 + int(b*0.12)}, 0.75)",
         "accent_green": accent_color_a,
         "quote_blue": main_color,
@@ -3631,7 +3631,7 @@ def generate_character_theme(main_color, accent_color_a=None, accent_color_b=Non
 
 
 def generate_character_json(name, description, personality, scenario, first_mes, model):
-    """Ask the LLM to produce chara_card_v3-compatible fields for a new program."""
+    """Ask the LLM to produce chara_card_v3-compatible fields for a new follower."""
     import os, json
     remote_key = os.getenv("REMOTE_API_KEY")
     remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
@@ -3721,13 +3721,13 @@ Output a single JSON object with EXACTLY these keys:
             print(f"Failed to parse card JSON: {e}. Raw: {raw_response}")
 
     # Build a chara_card_v3 dict. Helper keys _inversion and _colors are
-    # popped by finalize_imported_program before writing to disk.
+    # popped by finalize_imported_follower before writing to disk.
     card = {
         "spec": "chara_card_v3",
         "spec_version": "3.0",
         "data": {
-            "name": name or parsed.get("name") or "Program",
-            "description": parsed.get("description") or description or f"{name} is a new program.",
+            "name": name or parsed.get("name") or "follower",
+            "description": parsed.get("description") or description or f"{name} is a new follower.",
             "personality": parsed.get("personality") or personality or "Friendly",
             "scenario": parsed.get("scenario") or scenario or "A comfortable room.",
             "first_mes": parsed.get("first_mes") or first_mes or f"Hello, I'm {name}.",
@@ -3741,7 +3741,7 @@ Output a single JSON object with EXACTLY these keys:
             "alternate_greetings": [],
             "extensions": {
                 "arena": {
-                    "program_id": "",  # filled by finalize_imported_program
+                    "follower_id": "",  # filled by finalize_imported_follower
                     "image_details": {
                         "positive": parsed.get("image_positive") or f"solo, {name}",
                         "negative": parsed.get("image_negative") or "extra limbs, bad anatomy, deformed"
@@ -3749,7 +3749,7 @@ Output a single JSON object with EXACTLY these keys:
                 }
             }
         },
-        # Helper keys consumed by finalize_imported_program
+        # Helper keys consumed by finalize_imported_follower
         "_inversion": parsed.get("inversion") or {
             "intimate": f"{name} is now deeply affectionate and tender.",
             "excited": f"{name} is now playful and energetic.",
@@ -3785,15 +3785,15 @@ def finalize_imported_follower(follower_path, follower_id, card_json):
     with open(os.path.join(follower_path, f"{follower_id}.json"), "w", encoding="utf-8") as f:
         json.dump(card_json, f, indent=2, ensure_ascii=False)
 
-finalize_imported_program = finalize_imported_follower
+finalize_imported_follower = finalize_imported_follower
 
 
 @app.route('/api/followers/<follower_id>/export/card', methods=['GET'])
-@app.route('/api/programs/<program_id>/export/card', methods=['GET'])
+@app.route('/api/followers/<follower_id>/export/card', methods=['GET'])
 @requires_auth
-def export_follower_card(follower_id=None, program_id=None):
+def export_follower_card(followerfollower_id=None):
     """Download the follower's card as a SillyTavern-compatible JSON file."""
-    fid = follower_id or program_id
+    fid = follower_id or follower_id
     try:
         from variables import FOLLOWERS_DIR
         card_path = os.path.join(FOLLOWERS_DIR, fid, f'{fid}.json')
@@ -3811,15 +3811,15 @@ def export_follower_card(follower_id=None, program_id=None):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-export_program_card = export_follower_card
+export_follower_card = export_follower_card
 
 
 @app.route('/api/followers/<follower_id>/export/lorebook', methods=['GET'])
-@app.route('/api/programs/<program_id>/export/lorebook', methods=['GET'])
+@app.route('/api/followers/<follower_id>/export/lorebook', methods=['GET'])
 @requires_auth
-def export_follower_lorebook(follower_id=None, program_id=None):
+def export_follower_lorebook(followerfollower_id=None):
     """Download the embedded character_book as a standalone lorebook JSON."""
-    fid = follower_id or program_id
+    fid = follower_id or follower_id
     try:
         from variables import FOLLOWERS_DIR
         card_path = os.path.join(FOLLOWERS_DIR, fid, f'{fid}.json')
@@ -3839,11 +3839,11 @@ def export_follower_lorebook(follower_id=None, program_id=None):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-export_program_lorebook = export_follower_lorebook
+export_follower_lorebook = export_follower_lorebook
 
 
 @app.route('/api/followers/import/tavern', methods=['POST'])
-@app.route('/api/programs/import/tavern', methods=['POST'])
+@app.route('/api/followers/import/tavern', methods=['POST'])
 @requires_auth
 def import_tavern_follower():
     try:
@@ -3962,17 +3962,17 @@ def import_tavern_follower():
         card_v3["_colors"] = {"main_color": main_color}
 
         finalize_imported_follower(follower_path, follower_id, card_v3)
-        return jsonify({'status': 'success', 'follower_id': follower_id, 'program_id': follower_id, 'name': name})
+        return jsonify({'status': 'success', 'follower_id': follower_id, 'follower_id': follower_id, 'name': name})
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-import_tavern_program = import_tavern_follower
+import_tavern_follower = import_tavern_follower
 
 
 @app.route('/api/followers/import/describe', methods=['POST'])
-@app.route('/api/programs/import/describe', methods=['POST'])
+@app.route('/api/followers/import/describe', methods=['POST'])
 @requires_auth
 def import_describe_follower():
     try:
@@ -3999,12 +3999,12 @@ def import_describe_follower():
         
         finalize_imported_follower(follower_path, follower_id, card_json)
             
-        return jsonify({'status': 'success', 'follower_id': follower_id, 'program_id': follower_id, 'name': name})
+        return jsonify({'status': 'success', 'follower_id': follower_id, 'follower_id': follower_id, 'name': name})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-import_describe_program = import_describe_follower
+import_describe_follower = import_describe_follower
 
 # --- Server-Sent Events (SSE) for Live Connection Status ---
 import queue as _queue
@@ -4311,7 +4311,7 @@ def comfy_resolve_workflow():
             if combined_workflow:
                 workflow_json = json.dumps(combined_workflow)
         except Exception as e:
-            return jsonify({"error": f"Failed to read program workflows: {e}"}), 500
+            return jsonify({"error": f"Failed to read follower workflows: {e}"}), 500
             
     if not workflow_json:
         return jsonify({"error": "No workflow configuration found to resolve."}), 400
@@ -4442,6 +4442,6 @@ if __name__ == '__main__':
         exclude_patterns=[
             '*.venv*', '*\\.venv\\*', '*\\site-packages\\*', 
             '*AppData*', '*site-packages*', '*__pycache__*',
-            '*.env', 'active_program.txt', '*.txt', '*.db', '*.json'
+            '*.env', 'active_follower.txt', '*.txt', '*.db', '*.json'
         ]
     )

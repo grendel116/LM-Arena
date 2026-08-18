@@ -25,35 +25,37 @@
     <script defer src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/highlight.min.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/cropper.min.js') }}"></script>
-    <!-- Dynamic theme overrides from core/programs/{active_program}/theme.json -->
+    <!-- Dynamic theme overrides from core/followers/{active_follower}/theme.json -->
     {% if theme %}
-    <style>
+<style>
     :root {
         {% if theme.main_color %}--main-color: {{ theme.main_color }};{% endif %}
         {% if theme.accent_color_a %}--accent-color-a: {{ theme.accent_color_a }};{% endif %}
         {% if theme.accent_color_b %}--accent-color-b: {{ theme.accent_color_b }};{% endif %}
         {% if theme.primary_accent %}--primary-accent: {{ theme.primary_accent }};{% endif %}
         {% if theme.primary_glow %}--primary-glow: {{ theme.primary_glow }};{% endif %}
-        {% if theme.program_bubble %}--program-bubble: {{ theme.program_bubble }};{% endif %}
+        {% if theme.follower_bubble %}--follower-bubble: {{ theme.follower_bubble }};{% endif %}
         {% if theme.send_btn_hover %}--send-btn-hover: {{ theme.send_btn_hover }};{% endif %}
         {% if theme.accent_green %}--accent-green: {{ theme.accent_green }};{% endif %}
     }
-    </style>
+</style>
     {% endif %}
-    <!-- Server-side configuration bridge -->
-    <script>
-        window.__ARENA_CONFIG = {
-            appName: "LM-Arena",
-            localIp: "{{ local_ip }}",
-            ttsAutoSpeak: {{ tts_auto_speak|tojson }},
-            ttsProvider: "{{ tts_provider }}",
-            activeProgram: "{{ active_program }}",
-            activeUser: "{{ active_user }}",
-            userName: "{{ user_name }}"
-        };
-    </script>
+
+<!-- Server-side configuration bridge -->
+<script>
+    window.__ARENA_CONFIG = {
+        appName: "LM-Arena",
+        localIp: {{ local_ip|tojson }},
+        ttsAutoSpeak: {{ tts_auto_speak|tojson }},
+        ttsProvider: {{ tts_provider|tojson }},
+        activeFollower: {{ active_follower|tojson }},
+        activeUser: {{ active_user|tojson }},
+        userName: {{ user_name|tojson }}
+    };
+</script>
+</script>
 </head>
-<body class="{{ active_program | default('ria_silmane') }}">
+<body class="{{ active_follower | default('ria_silmane') }}">
     <div id="app-container">
         <!-- App Loading Overlay -->
         <div id="chat-loading-overlay">
@@ -99,7 +101,7 @@
                     </svg>
                 </button>
 
-                <button class="user-btn" onclick="openAssistantModal('program')" title="Player & Follower">
+                <button class="user-btn" onclick="openAssistantModal('follower')" title="Player & follower">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
@@ -126,12 +128,12 @@
         </header>
         
         <div id="chat-container">
-            <div class="message-row program-row" id="welcome-message">
+            <div class="message-row follower-row" id="welcome-message">
                 <div class="avatar-container">
                     <img id="welcome-avatar" src="" alt="Avatar" class="avatar-image">
                 </div>
                 <div class="message-bubbles-container">
-                    <div class="message-sender-name" id="welcome-sender">PROGRAM ARENA</div>
+                    <div class="message-sender-name" id="welcome-sender">follower ARENA</div>
                     <div class="message" id="welcome-message-text"></div>
                 </div>
             </div>
@@ -181,7 +183,7 @@
                 <textarea id="user-input" placeholder="What do you do?" rows="1"></textarea>
                 
                 <div class="input-controls">
-                    <button id="generate-portrait-btn" class="icon-btn" onclick="generatePortraitPrompt()" title="Follower Portrait">
+                    <button id="generate-portrait-btn" class="icon-btn" onclick="generatePortraitPrompt()" title="follower Portrait">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                             <circle cx="12" cy="13" r="4"></circle>
@@ -410,7 +412,7 @@
         
         <!-- Image Container -->
         <div class="modal-img-container" onclick="event.stopPropagation()">
-            <img class="modal-content" id="modal-img" alt="Program Portrait">
+            <img class="modal-content" id="modal-img" alt="follower Portrait">
             <video class="modal-content" id="modal-video" controls autoplay loop muted style="display: none; max-width: 100%; max-height: 80vh; border-radius: 12px;"></video>
             
 
@@ -456,7 +458,7 @@
         </div>
     </div>
             
-    <!-- Follower Knowledge & Lore Modal -->
+    <!-- follower Knowledge & Lore Modal -->
     <div id="databank-modal" class="modal" onclick="closeDataBank()">
         <div class="modal-card" style="max-width: 600px; width: 90%; text-align: left; align-items: stretch; max-height: 85vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
             <span class="close-modal-btn" onclick="closeDataBank()">&times;</span>
@@ -469,12 +471,12 @@
                 <span>Knowledge & Memory Engine</span>
             </h3>
             <p id="databank-descriptor" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                Companion backstory, documents, and personal lore (Follower-linked).
+                Companion backstory, documents, and personal lore (follower-linked).
             </p>
             
             <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
-                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Follower Info</button>
+                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">follower Info</button>
                 <button onclick="switchDataBankTab('memories')" id="tab-btn-memories" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Journals & Memories</button>
                 <button onclick="switchDataBankTab('lorebooks')" id="tab-btn-lorebooks" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">World Lore</button>
             </div>
@@ -521,7 +523,7 @@
                         <div class="modal-section-header">
                             Memory Journals (Trigger-Based)
                         </div>
-                        <div id="program-journals-list" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div id="follower-journals-list" style="display: flex; flex-direction: column; gap: 8px;">
                             <!-- Journals rendered dynamically -->
                         </div>
                     </div>
@@ -531,7 +533,7 @@
                         <div class="modal-section-header" style="margin-top: 10px;">
                             Consolidated Memories (Chat Compactions)
                         </div>
-                        <div id="program-memories-list" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div id="follower-memories-list" style="display: flex; flex-direction: column; gap: 8px;">
                             <!-- Memories rendered dynamically -->
                         </div>
                     </div>
@@ -626,32 +628,32 @@
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                <span>Followers & Profiles</span>
+                <span>followers & Profiles</span>
             </h3>
 
             <!-- Tabs -->
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
-                <button onclick="switchAssistantModalTab('program')" id="assistant-tab-btn-program" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    Follower
+                <button onclick="switchAssistantModalTab('follower')" id="assistant-tab-btn-follower" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
+                    follower
                 </button>
                 <button onclick="switchAssistantModalTab('user')" id="assistant-tab-btn-user" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Saves
                 </button>
             </div>
 
-            <!-- Select Program Tab Content -->
-            <div id="assistant-tab-content-program" style="display: block;">
+            <!-- Select follower Tab Content -->
+            <div id="assistant-tab-content-follower" style="display: block;">
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
                     Select your active follower companion. Only followers present in your current scene can be activated.
                 </p>
                 
                 <div id="assistants-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
-                    <!-- Programs loaded dynamically -->
+                    <!-- followers loaded dynamically -->
                 </div>
                 
                 <div style="margin-top: 15px; border-top: 1px solid hsla(215, 5%, 100%, 0.08); padding-top: 12px; display: flex; justify-content: flex-end;">
-                    <button onclick="openImportProgramModal()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; min-width: auto; width: auto; height: auto; margin: 0;">
-                        <span>+ Recruit Follower</span>
+                    <button onclick="openImportfollowerModal()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; min-width: auto; width: auto; height: auto; margin: 0;">
+                        <span>+ Recruit follower</span>
                     </button>
                 </div>
             </div>
@@ -784,13 +786,13 @@
         </div>
     </div>
 
-    <!-- Import / Create Program Modal -->
-    <div id="import-program-modal" class="modal" onclick="closeImportProgramModal()">
+    <!-- Import / Create follower Modal -->
+    <div id="import-follower-modal" class="modal" onclick="closeImportfollowerModal()">
         <div class="modal-card" style="max-width: 520px; width: 95%; text-align: left; align-items: stretch;" onclick="event.stopPropagation()">
-            <span class="close-modal-btn" onclick="closeImportProgramModal()">&times;</span>
+            <span class="close-modal-btn" onclick="closeImportfollowerModal()">&times;</span>
             <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; border-bottom: 1px solid hsla(215, 5%, 100%, 0.08); padding-bottom: 10px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-accent); vertical-align: middle; margin-right: 4px;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                <span>Recruit Follower</span>
+                <span>Recruit follower</span>
             </h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.4;">
                 Import a companion card (PNG) or describe a new follower persona to recruit into your party in Tamriel.
@@ -799,7 +801,7 @@
             <!-- Tabs -->
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
                 <button onclick="switchImportTab('tavern')" id="import-tab-btn-tavern" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    Follower Card
+                    follower Card
                 </button>
                 <button onclick="switchImportTab('describe')" id="import-tab-btn-describe" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Text Description
@@ -814,7 +816,7 @@
                 </button>
                 <div style="display: flex; justify-content: flex-end;">
                     <button onclick="submitTavernCardImport()" id="tavern-import-btn" class="onboarding-btn" style="padding: 10px 24px; font-size: 0.85rem; min-width: auto; width: auto; height: auto;">
-                        Recruit Follower
+                        Recruit follower
                     </button>
                 </div>
             </div>
@@ -822,16 +824,16 @@
             <!-- Text Description Tab -->
             <div id="import-tab-describe" style="display: none;">
                 <div class="input-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Follower Name</label>
-                    <input type="text" id="describe-program-name" placeholder="e.g. Armand Motierre" class="onboarding-input" style="width: 100%; box-sizing: border-box;">
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">follower Name</label>
+                    <input type="text" id="describe-follower-name" placeholder="e.g. Armand Motierre" class="onboarding-input" style="width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="input-group" style="margin-bottom: 20px;">
-                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Follower Persona Description</label>
-                    <textarea id="describe-program-desc" placeholder="e.g. A cynical Breton spellsword from Wayrest. Wields flame magic and a broadsword with equal proficiency. Distrusts Imperial authority but remains fiercely loyal once trust is earned." class="onboarding-input" style="width: 100%; height: 120px; resize: vertical; box-sizing: border-box;"></textarea>
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">follower Persona Description</label>
+                    <textarea id="describe-follower-desc" placeholder="e.g. A cynical Breton spellsword from Wayrest. Wields flame magic and a broadsword with equal proficiency. Distrusts Imperial authority but remains fiercely loyal once trust is earned." class="onboarding-input" style="width: 100%; height: 120px; resize: vertical; box-sizing: border-box;"></textarea>
                 </div>
                 <div style="display: flex; justify-content: flex-end;">
                     <button onclick="submitDescriptionImport()" id="describe-import-btn" class="onboarding-btn" style="padding: 10px 24px; font-size: 0.85rem; min-width: auto; width: auto; height: auto;">
-                        Create Follower
+                        Create follower
                     </button>
                 </div>
             </div>
@@ -848,7 +850,7 @@
                 <span>Tool Execution Approval</span>
             </h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
-                The program is requesting permission to execute a system-level tool call. Please review the details below.
+                The follower is requesting permission to execute a system-level tool call. Please review the details below.
             </p>
             <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid hsla(215, 5%, 100%, 0.05); padding: 12px; border-radius: 10px; margin-bottom: 20px;">
                 <div style="font-family: monospace; font-size: 0.85rem; color: var(--magic-color); font-weight: 600; margin-bottom: 8px;" id="tool-confirm-name">tool_name</div>
@@ -981,7 +983,7 @@
                         <h4 style="margin: 0; font-size: 1.05rem; font-weight: 600;">ComfyUI (Portraits)</h4>
                         <span id="modal-comfy-status" class="status-badge status-offline">Offline</span>
                     </div>
-                    <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">Generate program portraits locally using ComfyUI.</p>
+                    <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">Generate follower portraits locally using ComfyUI.</p>
                     
                     <button onclick="updateComfyModalStatus()" class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 20px;">Check ComfyUI Connection</button>
                 </div>
@@ -999,14 +1001,14 @@
     <!-- Voice Call Overlay -->
     <div id="voice-call-overlay" class="voice-call-modal">
         <div class="voice-call-card">
-            <!-- Pulsing Program Avatar -->
+            <!-- Pulsing follower Avatar -->
             <div class="voice-call-avatar-container">
                 <div class="voice-call-pulse-ring ring1"></div>
                 <div class="voice-call-pulse-ring ring2"></div>
-                <img id="voice-call-program-avatar" class="voice-call-avatar" src="" alt="Program">
+                <img id="voice-call-follower-avatar" class="voice-call-avatar" src="" alt="follower">
             </div>
             
-            <h2 id="voice-call-program-name" class="voice-call-program-name">Program</h2>
+            <h2 id="voice-call-follower-name" class="voice-call-follower-name">follower</h2>
             <div id="voice-call-status" class="voice-call-status">Connecting...</div>
             
 
@@ -1045,24 +1047,24 @@
         </div>
     </div>
 
-    <!-- Program Profile Editor Modal -->
-    <div id="program-profile-modal" class="modal" onclick="closeProgramProfileModal()">
+    <!-- follower Profile Editor Modal -->
+    <div id="follower-profile-modal" class="modal" onclick="closefollowerProfileModal()">
         <div class="modal-card" style="max-width: 650px; width: 95%; text-align: left; align-items: stretch;" onclick="event.stopPropagation()">
-            <span class="close-modal-btn" onclick="closeProgramProfileModal()">&times;</span>
+            <span class="close-modal-btn" onclick="closefollowerProfileModal()">&times;</span>
             <h3 style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; border-bottom: 1px solid hsla(215, 5%, 100%, 0.08); padding-bottom: 10px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-accent); vertical-align: middle; margin-right: 4px;">
                     <path d="M12 20h9"></path>
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
-                <span>Follower Card Settings</span>
+                <span>follower Card Settings</span>
             </h3>
             
             <!-- Tabs -->
             <div style="display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
-                <button onclick="switchProgramProfileTab('core')" id="comp-tab-btn-core" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
+                <button onclick="switchfollowerProfileTab('core')" id="comp-tab-btn-core" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Character
                 </button>
-                <button onclick="switchProgramProfileTab('phys')" id="comp-tab-btn-phys" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
+                <button onclick="switchfollowerProfileTab('phys')" id="comp-tab-btn-phys" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Image Prompts
                 </button>
             </div>
@@ -1072,7 +1074,7 @@
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 5px;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="input-group">
-                            <label for="comp-name">Follower Name</label>
+                            <label for="comp-name">follower Name</label>
                             <input type="text" id="comp-name" class="onboarding-input" placeholder="e.g. Ria Silmane">
                         </div>
                         <div class="input-group">
@@ -1134,15 +1136,15 @@
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 15px; border-top: 1px solid hsla(215, 5%, 100%, 0.08); padding-top: 12px;">
-                <button id="export-program-card-btn" onclick="exportProgramCard()" class="edit-btn edit-cancel-btn" style="padding: 7px 14px; font-size: 0.8rem;">
+                <button id="export-follower-card-btn" onclick="exportfollowerCard()" class="edit-btn edit-cancel-btn" style="padding: 7px 14px; font-size: 0.8rem;">
                     Export Card
                 </button>
                 <div style="display: flex; gap: 10px;">
-                    <button onclick="closeProgramProfileModal()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem;">
+                    <button onclick="closefollowerProfileModal()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem;">
                         Cancel
                     </button>
-                    <button onclick="saveProgramProfile()" class="onboarding-btn" style="padding: 8px 20px; font-size: 0.8rem;">
-                        Save Follower Card
+                    <button onclick="savefollowerProfile()" class="onboarding-btn" style="padding: 8px 20px; font-size: 0.8rem;">
+                        Save follower Card
                     </button>
                 </div>
             </div>

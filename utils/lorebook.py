@@ -263,7 +263,7 @@ def get_active_lore(
     )
     scan_msgs = [
         m for m in recent_messages
-        if m.get("role") in ("user", "follower", "program") and (m.get("text") or "").strip()
+        if m.get("role") in ("user", "follower", "follower") and (m.get("text") or "").strip()
     ]
     scan_text = " ".join(
         (m.get("text") or "").lower() for m in scan_msgs[-max_depth:]

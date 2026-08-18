@@ -20,11 +20,11 @@ def get_embedding_model():
 
 
 class DataBankManager:
-    def __init__(self, follower_id: str = None, save_id: str = None, db_dir=None, program_id: str = None):
+    def __init__(self, follower_id: str = None, save_id: str = None, db_dir=None):
         from utils.follower import get_active_follower
         from engine.save_manager import get_active_save_id
-        self.follower_id = follower_id or program_id or get_active_follower()
-        self.program_id = self.follower_id
+        self.follower_id = follower_id or get_active_follower()
+        self.follower_id = self.follower_id
         self.save_id = save_id or get_active_save_id()
         
         # Follower-bound databank file path (core/followers/<follower_id>/databank.json)
