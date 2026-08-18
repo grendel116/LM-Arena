@@ -3,10 +3,10 @@ import json
 import uuid
 import time
 import re
-from utils.program import get_active_program
-from variables import PROGRAMS_DIR
+from utils.follower import get_active_follower
+from variables import FOLLOWERS_DIR
 
-def get_journal_entries(program_id: str = None) -> list:
+def get_journal_entries(follower_id: str = None, program_id: str = None) -> list:
     try:
         from engine.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()

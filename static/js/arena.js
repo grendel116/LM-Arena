@@ -4101,14 +4101,16 @@ async function openAssistantModal(defaultTab = 'program') {
     document.getElementById('assistant-modal').style.display = 'flex';
     switchAssistantModalTab(defaultTab);
     try {
-        const res = await fetch('/api/programs');
+        let res = await fetch('/api/followers');
+        if (!res.ok) res = await fetch('/api/programs');
         const data = await res.json();
-        if (data.programs) {
-            renderProgramsList(data.programs, data.active);
+        const list = data.followers || data.programs;
+        if (list) {
+            renderProgramsList(list, data.active);
         }
     } catch (e) {
-        console.error("Error loading assistants list:", e);
-        showCustomAlert("Error", "Could not fetch program list from server.");
+        console.error("Error loading followers list:", e);
+        showCustomAlert("Error", "Could not fetch follower list from server.");
     }
 }
 
@@ -4391,7 +4393,7 @@ function renderProgramsList(assistants, activeId) {
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
             </svg>
         `;
-        editBtn.title = 'Edit Program Persona';
+        editBtn.title = 'Edit Follower Persona';
         editBtn.style.width = '26px';
         editBtn.style.height = '26px';
         editBtn.style.borderRadius = '6px';
@@ -4501,13 +4503,14 @@ async function deleteAssistant(assistantId, name) {
                 const data = await res.json();
                 if (data.status === 'success') {
                     showCustomAlert("Deleted", `Program <strong>${name}</strong> has been deleted.`);
-                    if (data.switched_to === 'sebile' || (typeof activeProgram !== 'undefined' && activeProgram === assistantId)) {
-                        selectAssistant('sebile');
+                    if (data.switched_to === 'ria_silmane' || (typeof activeProgram !== 'undefined' && activeProgram === assistantId)) {
+                        selectAssistant('ria_silmane');
                     } else {
-                        const listRes = await fetch('/api/programs');
+                        const listRes = await fetch('/api/followers');
                         const listData = await listRes.json();
-                        if (listData.programs) {
-                            renderProgramsList(listData.programs, listData.active);
+                        const list = listData.followers || listData.programs;
+                        if (list) {
+                            renderProgramsList(list, listData.active);
                         }
                     }
                 } else {

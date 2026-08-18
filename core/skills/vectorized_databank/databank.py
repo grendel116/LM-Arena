@@ -20,15 +20,16 @@ def get_embedding_model():
 
 
 class DataBankManager:
-    def __init__(self, program_id: str = None, save_id: str = None, db_dir=None):
-        from utils.program import get_active_program
+    def __init__(self, follower_id: str = None, save_id: str = None, db_dir=None, program_id: str = None):
+        from utils.follower import get_active_follower
         from engine.save_manager import get_active_save_id
-        self.program_id = program_id or get_active_program()
+        self.follower_id = follower_id or program_id or get_active_follower()
+        self.program_id = self.follower_id
         self.save_id = save_id or get_active_save_id()
         
-        # Follower-bound databank file path (core/programs/<program_id>/databank.json)
+        # Follower-bound databank file path (core/followers/<follower_id>/databank.json)
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        self.follower_dir = os.path.join(base_dir, "core", "programs", self.program_id)
+        self.follower_dir = os.path.join(base_dir, "core", "followers", self.follower_id)
         self.db_path = os.path.join(self.follower_dir, "databank.json")
         self.memories_path = "memories"  # Save-bound key
 

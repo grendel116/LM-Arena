@@ -2,8 +2,8 @@
 utils/lorebook.py — ST-compatible hybrid lorebook engine (Keyword + Vector).
 
 Loads World Info entries from:
-  1. data.character_book in the active program's card JSON
-  2. Standalone .json files in core/programs/<program>/lorebooks/
+  1. data.character_book in the active follower's card JSON
+  2. Standalone .json files in core/followers/<follower>/lorebooks/
   3. Global World & Mechanics Lorebooks (core/lorebooks/)
 
 Normalizes both ST standalone dict-of-entries and chara_card_v3
@@ -196,9 +196,9 @@ def _perform_vector_scan(
 # ---------------------------------------------------------------------------
 
 def get_active_lore(
-    program_id: str,
+    follower_id: str,
     recent_messages: list[dict],
-    programs_dir: str | None = None,
+    followers_dir: str | None = None,
 ) -> tuple[list[str], list[str]]:
     """
     Return (before_entries, after_entries) — triggered lore content strings.
@@ -206,15 +206,15 @@ def get_active_lore(
     Scans:
       1. Global World & Mechanics Lorebooks (core/lorebooks/)
       2. Follower Card character_book
-      3. Follower-specific lorebooks (core/programs/<program_id>/lorebooks/)
+      3. Follower-specific lorebooks (core/followers/<follower_id>/lorebooks/)
     """
-    if programs_dir is None:
-        from variables import PROGRAMS_DIR
-        programs_dir = PROGRAMS_DIR
+    if followers_dir is None:
+        from variables import FOLLOWERS_DIR
+        followers_dir = FOLLOWERS_DIR
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     global_lore_dir = os.path.join(base_dir, "core", "lorebooks")
-    program_dir = os.path.join(programs_dir, program_id)
+    follower_dir = os.path.join(followers_dir, follower_id)
     all_entries: list[dict] = []
 
     # 1. Global World & Mechanics Lorebooks
@@ -230,7 +230,7 @@ def get_active_lore(
                         print(f"[lorebook] Error reading global lorebook {fname}: {e}")
 
     # 2. character_book from card
-    card_path = os.path.join(program_dir, f"{program_id}.json")
+    card_path = os.path.join(follower_dir, f"{follower_id}.json")
     if os.path.exists(card_path):
         try:
             with open(card_path, encoding="utf-8") as f:
@@ -242,7 +242,7 @@ def get_active_lore(
             print(f"[lorebook] Error reading card: {e}")
 
     # 3. Follower-specific lorebook files
-    lorebooks_dir = os.path.join(program_dir, "lorebooks")
+    lorebooks_dir = os.path.join(follower_dir, "lorebooks")
     if os.path.isdir(lorebooks_dir):
         for fname in os.listdir(lorebooks_dir):
             if not fname.endswith(".json"):
@@ -263,7 +263,7 @@ def get_active_lore(
     )
     scan_msgs = [
         m for m in recent_messages
-        if m.get("role") in ("user", "program") and (m.get("text") or "").strip()
+        if m.get("role") in ("user", "follower", "program") and (m.get("text") or "").strip()
     ]
     scan_text = " ".join(
         (m.get("text") or "").lower() for m in scan_msgs[-max_depth:]
@@ -291,10 +291,10 @@ def get_active_lore(
 # File management helpers
 # ---------------------------------------------------------------------------
 
-def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dict]:
-    if programs_dir is None:
-        from variables import PROGRAMS_DIR
-        programs_dir = PROGRAMS_DIR
+def list_lorebooks(follower_id: str, followers_dir: str | None = None) -> list[dict]:
+    if followers_dir is None:
+        from variables import FOLLOWERS_DIR
+        followers_dir = FOLLOWERS_DIR
 
     results = []
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -325,7 +325,7 @@ def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dic
                     pass
 
     # 2. Card Embedded Lorebook
-    card_path = os.path.join(programs_dir, program_id, f"{program_id}.json")
+    card_path = os.path.join(followers_dir, follower_id, f"{follower_id}.json")
     if os.path.exists(card_path):
         try:
             with open(card_path, encoding="utf-8") as f:
@@ -334,7 +334,7 @@ def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dic
             if cb:
                 results.append({
                     "id": "__card__",
-                    "name": cb.get("name") or f"{program_id} (Card Embedded)",
+                    "name": cb.get("name") or f"{follower_id} (Card Embedded)",
                     "source": "card",
                     "scope": "Follower Card",
                     "entry_count": len(_parse_lorebook(cb)),
@@ -343,7 +343,7 @@ def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dic
             pass
 
     # 3. Follower-specific Lorebooks
-    lorebooks_dir = os.path.join(programs_dir, program_id, "lorebooks")
+    lorebooks_dir = os.path.join(followers_dir, follower_id, "lorebooks")
     if os.path.isdir(lorebooks_dir):
         for fname in sorted(os.listdir(lorebooks_dir)):
             if not fname.endswith(".json"):
@@ -365,11 +365,11 @@ def list_lorebooks(program_id: str, programs_dir: str | None = None) -> list[dic
     return results
 
 
-def import_lorebook(program_id: str, book_data: dict, filename: str, programs_dir: str | None = None) -> str:
-    if programs_dir is None:
-        from variables import PROGRAMS_DIR
-        programs_dir = PROGRAMS_DIR
-    lorebooks_dir = os.path.join(programs_dir, program_id, "lorebooks")
+def import_lorebook(follower_id: str, book_data: dict, filename: str, followers_dir: str | None = None) -> str:
+    if followers_dir is None:
+        from variables import FOLLOWERS_DIR
+        followers_dir = FOLLOWERS_DIR
+    lorebooks_dir = os.path.join(followers_dir, follower_id, "lorebooks")
     os.makedirs(lorebooks_dir, exist_ok=True)
     safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in filename)
     if not safe.endswith(".json"):
@@ -380,12 +380,13 @@ def import_lorebook(program_id: str, book_data: dict, filename: str, programs_di
     return dest
 
 
-def delete_lorebook(program_id: str, filename: str, programs_dir: str | None = None) -> bool:
-    if programs_dir is None:
-        from variables import PROGRAMS_DIR
-        programs_dir = PROGRAMS_DIR
-    fpath = os.path.join(programs_dir, program_id, "lorebooks", filename)
+def delete_lorebook(follower_id: str, filename: str, followers_dir: str | None = None) -> bool:
+    if followers_dir is None:
+        from variables import FOLLOWERS_DIR
+        followers_dir = FOLLOWERS_DIR
+    fpath = os.path.join(followers_dir, follower_id, "lorebooks", filename)
     if os.path.exists(fpath):
         os.remove(fpath)
         return True
     return False
+

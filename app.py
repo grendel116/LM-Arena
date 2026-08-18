@@ -51,44 +51,33 @@ def start_prewarm_on_first_request():
                 _prewarm_started = True
                 threading.Thread(target=prewarm_caches, daemon=True).start()
 
-@app.before_request
-def check_program_change():
-    global _cached_active_program, _cached_active_user
-    from utils.program import get_active_program, get_active_user
-    current_program = get_active_program()
-    current_user = get_active_user()
-            
-    program_changed = current_program != _cached_active_program
-    user_changed = current_user != _cached_active_user
-    
-    if program_changed or user_changed:
-        if program_changed:
-            _cached_active_program = current_program
-            os.environ["ACTIVE_PROGRAM"] = current_program
+_cached_active_follower = None
+
+def check_follower_change():
+    """Detect if active follower changed in project_settings.json and sync state."""
+    global _cached_active_follower
+    try:
+        from utils.follower import get_active_follower, get_active_user
+        current_follower = get_active_follower()
+        current_user = get_active_user()
+        follower_changed = (_cached_active_follower is None or _cached_active_follower != current_follower)
+        
+        if follower_changed:
+            _cached_active_follower = current_follower
+            os.environ["ACTIVE_FOLLOWER"] = current_follower
             try:
-                from variables import PROGRAMS_DIR
-                program_path = os.path.join(PROGRAMS_DIR, current_program)
-                if os.path.isdir(program_path):
-                    # Setup portraits directory and perform migration from legacy folder if needed
-                    portraits_dir = os.path.join(program_path, 'portraits')
-                    legacy_dir = os.path.join(program_path, 'sel' + 'fies')
-                    if os.path.exists(legacy_dir) and not os.path.exists(portraits_dir):
-                        try:
-                            os.rename(legacy_dir, portraits_dir)
-                            print(f"Migrated legacy folder to portraits for program {current_program}")
-                        except Exception as ex:
-                            print(f"Error migrating legacy folder for program {current_program}: {ex}")
+                from variables import FOLLOWERS_DIR
+                follower_path = os.path.join(FOLLOWERS_DIR, current_follower)
+                if os.path.isdir(follower_path):
+                    portraits_dir = os.path.join(follower_path, 'portraits')
                     os.makedirs(portraits_dir, exist_ok=True)
-            except Exception as ex:
-                print(f"Error preparing portraits directory for active program: {ex}")
-        if user_changed:
-            _cached_active_user = current_user
-            
-        try:
-            reload_program_state()
-            print(f">>> Dynamic check loaded new program consciousness (Program: '{current_program}', User Profile: '{current_user}')")
-        except Exception as e:
-            print(f"Error dynamically reloading program/user: {e}")
+            except Exception as _fe:
+                print(f"Error ensuring follower directories: {_fe}")
+                
+            reload_follower_state()
+            print(f"[Follower Sync] Active follower changed to '{current_follower}'. Synced state.")
+    except Exception as e:
+        print(f"Error checking follower change: {e}")
 
 @app.after_request
 def add_cache_control_headers(response):
@@ -98,13 +87,13 @@ def add_cache_control_headers(response):
     return response
 
 
-# Initialize active program and active user cache
+# Initialize active follower and active user cache
 try:
-    from utils.program import get_active_program, get_active_user
-    _cached_active_program = get_active_program()
+    from utils.follower import get_active_follower, get_active_user
+    _cached_active_follower = get_active_follower()
     _cached_active_user = get_active_user()
 except Exception as e:
-    print(f"Error initializing active program: {e}")
+    print(f"Error initializing active follower: {e}")
     raise
 
 def prewarm_caches():
@@ -138,24 +127,29 @@ def prewarm_caches():
 init_runner()
 
 
-def reload_program_state():
-    """Reload program config, reinitialize the runner, and sync active save session."""
-    from core import program_config
+def reload_follower_state():
+    """Reload follower config, reinitialize the runner, and sync active save session."""
+    from core import follower_config, program_config
+    importlib.reload(follower_config)
     importlib.reload(program_config)
     init_runner()
     if hasattr(runner, '_load_session_from_disk'):
         runner._load_session_from_disk('default')
 
+reload_program_state = reload_follower_state
 
-def load_theme(program_id):
-    """Load theme.json for a program, returning the parsed dict or None."""
-    theme_path = os.path.join(base_dir, "core", "programs", program_id, "theme.json")
+
+def load_theme(follower_id):
+    """Load theme.json for a follower, returning the parsed dict or None."""
+    theme_path = os.path.join(base_dir, "core", "followers", follower_id, "theme.json")
+    if not os.path.exists(theme_path):
+        theme_path = os.path.join(base_dir, "core", "programs", follower_id, "theme.json")
     if os.path.exists(theme_path):
         try:
             with open(theme_path, "r", encoding="utf-8") as tf:
                 return json.load(tf)
         except Exception as e:
-            print(f"Error loading theme for {program_id}: {e}")
+            print(f"Error loading theme for {follower_id}: {e}")
     return None
 
 
@@ -172,19 +166,19 @@ def load_temperature():
     return 0.85
 
 
-def find_image_sidecar_json(image_filename, active_program):
-    """Locate the sidecar .json for an image, scanning active then all programs."""
+def find_image_sidecar_json(image_filename, active_follower):
+    """Locate the sidecar .json for an image, scanning active then all followers."""
     png_path = os.path.normpath(
-        os.path.join(base_dir, 'core', 'programs', active_program, 'portraits', image_filename)
+        os.path.join(base_dir, 'core', 'followers', active_follower, 'portraits', image_filename)
     )
     json_path = png_path.rsplit('.', 1)[0] + '.json'
     if os.path.exists(json_path):
         return json_path
-    from variables import PROGRAMS_DIR
-    if os.path.exists(PROGRAMS_DIR):
-        for prog in os.listdir(PROGRAMS_DIR):
+    from variables import FOLLOWERS_DIR
+    if os.path.exists(FOLLOWERS_DIR):
+        for fol in os.listdir(FOLLOWERS_DIR):
             candidate = os.path.normpath(
-                os.path.join(PROGRAMS_DIR, prog, 'portraits', image_filename)
+                os.path.join(FOLLOWERS_DIR, fol, 'portraits', image_filename)
             )
             candidate_json = candidate.rsplit('.', 1)[0] + '.json'
             if os.path.exists(candidate_json):
@@ -246,10 +240,10 @@ def index():
     
     tts_auto_speak = os.getenv("TTS_AUTO_SPEAK", "false").lower() == "true"
     tts_provider = os.getenv("TTS_PROVIDER", "local").lower()
-    active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
+    active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
     theme = load_theme(active_program)
 
-    from utils.program import get_active_user, get_player_name
+    from utils.follower import get_active_user, get_player_name
     active_user = get_active_user()
     if os.getenv("AUTH_USER") and request.authorization and active_user == "eternal_champion":
         # If Basic Auth is active, default active user to authenticated user
@@ -292,7 +286,7 @@ def app_icon():
 
 @app.route('/profile.png')
 def profile_png():
-    from utils.program import get_active_program
+    from utils.follower import get_active_program
     active_program = get_active_program()
     path_png = os.path.join('core', 'programs', active_program, 'portraits', 'profile.png')
     if os.path.exists(path_png):
@@ -305,12 +299,14 @@ def profile_png():
         return "Profile image not found", 404
 
 
+@app.route('/followers/<follower_id>/profile.png')
 @app.route('/programs/<program_id>/profile.png')
-def program_profile_png(program_id):
+def follower_profile_png(follower_id=None, program_id=None):
+    fid = follower_id or program_id
     import re
-    if not re.match(r'^[a-zA-Z0-9_\-]+$', program_id):
-        return "Invalid program ID", 400
-    path_png = os.path.join('core', 'programs', program_id, 'portraits', 'profile.png')
+    if not re.match(r'^[a-zA-Z0-9_\-]+$', fid):
+        return "Invalid follower ID", 400
+    path_png = os.path.join('core', 'followers', fid, 'portraits', 'profile.png')
     if os.path.exists(path_png):
         response = send_file(path_png)
         from flask import make_response
@@ -320,14 +316,16 @@ def program_profile_png(program_id):
     else:
         return "Profile image not found", 404
 
+program_profile_png = follower_profile_png
 
 
+@app.route('/api/followers/profile_picture/save', methods=['POST'])
 @app.route('/api/programs/profile_picture/save', methods=['POST'])
 @requires_auth
 def save_profile_picture():
     try:
-        from variables import PROGRAMS_DIR
-        from utils.program import get_active_program
+        from variables import FOLLOWERS_DIR
+        from utils.follower import get_active_follower
         import base64
         import re
         
@@ -336,8 +334,8 @@ def save_profile_picture():
         if not cropped_image_base64:
             return jsonify({'error': 'No cropped_image data provided'}), 400
             
-        program_id = data.get('program_id') or get_active_program()
-        portraits_dir = os.path.join(PROGRAMS_DIR, program_id, 'portraits')
+        follower_id = data.get('follower_id') or data.get('program_id') or get_active_follower()
+        portraits_dir = os.path.join(FOLLOWERS_DIR, follower_id, 'portraits')
         os.makedirs(portraits_dir, exist_ok=True)
         dest_path = os.path.join(portraits_dir, 'profile.png')
         
@@ -348,7 +346,7 @@ def save_profile_picture():
             base64_data = cropped_image_base64
             
         image_bytes = base64.b64decode(base64_data)
-        print(f"[PROFILE SAVE] program={program_id}, dataUrl length={len(cropped_image_base64)}, base64 length={len(base64_data)}, decoded bytes={len(image_bytes)}, dest={dest_path}")
+        print(f"[PROFILE SAVE] follower={follower_id}, dataUrl length={len(cropped_image_base64)}, base64 length={len(base64_data)}, decoded bytes={len(image_bytes)}, dest={dest_path}")
         with open(dest_path, 'wb') as f:
             f.write(image_bytes)
             
@@ -357,13 +355,14 @@ def save_profile_picture():
         print(f"Error saving profile picture: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/followers/profile_picture/crop', methods=['POST'])
 @app.route('/api/programs/profile_picture/crop', methods=['POST'])
 @requires_auth
 def crop_profile_picture():
     """Server-side crop: receives source image path and crop coordinates, uses PIL to crop and resize."""
     try:
-        from variables import PROGRAMS_DIR
-        from utils.program import get_active_program
+        from variables import FOLLOWERS_DIR
+        from utils.follower import get_active_follower
         from PIL import Image
         
         data = request.get_json(silent=True) or {}
@@ -376,25 +375,21 @@ def crop_profile_picture():
         if not source_image or w <= 0 or h <= 0:
             return jsonify({'error': 'Invalid crop parameters'}), 400
         
-        program_id = data.get('program_id') or get_active_program()
-        program_dir = os.path.join(PROGRAMS_DIR, program_id)
+        follower_id = data.get('follower_id') or data.get('program_id') or get_active_follower()
+        follower_dir = os.path.join(FOLLOWERS_DIR, follower_id)
         
-        # Resolve source image path from the URL path to a local file path
-        # Source paths arrive as /images/portraits/xyz.png or /images/xyz.png
         if source_image.startswith('/images/'):
             relative_path = source_image[len('/images/'):]
-            source_path = os.path.normpath(os.path.join(program_dir, relative_path))
+            source_path = os.path.normpath(os.path.join(follower_dir, relative_path))
         elif source_image.startswith('/profile.png'):
-            source_path = os.path.normpath(os.path.join(program_dir, 'portraits', 'profile.png'))
+            source_path = os.path.normpath(os.path.join(follower_dir, 'portraits', 'profile.png'))
         else:
             return jsonify({'error': 'Unsupported image path'}), 400
         
         if not os.path.exists(source_path):
             return jsonify({'error': f'Source image not found: {source_image}'}), 404
         
-        # Crop and resize with PIL
         with Image.open(source_path) as img:
-            # Clamp crop coordinates to image bounds
             img_w, img_h = img.size
             x = max(0, min(x, img_w))
             y = max(0, min(y, img_h))
@@ -404,16 +399,15 @@ def crop_profile_picture():
             cropped = img.crop((x, y, x + w, y + h))
             cropped = cropped.resize((256, 256), Image.Resampling.LANCZOS)
             
-            # Convert to RGB if necessary (handles RGBA, palette, etc.)
             if cropped.mode not in ('RGB', 'RGBA'):
                 cropped = cropped.convert('RGBA')
         
-        portraits_dir = os.path.join(program_dir, 'portraits')
+        portraits_dir = os.path.join(follower_dir, 'portraits')
         os.makedirs(portraits_dir, exist_ok=True)
         dest_path = os.path.join(portraits_dir, 'profile.png')
         cropped.save(dest_path, 'PNG')
         
-        print(f"[PROFILE CROP] program={program_id}, source={source_path}, crop=({x},{y},{w},{h}), dest={dest_path}")
+        print(f"[PROFILE CROP] follower={follower_id}, source={source_path}, crop=({x},{y},{w},{h}), dest={dest_path}")
         return jsonify({'status': 'success', 'message': 'Profile picture cropped and saved successfully.'})
     except Exception as e:
         print(f"Error cropping profile picture: {e}")
@@ -432,7 +426,7 @@ def serve_image(filename):
         return send_from_directory(static_img_dir, filename)
 
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         active_program = get_active_program()
     except Exception:
         active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
@@ -455,7 +449,7 @@ def get_image_prompt():
         
     try:
         import json
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         active_program = get_active_program()
         
         if image_url.startswith('/images/'):
@@ -487,11 +481,11 @@ def proactive_action():
     try:
         import os
         import json
-        from utils.program import get_active_program
-        from variables import PROGRAMS_DIR
+        from utils.follower import get_active_follower
+        from variables import FOLLOWERS_DIR
         
-        active_program = get_active_program()
-        program_path = os.path.join(PROGRAMS_DIR, active_program)
+        active_follower = get_active_follower()
+        follower_path = os.path.join(FOLLOWERS_DIR, active_follower)
         
         name = "Program"
         description = ""
@@ -514,7 +508,7 @@ def proactive_action():
                     print(f"Error reading program config for proactive action: {ex}")
                     
         # Get active player name
-        from utils.program import get_player_name
+        from utils.follower import get_player_name
         user_display_name = get_player_name()
 
         # Load session history
@@ -668,12 +662,12 @@ def history():
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
         
-        from utils.program import get_player_name
+        from utils.follower import get_player_name
         user_name = get_player_name()
 
         from core.program_config import program_name, get_program_greeting, replace_placeholders
         welcome_message = replace_placeholders(get_program_greeting(), user_name=user_name)
-        active_program = os.environ.get("ACTIVE_PROGRAM", "sebile")
+        active_program = os.environ.get("ACTIVE_PROGRAM", "ria_silmane")
         
         theme = load_theme(active_program)
 
@@ -721,7 +715,7 @@ def upload_media():
     ext = os.path.splitext(filename)[1].lower()
     unique_name = f"upload_{int(time.time())}_{uuid.uuid4().hex}{ext}"
 
-    active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
+    active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
     uploads_dir = os.path.normpath(os.path.join('core', 'programs', active_program, 'uploads'))
     os.makedirs(uploads_dir, exist_ok=True)
     
@@ -898,7 +892,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
         history_text += f"{role}: {msg.get('text', '')}\n"
     
     from core.program_config import GLOBAL_USER_FORMATTING, load_user_instructions, replace_placeholders
-    from utils.program import get_active_user
+    from utils.follower import get_active_user
     from engine.character import load_character, get_character_context
 
     char_context = ""
@@ -1022,7 +1016,7 @@ def generate_user_message():
 
 def generate_player_skill_check_action(session_id, skill_name, attribute_name, dc, reason, model, is_flat_roll=False):
     import random
-    from utils.program import get_active_user
+    from utils.follower import get_active_user
     from engine.character import load_character, get_character_context
     from engine.mechanics import roll_check
 
@@ -1258,7 +1252,7 @@ def regenerate_image():
         filename = os.path.basename(old_image_url)
         # 1. Try to find the prompt in the program sidecar JSON file (most reliable and clean)
         try:
-            from utils.program import get_active_program
+            from utils.follower import get_active_program
             active_program = get_active_program()
             filename_only = os.path.basename(old_image_url)
             json_path = find_image_sidecar_json(filename_only, active_program)
@@ -1447,7 +1441,7 @@ def list_generations():
 @requires_auth
 def list_images():
     try:
-        active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
+        active_program = os.getenv("ACTIVE_PROGRAM", "ria_silmane")
         program_dir = os.path.join('core', 'programs', active_program)
         image_urls = []
         
@@ -1571,7 +1565,7 @@ def project_settings():
     settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
     
     # Get active program
-    from utils.program import get_active_program
+    from utils.follower import get_active_program
     active_prog = get_active_program()
     default_folder = os.path.normpath(os.path.join(os.getcwd(), 'core', 'programs', active_prog))
     
@@ -1876,7 +1870,7 @@ from core.skills.vectorized_databank.databank import DataBankManager
 @requires_auth
 def databank_list_files():
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         prog_id = request.args.get('program_id') or get_active_program()
         manager = DataBankManager(program_id=prog_id)
         files = manager.list_documents()
@@ -1897,7 +1891,7 @@ def databank_upload():
         
     temp_path = None
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         prog_id = request.form.get('program_id') or get_active_program()
         # Create temp folder inside workspace for uploads
         temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_uploads")
@@ -1934,7 +1928,7 @@ def databank_scrape():
         return jsonify({"error": "Missing URL"}), 400
         
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         prog_id = req_json.get('program_id') or get_active_program()
         manager = DataBankManager(program_id=prog_id)
         doc_id = manager.ingest_url(url)
@@ -1952,7 +1946,7 @@ def databank_delete():
         return jsonify({"error": "Missing document ID"}), 400
         
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         prog_id = req_json.get('program_id') or get_active_program()
         manager = DataBankManager(program_id=prog_id)
         success = manager.delete_document(doc_id)
@@ -1968,7 +1962,7 @@ def databank_delete():
 @requires_auth
 def databank_purge():
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         req_json = request.get_json(silent=True) or {}
         prog_id = req_json.get('program_id') or request.args.get('program_id') or get_active_program()
         manager = DataBankManager(program_id=prog_id)
@@ -1986,14 +1980,15 @@ def databank_purge():
 @requires_auth
 def list_lorebooks_route():
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_follower
         from utils.lorebook import list_lorebooks
-        from variables import PROGRAMS_DIR
-        program_id = get_active_program()
-        books = list_lorebooks(program_id, PROGRAMS_DIR)
+        from variables import FOLLOWERS_DIR
+        follower_id = get_active_follower()
+        books = list_lorebooks(follower_id, FOLLOWERS_DIR)
         for b in books:
-            b['program_id'] = program_id
-        return jsonify({'lorebooks': books, 'program_id': program_id})
+            b['follower_id'] = follower_id
+            b['program_id'] = follower_id
+        return jsonify({'lorebooks': books, 'follower_id': follower_id, 'program_id': follower_id})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2002,23 +1997,23 @@ def list_lorebooks_route():
 @requires_auth
 def import_lorebook_route():
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_follower
         from utils.lorebook import import_lorebook
-        from variables import PROGRAMS_DIR
-        program_id = get_active_program()
+        from variables import FOLLOWERS_DIR
+        follower_id = get_active_follower()
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
         f = request.files['file']
         if not f.filename or not f.filename.endswith('.json'):
             return jsonify({'error': 'Only .json lorebook files are accepted'}), 400
         book_data = json.loads(f.read().decode('utf-8'))
-        dest = import_lorebook(program_id, book_data, f.filename, PROGRAMS_DIR)
+        dest = import_lorebook(follower_id, book_data, f.filename, FOLLOWERS_DIR)
         return jsonify({'success': True, 'path': dest})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-def find_lorebook_path(filename, program_id):
+def find_lorebook_path(filename, follower_id):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     global_lore_dir = os.path.join(base_dir, "core", "lorebooks")
     
@@ -2028,10 +2023,10 @@ def find_lorebook_path(filename, program_id):
             if filename in files:
                 return os.path.join(root, filename)
                 
-    # 2. Search in program-specific lorebooks
-    from variables import PROGRAMS_DIR
-    prog_lore_dir = os.path.join(PROGRAMS_DIR, program_id, 'lorebooks')
-    fpath = os.path.join(prog_lore_dir, filename)
+    # 2. Search in follower-specific lorebooks
+    from variables import FOLLOWERS_DIR
+    fol_lore_dir = os.path.join(FOLLOWERS_DIR, follower_id, 'lorebooks')
+    fpath = os.path.join(fol_lore_dir, filename)
     if os.path.exists(fpath):
         return fpath
         
@@ -2042,9 +2037,9 @@ def find_lorebook_path(filename, program_id):
 @requires_auth
 def export_lorebook_route(filename):
     try:
-        from utils.program import get_active_program
-        program_id = get_active_program()
-        fpath = find_lorebook_path(filename, program_id)
+        from utils.follower import get_active_follower
+        follower_id = get_active_follower()
+        fpath = find_lorebook_path(filename, follower_id)
         if not fpath or not os.path.exists(fpath):
             return jsonify({'error': 'Lorebook not found'}), 404
         with open(fpath, encoding='utf-8') as lf:
@@ -2061,11 +2056,11 @@ def export_lorebook_route(filename):
 @requires_auth
 def delete_lorebook_route(filename):
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_follower
         from utils.lorebook import delete_lorebook
-        from variables import PROGRAMS_DIR
-        program_id = get_active_program()
-        deleted = delete_lorebook(program_id, filename, PROGRAMS_DIR)
+        from variables import FOLLOWERS_DIR
+        follower_id = get_active_follower()
+        deleted = delete_lorebook(follower_id, filename, FOLLOWERS_DIR)
         return jsonify({'success': deleted})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -2076,10 +2071,10 @@ def delete_lorebook_route(filename):
 def get_card_lorebook_entries():
     """Return entries from the embedded character_book in the active program card."""
     try:
-        from utils.program import get_active_program
-        from variables import PROGRAMS_DIR
-        program_id = get_active_program()
-        card_path = os.path.join(PROGRAMS_DIR, program_id, f'{program_id}.json')
+        from utils.follower import get_active_follower
+        from variables import FOLLOWERS_DIR
+        follower_id = get_active_follower()
+        card_path = os.path.join(FOLLOWERS_DIR, follower_id, f'{follower_id}.json')
         if not os.path.exists(card_path):
             return jsonify({'error': 'Card not found'}), 404
         with open(card_path, encoding='utf-8') as f:
@@ -2098,10 +2093,10 @@ def get_card_lorebook_entries():
 def save_card_lorebook_entries():
     """Write updated entries back into character_book in the active program card."""
     try:
-        from utils.program import get_active_program
-        from variables import PROGRAMS_DIR
-        program_id = get_active_program()
-        card_path = os.path.join(PROGRAMS_DIR, program_id, f'{program_id}.json')
+        from utils.follower import get_active_follower
+        from variables import FOLLOWERS_DIR
+        follower_id = get_active_follower()
+        card_path = os.path.join(FOLLOWERS_DIR, follower_id, f'{follower_id}.json')
         if not os.path.exists(card_path):
             return jsonify({'error': 'Card not found'}), 404
         data = request.get_json(silent=True) or {}
@@ -2125,9 +2120,9 @@ def save_card_lorebook_entries():
 def get_lorebook_entries(filename):
     """Return the raw entry list for a lorebook file so the UI can render an editor."""
     try:
-        from utils.program import get_active_program
-        program_id = get_active_program()
-        fpath = find_lorebook_path(filename, program_id)
+        from utils.follower import get_active_follower
+        follower_id = get_active_follower()
+        fpath = find_lorebook_path(filename, follower_id)
         if not fpath or not os.path.exists(fpath):
             return jsonify({'error': 'Lorebook not found'}), 404
         with open(fpath, encoding='utf-8') as lf:
@@ -2146,9 +2141,9 @@ def get_lorebook_entries(filename):
 def save_lorebook_entries(filename):
     """Overwrite a lorebook file with updated entries from the editor."""
     try:
-        from utils.program import get_active_program
-        program_id = get_active_program()
-        fpath = find_lorebook_path(filename, program_id)
+        from utils.follower import get_active_follower
+        follower_id = get_active_follower()
+        fpath = find_lorebook_path(filename, follower_id)
         if not fpath or not os.path.exists(fpath):
             return jsonify({'error': 'Lorebook not found'}), 404
         data = request.get_json(silent=True) or {}
@@ -2166,16 +2161,19 @@ def save_lorebook_entries(filename):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/followers/memories', methods=['GET'])
 @app.route('/api/programs/memories', methods=['GET'])
 @requires_auth
-def get_program_memories():
+def get_follower_memories():
     try:
         manager = DataBankManager()
         memories = manager.get_all_memories()
         return jsonify({"memories": memories})
     except Exception as e:
-        print(f"Error loading program memories: {e}")
+        print(f"Error loading follower memories: {e}")
         return jsonify({"error": str(e)}), 500
+
+get_program_memories = get_follower_memories
 
 @app.route('/api/programs/memories/delete', methods=['POST'])
 @requires_auth
@@ -2200,7 +2198,7 @@ def delete_memory():
 @requires_auth
 def list_quests():
     try:
-        from utils.program import get_active_program, get_active_user
+        from utils.follower import get_active_program, get_active_user
         from engine.quest_tracker import load_quest_stages, get_current_stage, get_quest_display_data, sync_quest_stage_with_location
 
         user = get_active_user()
@@ -2236,7 +2234,7 @@ def list_quests():
 @requires_auth
 def delete_quest(quest_id):
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         active_program = get_active_program()
         quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
         
@@ -2257,7 +2255,7 @@ def delete_quest(quest_id):
 @requires_auth
 def abandon_quest(quest_id):
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         active_program = get_active_program()
         program_dir = os.path.join('core', 'programs', active_program)
         quests_path = os.path.join(program_dir, 'quest_log.json')
@@ -2312,7 +2310,7 @@ def abandon_quest(quest_id):
 @requires_auth
 def download_quest(quest_id):
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         active_program = get_active_program()
         quests_path = os.path.join('core', 'programs', active_program, 'quest_log.json')
         if not os.path.exists(quests_path):
@@ -2385,7 +2383,7 @@ END:VCALENDAR"""
 @requires_auth
 def list_sessions():
     try:
-        active_program = os.environ.get("ACTIVE_PROGRAM", "sebile")
+        active_program = os.environ.get("ACTIVE_PROGRAM", "ria_silmane")
         sessions_dir = os.path.join(base_dir, "core", "programs", active_program, "sessions")
         
         sessions = []
@@ -2412,20 +2410,21 @@ def list_sessions():
 
 
 
+@app.route('/api/followers', methods=['GET'])
 @app.route('/api/programs', methods=['GET'])
 @requires_auth
-def list_programs():
+def list_followers():
     try:
-        active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
-        from variables import PROGRAMS_DIR
-        programs_dir = PROGRAMS_DIR
+        active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+        from variables import FOLLOWERS_DIR
+        followers_dir = FOLLOWERS_DIR
         
-        programs = []
-        if os.path.exists(programs_dir):
-            for folder in os.listdir(programs_dir):
-                folder_path = os.path.join(programs_dir, folder)
+        followers = []
+        if os.path.exists(followers_dir):
+            for folder in os.listdir(followers_dir):
+                folder_path = os.path.join(followers_dir, folder)
                 if os.path.isdir(folder_path):
-                    program_name = folder.title()
+                    follower_name = folder.title()
                     json_path = os.path.join(folder_path, f"{folder}.json")
                     if os.path.exists(json_path):
                         try:
@@ -2434,13 +2433,13 @@ def list_programs():
                                 # Unwrap v3 data block
                                 card = jdata.get("data", jdata)
                                 if card.get("name"):
-                                    program_name = card["name"]
+                                    follower_name = card["name"]
                         except Exception:
                             pass
                     else:
                         for file in os.listdir(folder_path):
                             if file.lower().endswith('.md') and not file.lower().startswith('user'):
-                                program_name = os.path.splitext(file)[0].title()
+                                follower_name = os.path.splitext(file)[0].title()
                                 break
                     # Read theme color from theme.json
                     theme_color = "#38bdf8"
@@ -2474,56 +2473,62 @@ def list_programs():
                     else:
                         recruited = folder == "ria_silmane"
 
-                    programs.append({
+                    followers.append({
                         'id': folder,
-                        'name': program_name,
-                        'active': folder == active_program,
+                        'name': follower_name,
+                        'active': folder == active_follower,
                         'theme_color': theme_color,
                         'has_profile': has_profile,
                         'recruited': recruited
                     })
-        return jsonify({'programs': programs, 'active': active_program})
+        return jsonify({'followers': followers, 'programs': followers, 'active': active_follower})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+list_programs = list_followers
+
+@app.route('/api/followers/select', methods=['POST'])
 @app.route('/api/programs/select', methods=['POST'])
 @requires_auth
-def select_program():
+def select_follower():
     try:
         data = request.get_json(silent=True) or {}
-        program_id = data.get('program_id')
-        if not program_id:
-            return jsonify({'error': 'Missing program_id'}), 400
+        follower_id = data.get('follower_id') or data.get('program_id')
+        if not follower_id:
+            return jsonify({'error': 'Missing follower_id'}), 400
             
-        program_path = os.path.join(base_dir, 'core', 'programs', program_id)
-        if not os.path.exists(program_path):
-            return jsonify({'error': f"Program '{program_id}' does not exist"}), 404
+        follower_path = os.path.join(base_dir, 'core', 'followers', follower_id)
+        if not os.path.exists(follower_path):
+            follower_path = os.path.join(base_dir, 'core', 'programs', follower_id)
+        if not os.path.exists(follower_path):
+            return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
             
         # Update environment variable
-        os.environ["ACTIVE_PROGRAM"] = program_id
+        os.environ["ACTIVE_FOLLOWER"] = follower_id
+        os.environ["ACTIVE_PROGRAM"] = follower_id
         
-        # Update active program settings
+        # Update active follower settings
         try:
-            from utils.program import set_active_program
-            set_active_program(program_id)
+            from utils.follower import set_active_follower
+            set_active_follower(follower_id)
         except Exception as e:
-            print(f"Error persisting ACTIVE_PROGRAM: {e}")
+            print(f"Error persisting ACTIVE_FOLLOWER: {e}")
         
 
-        reload_program_state()
+        reload_follower_state()
             
-        theme = load_theme(program_id)
+        theme = load_theme(follower_id)
 
         has_profile = False
-        profile_path = os.path.join(program_path, "portraits", "profile.png")
+        profile_path = os.path.join(follower_path, "portraits", "profile.png")
         if os.path.exists(profile_path):
             has_profile = True
 
-        from core.program_config import program_name
+        from core.follower_config import follower_name
         return jsonify({
             'status': 'success',
-            'active': program_id,
-            'character_name': program_name,
+            'active': follower_id,
+            'character_name': follower_name,
             'theme': theme,
             'has_profile': has_profile
         })
@@ -2536,6 +2541,8 @@ def select_program():
         except Exception:
             pass
         return jsonify({'error': str(e)}), 500
+
+select_program = select_follower
 
 
 @app.route('/api/programs/palette', methods=['POST'])
@@ -2577,73 +2584,74 @@ def update_program_palette():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/followers/delete', methods=['POST'])
 @app.route('/api/programs/delete', methods=['POST'])
 @requires_auth
-def delete_program():
+def delete_follower():
     try:
         data = request.get_json(silent=True) or {}
-        program_id = data.get('program_id')
-        if not program_id:
-            return jsonify({'error': 'Missing program_id'}), 400
+        follower_id = data.get('follower_id') or data.get('program_id')
+        if not follower_id:
+            return jsonify({'error': 'Missing follower_id'}), 400
             
-        if program_id == 'sebile':
-            return jsonify({'error': 'Cannot delete default program Sebile'}), 400
+        if follower_id == 'ria_silmane':
+            return jsonify({'error': 'Cannot delete default follower Ria Silmane'}), 400
             
-        program_path = os.path.join(base_dir, 'core', 'programs', program_id)
-        if not os.path.exists(program_path):
-            return jsonify({'error': f"Program '{program_id}' does not exist"}), 404
+        from variables import FOLLOWERS_DIR
+        follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
+        if not os.path.exists(follower_path):
+            return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
             
-        # If the deleted program is currently active, switch to Sebile first
-        from utils.program import get_active_program, set_active_program
-        active_program = get_active_program()
-        is_active = (program_id == active_program)
+        from utils.follower import get_active_follower, set_active_follower
+        active_follower = get_active_follower()
+        is_active = (follower_id == active_follower)
         if is_active:
-            os.environ["ACTIVE_PROGRAM"] = "sebile"
+            os.environ["ACTIVE_FOLLOWER"] = "ria_silmane"
             try:
-                set_active_program("sebile")
+                set_active_follower("ria_silmane")
             except Exception as e:
-                print(f"Error resetting active program to sebile: {e}")
+                print(f"Error resetting active follower to ria_silmane: {e}")
                 
-            # Reload program config and re-initialize the runner
-            reload_program_state()
+            reload_follower_state()
                  
-        # Delete the program folder recursively
-        shutil.rmtree(program_path)
+        shutil.rmtree(follower_path)
         
-        return jsonify({'status': 'success', 'switched_to': 'sebile' if is_active else None})
+        return jsonify({'status': 'success', 'switched_to': 'ria_silmane' if is_active else None})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+delete_program = delete_follower
 
+
+@app.route('/api/followers/rename', methods=['POST'])
 @app.route('/api/programs/rename', methods=['POST'])
 @requires_auth
-def rename_program():
+def rename_follower():
     try:
         data = request.get_json(silent=True) or {}
-        program_id = data.get('program_id')
+        follower_id = data.get('follower_id') or data.get('program_id')
         new_name = data.get('new_name', '').strip()
         
-        if not program_id or not new_name:
-            return jsonify({'error': 'Missing program_id or new_name'}), 400
+        if not follower_id or not new_name:
+            return jsonify({'error': 'Missing follower_id or new_name'}), 400
             
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', program_id):
-            return jsonify({'error': 'Invalid program_id'}), 400
+        if not re.match(r'^[a-zA-Z0-9_\-]+$', follower_id):
+            return jsonify({'error': 'Invalid follower_id'}), 400
             
         new_id = re.sub(r'[^a-zA-Z0-9_]', '', new_name).lower()
         if not new_id:
             return jsonify({'error': 'Invalid new name (must contain letters, numbers, or underscores)'}), 400
             
-        from variables import PROGRAMS_DIR
-        old_path = os.path.normpath(os.path.join(PROGRAMS_DIR, program_id))
-        new_path = os.path.normpath(os.path.join(PROGRAMS_DIR, new_id))
+        from variables import FOLLOWERS_DIR
+        old_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, follower_id))
+        new_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, new_id))
         
         if not os.path.exists(old_path):
-            return jsonify({'error': f"Program '{program_id}' does not exist"}), 404
+            return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
             
-        # If the program is sebile, we keep the folder/id as 'sebile' but update the name in sebile.json
-        if program_id == 'sebile':
-            json_path = os.path.join(old_path, "sebile.json")
+        if follower_id == 'ria_silmane':
+            json_path = os.path.join(old_path, "ria_silmane.json")
             if os.path.exists(json_path):
                 try:
                     with open(json_path, "r", encoding="utf-8") as f:
@@ -2652,33 +2660,28 @@ def rename_program():
                     with open(json_path, "w", encoding="utf-8") as f:
                         json.dump(jdata, f, indent=2, ensure_ascii=False)
                 except Exception as e:
-                    print(f"Error updating Sebile JSON: {e}")
+                    print(f"Error updating Ria Silmane JSON: {e}")
             
-            # Reload configuration
-            reload_program_state()
+            reload_follower_state()
             
-            active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
+            active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
             return jsonify({
                 'status': 'success',
-                'new_id': 'sebile',
-                'was_active': (active_program == 'sebile')
+                'new_id': 'ria_silmane',
+                'was_active': (active_follower == 'ria_silmane')
             })
             
-        # If new_id is different from program_id, perform folder rename
-        if new_id != program_id:
+        if new_id != follower_id:
             if os.path.exists(new_path):
-                return jsonify({'error': f"A program folder named '{new_id}' already exists"}), 400
+                return jsonify({'error': f"A follower folder named '{new_id}' already exists"}), 400
                 
-            # Perform directory rename
             shutil.move(old_path, new_path)
             
-            # Inside the new directory, rename the json file: old_id.json -> new_id.json
-            old_json = os.path.join(new_path, f"{program_id}.json")
+            old_json = os.path.join(new_path, f"{follower_id}.json")
             new_json = os.path.join(new_path, f"{new_id}.json")
             if os.path.exists(old_json):
                 shutil.move(old_json, new_json)
                 
-            # Also update fields inside the json file
             if os.path.exists(new_json):
                 try:
                     with open(new_json, "r", encoding="utf-8") as f:
@@ -2687,7 +2690,7 @@ def rename_program():
                     data_block["name"] = new_name
                     exts = data_block.setdefault("extensions", {})
                     arena = exts.setdefault("arena", {})
-                    arena["program_id"] = new_id
+                    arena["follower_id"] = new_id
                     if "character_book" in data_block and isinstance(data_block["character_book"], dict):
                         data_block["character_book"]["name"] = new_name
                     with open(new_json, "w", encoding="utf-8") as f:
@@ -2695,27 +2698,24 @@ def rename_program():
                 except Exception as e:
                     print(f"Error updating JSON after rename: {e}")
                     
-            # Check if active program
-            active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
-            was_active = (program_id == active_program)
+            active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+            was_active = (follower_id == active_follower)
             
-            # Update settings (active_program, folders, program_voices)
-            from utils.program import _load_settings, _save_settings
+            from utils.follower import _load_settings, _save_settings
             settings = _load_settings()
             
             if was_active:
-                os.environ["ACTIVE_PROGRAM"] = new_id
-                settings["active_program"] = new_id
+                os.environ["ACTIVE_FOLLOWER"] = new_id
+                settings["active_follower"] = new_id
                 settings["folders"] = [new_path]
                 
-            if "program_voices" in settings:
-                if program_id in settings["program_voices"]:
-                    settings["program_voices"][new_id] = settings["program_voices"].pop(program_id)
+            if "follower_voices" in settings:
+                if follower_id in settings["follower_voices"]:
+                    settings["follower_voices"][new_id] = settings["follower_voices"].pop(follower_id)
                     
             _save_settings(settings)
             
-            # Reload configuration
-            reload_program_state()
+            reload_follower_state()
             
             return jsonify({
                 'status': 'success',
@@ -2723,8 +2723,7 @@ def rename_program():
                 'was_active': was_active
             })
         else:
-            # ID is the same, no directory rename needed
-            json_path = os.path.join(old_path, f"{program_id}.json")
+            json_path = os.path.join(old_path, f"{follower_id}.json")
             if os.path.exists(json_path):
                 try:
                     with open(json_path, "r", encoding="utf-8") as f:
@@ -2738,28 +2737,31 @@ def rename_program():
                 except Exception as e:
                     print(f"Error updating JSON name: {e}")
                     
-            active_program = os.getenv("ACTIVE_PROGRAM", "sebile")
+            active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
             return jsonify({
                 'status': 'success',
-                'new_id': program_id,
-                'was_active': (program_id == active_program)
+                'new_id': follower_id,
+                'was_active': (follower_id == active_follower)
             })
             
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+rename_program = rename_follower
 
+
+@app.route('/api/followers/profile', methods=['GET'])
 @app.route('/api/programs/profile', methods=['GET'])
 @requires_auth
-def get_program_profile():
+def get_follower_profile():
     try:
-        from utils.program import get_active_program, _load_settings
-        from variables import PROGRAMS_DIR
+        from utils.follower import get_active_follower, _load_settings
+        from variables import FOLLOWERS_DIR
         import json
 
-        program_id = request.args.get('program_id') or get_active_program()
-        json_path = os.path.normpath(os.path.join(PROGRAMS_DIR, program_id, f"{program_id}.json"))
+        follower_id = request.args.get('follower_id') or request.args.get('program_id') or get_active_follower()
+        json_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, follower_id, f"{follower_id}.json"))
 
         card_data = {}
         if os.path.exists(json_path):
@@ -2770,37 +2772,37 @@ def get_program_profile():
             except Exception:
                 pass
 
-        # Inject tts_voice from project settings (stored separately)
         settings = _load_settings()
-        program_voices = settings.get('program_voices', {})
-        card_data['tts_voice'] = program_voices.get(program_id, settings.get('tts_voice', 'af_heart'))
+        follower_voices = settings.get('follower_voices', {})
+        card_data['tts_voice'] = follower_voices.get(follower_id, settings.get('tts_voice', 'af_heart'))
 
         return jsonify(card_data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+get_program_profile = get_follower_profile
 
 
+@app.route('/api/followers/profile/save', methods=['POST'])
 @app.route('/api/programs/profile/save', methods=['POST'])
 @requires_auth
-def save_program_profile():
+def save_follower_profile():
     try:
-        from utils.program import get_active_program, set_tts_voice_for_program, _load_settings, _save_settings
-        from variables import PROGRAMS_DIR
+        from utils.follower import get_active_follower, set_tts_voice_for_follower, _load_settings, _save_settings
+        from variables import FOLLOWERS_DIR
         import json
 
         incoming = request.get_json(silent=True) or {}
-        program_id = incoming.get('program_id') or get_active_program()
-        json_path = os.path.normpath(os.path.join(PROGRAMS_DIR, program_id, f"{program_id}.json"))
+        follower_id = incoming.get('follower_id') or incoming.get('program_id') or get_active_follower()
+        json_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, follower_id, f"{follower_id}.json"))
 
-        # Extract sidecars before writing card
         tts_voice = incoming.pop('tts_voice', None)
+        incoming.pop('follower_id', None)
         incoming.pop('program_id', None)
 
         if tts_voice:
-            set_tts_voice_for_program(program_id, tts_voice)
+            set_tts_voice_for_follower(follower_id, tts_voice)
 
-        # Load existing card to preserve spec envelope and any fields not sent by UI
         existing = {}
         if os.path.exists(json_path):
             try:
@@ -2809,7 +2811,6 @@ def save_program_profile():
             except Exception:
                 pass
 
-        # Merge incoming data block into existing card
         if existing.get('spec') == 'chara_card_v3' and 'data' in existing:
             existing['data'].update(incoming)
             card_to_write = existing
@@ -2824,33 +2825,37 @@ def save_program_profile():
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(card_to_write, f, indent=2, ensure_ascii=False)
 
-        reload_program_state()
+        reload_follower_state()
         return jsonify({'status': 'success'})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+save_program_profile = save_follower_profile
 
 
+@app.route('/api/followers/journals', methods=['GET'])
 @app.route('/api/programs/journals', methods=['GET'])
 @requires_auth
-def get_program_journals():
+def get_follower_journals():
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_follower
         from utils.journals import get_journal_entries
         
-        program_id = request.args.get('program_id') or get_active_program()
-        entries = get_journal_entries(program_id)
+        follower_id = request.args.get('follower_id') or request.args.get('program_id') or get_active_follower()
+        entries = get_journal_entries(follower_id)
         return jsonify({'journals': entries})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+get_program_journals = get_follower_journals
 
 
 @app.route('/api/programs/journals/save', methods=['POST'])
 @requires_auth
 def save_program_journals():
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         from utils.journals import get_journal_entries, save_journal_entries, add_journal_entry
         
         data = request.get_json(silent=True) or {}
@@ -2884,7 +2889,7 @@ def save_program_journals():
 @requires_auth
 def delete_program_journals():
     try:
-        from utils.program import get_active_program
+        from utils.follower import get_active_program
         from utils.journals import delete_journal_entry
         
         data = request.get_json(silent=True) or {}
@@ -2907,7 +2912,7 @@ def delete_program_journals():
 @requires_auth
 def get_character_status():
     try:
-        from utils.program import get_active_user
+        from utils.follower import get_active_user
         from engine.save_manager import get_active_save_id
         from engine.character import load_character
         from engine.world_engine import load_world_state
@@ -3384,7 +3389,7 @@ def extract_profile_display_name(profile_id: str, content: str) -> str:
 def list_user_profiles():
     try:
         from engine.save_manager import list_saves, get_active_save_id, create_save
-        from utils.program import get_active_user
+        from utils.follower import get_active_user
         
         saves = list_saves()
         if not saves:
@@ -3457,7 +3462,7 @@ def save_user_profile():
         if not profile_id:
             return jsonify({"error": "Invalid profile name"}), 400
             
-        from utils.program import get_active_user
+        from utils.follower import get_active_user
         from engine.save_manager import read_save, write_save, create_save
         from engine.character import update_character_identity
         
@@ -3518,7 +3523,7 @@ def delete_user_profile():
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
             
-        from utils.program import get_active_user, set_active_user
+        from utils.follower import get_active_user, set_active_user
         from engine.save_manager import delete_save, set_active_save_id
         
         # Delete single-file save bound to this player profile
@@ -3550,7 +3555,7 @@ def rename_user_profile():
             return jsonify({"error": "Missing old_profile_id or new_profile_name"}), 400
             
         from engine.save_manager import SAVES_DIR, read_save, write_save, set_active_save_id, sync_save_meta
-        from utils.program import get_active_user, set_active_user
+        from utils.follower import get_active_user, set_active_user
         
         old_file = SAVES_DIR / f"{old_profile_id}.json"
         if not old_file.exists():
@@ -3756,49 +3761,48 @@ Output a single JSON object with EXACTLY these keys:
     return card
 
 
-def finalize_imported_program(program_path, program_id, card_json):
-    """Write inversion, theme, portraits dir, and chara_card_v3 JSON for a new program."""
-    # Pop helper keys (not part of the card spec)
+def finalize_imported_follower(follower_path, follower_id, card_json):
+    """Write inversion, theme, portraits dir, and chara_card_v3 JSON for a new follower."""
     inversion = card_json.pop("_inversion", None) or card_json.pop("inversion", None) or {}
     colors = card_json.pop("_colors", None) or card_json.pop("colors", None) or {}
 
-    # Write inversion.json
-    with open(os.path.join(program_path, 'inversion.json'), "w", encoding="utf-8") as f:
+    with open(os.path.join(follower_path, 'inversion.json'), "w", encoding="utf-8") as f:
         json.dump(inversion, f, indent=2, ensure_ascii=False)
 
-    # Generate theme from main_color
     main_color = colors.get("main_color", "#38bdf8")
     theme_data = generate_character_theme(main_color)
-    with open(os.path.join(program_path, 'theme.json'), "w", encoding="utf-8") as tf:
+    with open(os.path.join(follower_path, 'theme.json'), "w", encoding="utf-8") as tf:
         json.dump(theme_data, tf, indent=2, ensure_ascii=False)
 
-    os.makedirs(os.path.join(program_path, 'portraits'), exist_ok=True)
+    os.makedirs(os.path.join(follower_path, 'portraits'), exist_ok=True)
 
-    # Stamp program_id into the arena extension
     if card_json.get("data"):
         exts = card_json["data"].setdefault("extensions", {})
-        exts.setdefault("arena", {})["program_id"] = program_id
+        exts.setdefault("arena", {})["follower_id"] = follower_id
     else:
-        # Legacy flat format fallback
-        card_json["program_id"] = program_id
+        card_json["follower_id"] = follower_id
 
-    with open(os.path.join(program_path, f"{program_id}.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(follower_path, f"{follower_id}.json"), "w", encoding="utf-8") as f:
         json.dump(card_json, f, indent=2, ensure_ascii=False)
 
+finalize_imported_program = finalize_imported_follower
 
+
+@app.route('/api/followers/<follower_id>/export/card', methods=['GET'])
 @app.route('/api/programs/<program_id>/export/card', methods=['GET'])
 @requires_auth
-def export_program_card(program_id):
-    """Download the program's card as a SillyTavern-compatible JSON file."""
+def export_follower_card(follower_id=None, program_id=None):
+    """Download the follower's card as a SillyTavern-compatible JSON file."""
+    fid = follower_id or program_id
     try:
-        card_path = os.path.join(base_dir, 'core', 'programs', program_id, f'{program_id}.json')
+        from variables import FOLLOWERS_DIR
+        card_path = os.path.join(FOLLOWERS_DIR, fid, f'{fid}.json')
         if not os.path.exists(card_path):
-            return jsonify({'error': 'Program not found'}), 404
+            return jsonify({'error': 'Follower not found'}), 404
         with open(card_path, encoding='utf-8') as f:
             card_data = json.load(f)
-        name = card_data.get('data', card_data).get('name', program_id)
-        safe_name = re.sub(r'[^\w\- ]', '', name).strip().replace(' ', '_') or program_id
-        # Export only ST-spec keys — strip Arena internals from root
+        name = card_data.get('data', card_data).get('name', fid)
+        safe_name = re.sub(r'[^\w\- ]', '', name).strip().replace(' ', '_') or fid
         export_data = {k: v for k, v in card_data.items() if k in ('spec', 'spec_version', 'data')}
         resp = make_response(json.dumps(export_data, indent=2, ensure_ascii=False))
         resp.headers['Content-Type'] = 'application/json'
@@ -3807,22 +3811,27 @@ def export_program_card(program_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+export_program_card = export_follower_card
 
+
+@app.route('/api/followers/<follower_id>/export/lorebook', methods=['GET'])
 @app.route('/api/programs/<program_id>/export/lorebook', methods=['GET'])
 @requires_auth
-def export_program_lorebook(program_id):
+def export_follower_lorebook(follower_id=None, program_id=None):
     """Download the embedded character_book as a standalone lorebook JSON."""
+    fid = follower_id or program_id
     try:
-        card_path = os.path.join(base_dir, 'core', 'programs', program_id, f'{program_id}.json')
+        from variables import FOLLOWERS_DIR
+        card_path = os.path.join(FOLLOWERS_DIR, fid, f'{fid}.json')
         if not os.path.exists(card_path):
-            return jsonify({'error': 'Program not found'}), 404
+            return jsonify({'error': 'Follower not found'}), 404
         with open(card_path, encoding='utf-8') as f:
             card_data = json.load(f)
         cb = card_data.get('data', card_data).get('character_book')
         if not cb:
             return jsonify({'error': 'No embedded lorebook found'}), 404
-        name = card_data.get('data', card_data).get('name', program_id)
-        safe_name = re.sub(r'[^\w\- ]', '', name).strip().replace(' ', '_') or program_id
+        name = card_data.get('data', card_data).get('name', fid)
+        safe_name = re.sub(r'[^\w\- ]', '', name).strip().replace(' ', '_') or fid
         resp = make_response(json.dumps(cb, indent=2, ensure_ascii=False))
         resp.headers['Content-Type'] = 'application/json'
         resp.headers['Content-Disposition'] = f'attachment; filename="{safe_name}_lorebook.json"'
@@ -3830,10 +3839,13 @@ def export_program_lorebook(program_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+export_program_lorebook = export_follower_lorebook
 
+
+@app.route('/api/followers/import/tavern', methods=['POST'])
 @app.route('/api/programs/import/tavern', methods=['POST'])
 @requires_auth
-def import_tavern_program():
+def import_tavern_follower():
     try:
         if 'card' not in request.files:
             return jsonify({'error': 'No card file provided'}), 400
@@ -3894,20 +3906,17 @@ def import_tavern_program():
                 try: os.remove(temp_path)
                 except Exception: pass
 
-        # --- Convert to chara_card_v3 (bypass LLM — use the card data directly) ---
         spec = chara.get('spec', '')
         if spec == 'chara_card_v3':
-            # Already v3 — use verbatim
             card_v3 = chara
             data_block = card_v3.get('data', {})
         else:
-            # v1 / v2 flat or wrapped — normalise to v3
             data_block = chara.get('data', chara)
             card_v3 = {
                 "spec": "chara_card_v3",
                 "spec_version": "3.0",
                 "data": {
-                    "name": data_block.get("name", "Program"),
+                    "name": data_block.get("name", "Follower"),
                     "description": data_block.get("description", ""),
                     "personality": data_block.get("personality", ""),
                     "scenario": data_block.get("scenario", ""),
@@ -3924,25 +3933,23 @@ def import_tavern_program():
                     "extensions": data_block.get("extensions", {}),
                 }
             }
-            # Remove None character_book
             if card_v3["data"]["character_book"] is None:
                 del card_v3["data"]["character_book"]
 
-        name = card_v3["data"].get("name", "Program").strip()
-        program_id = re.sub(r'[^a-zA-Z0-9_\-]', '', name).lower() or ("program_" + str(int(time.time())))
-        program_path = os.path.join(base_dir, 'core', 'programs', program_id)
-        if os.path.exists(program_path):
-            return jsonify({'error': f"Program folder '{program_id}' already exists"}), 400
-        os.makedirs(program_path, exist_ok=True)
+        name = card_v3["data"].get("name", "Follower").strip()
+        follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', name).lower() or ("follower_" + str(int(time.time())))
+        from variables import FOLLOWERS_DIR
+        follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
+        if os.path.exists(follower_path):
+            return jsonify({'error': f"Follower folder '{follower_id}' already exists"}), 400
+        os.makedirs(follower_path, exist_ok=True)
 
-        # Ensure arena extension block
         exts = card_v3["data"].setdefault("extensions", {})
         arena = exts.setdefault("arena", {})
-        arena["program_id"] = program_id
+        arena["follower_id"] = follower_id
         if "image_details" not in arena:
             arena["image_details"] = {"positive": "", "negative": ""}
 
-        # Derive inversion and color from existing extensions or use defaults
         inversion = arena.pop("inversion", None) or {
             "intimate": f"{name} is now deeply affectionate and tender.",
             "excited": f"{name} is now playful and energetic.",
@@ -3954,17 +3961,20 @@ def import_tavern_program():
         card_v3["_inversion"] = inversion
         card_v3["_colors"] = {"main_color": main_color}
 
-        finalize_imported_program(program_path, program_id, card_v3)
-        return jsonify({'status': 'success', 'program_id': program_id, 'name': name})
+        finalize_imported_follower(follower_path, follower_id, card_v3)
+        return jsonify({'status': 'success', 'follower_id': follower_id, 'program_id': follower_id, 'name': name})
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+import_tavern_program = import_tavern_follower
 
+
+@app.route('/api/followers/import/describe', methods=['POST'])
 @app.route('/api/programs/import/describe', methods=['POST'])
 @requires_auth
-def import_describe_program():
+def import_describe_follower():
     try:
         data = request.get_json(silent=True) or {}
         name = data.get('name', '').strip()
@@ -3974,27 +3984,27 @@ def import_describe_program():
         if not name or not description:
             return jsonify({'error': 'Name and description are required'}), 400
             
-        program_id = re.sub(r'[^a-zA-Z0-9_\-]', '', name).lower()
-        if not program_id:
-            program_id = "program_" + str(int(time.time()))
+        follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', name).lower()
+        if not follower_id:
+            follower_id = "follower_" + str(int(time.time()))
             
-        program_path = os.path.join(base_dir, 'core', 'programs', program_id)
-        if os.path.exists(program_path):
-            return jsonify({'error': f"Program folder '{program_id}' already exists"}), 400
+        from variables import FOLLOWERS_DIR
+        follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
+        if os.path.exists(follower_path):
+            return jsonify({'error': f"Follower folder '{follower_id}' already exists"}), 400
             
-        os.makedirs(program_path, exist_ok=True)
+        os.makedirs(follower_path, exist_ok=True)
         
-        # Call consolidated JSON generator
         card_json = generate_character_json(name, description, "", "", "", model)
         
-        # Finalize program files (inversion, theme, portraits, and JSON profile)
-        finalize_imported_program(program_path, program_id, card_json)
+        finalize_imported_follower(follower_path, follower_id, card_json)
             
-        return jsonify({'status': 'success', 'program_id': program_id, 'name': name})
+        return jsonify({'status': 'success', 'follower_id': follower_id, 'program_id': follower_id, 'name': name})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+import_describe_program = import_describe_follower
 
 # --- Server-Sent Events (SSE) for Live Connection Status ---
 import queue as _queue
@@ -4253,15 +4263,15 @@ def comfy_resolve_workflow():
     workflow_json = request.json.get("workflow_json")
     if not workflow_json:
         try:
-            from variables import PROGRAMS_DIR, COMFYUI_CHECKPOINT
-            from utils.program import get_active_program
-            active_program = get_active_program()
+            from variables import FOLLOWERS_DIR, COMFYUI_CHECKPOINT
+            from utils.follower import get_active_follower
+            active_follower = get_active_follower()
             
             combined_workflow = {}
             
             # Read ImageWorkflow.json
             image_path = os.path.normpath(os.path.join(
-                PROGRAMS_DIR, active_program, "portraits", "ImageWorkflow.json"
+                FOLLOWERS_DIR, active_follower, "portraits", "ImageWorkflow.json"
             ))
             if not os.path.exists(image_path):
                 image_path = os.path.normpath(os.path.join(
@@ -4282,7 +4292,7 @@ def comfy_resolve_workflow():
             
             # Read VideoWorkflow.json
             video_path = os.path.normpath(os.path.join(
-                PROGRAMS_DIR, active_program, "portraits", "VideoWorkflow.json"
+                FOLLOWERS_DIR, active_follower, "portraits", "VideoWorkflow.json"
             ))
             if not os.path.exists(video_path):
                 video_path = os.path.normpath(os.path.join(

@@ -11,57 +11,61 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-from variables import DEFAULT_REMOTE_MODEL, PROGRAMS_DIR
+from variables import DEFAULT_REMOTE_MODEL, FOLLOWERS_DIR
 
 # --- SYSTEM CONTEXT COMPILER ---
 
-def _load_card_data(program_id: str) -> dict:
-    """Loads the program's chara_card_v3 JSON and returns the data block."""
+def _load_card_data(follower_id: str) -> dict:
+    """Loads the follower's chara_card_v3 JSON and returns the data block."""
     import json
-    json_path = os.path.join(PROGRAMS_DIR, program_id, f"{program_id}.json")
+    json_path = os.path.join(FOLLOWERS_DIR, follower_id, f"{follower_id}.json")
     if os.path.exists(json_path):
         try:
             with open(json_path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
             return raw.get("data", raw)
         except Exception as e:
-            print(f"Error loading card for '{program_id}': {e}")
+            print(f"Error loading card for '{follower_id}': {e}")
     return {}
 
-def get_program_name() -> str:
-    """Returns the active program's character name."""
-    from utils.program import get_active_program
-    active_program = get_active_program()
-    card = _load_card_data(active_program)
+def get_follower_name() -> str:
+    """Returns the active follower's character name."""
+    from utils.follower import get_active_follower
+    active_follower = get_active_follower()
+    card = _load_card_data(active_follower)
     # v3: data.name / legacy: name
-    return card.get("name") or active_program.title()
+    return card.get("name") or active_follower.title()
+
+get_program_name = get_follower_name
 
 def replace_placeholders(text: str, user_name: str = None, comp_name: str = None) -> str:
     """Replaces {{user}} and {{char}} placeholders (case-insensitive) with their actual values."""
     if not text:
         return text
     if not user_name:
-        from utils.program import get_player_name
+        from utils.follower import get_player_name
         user_name = get_player_name()
     if not comp_name:
-        comp_name = get_program_name()
+        comp_name = get_follower_name()
     
     text = re.sub(r'(?i)\{\{user\}\}', user_name, text)
     text = re.sub(r'(?i)\{\{char\}\}', comp_name, text)
     return text
 
-def get_program_greeting() -> str:
-    """Returns the program's first message from the card, with a default fallback."""
-    from utils.program import get_active_program
-    active_program = get_active_program()
-    card = _load_card_data(active_program)
+def get_follower_greeting() -> str:
+    """Returns the follower's first message from the card, with a default fallback."""
+    from utils.follower import get_active_follower
+    active_follower = get_active_follower()
+    card = _load_card_data(active_follower)
     # v3: data.first_mes / legacy: operation.example_message
     greeting = card.get("first_mes") or card.get("operation", {}).get("example_message", "")
     return greeting.strip() if greeting.strip() else "Hello, {{user}}."
 
+get_program_greeting = get_follower_greeting
+
 def compile_instructions_from_card(card: dict) -> str:
     """Compiles a system prompt from a chara_card_v3 data block."""
-    name = card.get("name", "Program")
+    name = card.get("name", "Follower")
     prompt_parts = [f"# IDENTITY: {name}"]
 
     description = card.get("description", "").strip()
@@ -87,19 +91,19 @@ def compile_instructions_from_card(card: dict) -> str:
     return replace_placeholders("\n\n".join(prompt_parts))
 
 def load_static_instructions() -> str:
-    """Reads the active program's card and compiles it into a system prompt.
+    """Reads the active follower's card and compiles it into a system prompt.
     Also appends all modular skill instructions.
     """
-    from utils.program import get_active_program
+    from utils.follower import get_active_follower
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    active_program = get_active_program()
+    active_follower = get_active_follower()
 
-    card = _load_card_data(active_program)
+    card = _load_card_data(active_follower)
     if card:
         instruction_content = compile_instructions_from_card(card)
     else:
-        instruction_content = f"# NAME: {active_program.title()}\n"
+        instruction_content = f"# NAME: {active_follower.title()}\n"
             
     # Append compact toolbelt listing available capabilities
     # Full skill instructions are vector-retrieved per turn in runner_interface.py
@@ -109,7 +113,7 @@ def load_static_instructions() -> str:
         if toolbelt:
             instruction_content += "\n\n" + toolbelt
     except Exception as e:
-        print(f"[program_config] Error loading toolbelt: {e}")
+        print(f"[follower_config] Error loading toolbelt: {e}")
             
     return instruction_content
 
@@ -124,7 +128,7 @@ def load_dynamic_runtime_context() -> str:
 
 def load_user_instructions() -> str:
     """Reads the active user profile configuration from the save JSON bundle to set private relationship context."""
-    from utils.program import get_active_user
+    from utils.follower import get_active_user
     from engine.save_manager import read_save
     active_profile = get_active_user()
 
@@ -168,11 +172,12 @@ def get_compiled_instructions() -> str:
     base += load_dynamic_runtime_context()
     return base
 
-# Determine program name dynamically from the active program configuration
-program_name = get_program_name()
+# Determine follower name dynamically from the active follower configuration
+follower_name = get_follower_name()
+program_name = follower_name
 
 # LlmAgent requires the name to be a valid identifier. Sanitize it.
-sanitized_agent_name = re.sub(r'[^a-zA-Z0-9_]', '_', program_name)
+sanitized_agent_name = re.sub(r'[^a-zA-Z0-9_]', '_', follower_name)
 if not sanitized_agent_name or not (sanitized_agent_name[0].isalpha() or sanitized_agent_name[0] == '_'):
     sanitized_agent_name = '_' + sanitized_agent_name
 

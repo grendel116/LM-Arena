@@ -57,6 +57,7 @@ COMFYUI_CHECKPOINT = os.getenv("COMFYUI_CHECKPOINT", "sd_xl_base_1.0.safetensors
 COMFYUI_VAE = os.getenv("COMFYUI_VAE", "sdxl_vae.safetensors")
 
 # Shared directory paths
-PROGRAMS_DIR = os.path.join(BASE_DIR, "core", "programs")
-PROGRAMS_DIR = PROGRAMS_DIR
+FOLLOWERS_DIR = os.path.join(BASE_DIR, "core", "followers")
+
+
 

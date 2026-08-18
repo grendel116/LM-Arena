@@ -2,7 +2,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from variables import PROGRAMS_DIR, REMOTE_SERVER_URL, DEFAULT_LOCAL_MODEL, DEFAULT_REMOTE_MODEL, get_remote_server_headers
+from variables import FOLLOWERS_DIR, REMOTE_SERVER_URL, DEFAULT_LOCAL_MODEL, DEFAULT_REMOTE_MODEL, get_remote_server_headers
 from utils.models import is_local_model
 import asyncio
 import base64
@@ -799,9 +799,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         # Inject lorebook lore (ST-compatible keyword-triggered world info)
         try:
             from utils.lorebook import get_active_lore
-            from utils.program import get_active_program
-            active_prog = get_active_program()
-            lore_before, lore_after = get_active_lore(active_prog, filtered_history)
+            from utils.follower import get_active_follower
+            active_fol = get_active_follower()
+            lore_before, lore_after = get_active_lore(active_fol, filtered_history)
             if lore_before:
                 lore_block = "[WORLD INFO]\n" + "\n\n".join(lore_before) + "\n[END WORLD INFO]"
                 openai_messages[0]["content"] = lore_block + "\n\n" + openai_messages[0]["content"]
@@ -1960,11 +1960,11 @@ class BaseProgramRunner:
         winning_mode = await self._get_inversion_mode(session_id)
         self._winning_mode_cache[session_id] = winning_mode
         if winning_mode:
-            from utils.program import get_active_program
-            active_program = get_active_program()
-            json_path = os.path.normpath(os.path.join(PROGRAMS_DIR, active_program, "inversion.json"))
+            from utils.follower import get_active_follower
+            active_follower = get_active_follower()
+            json_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, active_follower, "inversion.json"))
             if not os.path.exists(json_path):
-                print(f"[WARN] inversion.json not found at '{json_path}' for program '{active_program}'.")
+                print(f"[WARN] inversion.json not found at '{json_path}' for follower '{active_follower}'.")
                 return ""
             try:
                 with open(json_path, "r", encoding="utf-8") as f:
@@ -1982,11 +1982,11 @@ class BaseProgramRunner:
                 os.remove(local_path)
                 print(f"Deleted image file from disk: {local_path}")
                 
-                # Clean up program sidecar JSON file if it exists
+                # Clean up follower sidecar JSON file if it exists
                 json_path = local_path.rsplit('.', 1)[0] + '.json'
                 if os.path.exists(json_path):
                     os.remove(json_path)
-                    print(f"Deleted program JSON file from disk: {json_path}")
+                    print(f"Deleted follower JSON file from disk: {json_path}")
                 return True
             except Exception as e:
                 print(f"Error cleaning up image assets for {image_url}: {e}")
@@ -2005,14 +2005,14 @@ class BaseProgramRunner:
         text = re.sub(raw_path_pattern, r'![Portrait](\1)', text)
         return text
 
-    def _build_voice_prompt(self, session_id: str, program_name: str) -> str:
+    def _build_voice_prompt(self, session_id: str, follower_name: str) -> str:
         """Compiles the voice prompt by overriding settings and formatting recent history turns."""
-        from utils.program import get_active_program
-        from core.program_config import compile_instructions_from_json
-        from variables import PROGRAMS_DIR
+        from utils.follower import get_active_follower
+        from core.follower_config import compile_instructions_from_card
+        from variables import FOLLOWERS_DIR
         
-        active_prog = get_active_program()
-        json_path = os.path.join(PROGRAMS_DIR, active_prog, f"{active_prog}.json")
+        active_fol = get_active_follower()
+        json_path = os.path.join(FOLLOWERS_DIR, active_fol, f"{active_fol}.json")
         
         profile_data = {}
         if os.path.exists(json_path):

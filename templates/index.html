@@ -53,7 +53,7 @@
         };
     </script>
 </head>
-<body class="{{ active_program | default('sebile') }}">
+<body class="{{ active_program | default('ria_silmane') }}">
     <div id="app-container">
         <!-- App Loading Overlay -->
         <div id="chat-loading-overlay">
@@ -497,7 +497,7 @@
                         <input type="url" id="databank-url-input" placeholder="https://example.com/article" class="onboarding-input" style="flex: 1; font-size: 0.85rem;">
                         <button onclick="scrapeDataBankUrl()" class="edit-btn edit-save-btn" style="padding: 8px 16px;">Scrape URL</button>
                     </div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">The program will fetch the page and extract readable content.</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">The follower will fetch the page and extract readable content.</div>
                 </div>
             </div>
 
@@ -600,7 +600,7 @@
             <div id="quest-tab-content-journal" style="display: block;">
                 <div id="quests-container" style="display: flex; flex-direction: column; gap: 15px; max-height: 520px; overflow-y: auto; padding-right: 5px;">
                     <!-- Quests loaded dynamically -->
-                    <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin: 20px 0;">No active quests. Ask your program to assign you one!</p>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin: 20px 0;">No active quests. Ask your follower to assign you one!</p>
                 </div>
             </div>
 
@@ -1054,7 +1054,7 @@
                     <path d="M12 20h9"></path>
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
-                <span>Program Card Settings</span>
+                <span>Follower Card Settings</span>
             </h3>
             
             <!-- Tabs -->
@@ -1072,8 +1072,8 @@
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 5px;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="input-group">
-                            <label for="comp-name">Program Name</label>
-                            <input type="text" id="comp-name" class="onboarding-input" placeholder="e.g. Sebile">
+                            <label for="comp-name">Follower Name</label>
+                            <input type="text" id="comp-name" class="onboarding-input" placeholder="e.g. Ria Silmane">
                         </div>
                         <div class="input-group">
                             <label for="comp-tts-voice">TTS Audio Voice</label>
@@ -1142,7 +1142,7 @@
                         Cancel
                     </button>
                     <button onclick="saveProgramProfile()" class="onboarding-btn" style="padding: 8px 20px; font-size: 0.8rem;">
-                        Save Program Card
+                        Save Follower Card
                     </button>
                 </div>
             </div>

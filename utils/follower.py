@@ -29,70 +29,50 @@ def _save_settings(settings: dict):
     except Exception as e:
         print(f"Error saving project settings: {e}")
 
-def get_active_program() -> str:
-    # Determine active program from settings first
+def get_active_follower() -> str:
     settings = _load_settings()
-    active_prog = settings.get("active_program")
-    if not active_prog:
-        # Fall back to environment variable, then to default
-        active_prog = os.getenv("ACTIVE_PROGRAM")
-        if not active_prog:
-            active_prog = "sebile"
+    active_fol = settings.get("active_follower") or os.getenv("ACTIVE_FOLLOWER") or "ria_silmane"
 
-    target_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'programs', active_prog))
-    if not os.path.isdir(target_folder) and active_prog != "sebile":
-        active_prog = "sebile"
-        target_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'programs', active_prog))
+    target_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', active_fol))
+    if not os.path.isdir(target_folder) and active_fol != "ria_silmane":
+        active_fol = "ria_silmane"
+        target_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', active_fol))
 
-    # Set environment variable
-    os.environ["ACTIVE_PROGRAM"] = active_prog
+    os.environ["ACTIVE_FOLLOWER"] = active_fol
 
-    # Ensure settings file is in sync
     current_folders = settings.get("folders", [])
-    current_active = settings.get("active_program")
+    current_active = settings.get("active_follower")
 
     needs_update = False
-    if current_active != active_prog:
+    if current_active != active_fol:
         needs_update = True
     if not current_folders or os.path.normpath(current_folders[0]) != target_folder:
         needs_update = True
 
     if needs_update:
-        settings["active_program"] = active_prog
+        settings["active_follower"] = active_fol
         settings["folders"] = [target_folder]
         _save_settings(settings)
-        print(f"[Settings] Synced active program '{active_prog}' and folder '{target_folder}' to project settings")
 
-    return active_prog
+    return active_fol
 
-def set_active_program(program_id: str):
-    os.environ["ACTIVE_PROGRAM"] = program_id
+def set_active_follower(follower_id: str):
+    os.environ["ACTIVE_FOLLOWER"] = follower_id
     settings = _load_settings()
-    settings["active_program"] = program_id
-    default_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'programs', program_id))
+    settings["active_follower"] = follower_id
+    default_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', follower_id))
     settings["folders"] = [default_folder]
     _save_settings(settings)
 
 def get_active_user() -> str:
-    # Determine active user from settings first
     settings = _load_settings()
-    active_usr = settings.get("active_user")
-    if not active_usr:
-        # Fall back to environment variable, then to default
-        active_usr = os.getenv("ACTIVE_USER")
-        if not active_usr:
-            active_usr = "eternal_champion"
+    active_usr = settings.get("active_user") or os.getenv("ACTIVE_USER") or "eternal_champion"
 
-    # Set environment variable
     os.environ["ACTIVE_USER"] = active_usr
 
-    # Ensure settings file is in sync
-    current_active = settings.get("active_user")
-
-    if current_active != active_usr:
+    if settings.get("active_user") != active_usr:
         settings["active_user"] = active_usr
         _save_settings(settings)
-        print(f"[Settings] Synced active user '{active_usr}' to project settings")
 
     return active_usr
 
@@ -112,16 +92,13 @@ def set_active_user(username: str):
 
 def get_tts_voice() -> str:
     settings = _load_settings()
-    active_program = settings.get("active_program")
-    if active_program:
-        program_voices = settings.get("program_voices", {})
-        voice = program_voices.get(active_program)
+    active_fol = settings.get("active_follower")
+    if active_fol:
+        follower_voices = settings.get("follower_voices", {})
+        voice = follower_voices.get(active_fol)
         if voice:
             return voice
-    voice = settings.get("tts_voice")
-    if not voice:
-        # Fall back to environment variable, then default
-        voice = os.getenv("TTS_VOICE", "af_heart")
+    voice = settings.get("tts_voice") or os.getenv("TTS_VOICE", "af_heart")
     return voice
 
 def set_tts_voice(voice: str):
@@ -130,16 +107,14 @@ def set_tts_voice(voice: str):
     settings["tts_voice"] = voice
     _save_settings(settings)
 
-def set_tts_voice_for_program(program_id: str, voice: str):
+def set_tts_voice_for_follower(follower_id: str, voice: str):
     settings = _load_settings()
-    if "program_voices" not in settings:
-        settings["program_voices"] = {}
-    settings["program_voices"][program_id] = voice
+    if "follower_voices" not in settings:
+        settings["follower_voices"] = {}
+    settings["follower_voices"][follower_id] = voice
     
-    # Also sync global key and environment variable if this program is active
-    if settings.get("active_program") == program_id:
+    if settings.get("active_follower") == follower_id:
         settings["tts_voice"] = voice
         os.environ["TTS_VOICE"] = voice
         
     _save_settings(settings)
-

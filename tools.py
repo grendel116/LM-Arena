@@ -84,11 +84,12 @@ def track_tool_activity(func):
 
 def get_project_folders() -> list:
     try:
-        from utils.program import get_active_program
-        active_prog = get_active_program()
+        from utils.follower import get_active_follower
+        active_fol = get_active_follower()
     except Exception:
-        active_prog = "sebile"
-    default_folder = os.path.normpath(os.path.join(os.getcwd(), 'core', 'programs', active_prog))
+        active_fol = "ria_silmane"
+    from variables import FOLLOWERS_DIR
+    default_folder = os.path.normpath(os.path.join(FOLLOWERS_DIR, active_fol))
     
     folders = [default_folder]
     try:
@@ -1872,12 +1873,12 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
             print(f"[COMFY VIDEO] Warning: Failed to clean up temp file: {e_clean}")
             
         # Get relative public path
-        # E.g. core/programs/sebile/portraits/portrait_123.mp4 -> /images/portraits/portrait_123.mp4
+        # E.g. core/followers/ria_silmane/portraits/portrait_123.mp4 -> /images/portraits/portrait_123.mp4
         normalized_path = os.path.normpath(save_path)
         parts = normalized_path.split(os.sep)
         try:
-            prog_idx = parts.index("programs")
-            rel_parts = parts[prog_idx + 2:]
+            fol_idx = parts.index("followers")
+            rel_parts = parts[fol_idx + 2:]
             url_path = "/images/" + "/".join(rel_parts)
         except ValueError:
             url_path = f"/images/portraits/{output_filename}"
@@ -2426,14 +2427,14 @@ def arena_recruit_follower(follower_name, follower_race="Imperial", follower_cla
     """Recruit an NPC into your party as an active follower when they agree to join or follow you narratively."""
     try:
         import os, re, time, json
-        from variables import BASE_DIR, PROGRAMS_DIR
-        program_id = re.sub(r'[^a-zA-Z0-9_\-]', '', follower_name).lower()
-        if not program_id:
-            program_id = f"follower_{int(time.time())}"
+        from variables import BASE_DIR, FOLLOWERS_DIR
+        follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', follower_name).lower()
+        if not follower_id:
+            follower_id = f"follower_{int(time.time())}"
             
-        program_path = os.path.join(PROGRAMS_DIR, program_id)
-        if not os.path.exists(program_path):
-            os.makedirs(program_path, exist_ok=True)
+        follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
+        if not os.path.exists(follower_path):
+            os.makedirs(follower_path, exist_ok=True)
             desc = persona_description or f"A loyal {follower_race} {follower_class} following the Eternal Champion into combat."
             profile_data = {
                 "name": follower_name,

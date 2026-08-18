@@ -393,7 +393,7 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
     write_save(save_id, current_bundle)
     set_active_save_id(save_id)
     
-    from utils.program import set_active_user
+    from utils.follower import set_active_user
     set_active_user(save_id)
     
     meta = current_bundle["meta"]
@@ -439,7 +439,7 @@ def create_save(name: str = None, character_name: str = "Eternal Champion", race
     write_save(save_id, bundle)
     set_active_save_id(save_id)
     
-    from utils.program import set_active_user
+    from utils.follower import set_active_user
     set_active_user(save_id)
     
     meta = bundle["meta"]
@@ -452,7 +452,7 @@ def load_save(save_id: str) -> dict:
     bundle = read_save(save_id)
     set_active_save_id(save_id)
     
-    from utils.program import set_active_user
+    from utils.follower import set_active_user
     set_active_user(save_id)
     
     meta = bundle.get("meta", {})
