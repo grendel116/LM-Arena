@@ -471,12 +471,12 @@
                 <span>Knowledge & Memory Engine</span>
             </h3>
             <p id="databank-descriptor" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                Companion backstory, documents, and personal lore (follower-linked).
+                Follower backstory, documents, and personal lore.
             </p>
             
             <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
-                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">follower Info</button>
+                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Follower Lore</button>
                 <button onclick="switchDataBankTab('memories')" id="tab-btn-memories" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Journals & Memories</button>
                 <button onclick="switchDataBankTab('lorebooks')" id="tab-btn-lorebooks" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">World Lore</button>
             </div>
@@ -508,7 +508,7 @@
             <div id="databank-tab-memories" style="display: none; flex-direction: column; gap: 15px; max-height: 480px; margin-bottom: 20px;">
                 <!-- Add new journal (Persistent Section) -->
                 <div class="form-card-container">
-                    <h4 class="modal-sub-header">Add Memory Journal</h4>
+                    <h4 class="modal-sub-header">Add Journal</h4>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <input type="text" id="journal-keyphrases-input" class="onboarding-input" style="width: 100%; font-size: 0.8rem;" placeholder="Keywords (comma-separated, e.g. cat, whiskers, job hunt)">
                         <textarea id="journal-content-input" class="onboarding-input" style="width: 100%; height: 50px; resize: vertical; font-size: 0.8rem;" placeholder="Memory content (concise, max 300 characters)"></textarea>
@@ -521,7 +521,7 @@
                     <!-- Journals List -->
                     <div>
                         <div class="modal-section-header">
-                            Memory Journals (Trigger-Based)
+                            Journals (Trigger-Based)
                         </div>
                         <div id="follower-journals-list" style="display: flex; flex-direction: column; gap: 8px;">
                             <!-- Journals rendered dynamically -->
@@ -531,7 +531,7 @@
                     <!-- Memories List -->
                     <div>
                         <div class="modal-section-header" style="margin-top: 10px;">
-                            Consolidated Memories (Chat Compactions)
+                            Memories (Chat Compactions)
                         </div>
                         <div id="follower-memories-list" style="display: flex; flex-direction: column; gap: 8px;">
                             <!-- Memories rendered dynamically -->
@@ -628,13 +628,13 @@
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                <span>followers & Profiles</span>
+                <span>Followers & Profiles</span>
             </h3>
 
             <!-- Tabs -->
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
                 <button onclick="switchAssistantModalTab('follower')" id="assistant-tab-btn-follower" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    follower
+                    Follower
                 </button>
                 <button onclick="switchAssistantModalTab('user')" id="assistant-tab-btn-user" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Saves
@@ -644,7 +644,7 @@
             <!-- Select follower Tab Content -->
             <div id="assistant-tab-content-follower" style="display: block;">
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                    Select your active follower companion. Only followers present in your current scene can be activated.
+                    Select your active follower.
                 </p>
                 
                 <div id="assistants-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
@@ -663,7 +663,7 @@
                 <!-- Sub-View 1: Profiles List View -->
                 <div id="user-profiles-list-view" style="display: block;">
                     <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                        Your saved games and characters. Stats, inventory, and world state are loaded seamlessly when selected.
+                        Your saved games and characters.
                     </p>
 
                     <!-- Cards container for User Profiles list -->
@@ -795,13 +795,13 @@
                 <span>Recruit follower</span>
             </h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.4;">
-                Import a companion card (PNG) or describe a new follower persona to recruit into your party in Tamriel.
+                Import a tavern card (PNG) or describe a new follower persona to recruit into your party in Tamriel.
             </p>
 
             <!-- Tabs -->
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
                 <button onclick="switchImportTab('tavern')" id="import-tab-btn-tavern" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    follower Card
+                    Follower Card
                 </button>
                 <button onclick="switchImportTab('describe')" id="import-tab-btn-describe" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Text Description
@@ -824,7 +824,7 @@
             <!-- Text Description Tab -->
             <div id="import-tab-describe" style="display: none;">
                 <div class="input-group" style="margin-bottom: 12px;">
-                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">follower Name</label>
+                    <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Follower Name</label>
                     <input type="text" id="describe-follower-name" placeholder="e.g. Armand Motierre" class="onboarding-input" style="width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="input-group" style="margin-bottom: 20px;">
@@ -1056,7 +1056,7 @@
                     <path d="M12 20h9"></path>
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
-                <span>follower Card Settings</span>
+                <span>Follower Card Settings</span>
             </h3>
             
             <!-- Tabs -->
@@ -1074,7 +1074,7 @@
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 5px;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="input-group">
-                            <label for="comp-name">follower Name</label>
+                            <label for="comp-name">Follower Name</label>
                             <input type="text" id="comp-name" class="onboarding-input" placeholder="e.g. Ria Silmane">
                         </div>
                         <div class="input-group">
