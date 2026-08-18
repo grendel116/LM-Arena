@@ -27,23 +27,22 @@ variables/user_profiles/*
 !variables/user_profiles/
 !variables/user_profiles/.gitkeep
 
-# Ignore all companion profiles under core/programs except the default Arena guide
-core/programs/*
-!core/programs/ria_silmane/
-!core/programs/sparkle.mp3
+# Ignore all companion profiles under core/followers except the default Arena guide
+core/followers/*
+!core/followers/ria_silmane/
 
 # Ignore user-generated dynamic program sessions, databases, custom generated portraits, media, and memories
-core/programs/*/sessions/
-core/programs/*/portraits/*
-!core/programs/*/portraits/profile.png
-core/programs/*/media/
-core/programs/*/uploads/
-core/programs/*/databank.db
-core/programs/*/databank.json
-core/programs/*/journals.json
-core/programs/*/memories.json
-core/programs/*/quest_log.json
-core/programs/*/lorebooks/
+core/followers/*/sessions/
+core/followers/*/portraits/*
+!core/followers/*/portraits/profile.png
+core/followers/*/media/
+core/followers/*/uploads/
+core/followers/*/databank.db
+core/followers/*/databank.json
+core/followers/*/journals.json
+core/followers/*/memories.json
+core/followers/*/quest_log.json
+core/followers/*/lorebooks/
 core/embeddings.pkl
 temp_uploads/
 static/uploads/

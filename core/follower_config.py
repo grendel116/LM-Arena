@@ -152,7 +152,7 @@ GLOBAL_FORMATTING = (
     "- FORMAT: Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
     "- PERSPECTIVE: Address {{user}} directly in second person ('you', 'your'). Describe NPCs and environment in third person present tense.\n"
     "- RESTRAINT: Separate dialogue from narration. Never narrate outcomes or reactions for {{user}}'s actions.\n"
-    "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth.\n"
+    "- STYLE: Grim, dark fantasy atmosphere with cosmic lore, mature themes, and cartoon absurdity.\n"
 )
 
 GLOBAL_USER_FORMATTING = (
@@ -160,7 +160,7 @@ GLOBAL_USER_FORMATTING = (
     "- PERSPECTIVE: Write in FIRST PERSON ('I', 'my') as {{user}}. Short, concise and concise.\n"
     "- TENSE: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
     "- RESTRAINT: Focus on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or world changes.\n"
-    "- STYLE: Gritty, kinetic, medieval atmosphere with anthropological depth."
+    "- STYLE: Grim, dark fantasy atmosphere with cosmic lore, mature themes, and cartoon absurdity."
 )
 
 
