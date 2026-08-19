@@ -55,7 +55,6 @@ VECTOR_SCORE_THRESHOLD = 0.25   # Cosine similarity minimum
 VECTOR_TOKEN_BUDGET = 2048      # Approximate max tokens for retrieved context
 VECTOR_MEMORY_TOP_K = 3         # For chat history memory retrieval
 VECTOR_MEMORY_THRESHOLD = 0.30  # Threshold for memory recall
-LOCAL_OFFLOAD_SECONDS = 10.0    # Escalate slow local generations when remote is configured
 
 
 def _build_vector_query(history: list, max_messages: int = VECTOR_QUERY_MESSAGES) -> str:
@@ -1447,6 +1446,83 @@ class BasefollowerRunner:
             print(f"[DISTILLATION] Error generating local distillation: {e}", flush=True)
 
 
+    async def _generate_remote_auxiliary_context(
+        self,
+        openai_messages: list,
+        remote_cloud_url: str,
+        remote_key: str,
+        session_id: str,
+        adapter: LocalHistoryAdapter,
+        invocation_id: str
+    ) -> tuple[str, list]:
+        """Run remote planning and tools before the local visible response."""
+        if not remote_cloud_url or not remote_key:
+            return "", []
+
+        prompt = (
+            "Analyze the conversation as an auxiliary planner. Do not write the user-facing answer. "
+            "Extract useful calculations, decisions, tool actions, and concise facts the local model "
+            "should use. If no auxiliary work is needed, return an empty response."
+        )
+        payload = {
+            "model": os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite"),
+            "messages": [{"role": "system", "content": prompt}] + openai_messages,
+            "temperature": 0.2,
+            "max_tokens": 768
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {remote_key}"
+        }
+        try:
+            response = await self._post_llm_request(
+                remote_cloud_url, payload, headers, timeout=60.0, session_id=session_id
+            )
+            if response.status_code != 200:
+                print(f"[HYBRID] Remote auxiliary request returned {response.status_code}", flush=True)
+                return "", []
+            content = response.json().get("choices", [{}])[0].get("message", {}).get("content", "") or ""
+
+            # The remote model may emit tool tags as part of its auxiliary pass.
+            # Execute those through the normal application dispatcher, then give
+            # their concrete results to the local response model.
+            matches = list(re.finditer(r'\[(\w+)\((.*?)\)\]', content))
+            tool_calls = []
+            auxiliary_context = content
+            if matches:
+                results = _execute_tool_matches(matches, set(), session_id)
+                tool_calls = [
+                    pair
+                    for idx, (tool_name, tool_args, tool_output) in enumerate(results)
+                    for pair in _build_tool_calls_pair(tool_name, tool_args, tool_output, idx)
+                ]
+                adapter.append_assistant_message(
+                    "", tool_calls, invocation_id, intermediate=True
+                )
+                adapter.append_tool_events(results, invocation_id)
+                auxiliary_context = re.sub(r'\[(\w+)\((.*?)\)\]', '', content)
+
+                result_lines = [
+                    f"- {tool_name}({json.dumps(tool_args, ensure_ascii=True)}) -> {tool_output}"
+                    for tool_name, tool_args, tool_output in results
+                ]
+                auxiliary_context = (
+                    f"{auxiliary_context.strip()}\n\nREMOTE TOOL RESULTS:\n"
+                    + "\n".join(result_lines)
+                ).strip()
+
+            return re.sub(
+                r"(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|$)",
+                "",
+                auxiliary_context,
+                flags=re.IGNORECASE
+            ).strip(), tool_calls
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            print(f"[HYBRID] Remote auxiliary request unavailable: {error}", flush=True)
+            return "", []
+
     async def _execute_local_llm_loop(
         self,
         session_id: str,
@@ -1535,7 +1611,24 @@ class BasefollowerRunner:
                 has_offload_keyword = True
 
         temperature = self._get_generation_temperature()
-        turn_start = time.monotonic()
+
+        # Remote reasoning is auxiliary only; the local model owns the visible reply.
+        if not is_cloud and is_remote_configured:
+            auxiliary_context, auxiliary_tool_calls = await self._generate_remote_auxiliary_context(
+                adapter.get_openai_messages(
+                    self._get_system_instructions(session_id, user_message=new_message_text),
+                    rag_context,
+                    memory_context
+                ),
+                remote_cloud_url,
+                remote_key,
+                session_id,
+                adapter,
+                invocation_id
+            )
+            tool_calls.extend(auxiliary_tool_calls)
+            if auxiliary_context:
+                rag_context = f"{rag_context}\n\n[REMOTE AUXILIARY CONTEXT]\n{auxiliary_context}".strip()
                 
         for iteration in range(10):
             if session_id in cancelled_sessions:
@@ -1559,14 +1652,6 @@ class BasefollowerRunner:
                 is_cloud = _is_cloud_model_check(model)
 
             request_timeout = 120.0
-            if not is_cloud and is_remote_configured:
-                remaining = LOCAL_OFFLOAD_SECONDS - (time.monotonic() - turn_start)
-                if remaining <= 0:
-                    raise LocalOffloadTrigger(
-                        f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
-                        iteration
-                    )
-                request_timeout = min(request_timeout, remaining)
                 
             if is_cloud:
                 url = remote_cloud_url
@@ -1595,6 +1680,9 @@ class BasefollowerRunner:
                 from variables import DISABLED_THINKING, is_thinking_enabled
                 if not is_thinking_enabled(is_cloud):
                     payload.update(DISABLED_THINKING)
+            elif is_remote_configured:
+                from variables import DISABLED_THINKING
+                payload.update(DISABLED_THINKING)
             if target_model:
                 payload["model"] = target_model
                 
@@ -1622,16 +1710,7 @@ class BasefollowerRunner:
                         openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
                         payload["messages"] = openai_messages
                         print("[COMPACTION] Retrying request with compacted history...", flush=True)
-                        if not is_cloud and is_remote_configured:
-                            remaining = LOCAL_OFFLOAD_SECONDS - (time.monotonic() - turn_start)
-                            if remaining <= 0:
-                                raise LocalOffloadTrigger(
-                                    f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
-                                    iteration
-                                )
-                            retry_timeout = min(120.0, remaining)
-                        else:
-                            retry_timeout = 120.0
+                        retry_timeout = 120.0
                         response = await self._post_llm_request(url, payload, headers, timeout=retry_timeout, session_id=session_id)
                         if response.status_code == 200:
                             res_json = response.json()
@@ -1654,16 +1733,7 @@ class BasefollowerRunner:
                         
                         # Retry the request
                         print("[COMPACTION] Retrying request with compacted history...", flush=True)
-                        if not is_cloud and is_remote_configured:
-                            remaining = LOCAL_OFFLOAD_SECONDS - (time.monotonic() - turn_start)
-                            if remaining <= 0:
-                                raise LocalOffloadTrigger(
-                                    f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
-                                    iteration
-                                )
-                            retry_timeout = min(120.0, remaining)
-                        else:
-                            retry_timeout = 120.0
+                        retry_timeout = 120.0
                         response = await self._post_llm_request(url, payload, headers, timeout=retry_timeout, session_id=session_id)
                         if response.status_code == 200:
                             res_json = response.json()
@@ -1677,12 +1747,7 @@ class BasefollowerRunner:
                 else:
                     bot_response_text = f"Error: Local model server returned status code {response.status_code} - {response.text}"
                     break
-            except httpx.TimeoutException as e:
-                if not is_cloud and is_remote_configured:
-                    raise LocalOffloadTrigger(
-                        f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
-                        iteration
-                    ) from e
+            except httpx.TimeoutException:
                 raise
             except Exception as e:
                 if is_cloud:
@@ -1787,23 +1852,6 @@ class BasefollowerRunner:
             remote_key = os.getenv("REMOTE_API_KEY")
             is_remote_configured = _is_remote_configured()
             
-            if is_remote_configured and matches and not is_cloud:
-                # 1. Check for complex tools
-                complex_tools = {
-                    "write_file", "replace_file_content", "multi_replace_file_content", 
-                    "run_shell_command", "run_command_async"
-                }
-                for m_tool in matches:
-                    t_name = m_tool.group(1)
-                    if t_name in complex_tools:
-                        print(f"[OFFLOAD] Local model called complex tool '{t_name}'. Intercepting and offloading to cloud.", flush=True)
-                        raise LocalOffloadTrigger(f"Complex tool call: {t_name}", iteration)
-                
-                # 2. Check for tool loop iteration threshold
-                if iteration >= 2:
-                    print(f"[OFFLOAD] Local model exceeded tool loop iteration threshold ({iteration}). Offloading to cloud.", flush=True)
-                    raise LocalOffloadTrigger(f"Iteration threshold exceeded ({iteration})", iteration)
-
             executed_calls_count = len([tc for tc in tool_calls if tc.get('type') == 'call'])
             if matches and executed_calls_count < 10:
                 # Single-turn tools are purely passive state mutations, user roll prompts, or media embeds
