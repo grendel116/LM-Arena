@@ -56,6 +56,11 @@ VECTOR_TOKEN_BUDGET = 2048      # Approximate max tokens for retrieved context
 VECTOR_MEMORY_TOP_K = 3         # For chat history memory retrieval
 VECTOR_MEMORY_THRESHOLD = 0.30  # Threshold for memory recall
 
+# Hybrid model routing settings
+HYBRID_PLANNER_TIMEOUT = 15.0
+HYBRID_PLANNER_MAX_TOKENS = 384
+LOCAL_RESPONSE_MAX_TOKENS = 512
+
 
 def _build_vector_query(history: list, max_messages: int = VECTOR_QUERY_MESSAGES) -> str:
     """Constructs a vector search query from the last N conversation messages.
@@ -474,7 +479,13 @@ class LocalHistoryAdapter:
         self.runner_obj = runner_obj
         self.session_id = session_id
 
-    def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str = None) -> list:
+    def get_openai_messages(
+        self,
+        sys_inst: str,
+        rag_context: str,
+        memory_context: str = None,
+        response_only: bool = False
+    ) -> list:
         raise NotImplementedError()
 
     def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str):
@@ -558,9 +569,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         if local_context:
             try:
                 # 1 token is approx 4 characters.
-                # Trigger at 30% of the context window so compaction runs
-                # as a rolling summary, not as a last-resort overflow handler.
-                MAX_LOCAL_CONTEXT_CHARS = int(int(local_context) * 0.30 * 4)
+                # Leave room for the persona, state, lore, and retrieved context
+                # that are added after the conversation history is measured.
+                MAX_LOCAL_CONTEXT_CHARS = int(int(local_context) * 0.18 * 4)
             except Exception:
                 MAX_LOCAL_CONTEXT_CHARS = 6000
         else:
@@ -580,7 +591,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         if force:
             keep_turns = 2
         else:
-            keep_turns = 4
+            keep_turns = 3
             
         if len(user_msg_indices) <= keep_turns:
             return
@@ -682,7 +693,13 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 
             self.runner_obj._save_session_to_disk(self.session_id)
 
-    def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str = None) -> list:
+    def get_openai_messages(
+        self,
+        sys_inst: str,
+        rag_context: str,
+        memory_context: str = None,
+        response_only: bool = False
+    ) -> list:
         history = self.runner_obj.sessions_history[self.session_id]
         raw_messages = []
         
@@ -692,6 +709,19 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             and not msg.get('compacted')
             and not (msg.get('role') == 'follower' and not (msg.get('text') or '').strip() and not msg.get('tool_calls') and not msg.get('id', '').startswith('first_mes'))
         ]
+        if response_only:
+            # The planner already saw the conversation. The narrator needs only
+            # the current turn plus the compact plan and live state below.
+            latest_user = next(
+                (
+                    msg for msg in reversed(filtered_history)
+                    if msg.get('role') == 'user'
+                    and not msg.get('id', '').startswith('tool_')
+                    and not msg.get('text', '').startswith('[Tool Response from')
+                ),
+                None
+            )
+            filtered_history = [latest_user] if latest_user else []
         if not filtered_history:
             return [{"role": "system", "content": sys_inst}]
             
@@ -764,7 +794,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     raw_messages.append({"role": role, "content": content_text})
                     
         openai_messages = [{"role": "system", "content": sys_inst}]
-        openai_messages[0]["content"] += _ARENA_DIRECTIVE_PROMPT
+        if not response_only:
+            openai_messages[0]["content"] += _ARENA_DIRECTIVE_PROMPT
         try:
             from utils.banned_words import get_banned_words_directive
             banned_dir = get_banned_words_directive()
@@ -811,7 +842,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 if not msg.get('id', '').startswith('tool_') and not msg.get('text', '').startswith('[Tool Response from'):
                     last_user_message = msg.get('text', '') or ""
                     break
-        if last_user_message:
+        if last_user_message and not response_only:
             try:
                 from utils.journals import match_journals
                 from utils.follower import get_active_follower
@@ -833,12 +864,12 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             context_parts.append(f"<knowledge_base>\n{rag_context}\n</knowledge_base>")
             
         # 4. Memory context from archived chat history
-        if memory_context:
+        if memory_context and not response_only:
             from core.follower_config import replace_placeholders
             context_parts.append(f"<archived_memory>\n{replace_placeholders(memory_context)}\n</archived_memory>")
             
         # 5. Vector retrieved skill instructions (Toolbelt tier 2)
-        if last_user_message:
+        if last_user_message and not response_only:
             try:
                 from core.skill_retriever import retrieve_skill_instructions
                 skill_instructions = retrieve_skill_instructions(
@@ -1446,7 +1477,7 @@ class BasefollowerRunner:
             print(f"[DISTILLATION] Error generating local distillation: {e}", flush=True)
 
 
-    async def _generate_remote_auxiliary_context(
+    async def _run_remote_planner(
         self,
         openai_messages: list,
         remote_cloud_url: str,
@@ -1454,41 +1485,58 @@ class BasefollowerRunner:
         session_id: str,
         adapter: LocalHistoryAdapter,
         invocation_id: str
-    ) -> tuple[str, list]:
-        """Run remote planning and tools before the local visible response."""
+    ) -> tuple[str, list, bool]:
+        """Run the full-context planning stage before local narration."""
         if not remote_cloud_url or not remote_key:
-            return "", []
+            return "", [], False
 
         prompt = (
             "Analyze the conversation as an auxiliary planner. Do not write the user-facing answer. "
             "Extract useful calculations, decisions, tool actions, and concise facts the local model "
-            "should use. If no auxiliary work is needed, return an empty response."
+            "should use. Preserve relevant character, lore, journal, skill, memory, quest, and world-state "
+            "facts from the supplied context. Include concrete tool results and constraints, but do not "
+            "repeat the full conversation. If no auxiliary work is needed, return an empty response."
         )
         payload = {
             "model": os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite"),
             "messages": [{"role": "system", "content": prompt}] + openai_messages,
             "temperature": 0.2,
-            "max_tokens": 768
+            "max_tokens": HYBRID_PLANNER_MAX_TOKENS
         }
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {remote_key}"
         }
         try:
+            planner_start = time.monotonic()
+            print(
+                f"[HYBRID PLANNER] Dispatching full-context plan: "
+                f"messages={len(openai_messages)}, max_tokens={HYBRID_PLANNER_MAX_TOKENS}",
+                flush=True
+            )
             response = await self._post_llm_request(
-                remote_cloud_url, payload, headers, timeout=60.0, session_id=session_id
+                remote_cloud_url,
+                payload,
+                headers,
+                timeout=HYBRID_PLANNER_TIMEOUT,
+                session_id=session_id
             )
             if response.status_code != 200:
                 print(f"[HYBRID] Remote auxiliary request returned {response.status_code}", flush=True)
-                return "", []
+                return "", [], False
             content = response.json().get("choices", [{}])[0].get("message", {}).get("content", "") or ""
+            print(
+                f"[HYBRID PLANNER] Completed in {time.monotonic() - planner_start:.2f}s, "
+                f"output_chars={len(content)}",
+                flush=True
+            )
 
             # The remote model may emit tool tags as part of its auxiliary pass.
             # Execute those through the normal application dispatcher, then give
             # their concrete results to the local response model.
             matches = list(re.finditer(r'\[(\w+)\((.*?)\)\]', content))
             tool_calls = []
-            auxiliary_context = content
+            planning_context = content
             if matches:
                 results = _execute_tool_matches(matches, set(), session_id)
                 tool_calls = [
@@ -1500,28 +1548,28 @@ class BasefollowerRunner:
                     "", tool_calls, invocation_id, intermediate=True
                 )
                 adapter.append_tool_events(results, invocation_id)
-                auxiliary_context = re.sub(r'\[(\w+)\((.*?)\)\]', '', content)
+                planning_context = re.sub(r'\[(\w+)\((.*?)\)\]', '', content)
 
                 result_lines = [
                     f"- {tool_name}({json.dumps(tool_args, ensure_ascii=True)}) -> {tool_output}"
                     for tool_name, tool_args, tool_output in results
                 ]
-                auxiliary_context = (
-                    f"{auxiliary_context.strip()}\n\nREMOTE TOOL RESULTS:\n"
+                planning_context = (
+                    f"{planning_context.strip()}\n\nREMOTE TOOL RESULTS:\n"
                     + "\n".join(result_lines)
                 ).strip()
 
             return re.sub(
                 r"(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|$)",
                 "",
-                auxiliary_context,
+                planning_context,
                 flags=re.IGNORECASE
-            ).strip(), tool_calls
+            ).strip(), tool_calls, True
         except asyncio.CancelledError:
             raise
         except Exception as error:
             print(f"[HYBRID] Remote auxiliary request unavailable: {error}", flush=True)
-            return "", []
+            return "", [], False
 
     async def _execute_local_llm_loop(
         self,
@@ -1611,10 +1659,21 @@ class BasefollowerRunner:
                 has_offload_keyword = True
 
         temperature = self._get_generation_temperature()
+        planner_available = False
+        from utils.local_llm_manager import check_status
+        local_available = bool(check_status())
 
-        # Remote reasoning is auxiliary only; the local model owns the visible reply.
-        if not is_cloud and is_remote_configured:
-            auxiliary_context, auxiliary_tool_calls = await self._generate_remote_auxiliary_context(
+        # Stage 1: the remote planner receives full context and produces compact
+        # facts/tool results for the local narrator.
+        if (
+            not is_cloud
+            and local_available
+            and is_remote_configured
+            and not existing_tool_calls
+            and not has_image
+            and not has_offload_keyword
+        ):
+            planning_context, planning_tool_calls, planner_available = await self._run_remote_planner(
                 adapter.get_openai_messages(
                     self._get_system_instructions(session_id, user_message=new_message_text),
                     rag_context,
@@ -1626,9 +1685,9 @@ class BasefollowerRunner:
                 adapter,
                 invocation_id
             )
-            tool_calls.extend(auxiliary_tool_calls)
-            if auxiliary_context:
-                rag_context = f"{rag_context}\n\n[REMOTE AUXILIARY CONTEXT]\n{auxiliary_context}".strip()
+            tool_calls.extend(planning_tool_calls)
+            if planning_context:
+                rag_context = f"{rag_context}\n\n[REMOTE PLAN]\n{planning_context}".strip()
                 
         for iteration in range(10):
             if session_id in cancelled_sessions:
@@ -1645,7 +1704,12 @@ class BasefollowerRunner:
                 is_cloud = True
                 
             sys_inst = self._get_system_instructions(session_id, user_message=new_message_text)
-            openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
+            openai_messages = adapter.get_openai_messages(
+                sys_inst,
+                rag_context,
+                memory_context,
+                response_only=(not is_cloud and planner_available)
+            )
             
             # Determine if we should route to the remote cloud server or the local server
             if not is_cloud:
@@ -1674,7 +1738,7 @@ class BasefollowerRunner:
             payload = {
                 "messages": openai_messages,
                 "temperature": temperature,
-                "max_tokens": 1024
+                "max_tokens": int(os.getenv("LOCAL_MAX_TOKENS", str(LOCAL_RESPONSE_MAX_TOKENS)))
             }
             if is_cloud:
                 from variables import DISABLED_THINKING, is_thinking_enabled
@@ -1707,7 +1771,12 @@ class BasefollowerRunner:
                     if is_premature_truncation and hasattr(adapter, 'compact_history'):
                         print(f"[COMPACTION] Local model truncated due to context exhaustion (finish_reason={finish_reason}). Triggering emergency compaction...", flush=True)
                         await adapter.compact_history(target_model, force=True)
-                        openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
+                        openai_messages = adapter.get_openai_messages(
+                            sys_inst,
+                            rag_context,
+                            memory_context,
+                            response_only=(not is_cloud and planner_available)
+                        )
                         payload["messages"] = openai_messages
                         print("[COMPACTION] Retrying request with compacted history...", flush=True)
                         retry_timeout = 120.0
@@ -1728,7 +1797,12 @@ class BasefollowerRunner:
                     if hasattr(adapter, 'compact_history'):
                         await adapter.compact_history(target_model, force=True)
                         # Re-get the messages with the newly compacted history
-                        openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
+                        openai_messages = adapter.get_openai_messages(
+                            sys_inst,
+                            rag_context,
+                            memory_context,
+                            response_only=(not is_cloud and planner_available)
+                        )
                         payload["messages"] = openai_messages
                         
                         # Retry the request

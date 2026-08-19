@@ -24,9 +24,9 @@
     "alternate_greetings": [],
     "extensions": {
       "arena": {
-        "program_id": "ria_silmane",
+        "follower_id": "ria_silmane",
         "image_details": {
-          "positive": "see-through_body, slime girl, mage robes, liquid hair, sad expression, (plump:0.7), soft glow, blue luminescence, ectoplasm",
+          "positive": "see-through_body, slime girl, liquid hair, (plump:0.7), soft glow, blue luminescence, ectoplasm",
           "negative": "ugly, bad anatomy, deformed, muscular, purple slime"
         }
       }

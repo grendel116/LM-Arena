@@ -13,7 +13,7 @@
     "quest_stage": 10,
     "tamrielic_date": "1 Morning Star, 3E 389",
     "created_at": "2026-08-19T10:10:26.309298",
-    "updated_at": "2026-08-19T11:28:40.204578"
+    "updated_at": "2026-08-19T12:25:27.980300"
   },
   "character": {
     "name": "Eternal Champion",
@@ -33,11 +33,11 @@
       "luck": 50
     },
     "derived": {
-      "hp_current": 32,
+      "hp_current": 24,
       "hp_max": 32,
       "mp_current": 162,
       "mp_max": 162,
-      "stamina_current": 72,
+      "stamina_current": 47,
       "stamina_max": 72,
       "armor_rating": 0,
       "encumbrance_max": 120.0,
@@ -62,6 +62,11 @@
         "name": "Prison Rags",
         "type": "armor",
         "equipped": true
+      },
+      {
+        "name": "Ruby Key",
+        "type": "Key",
+        "quantity": 1
       }
     ],
     "spells": [
@@ -143,62 +148,161 @@
       "role": "user",
       "text": "*I blink away the fog of sleep, staring up at the ghostly woman as her words sink in. My bare feet press against the frigid stone as I turn toward the north wall, squinting at the high ledge where the ruby key catches the torchlight.*\n\nIf I'm already dead to the world, I guess we have something in common.\n\n*I step closer to the wall, scanning for any loose stones or handholds that might help me reach the ledge.*",
       "image_url": null,
-      "timestamp": 1787163995.3754323
+      "timestamp": 1787165469.9139524
     },
     {
-      "id": "itm_9f2dcc366c6e4a8fb7995a6da9fa4b2e",
+      "id": "prgm_38a19b0a89254d659b30bee618459ed3",
+      "role": "follower",
+      "text": "*Ria watches, her spectral form flickering for a moment as she drifts near the damp masonry. Her eyes soften, a flicker of pained recognition passing over her face at your remark.*\n\nWe have much in common, yes. But you still breathe. Do not let that gift go to waste. Tharn's shadow is long, but it is not infinite.\n\n*She points a pale, translucent finger toward a cluster of uneven, protruding stones near the base of the wall. They appear sturdy enough to provide a footing, though the stone is slick with condensation and age.*\n\nUse these. The mortar is crumbling. If you're quick, you'll be out of this cell before the guard returns for the morning cycle.",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Athletics",
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "To climb the wall and retrieve the ruby key from the high ledge."
+          },
+          "id": "call_1787165474_0_7193"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Strength', 'dc': 12, 'reason': 'To climb the wall and retrieve the ruby key from the high ledge.'}",
+          "id": "call_1787165474_0_7193"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787165474.976789
+    },
+    {
+      "id": "usr_d4hnpw6wfmt0g7bss",
+      "role": "user",
+      "text": "*I lose my grip on the slick stone and lurch backward, my shoulder colliding hard with the wall.*",
+      "image_url": null,
+      "timestamp": 1787166431.3176036
+    },
+    {
+      "id": "prgm_21b207af92cd4d3dbde166efaca4b8be",
+      "role": "follower",
+      "text": "*Ria's spectral form shudders with a sound like wind through dead leaves as she watches you fall. She doesn't reach out — she can't — but her expression sharpens with focus, the blue luminescence around her intensifying.*\n\nSteady. Focus on the rhythm of your breath. The stone is slick, but there are footholds if you look past the moss.\n\n*She drifts closer, her gaze scanning the wall. Her voice takes on an instructive edge, recalling training sessions in the Imperial Library.*\n\nPut your weight on the edges, not the face of the stone. Use the mortar lines. You're a Nord — you've climbed harder things than this in your life. Try again.",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_spend_stamina",
+          "args": {
+            "amount": 5
+          },
+          "id": "call_1787166290_0_a0bb"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Athletics",
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "To attempt the climb again and secure the ruby key."
+          },
+          "id": "call_1787166290_1_d1ff"
+        },
+        {
+          "type": "call",
+          "name": "arena_spend_stamina",
+          "args": {
+            "amount": 5
+          },
+          "id": "call_1787166118_0_3fa2"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Athletics",
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "To attempt the climb again and secure the ruby key."
+          },
+          "id": "call_1787166118_1_51a3"
+        },
+        {
+          "type": "call",
+          "name": "arena_spend_stamina",
+          "args": {
+            "amount": 5
+          },
+          "id": "call_1787165787_0_6082"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Athletics",
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "To attempt the climb again and secure the ruby key."
+          },
+          "id": "call_1787165787_1_d76d"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787166583.2237127
+    },
+    {
+      "id": "usr_rmkm8asz2mt0gvat6",
+      "role": "user",
+      "text": "*I reach for the next handhold but my fingers skid off the wet surface, sending me crashing back to the floor.*",
+      "image_url": null,
+      "timestamp": 1787166632.0792825
+    },
+    {
+      "id": "itm_25327f1fe9e948ac928d4642685a9a25",
       "role": "follower",
       "text": "",
       "tool_calls": [
         {
           "type": "call",
-          "name": "arena_request_skill_check",
+          "name": "arena_spend_stamina",
           "args": {
-            "skill_name": "Athletics",
-            "attribute_name": "Agility",
-            "dc": 10,
-            "reason": "Attempting to climb the dungeon wall to reach the ruby key."
+            "amount": 5
           },
-          "id": "call_1787163998_0_6432"
+          "id": "call_1787166634_0_2387"
         },
         {
           "type": "response",
-          "name": "arena_request_skill_check",
-          "response": "{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Attempting to climb the dungeon wall to reach the ruby key.'}",
-          "id": "call_1787163998_0_6432"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Morning Star",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1787163998.7504869
-    },
-    {
-      "id": "tool_3d9e4336948b45a0a028ba27d3d990a4",
-      "role": "user",
-      "text": "[Tool Response from arena_request_skill_check]:\n{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Attempting to climb the dungeon wall to reach the ruby key.'}",
-      "tool_calls": [],
-      "timestamp": 1787163998.7504869
-    },
-    {
-      "id": "prgm_a194c6e5315343d09106ff5d131187fa",
-      "role": "follower",
-      "text": "*Your fingers brush the first uneven stone, a rough edge that bites into your skin as you heave yourself upward. The mortar gives way with a faint crunch, crumbling like dried bone between your fingertips.*\n\nDead to the world... yes, we do share that. But your death would be premature. And far too wasteful.\n\n*She drifts beside you, her presence like a cold current against your sweat-slick skin. Her translucent hand reaches toward the key as if trying to nudge it closer, but her fingers pass through the metal like smoke. The effort makes her flicker, her form dimming for a heartbeat before stabilizing again.*\n\nThe key lies just beyond your reach. Reach higher.",
-      "tool_calls": [
+          "name": "arena_spend_stamina",
+          "response": "{'stamina_current': 47, 'stamina_max': 72, 'exhausted': False}",
+          "id": "call_1787166634_0_2387"
+        },
         {
           "type": "call",
           "name": "arena_request_skill_check",
           "args": {
             "skill_name": "Athletics",
-            "attribute_name": "Agility",
-            "dc": 10,
-            "reason": "Attempting to climb the dungeon wall to reach the ruby key."
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "To find the iron bracket and pull yourself up to the ledge."
           },
-          "id": "call_1787162017_0_36ad"
+          "id": "call_1787166634_1_d3aa"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Strength', 'dc': 12, 'reason': 'To find the iron bracket and pull yourself up to the ledge.'}",
+          "id": "call_1787166634_1_d3aa"
         }
       ],
       "tamrielic_date": {
@@ -208,7 +312,324 @@
         "hour": 6,
         "era": "Third Era"
       },
-      "timestamp": 1787164120.150627
+      "timestamp": 1787166634.5708487
+    },
+    {
+      "id": "tool_afaf0bb1589f4b0288f94d01d06028b5",
+      "role": "user",
+      "text": "[Tool Response from arena_spend_stamina]:\n{'stamina_current': 47, 'stamina_max': 72, 'exhausted': False}",
+      "tool_calls": [],
+      "timestamp": 1787166634.5708487
+    },
+    {
+      "id": "tool_4b33fee9216f40cb8b5e8ac460e640a0",
+      "role": "user",
+      "text": "[Tool Response from arena_request_skill_check]:\n{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Strength', 'dc': 12, 'reason': 'To find the iron bracket and pull yourself up to the ledge.'}",
+      "tool_calls": [],
+      "timestamp": 1787166634.5708487
+    },
+    {
+      "id": "prgm_c200a9547507472d8f9b0f0ffd32f879",
+      "role": "follower",
+      "text": "*The impact jars your teeth as you hit the stone, dust swirling in the damp air. Ria's form wavers violently, her translucency flickering like a guttering candle as she struggles to maintain her presence. She drifts lower, hovering just above the floor, her expression taut with concern.*\n\nSteady. The stone's slick with moisture, but there's no time for caution now.\n\n*Her gaze darts toward the corridor where echoing footsteps grow louder. She raises a hand, her fingers trailing silver light that seems to seep from her very essence, though the effort leaves her looking more gaunt.*\n\nYou've the strength to rise again. Feel for the bracket—it's rougher than the rest. Dig your nails into the rust and pull. Don't let the fear freeze your blood.\n\n*She leans closer, her voice dropping to a spectral murmur that chills the air.*\n\nIf you fall now, Tharn wins. I won't let him have this.",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_spend_stamina",
+          "args": {
+            "amount": 5
+          },
+          "id": "call_1787166634_0_2387"
+        },
+        {
+          "type": "response",
+          "name": "arena_spend_stamina",
+          "response": "{'stamina_current': 47, 'stamina_max': 72, 'exhausted': False}",
+          "id": "call_1787166634_0_2387"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Athletics",
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "To find the iron bracket and pull yourself up to the ledge."
+          },
+          "id": "call_1787166634_1_d3aa"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Strength', 'dc': 12, 'reason': 'To find the iron bracket and pull yourself up to the ledge.'}",
+          "id": "call_1787166634_1_d3aa"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787166685.0113251
+    },
+    {
+      "id": "usr_7sv9nzerumt0gxdom",
+      "role": "user",
+      "text": "*I grip the rusted iron bracket and haul myself up onto the ledge.*",
+      "image_url": null,
+      "timestamp": 1787166729.1139264
+    },
+    {
+      "id": "itm_9bdc4e50a3af478fb4ef026ba22f63f9",
+      "role": "follower",
+      "text": "",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_add_item",
+          "args": {
+            "character_name": "Eternal Champion",
+            "item_name": "Ruby Key",
+            "item_type": "Key",
+            "quantity": 1
+          },
+          "id": "call_1787166731_0_9b8e"
+        },
+        {
+          "type": "response",
+          "name": "arena_add_item",
+          "response": "{'inventory_count': 2, 'item': 'Ruby Key'}",
+          "id": "call_1787166731_0_9b8e"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787166731.4802673
+    },
+    {
+      "id": "tool_335233228aae4631b053d02d124a5b00",
+      "role": "user",
+      "text": "[Tool Response from arena_add_item]:\n{'inventory_count': 2, 'item': 'Ruby Key'}",
+      "tool_calls": [],
+      "timestamp": 1787166731.4802673
+    },
+    {
+      "id": "prgm_68bb90a0362d40efb61fa3e1c5d92362",
+      "role": "follower",
+      "text": "*The ruby key catches what little light filters through the damp dungeon air, its facets dulled by grime. Your boots slide slightly on the slick stone ledge as you regain your footing, the metallic tang of old blood and stagnant water filling your nose.*\n\n*Ria's translucent form wavers for a moment, like candlelight caught in a draft, before she steadies herself. Her eyes dart toward the iron-bound door, then back to you, her expression strained with effort.*\n\nThe lock is stubborn—you'll need to apply pressure before turning. Don't let the mechanism jam.\n\n*The clank of armor grows louder, accompanied by the harsh scrape of a halberd's butt against the stone floor just around the corner. Her spectral voice drops to a whisper that barely reaches your ears.*\n\nHe's coming. Quickly now.",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_add_item",
+          "args": {
+            "character_name": "Eternal Champion",
+            "item_name": "Ruby Key",
+            "item_type": "Key",
+            "quantity": 1
+          },
+          "id": "call_1787166731_0_9b8e"
+        },
+        {
+          "type": "response",
+          "name": "arena_add_item",
+          "response": "{'inventory_count': 2, 'item': 'Ruby Key'}",
+          "id": "call_1787166731_0_9b8e"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787166782.8304691
+    },
+    {
+      "id": "usr_psbxoc30dmt0h0enn",
+      "role": "user",
+      "text": "*I slide the ruby key into the lock, pressing hard against the iron door as I turn the mechanism.*",
+      "image_url": null,
+      "timestamp": 1787167111.191744
+    },
+    {
+      "id": "prgm_832adc78903d4544bc1acfbeb2be31df",
+      "role": "follower",
+      "text": "*The mechanism groans under the pressure, rust flaking away in red dust as the lock finally yields. The door swings inward with a sharp creak that reverberates through the dungeon corridors.*\n\n*Ria recoils from the sound, her spectral form flickering as if her concentration momentarily breaks. Her gaze snaps toward the open doorway, her eyes widening with urgent alarm.*\n\nHe's right there. Move. Now.\n\n*The guard rounds the corner, his iron halberd catching the torchlight. His armored boots strike the stone with heavy thuds as he stops short, seeing the open cell door. His face twists with confusion, then rage.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_roll_combat",
+          "args": {
+            "attacker_name": "Imperial Guard",
+            "attacker_strength": 12,
+            "attacker_agility": 10,
+            "attacker_class_archetype": "Guard",
+            "weapon_name": "Iron Halberd",
+            "weapon_damage_tier": "Standard",
+            "weapon_attribute": "Strength",
+            "target_name": "Eternal Champion",
+            "target_agility": 10
+          },
+          "id": "call_1787166880_0_d2aa"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Evasion",
+            "attribute_name": "Agility",
+            "dc": 15,
+            "reason": "To dodge the guard's opening strike."
+          },
+          "id": "call_1787166880_1_115b"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787167256.2169843
+    },
+    {
+      "id": "usr_xne2k8kdvmt0hdei9",
+      "role": "user",
+      "text": "*I lurch sideways but the halberd's shaft cracks against my ribs, sending me sprawling across the cold stone.*",
+      "image_url": null,
+      "timestamp": 1787167476.6710515
+    },
+    {
+      "id": "itm_dac0582acb874933b800e3546f717332",
+      "role": "follower",
+      "text": "",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_take_damage",
+          "args": {
+            "amount": 8
+          },
+          "id": "call_1787167478_0_e369"
+        },
+        {
+          "type": "response",
+          "name": "arena_take_damage",
+          "response": "{'hp_current': 24, 'hp_max': 32, 'dead': False, 'damage_inflicted': 8}",
+          "id": "call_1787167478_0_e369"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Destruction",
+            "attribute_name": "Willpower",
+            "dc": 12,
+            "reason": "To cast a Spark spell at the guard while he is disoriented."
+          },
+          "id": "call_1787167478_1_54c2"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Destruction', 'attribute_name': 'Willpower', 'dc': 12, 'reason': 'To cast a Spark spell at the guard while he is disoriented.'}",
+          "id": "call_1787167478_1_54c2"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787167478.7669504
+    },
+    {
+      "id": "tool_ba71e3b7f9f94d5587b037566569bd67",
+      "role": "user",
+      "text": "[Tool Response from arena_take_damage]:\n{'hp_current': 24, 'hp_max': 32, 'dead': False, 'damage_inflicted': 8}",
+      "tool_calls": [],
+      "timestamp": 1787167478.7669504
+    },
+    {
+      "id": "tool_e4da71f4e4e24b51a9a2a90e6dd3afa2",
+      "role": "user",
+      "text": "[Tool Response from arena_request_skill_check]:\n{'status': 'skill_check_required', 'skill_name': 'Destruction', 'attribute_name': 'Willpower', 'dc': 12, 'reason': 'To cast a Spark spell at the guard while he is disoriented.'}",
+      "tool_calls": [],
+      "timestamp": 1787167478.7669504
+    },
+    {
+      "id": "prgm_41078ba10937488bb0b66b02fc819299",
+      "role": "follower",
+      "text": "*Blood pools beneath you as you hit the floor, the metallic tang filling your nose. Your vision blurs from the impact, stars dancing across the damp ceiling of the cell.*\n\n*Ria's form flickers like a guttering candle, her translucent hands grasping at the air as if trying to physically haul you up. A thin trail of ectoplasmic mist rises from her sleeves, vanishing before it can solidify.*\n\nStrike him now while he's blind! You've got the magic—don't let it go to waste!\n\n*The guard's heavy breathing echoes through his helmet, his halberd scraping against the stone as he blindly sweeps the weapon in a desperate arc toward where he last saw you.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_take_damage",
+          "args": {
+            "amount": 8
+          },
+          "id": "call_1787167478_0_e369"
+        },
+        {
+          "type": "response",
+          "name": "arena_take_damage",
+          "response": "{'hp_current': 24, 'hp_max': 32, 'dead': False, 'damage_inflicted': 8}",
+          "id": "call_1787167478_0_e369"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Destruction",
+            "attribute_name": "Willpower",
+            "dc": 12,
+            "reason": "To cast a Spark spell at the guard while he is disoriented."
+          },
+          "id": "call_1787167478_1_54c2"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Destruction', 'attribute_name': 'Willpower', 'dc': 12, 'reason': 'To cast a Spark spell at the guard while he is disoriented.'}",
+          "id": "call_1787167478_1_54c2"
+        },
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Destruction",
+            "attribute_name": "Willpower",
+            "dc": 12,
+            "reason": "To cast Spark at the blinded guard and stun him momentarily"
+          },
+          "id": "call_1787167527_0_2a4a"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Destruction', 'attribute_name': 'Willpower', 'dc': 12, 'reason': 'To cast Spark at the blinded guard and stun him momentarily'}",
+          "id": "call_1787167527_0_2a4a"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Morning Star",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1787167527.9500124
     }
   ],
   "memories": {
