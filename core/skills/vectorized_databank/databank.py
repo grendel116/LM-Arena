@@ -457,7 +457,7 @@ class DataBankManager:
         self._save_data(self.memories_path, {"documents": [], "chunks": []})
         print("[Data Bank] Purged all documents and vectors from databank and memories.")
 
-    def query(self, query_text: str, top_k: int = 5, score_threshold: float = 0.25, exclude_source_type: str = None, include_source_type: str = None, token_budget: int = None) -> str:
+    def query(self, query_text: str, top_k: int = 5, score_threshold: float = 0.25, exclude_source_type: str = None, include_source_type: str = None, token_budget: int = None, query_vector=None) -> str:
         """Queries the respective JSON vector index and returns clean contextual matching chunks."""
         # Query memories.json for chat history, otherwise query databank.json
         is_chat_history = (include_source_type == 'chat_history')
@@ -485,9 +485,10 @@ class DataBankManager:
         if not filtered_chunks:
             return ""
             
-        # Get query embedding
-        model = get_embedding_model()
-        query_vector = model.encode(query_text)
+        # Reuse a supplied embedding when several indexes share one query.
+        if query_vector is None:
+            model = get_embedding_model()
+            query_vector = model.encode(query_text)
         
         # Norm of query vector
         query_norm = np.linalg.norm(query_vector)
