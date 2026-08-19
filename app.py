@@ -3659,12 +3659,6 @@ Output a single JSON object with EXACTLY these keys:
   "image_positive": "Comma-separated Stable Diffusion tags for ONLY physical appearance (e.g. silver hair, purple eyes, fair skin).",
   "image_negative": "Comma-separated SD negative tags to exclude (e.g. extra limbs, bad anatomy).",
   "main_color": "#RRGGBB — a hex color representing this character.",
-  "inversion": {{
-    "intimate": "How they behave when intimate/warm.",
-    "excited": "How they behave when excited/playful.",
-    "intense": "How they behave when intense/focused.",
-    "sad": "How they behave when sad/empathetic."
-  }}
 }}"""
 
     raw_response = None
@@ -3720,8 +3714,8 @@ Output a single JSON object with EXACTLY these keys:
         except Exception as e:
             print(f"Failed to parse card JSON: {e}. Raw: {raw_response}")
 
-    # Build a chara_card_v3 dict. Helper keys _inversion and _colors are
-    # popped by finalize_imported_follower before writing to disk.
+    # Build a chara_card_v3 dict. Helper key _colors is popped by
+    # finalize_imported_follower before writing to disk.
     card = {
         "spec": "chara_card_v3",
         "spec_version": "3.0",
@@ -3749,25 +3743,14 @@ Output a single JSON object with EXACTLY these keys:
                 }
             }
         },
-        # Helper keys consumed by finalize_imported_follower
-        "_inversion": parsed.get("inversion") or {
-            "intimate": f"{name} is now deeply affectionate and tender.",
-            "excited": f"{name} is now playful and energetic.",
-            "intense": f"{name} is now focused and direct.",
-            "sad": f"{name} is now empathetic and gentle."
-        },
         "_colors": {"main_color": parsed.get("main_color") or "#38bdf8"},
     }
     return card
 
 
 def finalize_imported_follower(follower_path, follower_id, card_json):
-    """Write inversion, theme, portraits dir, and chara_card_v3 JSON for a new follower."""
-    inversion = card_json.pop("_inversion", None) or card_json.pop("inversion", None) or {}
+    """Write theme, portraits dir, and chara_card_v3 JSON for a new follower."""
     colors = card_json.pop("_colors", None) or card_json.pop("colors", None) or {}
-
-    with open(os.path.join(follower_path, 'inversion.json'), "w", encoding="utf-8") as f:
-        json.dump(inversion, f, indent=2, ensure_ascii=False)
 
     main_color = colors.get("main_color", "#38bdf8")
     theme_data = generate_character_theme(main_color)
@@ -3950,15 +3933,8 @@ def import_tavern_follower():
         if "image_details" not in arena:
             arena["image_details"] = {"positive": "", "negative": ""}
 
-        inversion = arena.pop("inversion", None) or {
-            "intimate": f"{name} is now deeply affectionate and tender.",
-            "excited": f"{name} is now playful and energetic.",
-            "intense": f"{name} is now focused and direct.",
-            "sad": f"{name} is now empathetic and gentle."
-        }
         main_color = arena.pop("main_color", None) or "#38bdf8"
 
-        card_v3["_inversion"] = inversion
         card_v3["_colors"] = {"main_color": main_color}
 
         finalize_imported_follower(follower_path, follower_id, card_v3)

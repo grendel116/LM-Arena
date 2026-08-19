@@ -576,14 +576,6 @@ const ttsProvider = appConfig.ttsProvider || "local";
 let currentAudio = null;
 let currentPlayingBtn = null;
 
-let currentHeartState = {
-    name: "calm",
-    color: "#85b9eb",
-    glow: "rgba(133, 185, 235, 0.9)",
-    speed: "2.0s",
-    intensity: 0.0
-};
-
 function initHeartPulse() {
     const heartElement = document.querySelector('.heart-pulse');
     if (heartElement) {
@@ -2426,14 +2418,6 @@ function clearGameOverState() {
         diceBtn.style.opacity = '';
         diceBtn.style.pointerEvents = '';
     }
-}
-
-function updateHeartState() {
-    fetchCharacterStatus();
-}
-
-function triggerHeartBurst() {
-    // Legacy no-op stub
 }
 
 function openStatusModal() {
@@ -9920,10 +9904,6 @@ function purgeDataBank() {
 /* ==========================================================================
    V. 4. DYNAMIC UI ACCESSORIES & PROMPTS
    ========================================================================== */
-
-// --- updateHeartState ---
-
-// --- triggerHeartBurst ---
 
 // --- updateInputGlow ---
 

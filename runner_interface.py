@@ -2,7 +2,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from variables import FOLLOWERS_DIR, REMOTE_SERVER_URL, DEFAULT_LOCAL_MODEL, DEFAULT_REMOTE_MODEL, get_remote_server_headers
+from variables import FOLLOWERS_DIR, REMOTE_SERVER_URL, get_remote_server_headers
 from utils.models import is_local_model
 import asyncio
 import base64
@@ -15,27 +15,6 @@ import copy
 
 cancelled_sessions = set()
 voice_call_sessions = set()
-
-
-def _run_async_in_background_thread(coro):
-    import threading
-    def target():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(coro)
-        except Exception as e:
-            print(f"[BACKGROUND TASK ERROR] {e}", flush=True)
-        finally:
-            loop.close()
-    t = threading.Thread(target=target, daemon=True)
-    t.start()
-
-
-_DEFAULT_INVERSION_STATE = {
-    "active_inversion": "",
-    "inversion_consecutive_turns": 0
-}
 
 
 def _is_remote_configured() -> bool:
@@ -76,6 +55,7 @@ VECTOR_SCORE_THRESHOLD = 0.25   # Cosine similarity minimum
 VECTOR_TOKEN_BUDGET = 2048      # Approximate max tokens for retrieved context
 VECTOR_MEMORY_TOP_K = 3         # For chat history memory retrieval
 VECTOR_MEMORY_THRESHOLD = 0.30  # Threshold for memory recall
+LOCAL_OFFLOAD_SECONDS = 10.0    # Escalate slow local generations when remote is configured
 
 
 def _build_vector_query(history: list, max_messages: int = VECTOR_QUERY_MESSAGES) -> str:
@@ -96,41 +76,40 @@ def _build_vector_query(history: list, max_messages: int = VECTOR_QUERY_MESSAGES
     return " ".join(messages)
 
 
-def _get_databank_context(query_text: str, is_memory: bool = False) -> str:
-    """Queries the DataBank vector index for context relevant to the conversation."""
+def _get_databank_contexts(query_text: str) -> tuple[str, str]:
+    """Retrieve knowledge and archived memory using one query embedding."""
     if not query_text:
-        return ""
+        return "", ""
     try:
-        from core.skills.vectorized_databank.databank import DataBankManager
+        from core.skills.vectorized_databank.databank import DataBankManager, get_embedding_model
         db = DataBankManager()
-        if is_memory:
-            result = db.query(
-                query_text,
-                top_k=VECTOR_MEMORY_TOP_K,
-                score_threshold=VECTOR_MEMORY_THRESHOLD,
-                include_source_type="chat_history",
-                token_budget=VECTOR_TOKEN_BUDGET
-            )
-            if result:
-                print(f"[RAG Memory] Retrieved context ({len(result)} chars)", flush=True)
-            return result
+        query_vector = get_embedding_model().encode(query_text)
+        rag_context = db.query(
+            query_text,
+            top_k=VECTOR_TOP_K,
+            score_threshold=VECTOR_SCORE_THRESHOLD,
+            exclude_source_type="chat_history",
+            token_budget=VECTOR_TOKEN_BUDGET,
+            query_vector=query_vector
+        )
+        memory_context = db.query(
+            query_text,
+            top_k=VECTOR_MEMORY_TOP_K,
+            score_threshold=VECTOR_MEMORY_THRESHOLD,
+            include_source_type="chat_history",
+            token_budget=VECTOR_TOKEN_BUDGET,
+            query_vector=query_vector
+        )
+        if rag_context:
+            print(f"[RAG Knowledge] Retrieved context ({len(rag_context)} chars)", flush=True)
         else:
-            result = db.query(
-                query_text,
-                top_k=VECTOR_TOP_K,
-                score_threshold=VECTOR_SCORE_THRESHOLD,
-                exclude_source_type="chat_history",
-                token_budget=VECTOR_TOKEN_BUDGET
-            )
-            if result:
-                print(f"[RAG Knowledge] Retrieved context ({len(result)} chars)", flush=True)
-            else:
-                print(f"[RAG Knowledge] No matches above threshold {VECTOR_SCORE_THRESHOLD}", flush=True)
-            return result
+            print(f"[RAG Knowledge] No matches above threshold {VECTOR_SCORE_THRESHOLD}", flush=True)
+        if memory_context:
+            print(f"[RAG Memory] Retrieved context ({len(memory_context)} chars)", flush=True)
+        return rag_context, memory_context
     except Exception as e:
-        context_type = "memory" if is_memory else "RAG"
-        print(f"Error querying data bank for {context_type} context: {e}")
-        return ""
+        print(f"Error querying data bank contexts: {e}")
+        return "", ""
 
 
 def _build_tool_calls_pair(tool_name: str, args: dict, output: str, idx: int = None) -> list:
@@ -215,6 +194,33 @@ def _execute_emulated_tool(tool_name: str, args_str: str) -> tuple[dict, str]:
     return parsed_args, str(output)
 
 
+def _execute_tool_matches(matches: list, seen_tool_calls: set, session_id: str = None) -> list:
+    """Execute ordinary tool tags once and return normalized result tuples."""
+    results = []
+    for match in matches:
+        if session_id and session_id in cancelled_sessions:
+            raise asyncio.CancelledError("Session cancelled by user request.")
+
+        tool_name = match.group(1)
+        args_string = match.group(2)
+        normalized_name = _normalize_tool_name(tool_name)
+        parsed_args = _parse_emulated_tool_call(normalized_name, args_string)
+        dedup_keys = _get_tool_dedup_keys(
+            normalized_name,
+            parsed_args["kwargs"],
+            parsed_args.get("args", [])
+        )
+
+        if any(key in seen_tool_calls for key in dedup_keys):
+            output = f"[Skipped: '{normalized_name}' with this input was already called. Use a different query or URL.]"
+        else:
+            seen_tool_calls.update(dedup_keys)
+            parsed_args, output = _execute_emulated_tool(tool_name, args_string)
+
+        results.append((normalized_name, parsed_args["kwargs"], output))
+    return results
+
+
 class LocalOffloadTrigger(Exception):
     def __init__(self, reason, iteration):
         self.reason = reason
@@ -242,6 +248,32 @@ def _get_safe_local_path(image_url: str) -> str:
     return os.path.normpath(os.path.join("core", "followers", active_follower, *safe_parts))
 
 
+def _extract_media(text: str, image_url: str = None, tool_calls: list = None) -> tuple[list, str]:
+    """Extract media entries and clean markdown images from a stored message."""
+    media = []
+
+    def add_markdown_images(source_text: str):
+        for match in re.finditer(r'!\[([^\]]*)\]\(([^)]+)\)', source_text or ''):
+            url = match.group(2)
+            media_type = 'video' if url.lower().endswith('.mp4') else 'image'
+            if url not in [item['url'] for item in media]:
+                media.append({'url': url, 'type': media_type})
+
+    add_markdown_images(text)
+    clean_text = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', text or '').strip()
+
+    if image_url and not image_url.startswith('data:'):
+        media_type = 'video' if image_url.lower().endswith('.mp4') else 'image'
+        if image_url not in [item['url'] for item in media]:
+            media.append({'url': image_url, 'type': media_type})
+
+    for tool_call in tool_calls or []:
+        if tool_call.get('type') == 'response':
+            add_markdown_images(tool_call.get('response', '') or '')
+
+    return media, clean_text
+
+
 def fallback_system_to_user_messages(messages: list) -> list:
     """Helper to convert and merge 'system' messages to 'user' messages
     if the local model server's chat template doesn't support the system role.
@@ -259,61 +291,6 @@ def fallback_system_to_user_messages(messages: list) -> list:
             
     return _merge_consecutive_messages(mapped_messages)
 
-
-
-def _format_thinking_and_text(thoughts_list: list, texts_list: list) -> str:
-    """Combines lists of thoughts and texts, merging any existing <think> tags (closed or unclosed)."""
-    thoughts_str = "".join(thoughts_list)
-    text_str = "".join(texts_list)
-    
-    additional_thoughts = []
-    cleaned_text_parts = []
-    
-    temp_text = text_str
-    while True:
-        open_match = re.search(r'(?:<think>|\[think\]|<thought>|\[thought\]|<\|thought\|>|<\|channel\|>thought|<channel\|>thought)', temp_text, re.IGNORECASE)
-        if not open_match:
-            cleaned_text_parts.append(temp_text)
-            break
-            
-        start_idx = open_match.start()
-        end_open_idx = open_match.end()
-        
-        cleaned_text_parts.append(temp_text[:start_idx])
-        remaining = temp_text[end_open_idx:]
-        
-        close_match = re.search(r'(?:</think>|\[/think\]|</thought>|\[/thought\]|<\|/thought\|>|<\|channel\|>|<channel\|>|<\/\s*think>|\[\s*/\s*think\s*\])', remaining, re.IGNORECASE)
-        if close_match:
-            close_start = close_match.start()
-            close_end = close_match.end()
-            
-            thought = remaining[:close_start].strip()
-            if thought:
-                additional_thoughts.append(thought)
-            temp_text = remaining[close_end:]
-        else:
-            # Unclosed think tag (streaming/cutoff)
-            thought = remaining.strip()
-            if thought:
-                additional_thoughts.append(thought)
-            temp_text = ""
-            break
-            
-    text_str = "".join(cleaned_text_parts).strip()
-    
-    if additional_thoughts:
-        add_str = "\n".join(additional_thoughts)
-        if thoughts_str.strip():
-            thoughts_str = thoughts_str.strip() + "\n" + add_str
-        else:
-            thoughts_str = add_str
-            
-    thoughts_str = thoughts_str.strip()
-    text_str = text_str.strip()
-    
-    if thoughts_str:
-        return f"<think>{thoughts_str}</think>\n{text_str}"
-    return text_str
 
 
 def strip_narration(text: str) -> str:
@@ -344,6 +321,19 @@ def strip_narration(text: str) -> str:
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG DIRECTIVES\n"
+       "Tools:\n"
+    "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` Trigger player D20 check.\n"
+    "- `[arena_spend_magicka(amount=...)]` Deduct spell MP cost.\n"
+    "- `[arena_spend_stamina(amount=...)]` Deduct exertion Stamina.\n"
+    "- `[arena_take_damage(amount=...)]` Deduct injury HP.\n"
+    "- `[arena_heal(amount=...)]` Restore HP.\n"
+    "- `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` NPC/monster attack.\n"
+    "- `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` NPC/monster check.\n"
+    "- `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` Recruit permanent companion.\n"
+    "- `[generate_local_image(prompt=\"...\")]` / `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` Generate visual art.\n"
+    "- `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` / `[arena_remove_item(...)]` Inventory changes.\n"
+    "- `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` / `[arena_spend_gold(...)]` Currency changes.\n\n"
+        "Rules:\n"
     "- SKILL CHECKS: Describe the attempt, call [arena_request_skill_check], and stop at the moment of action. Await the player's roll. Narrate success or failure only in the subsequent response.\n"
     "- NPC ROLLS: Resolve NPC and creature actions instantly with [arena_roll_combat] or [arena_roll_check].\n"
     "- VITALS: Deduct MP for magic, Stamina for physical exertion, and HP for wounds alongside narrative action.\n"
@@ -561,7 +551,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         history = self.runner_obj.sessions_history[self.session_id]
         history_text = ""
         for msg in history:
-            history_text += msg.get('text', '') or ''
+            if not msg.get('compacted'):
+                history_text += msg.get('text', '') or ''
             
         # Dynamic threshold based on LOCAL_CONTEXT or LOCAL_CONTEXT_THRESHOLD_CHARS
         local_context = os.getenv("LOCAL_CONTEXT")
@@ -1095,7 +1086,92 @@ def _is_cloud_model_check(model: str) -> bool:
 class BasefollowerRunner:
     def __init__(self, app_name="LM-Arena"):
         self.app_name = app_name
-        self._winning_mode_cache = {}
+
+    def _get_generation_temperature(self) -> float:
+        from variables import VARIABLES_DIR
+
+        default_temperature = 0.95
+        settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
+        if not os.path.exists(settings_path):
+            return default_temperature
+        try:
+            with open(settings_path, "r", encoding="utf-8") as f:
+                return json.load(f).get("temperature", default_temperature)
+        except Exception as e:
+            print(f"Error reading generation temperature: {e}")
+            return default_temperature
+
+    def _execute_single_turn_tools(
+        self,
+        bot_response_text: str,
+        matches: list,
+        seen_tool_calls: set,
+        session_id: str,
+        adapter: LocalHistoryAdapter,
+        invocation_id: str
+    ) -> tuple[str, list]:
+        """Execute one-turn mechanics/media tools and return cleaned text and calls."""
+        clean_response = bot_response_text
+        tool_calls = []
+        skill_check_reason = ""
+        media_tools = {
+            "generate_local_image", "generate_imagen", "generate_follower_portrait",
+            "generate_general_image", "apply_comfy_workflow"
+        }
+
+        for idx, match in enumerate(matches):
+            if session_id in cancelled_sessions:
+                raise asyncio.CancelledError("Session cancelled by user request.")
+
+            tool_name = match.group(1)
+            args_string = match.group(2)
+            original_tag = match.group(0)
+            normalized_name = _normalize_tool_name(tool_name)
+            parsed_args = _parse_emulated_tool_call(normalized_name, args_string)
+            dedup_keys = _get_tool_dedup_keys(
+                normalized_name,
+                parsed_args["kwargs"],
+                parsed_args.get("args", [])
+            )
+
+            if any(key in seen_tool_calls for key in dedup_keys):
+                clean_response = clean_response.replace(original_tag, "", 1)
+                continue
+            seen_tool_calls.update(dedup_keys)
+
+            if normalized_name in media_tools:
+                parsed_args, output = _execute_emulated_tool(tool_name, args_string)
+                image_succeeded = output.startswith("![") and output.endswith(")")
+                replacement = output if image_succeeded else f"*({output})*"
+                clean_response = clean_response.replace(original_tag, replacement, 1)
+                resolved_args = parsed_args["kwargs"] if parsed_args["kwargs"] else {
+                    "prompt": parsed_args["args"][0] if parsed_args["args"] else ""
+                }
+                pair = _build_tool_calls_pair(normalized_name, resolved_args, output, idx)
+                tool_calls.extend(pair)
+                adapter.append_image_tool_events(
+                    normalized_name, pair[0]["args"], output, pair[0]["id"], invocation_id
+                )
+            else:
+                clean_response = clean_response.replace(original_tag, "", 1)
+                parsed_args, output = _execute_emulated_tool(tool_name, args_string)
+                if normalized_name in ("arena_request_skill_check", "request_skill_check"):
+                    skill_check_reason = (
+                        parsed_args.get("kwargs", {}).get("reason")
+                        or parsed_args.get("kwargs", {}).get("skill_name")
+                        or ""
+                    )
+                tool_calls.extend(_build_tool_calls_pair(
+                    normalized_name, parsed_args["kwargs"], output, idx
+                ))
+
+        clean_response = re.sub(r'\[\w+\(.*?\)\]', '', clean_response)
+        clean_response = re.sub(r'[ \t]+', ' ', clean_response)
+        clean_response = re.sub(r'\n{3,}', '\n\n', clean_response).strip()
+        clean_response = self._ensure_images_are_embedded(clean_response)
+        if not clean_response and skill_check_reason:
+            clean_response = f"*{skill_check_reason}*"
+        return clean_response, tool_calls
 
     async def _post_llm_request(
         self,
@@ -1376,7 +1452,6 @@ class BasefollowerRunner:
         session_id: str,
         adapter: LocalHistoryAdapter,
         model: str,
-        inversion_directive: str,
         rag_context: str,
         memory_context: str,
         new_message_text: str,
@@ -1458,6 +1533,9 @@ class BasefollowerRunner:
             msg_lower = new_message_text.lower()
             if "/cloud" in msg_lower or "/offload" in msg_lower:
                 has_offload_keyword = True
+
+        temperature = self._get_generation_temperature()
+        turn_start = time.monotonic()
                 
         for iteration in range(10):
             if session_id in cancelled_sessions:
@@ -1476,22 +1554,19 @@ class BasefollowerRunner:
             sys_inst = self._get_system_instructions(session_id, user_message=new_message_text)
             openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
             
-            # Load dynamism (temperature) from project settings
-            from variables import VARIABLES_DIR
-            settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
-            temperature = 0.95
-            if os.path.exists(settings_path):
-                try:
-                    with open(settings_path, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                        temperature = settings.get("temperature", 0.95)
-                except Exception as e:
-                    print(f"Error reading project settings in _execute_local_llm_loop: {e}")
-
             # Determine if we should route to the remote cloud server or the local server
-            remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
             if not is_cloud:
                 is_cloud = _is_cloud_model_check(model)
+
+            request_timeout = 120.0
+            if not is_cloud and is_remote_configured:
+                remaining = LOCAL_OFFLOAD_SECONDS - (time.monotonic() - turn_start)
+                if remaining <= 0:
+                    raise LocalOffloadTrigger(
+                        f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
+                        iteration
+                    )
+                request_timeout = min(request_timeout, remaining)
                 
             if is_cloud:
                 url = remote_cloud_url
@@ -1525,7 +1600,7 @@ class BasefollowerRunner:
                 
             print(f"[LLM DISPATCH] Iteration {iteration}: routing to url={url}, model={target_model}, messages_count={len(openai_messages)}", flush=True)
             try:
-                response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+                response = await self._post_llm_request(url, payload, headers, timeout=request_timeout, session_id=session_id)
                 print(f"[LLM RESPONSE] Status={response.status_code}, Body Length={len(response.text)}", flush=True)
                 if response.status_code == 200:
                     res_json = response.json()
@@ -1547,7 +1622,17 @@ class BasefollowerRunner:
                         openai_messages = adapter.get_openai_messages(sys_inst, rag_context, memory_context)
                         payload["messages"] = openai_messages
                         print("[COMPACTION] Retrying request with compacted history...", flush=True)
-                        response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+                        if not is_cloud and is_remote_configured:
+                            remaining = LOCAL_OFFLOAD_SECONDS - (time.monotonic() - turn_start)
+                            if remaining <= 0:
+                                raise LocalOffloadTrigger(
+                                    f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
+                                    iteration
+                                )
+                            retry_timeout = min(120.0, remaining)
+                        else:
+                            retry_timeout = 120.0
+                        response = await self._post_llm_request(url, payload, headers, timeout=retry_timeout, session_id=session_id)
                         if response.status_code == 200:
                             res_json = response.json()
                             choice = res_json.get('choices', [{}])[0]
@@ -1569,7 +1654,17 @@ class BasefollowerRunner:
                         
                         # Retry the request
                         print("[COMPACTION] Retrying request with compacted history...", flush=True)
-                        response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+                        if not is_cloud and is_remote_configured:
+                            remaining = LOCAL_OFFLOAD_SECONDS - (time.monotonic() - turn_start)
+                            if remaining <= 0:
+                                raise LocalOffloadTrigger(
+                                    f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
+                                    iteration
+                                )
+                            retry_timeout = min(120.0, remaining)
+                        else:
+                            retry_timeout = 120.0
+                        response = await self._post_llm_request(url, payload, headers, timeout=retry_timeout, session_id=session_id)
                         if response.status_code == 200:
                             res_json = response.json()
                             bot_response_text = res_json['choices'][0]['message']['content']
@@ -1582,6 +1677,13 @@ class BasefollowerRunner:
                 else:
                     bot_response_text = f"Error: Local model server returned status code {response.status_code} - {response.text}"
                     break
+            except httpx.TimeoutException as e:
+                if not is_cloud and is_remote_configured:
+                    raise LocalOffloadTrigger(
+                        f"Local generation exceeded {LOCAL_OFFLOAD_SECONDS:.0f} seconds",
+                        iteration
+                    ) from e
+                raise
             except Exception as e:
                 if is_cloud:
                     bot_response_text = f"Error connecting to remote cloud server: {e}. Please verify your network connection and remote API settings."
@@ -1725,56 +1827,14 @@ class BasefollowerRunner:
                     for m in matches
                 )
                 if is_all_single_turn:
-                    # Single-turn execution for Arena mechanics & media tools:
-                    # Execute all tools, embed generated media, and strip all [tool(...)] tags
-                    clean_response = bot_response_text
-                    t_calls = []
-                    skill_check_reason = ""
-                    
-                    for idx, m_tool in enumerate(matches):
-                        if session_id in cancelled_sessions:
-                            raise asyncio.CancelledError("Session cancelled by user request.")
-                        t_name = m_tool.group(1)
-                        a_str = m_tool.group(2)
-                        original_tag = m_tool.group(0)
-                        normalized_name = _normalize_tool_name(t_name)
-                        parsed_args = _parse_emulated_tool_call(normalized_name, a_str)
-                        dedup_keys = _get_tool_dedup_keys(normalized_name, parsed_args["kwargs"], parsed_args.get("args", []))
-                        
-                        is_duplicate = any(k in seen_tool_calls for k in dedup_keys)
-                        if is_duplicate:
-                            clean_response = clean_response.replace(original_tag, "", 1)
-                            continue
-                        for k in dedup_keys:
-                            seen_tool_calls.add(k)
-                        
-                        if normalized_name in ("generate_local_image", "generate_imagen", "generate_follower_portrait", "generate_general_image", "apply_comfy_workflow"):
-                            parsed_args, new_markdown = _execute_emulated_tool(t_name, a_str)
-                            image_succeeded = new_markdown.startswith("![") and new_markdown.endswith(")")
-                            if image_succeeded:
-                                clean_response = clean_response.replace(original_tag, new_markdown, 1)
-                            else:
-                                clean_response = clean_response.replace(original_tag, f"*({new_markdown})*", 1)
-                            resolved_args = parsed_args["kwargs"] if parsed_args["kwargs"] else {"prompt": parsed_args["args"][0] if parsed_args["args"] else ""}
-                            pair = _build_tool_calls_pair(normalized_name, resolved_args, new_markdown, idx)
-                            t_calls.extend(pair)
-                            adapter.append_image_tool_events(normalized_name, pair[0]['args'], new_markdown, pair[0]['id'], invocation_id)
-                        else:
-                            clean_response = clean_response.replace(original_tag, "", 1)
-                            parsed_args, output = _execute_emulated_tool(t_name, a_str)
-                            if normalized_name in ("arena_request_skill_check", "request_skill_check"):
-                                skill_check_reason = parsed_args.get("kwargs", {}).get("reason") or parsed_args.get("kwargs", {}).get("skill_name") or ""
-                            pair = _build_tool_calls_pair(normalized_name, parsed_args["kwargs"], output, idx)
-                            t_calls.extend(pair)
-                            
-                    # Clean up any leftover tool call tags or whitespace
-                    clean_response = re.sub(r'\[\w+\(.*?\)\]', '', clean_response)
-                    clean_response = re.sub(r'[ \t]+', ' ', clean_response)
-                    clean_response = re.sub(r'\n{3,}', '\n\n', clean_response).strip()
-                    clean_response = self._ensure_images_are_embedded(clean_response)
-                    
-                    if not clean_response and skill_check_reason:
-                        clean_response = f"*{skill_check_reason}*"
+                    clean_response, t_calls = self._execute_single_turn_tools(
+                        bot_response_text,
+                        matches,
+                        seen_tool_calls,
+                        session_id,
+                        adapter,
+                        invocation_id
+                    )
 
                     if accumulated_prefix and not clean_response.startswith(accumulated_prefix):
                         if clean_response:
@@ -1796,27 +1856,7 @@ class BasefollowerRunner:
                         else:
                             accumulated_prefix = text_before
                     
-                    results = []
-                    for m_tool in matches:
-                        if session_id in cancelled_sessions:
-                            raise asyncio.CancelledError("Session cancelled by user request.")
-                        t_name = m_tool.group(1)
-                        a_str = m_tool.group(2)
-                        
-                        normalized_name = _normalize_tool_name(t_name)
-                        parsed_args = _parse_emulated_tool_call(normalized_name, a_str)
-                        dedup_keys = _get_tool_dedup_keys(normalized_name, parsed_args["kwargs"], parsed_args.get("args", []))
-                        
-                        is_duplicate = any(k in seen_tool_calls for k in dedup_keys)
-                        if is_duplicate:
-                            output = f"[Skipped: '{normalized_name}' with this input was already called. Use a different query or URL.]"
-                            results.append((normalized_name, parsed_args["kwargs"], output))
-                            continue
-                        for k in dedup_keys:
-                            seen_tool_calls.add(k)
-                        
-                        parsed_args, output = _execute_emulated_tool(t_name, a_str)
-                        results.append((normalized_name, parsed_args["kwargs"], output))
+                    results = _execute_tool_matches(matches, seen_tool_calls, session_id)
                         
                     t_calls = []
                     for idx, (t_name, t_args, t_output) in enumerate(results):
@@ -1938,28 +1978,6 @@ class BasefollowerRunner:
     async def delete_message_at(self, session_id: str, msg_id: str) -> bool:
         """Deletes a specific message inside the session history."""
         raise NotImplementedError()
-
-    async def _get_inversion_mode(self, session_id: str, history: list = None) -> str:
-        state = self.sessions_inversion_state.setdefault(session_id, copy.deepcopy(_DEFAULT_INVERSION_STATE))
-        return state.get("active_inversion", "")
-
-    async def _get_inversion_directive(self, session_id: str) -> str:
-        winning_mode = await self._get_inversion_mode(session_id)
-        self._winning_mode_cache[session_id] = winning_mode
-        if winning_mode:
-            from utils.follower import get_active_follower
-            active_follower = get_active_follower()
-            json_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, active_follower, "inversion.json"))
-            if not os.path.exists(json_path):
-                print(f"[WARN] inversion.json not found at '{json_path}' for follower '{active_follower}'.")
-                return ""
-            try:
-                with open(json_path, "r", encoding="utf-8") as f:
-                    directives = json.load(f)
-                return directives.get(winning_mode, "")
-            except Exception as e:
-                print(f"[ERROR] Error loading inversion directives: {e}")
-        return ""
 
     def _delete_local_image(self, image_url: str) -> bool:
         """Helper to safely clean up an image and its sidecar metadata from disk."""
@@ -2144,7 +2162,7 @@ class BasefollowerRunner:
             
         return instructions
 
-    def _get_system_instructions(self, session_id, inversion_directive=None, user_message=None) -> str:
+    def _get_system_instructions(self, session_id, user_message=None) -> str:
         """Pulls the system prompt directly from the follower's JSON profile and appends matched journals."""
         is_voice = isinstance(session_id, str) and session_id.endswith('_voice')
         from core.follower_config import get_follower_name
@@ -2201,7 +2219,6 @@ class OpenSourceRunner(BasefollowerRunner):
     def __init__(self, app_name="LM-Arena"):
         super().__init__(app_name)
         self.sessions_history = {} # Simple in-memory session logs dictionary
-        self.sessions_inversion_state = {} # Session-specific personality inversion states
         import threading
         self._lock = threading.RLock()
 
@@ -2335,14 +2352,10 @@ class OpenSourceRunner(BasefollowerRunner):
                 self.sessions_history[sid_key] = history
                 self.sessions_history['default'] = history
                 self.sessions_history[save_id] = history
-                self.sessions_inversion_state[sid_key] = copy.deepcopy(_DEFAULT_INVERSION_STATE)
                 return True
             except Exception as e:
                 print(f"Error loading save {session_id} from disk: {e}")
                 return False
-
-    async def _get_inversion_mode(self, session_id: str, history: list = None) -> str:
-        return ""
 
     def _consolidate_tools(self, tool_calls: list) -> list:
         """Pairs tool call + response entries by call_id into summaries."""
@@ -2370,31 +2383,7 @@ class OpenSourceRunner(BasefollowerRunner):
             text = replace_placeholders(get_follower_greeting())
         else:
             text = msg.get('content', '') or ''
-        media = []
-
-        # 1. Extract markdown images from text into media[]
-        for match in re.finditer(r'!\[([^\]]*)\]\(([^)]+)\)', text):
-            url = match.group(2)
-            is_video = url.lower().endswith('.mp4')
-            media.append({'url': url, 'type': 'video' if is_video else 'image'})
-        clean_text = re.sub(r'!\[[^\]]*\]\([^)]+\)', '', text).strip()
-        # 2. Extract from image_url field into media[]
-        img_url = msg.get('image_url')
-        if img_url and not img_url.startswith('data:'):
-            url = img_url
-            is_video = url.lower().endswith('.mp4')
-            if url not in [m['url'] for m in media]:
-                media.append({'url': url, 'type': 'video' if is_video else 'image'})
-
-        # 3. Extract from tool call responses into media[]
-        for tc in msg.get('tool_calls', []):
-            if tc.get('type') == 'response':
-                resp = tc.get('response', '') or ''
-                for match in re.finditer(r'!\[([^\]]*)\]\(([^)]+)\)', resp):
-                    url = match.group(2)
-                    is_video = url.lower().endswith('.mp4')
-                    if url not in [m['url'] for m in media]:
-                        media.append({'url': url, 'type': 'video' if is_video else 'image'})
+        media, clean_text = _extract_media(text, msg.get('image_url'), msg.get('tool_calls'))
 
         # 4. Consolidate tool_calls into paired summaries
         tool_summary = self._consolidate_tools(msg.get('tool_calls'))
@@ -2576,8 +2565,7 @@ class OpenSourceRunner(BasefollowerRunner):
         # Build vector query from recent conversation context (SillyTavern style)
         history = self.sessions_history.get(session_id, [])
         vector_query = _build_vector_query(history)
-        rag_context = _get_databank_context(vector_query, is_memory=False)
-        memory_context = _get_databank_context(vector_query, is_memory=True)
+        rag_context, memory_context = _get_databank_contexts(vector_query)
         
         adapter = OsHistoryAdapter(self, session_id, file_path_resolved, image_data, image_mime)
         try:
@@ -2588,7 +2576,6 @@ class OpenSourceRunner(BasefollowerRunner):
                 session_id=session_id,
                 adapter=adapter,
                 model=model,
-                inversion_directive="",
                 rag_context=rag_context,
                 memory_context=memory_context,
                 new_message_text=new_message_text,
