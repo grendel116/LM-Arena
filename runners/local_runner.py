@@ -52,25 +52,29 @@ def download_llama_server():
         gpu_type = detect_gpu_type()
         print(f"[llama-runner] Detected GPU type: {gpu_type}", flush=True)
         
-        target_keyword = "win-vulkan-x64"
+        target_keyword = "vulkan"
         if gpu_type == "amd":
-            target_keyword = "win-hip-radeon-x64"
+            target_keyword = "hip"
         elif gpu_type == "nvidia":
-            target_keyword = "win-cuda-12.4-x64"
+            target_keyword = "cuda"
             
-        # Try to find the target asset
+        # Flexible asset matching
         asset = None
         for a in assets:
             name = a.get("name", "").lower()
-            if target_keyword in name and name.endswith(".zip"):
+            if target_keyword in name and "x64" in name and name.endswith(".zip"):
                 asset = a
                 break
                 
-        # If target asset not found, fallback to Vulkan
+        # Fallback search for Vulkan if primary fails
         if not asset:
-            print(f"[llama-runner] Target asset '{target_keyword}' not found, falling back to Vulkan", flush=True)
-            asset = next(a for a in assets if "win-vulkan-x64" in a.get("name", "").lower() and a.get("name", "").endswith(".zip"))
-            
+            print(f"[llama-runner] Target asset '{target_keyword}' not found, searching for Vulkan zip...", flush=True)
+            asset = next((a for a in assets if "vulkan" in a.get("name", "").lower() and a.get("name", "").endswith(".zip")), None)
+
+        if not asset:
+            print("[llama-runner] Could not find a matching zip asset in llama.cpp releases.", flush=True)
+            return False
+
         print(f"[llama-runner] Downloading {asset['name']}...", flush=True)
         temp_zip = os.path.join(LLAMA_BIN_DIR, asset["name"])
         with requests.get(asset["browser_download_url"], stream=True) as r:
@@ -78,7 +82,7 @@ def download_llama_server():
                 for chunk in r.iter_content(8192):
                     f.write(chunk)
                     
-        # Clean existing bin directory before extracting to prevent DLL conflicts
+        # Clean existing bin directory before extracting
         for f_name in os.listdir(LLAMA_BIN_DIR):
             f_path = os.path.join(LLAMA_BIN_DIR, f_name)
             if os.path.isfile(f_path) and f_name != asset["name"]:
@@ -182,11 +186,12 @@ def start_local_server(model_key):
         "-c", context_size,
         "-b", batch_size,
         "-ub", ubatch_size,
+        "--cache-type-k", "q8_0",
+        "--cache-type-v", "q8_0",
         "--port", "1234",
         "--host", "127.0.0.1",
         "-ngl", gpu_layers,
         "-np", "1",
-        "--no-warmup",
         "--fit", "off"
     ]
     from variables import is_thinking_enabled
