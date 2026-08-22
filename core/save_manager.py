@@ -246,7 +246,7 @@ def write_save(save_id: str, bundle: dict) -> None:
 
 def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage") -> dict:
     """Create a default bundle for a new character."""
-    from engine.character import DEFAULT_SHEET, update_character_identity
+    from core.character import DEFAULT_SHEET, update_character_identity
     import copy
     import uuid
 
@@ -338,8 +338,7 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
     current_bundle = read_save(active_id)
     
     try:
-        from runner_interface import get_runner
-        runner = get_runner()
+        from app import runner
         if hasattr(runner, "sessions_history") and "default" in runner.sessions_history:
             if runner.sessions_history["default"]:
                 current_bundle["history"] = runner.sessions_history["default"]
@@ -393,7 +392,7 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
     write_save(save_id, current_bundle)
     set_active_save_id(save_id)
     
-    from utils.follower import set_active_user
+    from runners.follower import set_active_user
     set_active_user(save_id)
     
     meta = current_bundle["meta"]
@@ -439,7 +438,7 @@ def create_save(name: str = None, character_name: str = "Eternal Champion", race
     write_save(save_id, bundle)
     set_active_save_id(save_id)
     
-    from utils.follower import set_active_user
+    from runners.follower import set_active_user
     set_active_user(save_id)
     
     meta = bundle["meta"]
@@ -452,7 +451,7 @@ def load_save(save_id: str) -> dict:
     bundle = read_save(save_id)
     set_active_save_id(save_id)
     
-    from utils.follower import set_active_user
+    from runners.follower import set_active_user
     set_active_user(save_id)
     
     meta = bundle.get("meta", {})

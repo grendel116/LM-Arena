@@ -68,7 +68,7 @@ DEFAULT_SHEET = {
 def load_character(save_id: str = None) -> dict:
     """Load and return the character sheet for the active save slot."""
     try:
-        from engine.save_manager import get_active_save_id, read_save
+        from core.save_manager import get_active_save_id, read_save
         slot = save_id or get_active_save_id()
         bundle = read_save(slot)
         sheet = bundle.get("character", {})
@@ -98,7 +98,7 @@ def load_character(save_id: str = None) -> dict:
 def save_character(arg1=None, arg2=None) -> None:
     """Persist the character sheet to the active save file."""
     try:
-        from engine.save_manager import get_active_save_id, read_save, write_save
+        from core.save_manager import get_active_save_id, read_save, write_save
         if isinstance(arg1, dict):
             sheet = arg1
             slot = arg2 or get_active_save_id()
@@ -1023,7 +1023,7 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                 if actual_dmg is not None:
                     actual_dmg = int(actual_dmg)
                 else:
-                    from engine.mechanics import INCOMING_DAMAGE_MULTIPLIER
+                    from core.mechanics import INCOMING_DAMAGE_MULTIPLIER
                     actual_dmg = max(1, int(round(amount * INCOMING_DAMAGE_MULTIPLIER))) if amount > 0 else 0
                 heal(sheet, actual_dmg)
                 modified = True
@@ -1102,7 +1102,7 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                     modified = True
             elif t_name in ("arena_advance_stage", "arena_set_quest_stage", "arena_set_location", "arena_travel"):
                 try:
-                    from engine.world_engine import load_world_state, save_world_state
+                    from core.world_engine import load_world_state, save_world_state
                     ws = load_world_state(character_name)
                     if t_name in ("arena_advance_stage", "arena_set_quest_stage"):
                         if ws.get("quest_stage", 10) > 10:

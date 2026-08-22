@@ -2,7 +2,7 @@
 name: arena_checks
 description: "Resolves D20 attribute checks, skill tests, Sorcerer spell absorption, and custom spellmaking."
 summary: "Prompt player checks with [arena_request_skill_check], roll NPC checks with [arena_roll_check], and resolve spells."
-retrieval: vector
+retrieval: always
 ---
 
 # ATTRIBUTE & SKILL CHECK PROTOCOLS

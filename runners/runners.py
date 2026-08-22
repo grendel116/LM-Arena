@@ -1,0 +1,1545 @@
+import asyncio
+import copy
+import json
+import mimetypes
+import os
+import re
+import threading
+import time
+import uuid
+
+import httpx
+
+from adapters.history_adapters import LocalHistoryAdapter, OsHistoryAdapter
+from models.models import is_local_model
+from runners.follower import get_active_follower
+from utils.utils import (
+    _build_tool_calls_pair,
+    _build_vector_query,
+    _convert_json_tool_calls_to_tags,
+    _execute_emulated_tool,
+    _get_databank_contexts,
+    _get_safe_local_path,
+    _is_remote_configured,
+    _normalize_tool_name,
+    _parse_emulated_tool_call,
+    is_real_user_msg,
+    strip_story,
+)
+from variables import (
+    FOLLOWERS_DIR,
+    REMOTE_SERVER_URL,
+    get_remote_server_headers,
+)
+
+# Global State
+cancelled_sessions: set[str] = set()
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _is_cloud_model_check(model: str) -> bool:
+    """Checks whether the requested model targets remote cloud infrastructure."""
+    if not model or not _is_remote_configured():
+        return False
+
+    norm_model = model.replace("\\", "/").strip().lower()
+    remote_model = os.getenv("REMOTE_MODEL", "").replace("\\", "/").strip().lower()
+
+    if norm_model == remote_model:
+        return True
+
+    return not is_local_model(model)
+
+
+class BaseProgramRunner:
+    def __init__(self, app_name: str = "Arena"):
+        self.app_name = app_name
+        self.sessions_history: dict = {}
+        self.sessions_memory_state: dict = {}  # Tracks buffers, chapters, and epic chronicles[cite: 4]
+
+    def _get_memory_meta(self, session_id: str) -> dict:
+        """Helper to ensure session memory state exists."""
+        return self.sessions_memory_state.setdefault(
+            session_id,
+            {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""}
+        )
+
+    async def _post_llm_request(
+        self,
+        url: str,
+        payload: dict,
+        headers: dict,
+        timeout: float = 60.0,
+        session_id: str | None = None,
+    ) -> httpx.Response:
+        """Send a request to the selected LLM endpoint with cancellation support."""
+        is_local = "127.0.0.1:1234" in url or "localhost:1234" in url
+        start_time = time.time()
+        max_retry_time, retry_interval = 180.0, 2.0
+
+        def _check_cancellation():
+            if session_id and session_id in cancelled_sessions:
+                cancelled_sessions.discard(session_id)
+                print(f"[CANCEL] Aborting HTTP request for session {session_id}", flush=True)
+                raise asyncio.CancelledError("Session cancelled by user request.")
+
+        while True:
+            _check_cancellation()
+
+            try:
+                async with httpx.AsyncClient() as client:
+                    if session_id:
+                        req_payload = {**payload, "stream": True}
+                        req_headers = {**headers, "Accept-Encoding": "identity"}
+
+                        async with client.stream("POST", url, json=req_payload, headers=req_headers, timeout=timeout) as r:
+                            if r.status_code == 503 and is_local:
+                                await r.aread()
+                                if time.time() - start_time < max_retry_time:
+                                    print(f"[Local LLM] Server is loading model (503). Retrying in {retry_interval}s...", flush=True)
+                                    await asyncio.sleep(retry_interval)
+                                    continue
+
+                            if r.status_code != 200:
+                                await r.aread()
+                                return httpx.Response(status_code=r.status_code, headers=r.headers, content=r.content, request=r.request)
+
+                            content_parts = []
+                            async for line in r.aiter_lines():
+                                _check_cancellation()
+
+                                line = line.strip()
+                                if not line or not line.startswith("data:"):
+                                    continue
+
+                                data_str = line[5:].strip()
+                                if data_str == "[DONE]":
+                                    break
+
+                                try:
+                                    delta = json.loads(data_str).get("choices", [{}])[0].get("delta", {})
+                                    if content := delta.get("content"):
+                                        content_parts.append(content)
+                                except Exception:
+                                    pass
+
+                            mock_data = {
+                                "choices": [{"message": {"role": "assistant", "content": "".join(content_parts)}}],
+                                "model": payload.get("model", ""),
+                            }
+                            return httpx.Response(status_code=200, headers=r.headers, content=json.dumps(mock_data).encode("utf-8"), request=r.request)
+
+                    response = await client.post(url, json=payload, headers=headers, timeout=timeout)
+                    if response.status_code == 503 and is_local:
+                        if time.time() - start_time < max_retry_time:
+                            print(f"[Local LLM] Server is loading model (503). Retrying in {retry_interval}s...", flush=True)
+                            await asyncio.sleep(retry_interval)
+                            continue
+
+                    return response
+
+            except httpx.TimeoutException:
+                raise
+            except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+                from runners import local_runner
+
+                if is_local and local_runner.check_local_server_status() == "starting" and (time.time() - start_time < max_retry_time):
+                    print(f"[Local LLM] Connection failed but server is starting. Retrying in {retry_interval}s...", flush=True)
+                    await asyncio.sleep(retry_interval)
+                    continue
+                raise e
+
+    async def _run_llm_summary_task(self, prompt: str, active_model: str, err_msg: str) -> str:
+        """Helper to post summary/distillation requests and parse reasoning blocks out of responses."""
+        payload = {
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "max_tokens": 512,
+        }
+
+        target_model = active_model if (active_model and active_model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
+        if target_model:
+            payload["model"] = target_model
+
+        try:
+            response = await self._post_llm_request(REMOTE_SERVER_URL, payload, get_remote_server_headers(), timeout=60.0)
+            if response.status_code == 200:
+                raw_text = response.json()["choices"][0]["message"].get("content", "").strip()
+                think_pattern = r"(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)"
+                return re.sub(think_pattern, "", raw_text, flags=re.IGNORECASE).strip()
+
+            print(f"Local server error: {response.status_code} - {response.text}", flush=True)
+        except Exception as e:
+            print(f"Error in summary generation task: {e}", flush=True)
+
+        return err_msg
+
+    async def _generate_local_summary(self, text_to_summarize: str, active_model: str, prior_memories: list | None = None) -> str:
+        from runners.follower import get_active_user
+        from core.follower_config import get_follower_name
+
+        user_name = get_active_user().capitalize()
+        try:
+            follower_name = get_follower_name()
+        except Exception:
+            follower_name = "Follower"
+
+        prompt_parts = [
+            f"Summarize this new chat chapter for {user_name} and {follower_name}.",
+            "Keep only decisions, preferences, milestones, relationship changes, and project details.",
+            "Write 2 concise sentences, under 300 characters. Do not repeat prior memories.\n", # Reduced limit to protect context budget
+        ]
+
+        if prior_memories:
+            prompt_parts.append("Excerpts of prior memory chapters:")
+            prompt_parts.extend(prior_memories)
+            prompt_parts.append("Ensure the new summary advances the timeline without repeating the prior memory chapters above.\n")
+
+        prompt_parts.append(f"NEW CHAT HISTORY FOR INCREMENTAL SUMMARY (NEW CHAPTER):\n{text_to_summarize}\n")
+        
+        return await self._run_llm_summary_task(
+            prompt="\n".join(prompt_parts),
+            active_model=active_model,
+            err_msg="Memory compaction summary generation failed due to connection error.",
+        )
+
+    async def _distill_epic_chronicle(self, text_to_distill: str, active_model: str) -> str:
+        from runners.follower import get_active_user
+        from core.follower_config import get_follower_name
+
+        user_name = get_active_user().capitalize()
+        try:
+            follower_name = get_follower_name()
+        except Exception:
+            follower_name = "Follower"
+
+        prompt = (
+            f"You are the memory chronicler for the ongoing interaction between {user_name} and {follower_name}.\n"
+            "The following text is the accumulated chronicle of earlier conversation chapters.\n"
+            "Condense these events into a single cohesive general summary (2 concise paragraphs, max 600 characters).\n" # Capped at 600 chars (~150 tokens)
+            "Retain major milestones, key user preferences, shared history, project decisions, and relationship dynamics.\n\n"
+            f"ACCUMULATED CHRONICLE TO DISTILL:\n{text_to_distill}\n\n"
+            "DISTILLED GENERAL SUMMARY:"
+        )
+
+        return await self._run_llm_summary_task(
+            prompt=prompt,
+            active_model=active_model,
+            err_msg="Distillation failed due to connection error.",
+        )
+
+    async def _process_memory_pipeline(self, session_id: str, active_model: str, user_text: str, assistant_text: str):
+        """Asynchronous post-turn worker handling Step 2 (Chapters) and Step 3 (Epic & RAG)."""
+        meta = self._get_memory_meta(session_id)
+        buffer = meta["unsummarized_buffer"]
+
+        # 1. Append exchange to buffer
+        buffer.append({"user": user_text, "assistant": assistant_text})
+
+        # 2. STEP 2 TRIGGER: Every 12 turns, generate a mid-term Chapter Summary
+        if len(buffer) >= 12:
+            formatted_turns = "\n".join(
+                f"User: {turn['user']}\nAssistant: {turn['assistant']}" for turn in buffer
+            )
+            chapter_summary = await self._generate_local_summary(
+                text_to_summarize=formatted_turns,
+                active_model=active_model,
+                prior_memories=meta["recent_chapters"]
+            )
+
+            meta["recent_chapters"].append(chapter_summary)
+            buffer.clear()
+
+            # 3. STEP 3 TRIGGER: Every 5 chapters, distill Epic Chronicle & offload to Vector DB
+            if len(meta["recent_chapters"]) >= 5:
+                all_chapters_text = "\n\n".join(meta["recent_chapters"])
+                
+                meta["epic_chronicle"] = await self._distill_epic_chronicle(
+                    text_to_distill=all_chapters_text,
+                    active_model=active_model
+                )
+
+                try:
+                    from core.skills.vectorized_databank.databank import DataBankManager
+                    db = DataBankManager()
+                    for idx, ch in enumerate(meta["recent_chapters"]):
+                        db.add_document(
+                            text=ch,
+                            source_type="chapter_memory",
+                            metadata={"session_id": session_id, "chapter_index": idx}
+                        )
+                except Exception as e:
+                    print(f"[MEMORY PIPELINE] Error offloading chapters to Vector DB: {e}", flush=True)
+
+                meta["recent_chapters"].clear()
+
+    def _load_temperature_setting(self, default_temp: float = 0.95) -> float:
+        from variables import VARIABLES_DIR
+
+        settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
+        if os.path.exists(settings_path):
+            try:
+                with open(settings_path, "r", encoding="utf-8") as f:
+                    return json.load(f).get("temperature", default_temp)
+            except Exception as e:
+                print(f"Error reading project settings in _execute_local_llm_loop: {e}")
+        return default_temp
+
+    def _sanitize_thinking_tags(self, text: str) -> str:
+        pattern = (
+            r"(?:<think>|\[think\]|<thought>|\[thought\]|<\|thought\|>|<\|channel\|>thought|<channel\|>thought)"
+            r"[\s\S]*?"
+            r"(?:</think>|\[/think\]|</thought>|\[/thought\]|<\|thought\|>|<\|channel\|>|<channel\|>|<\/\s*think>|\[\s*/\s*think\s*\]|$)"
+        )
+        cleaned = re.sub(pattern, "", text, flags=re.IGNORECASE)
+        return re.sub(r"<\|channel\|>|<channel\|>", "", cleaned, flags=re.IGNORECASE).strip()
+
+    def _filter_story_mode_matches(self, matches: list, text: str) -> tuple[list, str]:
+        if not matches:
+            return matches, text
+
+        story_allowed = {
+            "generate_local_image",
+            "generate_follower_portrait",
+            "generate_imagen",
+            "generate_general_image",
+            "apply_comfy_workflow",
+            "add_journal_entry",
+        }
+        disallowed = [m for m in matches if m.group(1) not in story_allowed]
+        for m in disallowed:
+            text = text.replace(m.group(0), "")
+
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        filtered_matches = [m for m in matches if m.group(1) in story_allowed]
+        return filtered_matches, text
+
+    async def _handle_image_tool_execution(
+        self, match, bot_response_text: str, adapter: LocalHistoryAdapter, invocation_id: str
+    ) -> tuple[str, list]:
+        tool_name = match.group(1)
+        args_str = match.group(2)
+
+        adapter.append_assistant_message(bot_response_text, [], invocation_id)
+        parsed_args, new_markdown = _execute_emulated_tool(tool_name, args_str)
+        normalized_name = _normalize_tool_name(tool_name)
+
+        original_tag = match.group(0)
+        image_succeeded = new_markdown.startswith("![") and new_markdown.endswith(")")
+
+        if image_succeeded:
+            bot_response_text = bot_response_text.replace(original_tag, new_markdown)
+        else:
+            bot_response_text = bot_response_text.replace(original_tag, f"*({new_markdown})*").strip()
+
+        resolved_args = (
+            parsed_args["kwargs"]
+            if parsed_args["kwargs"]
+            else {"prompt": parsed_args["args"][0] if parsed_args["args"] else ""}
+        )
+        t_calls = _build_tool_calls_pair(normalized_name, resolved_args, new_markdown)
+        call_id = t_calls[0]["id"]
+
+        adapter.append_image_tool_events(normalized_name, t_calls[0]["args"], new_markdown, call_id, invocation_id)
+
+        final_embedded_text = (
+            self._ensure_images_are_embedded(bot_response_text) if image_succeeded else bot_response_text
+        )
+        adapter.append_assistant_message(final_embedded_text, t_calls, invocation_id)
+
+        return final_embedded_text, t_calls
+
+    async def _handle_non_blocking_tools(
+        self, matches: list, bot_response_text: str, adapter: LocalHistoryAdapter, session_id: str, invocation_id: str
+    ) -> tuple[str, list]:
+        clean_response = bot_response_text
+        for m in matches:
+            clean_response = clean_response.replace(m.group(0), "")
+        clean_response = re.sub(r"[ \t]+", " ", clean_response)
+        clean_response = re.sub(r"\n{3,}", "\n\n", clean_response).strip()
+
+        results = []
+        for m_tool in matches:
+            if session_id in cancelled_sessions:
+                raise asyncio.CancelledError("Session cancelled by user request.")
+            parsed_args, output = _execute_emulated_tool(m_tool.group(1), m_tool.group(2))
+            results.append((_normalize_tool_name(m_tool.group(1)), parsed_args["kwargs"], output))
+
+        t_calls = []
+        for idx, (t_name, t_args, t_output) in enumerate(results):
+            t_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
+
+        adapter.append_assistant_message(clean_response, t_calls, invocation_id)
+        adapter.append_tool_events(results, invocation_id)
+        return clean_response, t_calls
+
+    async def _handle_sequential_tools(
+        self, matches: list, bot_response_text: str, seen_tool_calls: set, adapter: LocalHistoryAdapter, session_id: str, invocation_id: str
+    ) -> list:
+        first_match_start = min(m.start() for m in matches)
+        text_before = bot_response_text[:first_match_start].strip()
+
+        results = []
+        for m_tool in matches:
+            if session_id in cancelled_sessions:
+                raise asyncio.CancelledError("Session cancelled by user request.")
+
+            t_name = m_tool.group(1)
+            a_str = m_tool.group(2)
+            normalized_name = _normalize_tool_name(t_name)
+            parsed_args = _parse_emulated_tool_call(normalized_name, a_str)
+
+            key_arg = (
+                str(list(parsed_args["kwargs"].values())[0])
+                if parsed_args["kwargs"]
+                else (str(parsed_args["args"][0]) if parsed_args["args"] else "")
+            )
+            dedup_key = (normalized_name, key_arg)
+
+            if dedup_key in seen_tool_calls:
+                output = f"[Skipped: '{normalized_name}' with this input was already called. Use a different query or URL.]"
+                results.append((normalized_name, parsed_args["kwargs"], output))
+                continue
+
+            seen_tool_calls.add(dedup_key)
+            parsed_args, output = _execute_emulated_tool(t_name, a_str)
+            results.append((normalized_name, parsed_args["kwargs"], output))
+
+        t_calls = []
+        for idx, (t_name, t_args, t_output) in enumerate(results):
+            t_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
+
+        adapter.append_assistant_message(text_before, t_calls, invocation_id, intermediate=True)
+        adapter.append_tool_events(results, invocation_id)
+        return t_calls
+
+    async def _execute_local_llm_loop(
+        self,
+        session_id: str,
+        adapter: LocalHistoryAdapter,
+        model: str,
+        rag_context: str,
+        new_message_text: str,
+        invocation_id: str,
+    ) -> tuple[str, list]:
+    # --- STAGE 1: LOCAL PREPROCESSING ---
+        sys_instructions = self._get_system_instructions(session_id, user_message=new_message_text)
+        messages = adapter.get_openai_messages(sys_instructions, rag_context)
+
+        # Rough token estimation (~4 chars per token)
+        # Reserve ~1500 tokens for system prompt, RAG, and output generation budget
+        MAX_INPUT_TOKENS = 6500  # Leave headroom for 8k local context
+        total_chars = sum(len(m.get("content", "")) for m in messages)
+
+        if total_chars > (MAX_INPUT_TOKENS * 4):
+            print(f"[CONTEXT TRIM] Context payload (~{total_chars // 4} tokens) exceeds local budget. Trimming older turns...", flush=True)
+            system_msgs = [m for m in messages if m.get("role") == "system"]
+            chat_msgs = [m for m in messages if m.get("role") != "system"]
+            
+            # Keep trimming oldest chat messages until within budget
+            while chat_msgs and sum(len(m.get("content", "")) for m in system_msgs + chat_msgs) > (MAX_INPUT_TOKENS * 4):
+                chat_msgs.pop(0)
+                
+            messages = system_msgs + chat_msgs
+
+        # --- STAGE 2: SINGLE PROCESSING PASS ---
+        temperature = self._load_temperature_setting()
+        is_cloud = _is_cloud_model_check(model)
+        remote_configured = _is_remote_configured()
+        
+        if is_cloud and remote_configured:
+            url = os.getenv("REMOTE_CLOUD_URL")
+            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.getenv('REMOTE_API_KEY')}"}
+            target_model = model
+        else:
+            url = REMOTE_SERVER_URL
+            headers = get_remote_server_headers()
+            target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
+
+        payload = {"messages": messages, "temperature": temperature, "max_tokens": 1024}
+        if target_model:
+            payload["model"] = target_model
+
+        try:
+            response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+            bot_response_text = response.json()["choices"][0]["message"]["content"] if response.status_code == 200 else f"Error: {response.text}"
+            print(f"[DEBUG STATUS] {response.status_code}", flush=True)
+            print(f"[DEBUG RAW RESPONSE] {repr(response.text)}", flush=True)
+        except Exception as e:
+            # --- REMOTE CLOUD BACKUP ---
+            if not is_cloud and remote_configured and os.getenv("REMOTE_CLOUD_URL"):
+                print(f"[LLM BACKUP] Local server failed ({e}). Switching to the cloud backup...", flush=True)
+                cloud_url = os.getenv("REMOTE_CLOUD_URL")
+                cloud_headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.getenv('REMOTE_API_KEY')}"}
+                
+                cloud_payload = {
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": 1024,
+                    "model": os.getenv("REMOTE_MODEL", "gemini-2.5-flash")
+                }
+                
+                try:
+                    response = await self._post_llm_request(cloud_url, cloud_payload, cloud_headers, timeout=60.0, session_id=session_id)
+                    if response.status_code == 200:
+                        bot_response_text = response.json()["choices"][0]["message"]["content"]
+                        target_model = cloud_payload["model"] # update tracked model for memory pipeline
+                    else:
+                        bot_response_text = f"Error: Local server failed and cloud backup returned status {response.status_code} - {response.text}"
+                except Exception as cloud_err:
+                    bot_response_text = f"Error connecting to local model server and cloud backup also failed: {cloud_err}"
+            else:
+                bot_response_text = f"Error connecting to model server: {e}"
+
+        # --- STAGE 3: POST-PROCESSING (TOOLS, SUBAGENTS & CLEANUP) ---
+        bot_response_text = self._sanitize_thinking_tags(bot_response_text)
+        bot_response_text = _convert_json_tool_calls_to_tags(bot_response_text)
+
+        matches = list(re.finditer(r"\[(\w+)\(([\s\S]*?)\)\]", bot_response_text))
+        matches, bot_response_text = self._filter_story_mode_matches(matches, bot_response_text)
+
+        tool_calls = []
+        if matches:
+            # 1. Execute local tools and collect results
+            results = []
+            for m_tool in matches:
+                if session_id in cancelled_sessions:
+                    raise asyncio.CancelledError("Session cancelled by user request.")
+                parsed_args, output = _execute_emulated_tool(m_tool.group(1), m_tool.group(2))
+                results.append((_normalize_tool_name(m_tool.group(1)), parsed_args["kwargs"], output))
+
+            for idx, (t_name, t_args, t_output) in enumerate(results):
+                tool_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
+
+            bot_response_text = re.sub(r"\[\w+\([\s\S]*?\n?\)\]", "", bot_response_text, flags=re.DOTALL).strip()
+            adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
+            adapter.append_tool_events(results, invocation_id)
+
+            # 2. Remote-first pass for subagents & multi-step tool output synthesis
+            post_url = os.getenv("REMOTE_CLOUD_URL") if remote_configured else REMOTE_SERVER_URL
+            post_headers = {"Content-Type": "application/json"}
+            if remote_configured and os.getenv("REMOTE_API_KEY"):
+                post_headers["Authorization"] = f"Bearer {os.getenv('REMOTE_API_KEY')}"
+            else:
+                post_headers = get_remote_server_headers()
+
+            # Pull strictly the latest user query without history or system prompts
+            latest_user_text = new_message_text if new_message_text else ""
+
+            post_prompt = (
+                f"User Request: {latest_user_text}\n"
+                f"Initial Output: {bot_response_text}\n"
+                f"Tool Execution Logs: {json.dumps(tool_calls)}\n\n"
+                f"Synthesize the tool execution results to directly answer the user request."
+            )
+            post_payload = {
+                "messages": [
+                    {"role": "user", "content": post_prompt}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1024,
+                "model": os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite") if remote_configured else target_model,
+            }
+            try:
+                post_resp = await self._post_llm_request(post_url, post_payload, post_headers, timeout=60.0, session_id=session_id)
+                if post_resp.status_code == 200:
+                    synthesis = post_resp.json()["choices"][0]["message"].get("content", "").strip()
+                    if synthesis:
+                        bot_response_text += f"\n\n{synthesis}"
+            except Exception as e:
+                print(f"[POST-PROCESSING ERROR] Tool synthesis failed: {e}", flush=True)
+        else:
+            adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
+
+        adapter.post_process_thoughts(invocation_id)
+        bot_response_text = self._ensure_images_are_embedded(bot_response_text)
+        if isinstance(session_id, str) and session_id.endswith("_voice"):
+            bot_response_text = strip_story(bot_response_text)
+
+        # Trigger background 3-Step Memory Pass post-turn
+        asyncio.create_task(
+            self._process_memory_pipeline(
+                session_id=session_id,
+                active_model=target_model or "",
+                user_text=new_message_text,
+                assistant_text=bot_response_text
+            )
+        )
+
+        return bot_response_text, tool_calls
+
+    @property
+    def sessions_dir(self) -> str:
+        from core.save_manager import SAVES_DIR
+        os.makedirs(SAVES_DIR, exist_ok=True)
+        return str(SAVES_DIR)
+
+    async def get_history(self, session_id: str) -> list:
+        raise NotImplementedError()
+
+    async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None) -> tuple:
+        raise NotImplementedError()
+
+    async def edit_turn(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False) -> tuple:
+        raise NotImplementedError()
+
+    async def reset_session(self, session_id: str):
+        raise NotImplementedError()
+
+    async def delete_turn(self, session_id: str, msg_id: str) -> bool:
+        raise NotImplementedError()
+
+    async def delete_image_from_session(self, session_id: str, image_url: str) -> bool:
+        raise NotImplementedError()
+
+    async def replace_image_in_session(self, session_id: str, old_image_url: str, new_image_url: str) -> bool:
+        raise NotImplementedError()
+
+    async def replace_image_with_video_in_session(self, session_id: str, old_image_url: str, new_video_url: str) -> bool:
+        raise NotImplementedError()
+
+    async def append_message_to_session(self, session_id: str, role: str, text: str) -> bool:
+        raise NotImplementedError()
+
+    async def append_voice_call(self, session_id: str, transcript: str, timestamp: float = None, start_time: float = None) -> bool:
+        raise NotImplementedError()
+
+    async def clone_history(self, src_id: str, dest_id: str, messages: list) -> bool:
+        raise NotImplementedError()
+
+    async def delete_system_memory(self, session_id: str, timestamp: float) -> bool:
+        raise NotImplementedError()
+
+    async def update_message_text(self, session_id: str, msg_id: str, new_text: str) -> bool:
+        raise NotImplementedError()
+
+    async def delete_message_at(self, session_id: str, msg_id: str) -> bool:
+        raise NotImplementedError()
+
+    def _delete_local_image(self, image_url: str) -> bool:
+        local_path = _get_safe_local_path(image_url) if image_url else None
+        if not local_path or not os.path.exists(local_path):
+            return False
+
+        try:
+            os.remove(local_path)
+            print(f"Deleted image file from disk: {local_path}")
+
+            json_path = os.path.splitext(local_path)[0] + ".json"
+            if os.path.exists(json_path):
+                os.remove(json_path)
+                print(f"Deleted follower JSON file from disk: {json_path}")
+            return True
+        except Exception as e:
+            print(f"Error cleaning up image assets for {image_url}: {e}")
+            return False
+
+    def _ensure_images_are_embedded(self, text: str) -> str:
+        if not text:
+            return text
+
+        text = re.sub(r'(?<!\!)(\[[^\]]*\]\(/images/(?:portraits|media)/[^)]+\))', r'!\1', text)
+        raw_path_pattern = r'(?<![\([/])(/images/(?:portraits|media)/[a-zA-Z0-9_\-\.]+\.(?:png|jpg|jpeg|webp|gif|mp4))'
+        return re.sub(raw_path_pattern, r'![Portrait](\1)', text)
+
+    def _load_profile_json(self, active_prog: str) -> dict:
+        json_path = os.path.join(FOLLOWERS_DIR, active_prog, f"{active_prog}.json")
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def _clean_transcript_text(self, text: str) -> str:
+        think_pattern = (
+            r"(?:<think>|\[think\]|<thought>|\[thought\]|<\|thought\|>|<\|channel\|>thought|<channel\|>thought)"
+            r"[\s\S]*?"
+            r"(?:</think>|\[/think\]|</thought>|\[/thought\]|<\|thought\|>|<\|channel\|>|<channel\|>|<\/\s*think>|\[\s*/\s*think\s*\]|$)"
+        )
+        cleaned = re.sub(think_pattern, "", text, flags=re.IGNORECASE)
+        cleaned = re.sub(r"<\|channel\|>|<channel\|>", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\*.*?\*", "", cleaned)
+        return re.sub(r" +", " ", cleaned).strip()
+
+    def _extract_recent_turns(self, src_session_id: str, follower_name: str, limit: int = 6) -> list[str]:
+        history = self.sessions_history.get(src_session_id, [])
+        if not history:
+            safe_id = "".join(c for c in src_session_id if c.isalnum() or c in "-_")
+            path = os.path.join(self.sessions_dir, f"{safe_id}.json")
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    history = data.get("messages", data) if isinstance(data, dict) else data
+                except Exception:
+                    pass
+
+        turns = []
+        for msg in history:
+            if msg.get("role") != "voice-call":
+                role = "User" if msg.get("role") == "user" else follower_name
+                if text := msg.get("text", "").strip():
+                    turns.append((role, text))
+
+        journal_lines = []
+        for role, text in turns[-limit:]:
+            if cleaned := self._clean_transcript_text(text):
+                journal_lines.append(f"  {role}: {cleaned}")
+
+        return journal_lines
+
+    def _build_voice_prompt(self, session_id: str, follower_name: str) -> str:
+        from core.follower_config import compile_instructions_from_json
+
+        active_prog = get_active_follower()
+        profile_data = self._load_profile_json(active_prog)
+
+        if profile_data:
+            profile_data.setdefault("operation", {})
+            profile_data["operation"].update({
+                "response_directive": "Super short and succinct messages. Conversational. No narration.",
+                "example_message": "",
+                "scenario": f"{follower_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time.",
+            })
+            instructions = compile_instructions_from_json(profile_data)
+        else:
+            instructions = (
+                f"# IDENTITY: {follower_name}\n\n"
+                "## SCENARIO / CONTEXT\n"
+                f"{follower_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time.\n\n"
+                "## RESPONSE DIRECTIVES (MANDATORY GUIDELINES)\n"
+                "Super short and succinct messages. Conversational. No narration."
+            )
+
+        journal_lines = self._extract_recent_turns(session_id[:-6], follower_name)
+        if journal_lines:
+            instructions += "\n\n# RECALLED JOURNALS / MEMORIES\n- Recent conversation context:\n" + "\n".join(journal_lines)
+
+        return instructions
+
+    def _inject_journals(self, instructions: str, user_message: str) -> str:
+        if not user_message:
+            return instructions
+
+        try:
+            from core.follower_config import replace_placeholders
+            from core.journals import match_journals
+
+            if matched_entries := match_journals(user_message, get_active_follower()):
+                if "\n\n# RECALLED JOURNALS / MEMORIES\n" not in instructions:
+                    instructions += "\n\n# RECALLED JOURNALS / MEMORIES\n"
+                for entry in matched_entries:
+                    instructions += f"- {replace_placeholders(entry['content'])}\n"
+        except Exception as je:
+            print(f"Error matching journals: {je}")
+
+        return instructions
+
+    def _inject_system_memories(self, instructions: str, session_id: str) -> str:
+        meta = self._get_memory_meta(session_id)
+        epic = meta.get("epic_chronicle", "")
+        chapters = meta.get("recent_chapters", [])
+
+        # Enforce the limit of only the 2 most recent chapters
+        recent_two_chapters = chapters[-2:] if chapters else []
+
+        if epic:
+            # Optional: ensure epic stays compact within your ~600 char limit
+            instructions += f"\n\n# CORE CONVERSATION CHRONICLE\n{epic.strip()}\n"
+
+        if recent_two_chapters:
+            formatted_chapters = "\n".join(f"- {ch.strip()}" for ch in recent_two_chapters)
+            instructions += f"\n\n# RECENT CONVERSATION CHAPTERS\n{formatted_chapters}\n"
+
+        return instructions
+
+    def _get_system_instructions(self, session_id: str, user_message: str = None) -> str:
+        from core.follower_config import get_follower_name
+        import re
+
+        try:
+            follower_name = get_follower_name()
+        except Exception:
+            follower_name = "Follower"
+
+        is_voice = isinstance(session_id, str) and session_id.endswith("_voice")
+
+        if is_voice:
+            instructions = self._build_voice_prompt(session_id, follower_name)
+        else:
+            import importlib
+            from core import follower_config
+            importlib.reload(follower_config)
+
+            instructions = follower_config.get_compiled_instructions()
+
+            if "CONCISENESS" not in instructions and "brief, succinct, and natural" not in instructions:
+                instructions += (
+                    "\n\n# STYLE\n"
+                    "Be brief and natural. No monologues, lectures, or forced questions. Ask questions only if contextually natural.\n"
+                )
+
+        instructions += (
+            "\n\n# TRACKING TAGS DIRECTIVE (MANDATORY)\n"
+            "You MUST write your full response text FIRST.\n"
+            "Only append HTML tracking comments at the VERY END.\n"
+            "Example format:\n"
+            "Your actual response goes here...\n"
+            "<!--...-->\n"
+        )
+
+        instructions += (
+            "\n\n# CONTENT\n"
+            "Anarchist-communist ethics. Explicit/NSFW content is permitted.\n"
+        )
+
+        instructions = self._inject_system_memories(instructions, session_id)
+
+        if not is_voice and user_message:
+            if re.search(r'https?://[^\s>)]+', user_message):
+                instructions += (
+                    "\n\n# PASTED LINK DIRECTIVE (MANDATORY)\n"
+                    "User shared links. You MUST use the `read_webpage` tool to fetch their content before responding. "
+                    "Do NOT guess, assume, or pretend to read the URL without calling the tool.\n"
+                )
+
+            project_keywords = {"mod", "code", "file", "folder", "directory", "project", "workspace", "repo", "program", "script", "source"}
+            msg_words = set(re.findall(r'\b\w+\b', user_message.lower()))
+            if msg_words & project_keywords:
+                instructions += (
+                    "\n\n# WORKSPACE EXPLORATION DIRECTIVE (MANDATORY)\n"
+                    "The user is asking about their files, modifications (mods), code, or project folders. "
+                    "You have direct access to their workspace folders. You MUST use the appropriate tool "
+                    "(e.g., `[get_workspace_structure()]` to list workspace files, or `[search_codebase(keyword=\"...\")]` "
+                    "to search for specific terms) to inspect their files before replying. "
+                    "Do NOT answer blindly or ask the user where they are—proactively look into the project folders first using your tools.\n"
+                )
+
+        if is_voice:
+            print(f"\n[VOICE CALL DEBUG] Active Voice Prompt:\n{instructions}\n[VOICE CALL DEBUG] END PROMPT\n", flush=True)
+
+        # Correctly indented portrait override directive
+        if user_message and any(k in user_message for k in ("Generate a portrait of yourself", "[GENERATE_IMAGEN:", "generate_follower_portrait")):
+            instructions += (
+                "\n\n# IMMEDIATE PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
+                "The user requested an image generation. You MUST output ONLY the tool call tag "
+                "`[generate_follower_portrait(prompt=\"...\")]`. Do NOT write dialogue, story progression, "
+                "or narrative descriptions. Output NOTHING except the tool call."
+            )
+
+        return instructions
+
+
+class OpenSourceRunner(BaseProgramRunner):
+    """Operates independently of cloud infrastructure, reading character settings
+    directly from the follower's JSON profile.
+    """
+
+    def __init__(self, app_name="Arena"):
+        super().__init__(app_name)
+        self.sessions_history = {}
+        self.sessions_memory_state = {}
+        self._lock = threading.RLock()
+
+    async def generate_impersonation(
+        self, prompt: str, system_instruction: str, model: str = None, temperature: float = 0.7
+    ) -> str:
+        remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
+        remote_key = os.getenv("REMOTE_API_KEY")
+        is_cloud = _is_cloud_model_check(model)
+
+        url = remote_cloud_url if is_cloud else REMOTE_SERVER_URL
+        headers = {"Content-Type": "application/json"}
+
+        if is_cloud:
+            headers["Authorization"] = f"Bearer {remote_key}"
+            target_model = model if model else os.getenv("REMOTE_MODEL", "gemini-2.5-flash")
+        else:
+            if remote_key:
+                headers["Authorization"] = f"Bearer {remote_key}"
+            target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
+
+        payload = {
+            "messages": [
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": temperature,
+            "max_tokens": 512,
+        }
+
+        if is_cloud:
+            from variables import DISABLED_THINKING, is_thinking_enabled
+
+            if not is_thinking_enabled(is_cloud):
+                payload.update(DISABLED_THINKING)
+        if target_model:
+            payload["model"] = target_model
+
+        r = await self._post_llm_request(url, payload, headers, timeout=60.0)
+        if r.status_code == 200:
+            content = r.json()["choices"][0]["message"].get("content", "").strip()
+            pattern = (
+                r"(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)"
+            )
+            return re.sub(pattern, "", content, flags=re.IGNORECASE).strip()
+
+        raise Exception(f"HTTP Server returned status code {r.status_code}: {r.text}")
+
+    def _get_session_path(self, session_id: str) -> str:
+        safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
+        return os.path.join(self.sessions_dir, f"{safe_id}.json")
+
+    def _save_session_to_disk(self, session_id: str):
+        with self._lock:
+            try:
+                data = {
+                    "messages": self.sessions_history.get(session_id, []),
+                    "memory_state": self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
+                }
+                with open(self._get_session_path(session_id), "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                print(f"Error saving OS session {session_id} to disk: {e}")
+
+    def _load_session_from_disk(self, session_id: str) -> bool:
+        with self._lock:
+            path = self._get_session_path(session_id)
+            if not os.path.exists(path):
+                return False
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                self.sessions_history[session_id] = data.get("messages", [])
+                self.sessions_memory_state[session_id] = data.get("memory_state", {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
+                self._ensure_first_message(session_id)
+                return True
+            except Exception as e:
+                print(f"Error loading OS session {session_id} from disk: {e}")
+                return False
+
+    def _ensure_first_message(self, session_id: str):
+        history = self.sessions_history.setdefault(session_id, [])
+
+        has_first_mes = any(
+            msg.get("id", "").startswith("first_mes") or (msg.get("role") == "follower" and msg == history[0])
+            for msg in history
+        )
+
+        if not has_first_mes:
+            try:
+                from core.follower_config import get_follower_greeting, replace_placeholders
+
+                if greeting := replace_placeholders(get_follower_greeting()).strip():
+                    starting_msg = {
+                        "id": f"first_mes_{uuid.uuid4().hex}",
+                        "role": "follower",
+                        "text": greeting,
+                        "tool_calls": [],
+                        "timestamp": time.time(),
+                    }
+                    history.insert(0, starting_msg)
+                    self._save_session_to_disk(session_id)
+            except Exception as e:
+                print(f"[runner] Could not seed first_mes: {e}")
+
+        updated = False
+        for idx, msg in enumerate(history):
+            if not msg.get("id"):
+                role = msg.get("role", "msg")
+                prefix = "first_mes" if role == "follower" and idx == 0 else role
+                msg["id"] = f"{prefix}_{uuid.uuid4().hex}"
+                updated = True
+
+        if updated:
+            self._save_session_to_disk(session_id)
+
+    def _consolidate_tools(self, tool_calls: list) -> list:
+        if not tool_calls:
+            return []
+
+        pairs = {}
+        for tc in tool_calls:
+            cid = tc.get("id", "")
+            if cid not in pairs:
+                pairs[cid] = {"id": cid}
+
+            if tc.get("type") == "call":
+                pairs[cid]["name"] = tc.get("name", "")
+                pairs[cid]["args"] = tc.get("args", {})
+            elif tc.get("type") == "response":
+                pairs[cid]["result"] = tc.get("response", "")
+
+        return [p for p in pairs.values() if p.get("name")]
+
+    def _extract_media_items(self, text: str, img_url: str, tool_calls: list) -> list:
+        media = []
+        seen_urls = set()
+
+        def _add_media(url: str):
+            if url and url not in seen_urls and not url.startswith("data:"):
+                seen_urls.add(url)
+                media.append({"url": url, "type": "video" if url.lower().endswith(".mp4") else "image"})
+
+        for match in re.finditer(r"!\[([^\]]*)\]\(([^)]+)\)", text):
+            _add_media(match.group(2))
+
+        _add_media(img_url)
+
+        for tc in tool_calls or []:
+            if tc.get("type") == "response" and (resp := tc.get("response")):
+                for match in re.finditer(r"!\[([^\]]*)\]\(([^)]+)\)", resp):
+                    _add_media(match.group(2))
+
+        return media
+
+    def _normalize_message(self, msg: dict) -> dict:
+        text = msg.get("text", "") or ""
+        tool_calls = msg.get("tool_calls", [])
+
+        media = self._extract_media_items(text, msg.get("image_url"), tool_calls)
+        clean_text = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", text).strip()
+        clean_text = clean_text.replace("(Generation stopped)", "").strip()
+        tool_summary = self._consolidate_tools(tool_calls)
+
+        image_tools = {"generate_local_image", "generate_imagen", "generate_follower_portrait", "generate_general_image"}
+        image_prompt = next(
+            (ts.get("args", {}).get("prompt") for ts in tool_summary if ts.get("name") in image_tools),
+            None,
+        )
+
+        if image_prompt:
+            for m in media:
+                m.setdefault("prompt", image_prompt)
+
+        role = msg.get("role", "user")
+        return {
+            "id": msg.get("id", ""),
+            "role": role,
+            "text": clean_text,
+            "media": media,
+            "tool_summary": tool_summary,
+            "tool_calls": tool_calls,
+            "timestamp": msg.get("timestamp"),
+            "editable": role in ("user", "follower"),
+            "deletable": True,
+        }
+
+    async def get_history(self, session_id: str) -> list:
+        with self._lock:
+            self._load_session_from_disk(session_id)
+            self._ensure_first_message(session_id)
+
+            raw_history = self.sessions_history.get(session_id, [])
+            updated_any = False
+
+            for msg in raw_history:
+              if updated_any:
+                self._save_session_to_disk(session_id)
+
+            hidden_prefixes = ("tool_", "port_", "quest_", "sys_", "itm_")
+            chat_history = []
+
+            for msg in raw_history:
+                if msg.get("role") == "system-memory" or msg.get("id", "").startswith(hidden_prefixes):
+                    continue
+                if msg.get("role") == "follower":
+                    if not (msg.get("text") or "").strip() and not msg.get("tool_calls"):
+                        continue
+                chat_history.append(self._normalize_message(msg))
+
+            return chat_history
+
+    async def run_async(
+        self,
+        session_id: str,
+        new_message_text: str,
+        image_data: str = None,
+        image_mime: str = None,
+        model: str = None,
+        media_path: str = None,
+        msg_id: str = None,
+    ) -> tuple:
+        with self._lock:
+            self._load_session_from_disk(session_id)
+            self.sessions_history.setdefault(session_id, [])
+
+            try:
+                return await self._run_async_internal(
+                    session_id=session_id,
+                    new_message_text=new_message_text,
+                    image_data=image_data,
+                    image_mime=image_mime,
+                    model=model,
+                    media_path=media_path,
+                    msg_id=msg_id,
+                )
+            finally:
+                self._save_session_to_disk(session_id)
+
+    async def _run_async_internal(
+        self,
+        session_id: str,
+        new_message_text: str,
+        image_data: str = None,
+        image_mime: str = None,
+        model: str = None,
+        media_path: str = None,
+        msg_id: str = None,
+    ) -> tuple:
+        if session_id not in self.sessions_history:
+            self._load_session_from_disk(session_id)
+
+        self._ensure_first_message(session_id)
+
+        file_path_resolved = None
+        if media_path and media_path.startswith("/images/"):
+            try:
+                rel_path = media_path[len("/images/") :]
+                local_file_path = os.path.normpath(os.path.join(project_root, "core", "FOLLOWERS", get_active_follower(), rel_path))
+                if os.path.exists(local_file_path):
+                    mime_type, _ = mimetypes.guess_type(local_file_path)
+                    if mime_type and mime_type.startswith("image/"):
+                        file_path_resolved = local_file_path
+            except Exception as e:
+                print(f"Error handling media_path in OpenSourceRunner: {e}")
+
+        if not msg_id:
+            if new_message_text.startswith("[SYSTEM: User has completed"):
+                prefix = "quest_"
+            elif any(k in new_message_text for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:", "generate_follower_portrait")):
+                prefix = "port_"
+            elif new_message_text.startswith("[Tool Response from"):
+                prefix = "tool_"
+            elif (media_path or image_data) and not new_message_text.strip():
+                prefix = "img_"
+            else:
+                prefix = "usr_"
+            user_msg_id = f"{prefix}{uuid.uuid4().hex}"
+        else:
+            user_msg_id = msg_id
+
+        user_msg = {
+            "id": user_msg_id,
+            "role": "user",
+            "text": new_message_text,
+            "image_url": media_path if media_path else (f"data:{image_mime};base64,{image_data}" if image_data else None),
+            "timestamp": time.time(),
+        }
+        self.sessions_history[session_id].append(user_msg)
+
+        history = self.sessions_history.get(session_id, [])
+        vector_query = _build_vector_query(history)
+        rag_context, query_vector_embedding = _get_databank_contexts(vector_query)
+
+        adapter = OsHistoryAdapter(
+            self, session_id, file_path_resolved, image_data, image_mime, query_vector=query_vector_embedding
+        )
+
+        res = await self._execute_local_llm_loop(
+            session_id=session_id,
+            adapter=adapter,
+            model=model,
+            rag_context=rag_context,
+            new_message_text=new_message_text,
+            invocation_id="",
+        )
+
+        bot_response_text, tool_calls = res
+        follower_msg_id = None
+        follower_texts = []
+
+        history = self.sessions_history.get(session_id, [])
+        user_idx = next((i for i, m in enumerate(history) if m.get("id") == user_msg_id), -1)
+
+        if user_idx != -1:
+            for msg in history[user_idx + 1 :]:
+                if msg.get("role") == "follower":
+                    if msg.get("text"):
+                        follower_texts.append(msg["text"])
+                    if msg.get("id"):
+                        follower_msg_id = msg["id"]
+
+        if follower_texts:
+            bot_response_text = "\n\n".join(follower_texts)
+        else:
+            follower_msg_id = next((m.get("id") for m in reversed(history) if m.get("role") == "follower"), None)
+
+        return bot_response_text, tool_calls, user_msg_id, follower_msg_id
+
+    async def edit_turn(
+        self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False
+    ) -> tuple:
+        if session_id not in self.sessions_history:
+            self._load_session_from_disk(session_id)
+
+        history = self.sessions_history.get(session_id)
+        if not history:
+            raise ValueError("Session not found")
+
+        user_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
+        if user_idx == -1:
+            raise ValueError("Message not found")
+
+        orig_msg = history[user_idx]
+        img_data, img_mime, media_path = None, None, None
+
+        if url_str := orig_msg.get("image_url"):
+            if url_str.startswith("data:") and ";base64," in url_str:
+                parts = url_str.split(";base64,")
+                img_mime = parts[0].split("data:")[-1]
+                img_data = parts[1]
+            else:
+                media_path = url_str
+
+        self.sessions_history[session_id] = history[:user_idx]
+        self._save_session_to_disk(session_id)
+
+        new_input = new_text if new_text is not None else orig_msg.get("text", "")
+        res = await self.run_async(
+            session_id, new_input, image_data=img_data, image_mime=img_mime, model=model, media_path=media_path, msg_id=msg_id
+        )
+
+        self._save_session_to_disk(session_id)
+        return res
+
+    async def reset_session(self, session_id: str):
+        with self._lock:
+            if session_id in self.sessions_history:
+                del self.sessions_history[session_id]
+            if session_id in self.sessions_memory_state:
+                del self.sessions_memory_state[session_id]
+
+            path = self._get_session_path(session_id)
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except Exception as e:
+                    print(f"Error deleting OS session file {path}: {e}")
+
+            try:
+                from core.skills.vectorized_databank.databank import DataBankManager
+
+                DataBankManager().delete_chat_history(session_id)
+            except Exception as e:
+                print(f"Error cleaning up databank history on session reset: {e}")
+
+    async def delete_system_memory(self, session_id: str, timestamp: float) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+
+            marked_compacted = False
+            for msg in self.sessions_history.get(session_id, []):
+                if msg.get("role") == "system-memory" and abs(msg.get("timestamp", 0) - timestamp) < 1.0:
+                    msg["compacted"] = True
+                    marked_compacted = True
+                    print("[MEMORY DELETE] Marked OS message as compacted.", flush=True)
+
+            if marked_compacted:
+                self._save_session_to_disk(session_id)
+
+            return marked_compacted
+
+    async def delete_turn(self, session_id: str, msg_id: str) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+
+            history = self.sessions_history.get(session_id)
+            if history is None:
+                raise ValueError("Session not found")
+
+            user_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
+            if user_idx == -1:
+                raise ValueError("User message not found")
+
+            next_user_idx = next((i for i in range(user_idx + 1, len(history)) if is_real_user_msg(history[i])), -1)
+
+            self.sessions_history[session_id] = history[:user_idx] + (history[next_user_idx:] if next_user_idx != -1 else [])
+            self._save_session_to_disk(session_id)
+            return True
+
+    async def delete_message_at(self, session_id: str, msg_id: str) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+
+            history = self.sessions_history.get(session_id, [])
+            for i, msg in enumerate(history):
+                if msg.get("id") == msg_id:
+                    del history[i]
+                    self._save_session_to_disk(session_id)
+                    return True
+            return False
+
+    async def delete_image_from_session(self, session_id: str, image_url: str) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+
+            history = self.sessions_history.get(session_id)
+            if history is None:
+                return self._delete_local_image(image_url)
+
+            modified = False
+            indices_to_delete = set()
+            pattern = r"!\[[^\]]*\]\(" + re.escape(image_url) + r"\)"
+
+            for i, msg in enumerate(history):
+                has_image = False
+
+                if msg.get("text") and image_url in msg["text"]:
+                    has_image = True
+                    remaining_text = re.sub(pattern, "", msg["text"]).strip()
+                    if not re.sub(r"^[:\s\-\*]+|[:\s\-\*]+$", "", remaining_text):
+                        indices_to_delete.add(i)
+                    else:
+                        msg["text"] = remaining_text
+                    modified = True
+
+                if msg.get("image_url") == image_url:
+                    has_image = True
+                    msg["image_url"] = None
+                    if not (msg.get("text") or "").strip():
+                        indices_to_delete.add(i)
+                    modified = True
+
+                if tool_calls := msg.get("tool_calls"):
+                    cleared_call_ids = set()
+                    for tc in tool_calls:
+                        if tc.get("type") == "response" and tc.get("response") and image_url in tc["response"]:
+                            has_image = True
+                            tc["response"] = re.sub(pattern, "", tc["response"]).strip()
+                            if not tc["response"]:
+                                cleared_call_ids.add(tc.get("id"))
+                            modified = True
+
+                    if cleared_call_ids:
+                        msg["tool_calls"] = [
+                            tc
+                            for tc in tool_calls
+                            if not (
+                                tc.get("id") in cleared_call_ids
+                                and (tc.get("type") == "call" or not (tc.get("response") or "").strip())
+                            )
+                        ]
+
+                    if not any(tc.get("response", "").strip() for tc in msg["tool_calls"] if tc.get("type") == "response"):
+                        if not (msg.get("text") or "").strip():
+                            indices_to_delete.add(i)
+
+                if has_image and i > 0:
+                    prev_msg = history[i - 1]
+                    if prev_msg.get("role") == "user" and "Generate a portrait of yourself" in (prev_msg.get("text") or ""):
+                        indices_to_delete.add(i - 1)
+
+            for idx in sorted(indices_to_delete, reverse=True):
+                if 0 <= idx < len(history):
+                    del history[idx]
+                    modified = True
+
+            file_deleted = self._delete_local_image(image_url)
+            if modified:
+                self._save_session_to_disk(session_id)
+
+            return modified or file_deleted
+
+    async def replace_image_in_session(
+        self, session_id: str, old_image_url: str, new_image_url: str, new_prompt: str = None
+    ) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+
+            history = self.sessions_history.get(session_id)
+            if history is None:
+                return False
+
+            modified = False
+            for msg in history:
+                if msg.get("text") and old_image_url in msg["text"]:
+                    msg["text"] = msg["text"].replace(old_image_url, new_image_url)
+                    modified = True
+
+                if msg.get("image_url") == old_image_url:
+                    msg["image_url"] = new_image_url
+                    modified = True
+
+                if tool_calls := msg.get("tool_calls"):
+                    call_ids_to_update = set()
+                    for tc in tool_calls:
+                        if tc.get("type") == "response" and tc.get("response") and old_image_url in tc["response"]:
+                            tc["response"] = tc["response"].replace(old_image_url, new_image_url)
+                            modified = True
+                            if tc.get("id"):
+                                call_ids_to_update.add(tc["id"])
+
+                    if new_prompt and call_ids_to_update:
+                        for tc in tool_calls:
+                            if tc.get("type") == "call" and tc.get("id") in call_ids_to_update and isinstance(tc.get("args"), dict):
+                                tc["args"]["prompt"] = new_prompt
+                                modified = True
+
+            if modified:
+                self._save_session_to_disk(session_id)
+
+            return modified
+
+    async def replace_image_with_video_in_session(self, session_id: str, old_image_url: str, new_video_url: str) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+            if session_id not in self.sessions_history:
+                return False
+                
+            history = self.sessions_history[session_id]
+            modified = False
+            
+            for msg in history:
+                if msg.get('text') and old_image_url in msg['text']:
+                    msg['text'] = msg['text'].replace(old_image_url, new_video_url)
+                    modified = True
+                if msg.get('image_url') == old_image_url:
+                    msg['image_url'] = new_video_url
+                    modified = True
+                if msg.get('tool_calls'):
+                    for tc in msg['tool_calls']:
+                        if tc.get('type') == 'response' and tc.get('response') and old_image_url in tc['response']:
+                            tc['response'] = tc['response'].replace(old_image_url, new_video_url)
+                            modified = True
+                            
+            if modified:
+                self._save_session_to_disk(session_id)
+                return True
+            return False
+
+    async def append_message_to_session(self, session_id: str, role: str, text: str) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+            if session_id not in self.sessions_history:
+                self.sessions_history[session_id] = []
+                
+            prefix = 'usr_' if role == 'user' else 'prgm_'
+            if role == 'user':
+                if text.startswith("[SYSTEM: User has completed"):
+                    prefix = "quest_"
+                elif "Send me a portrait of yourself" in text or "[GENERATE_IMAGE:" in text or "[GENERATE_IMAGEN:" in text:
+                    prefix = "port_"
+                elif text.startswith("[Tool Response from"):
+                    prefix = "tool_"
+                elif text.strip().startswith("![") and text.strip().endswith(")"):
+                    prefix = "img_"
+            else:
+                if text.strip().startswith("![") and text.strip().endswith(")"):
+                    prefix = "img_"
+            
+            from runners.follower import get_active_user
+            from core.world_engine import load_world_state
+            active_user = get_active_user()
+            world = load_world_state(active_user)
+            t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+
+            history = self.sessions_history[session_id]
+            new_msg = {
+                'id': f"{prefix}{uuid.uuid4().hex}",
+                'role': 'user' if role == 'user' else 'follower',
+                'text': text,
+                'tool_calls': [],
+                'tamrielic_date': t_date,
+                'timestamp': time.time()
+            }
+            history.append(new_msg)
+            self._save_session_to_disk(session_id)
+            return True
+
+    async def append_voice_call(self, session_id: str, transcript: str, timestamp: float = None, start_time: float = None) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+            if session_id not in self.sessions_history:
+                self.sessions_history[session_id] = []
+                
+            if timestamp is None:
+                timestamp = time.time()
+                
+            # Remove individual user/follower messages that were part of this voice call
+            if start_time is not None:
+                self.sessions_history[session_id] = [
+                    msg for msg in self.sessions_history[session_id]
+                    if not (msg.get('role') in ('user', 'follower') and msg.get('timestamp', 0) >= start_time)
+                ]
+                
+            new_msg = {
+                'id': f"vc_{uuid.uuid4().hex}",
+                'role': 'voice-call',
+                'text': transcript,
+                'timestamp': timestamp
+            }
+            self.sessions_history[session_id].append(new_msg)
+            self._save_session_to_disk(session_id)
+            return True
+
+    async def clone_history(self, src_id: str, dest_id: str, messages: list) -> bool:
+        with self._lock:
+            if dest_id.endswith('_voice'):
+                self.sessions_history[dest_id] = []
+                self._save_session_to_disk(dest_id)
+                return True
+                
+            if src_id not in self.sessions_history:
+                self._load_session_from_disk(src_id)
+                
+            src_hist = self.sessions_history.get(src_id, [])
+            filtered_msgs = [msg for msg in src_hist if msg.get('role') != 'voice-call']
+            limit = 6
+            seed_msgs = filtered_msgs[-limit:] if len(filtered_msgs) > limit else filtered_msgs
+            
+            cloned_msgs = copy.deepcopy(seed_msgs)
+            self.sessions_history[dest_id] = cloned_msgs
+            self._save_session_to_disk(dest_id)
+            return True
+
+    async def update_message_text(self, session_id: str, msg_id: str, new_text: str) -> bool:
+        with self._lock:
+            if session_id not in self.sessions_history:
+                self._load_session_from_disk(session_id)
+            if session_id not in self.sessions_history:
+                return False
+                
+            real_history = self.sessions_history[session_id]
+            found_idx = -1
+            for i, msg in enumerate(real_history):
+                if msg.get('id') == msg_id:
+                    found_idx = i
+                    break
+                    
+            if found_idx != -1:
+                target_msg = real_history[found_idx]
+                target_msg['text'] = new_text
+                role = target_msg.get('role')
+                if role in ('follower', 'model'):
+                    prev_user_idx = -1
+                    for k in range(found_idx - 1, -1, -1):
+                        if is_real_user_msg(real_history[k]):
+                            prev_user_idx = k
+                            break
+                    next_user_idx = len(real_history)
+                    for k in range(found_idx + 1, len(real_history)):
+                        if is_real_user_msg(real_history[k]):
+                            next_user_idx = k
+                            break
+                            
+                    for k in range(prev_user_idx + 1, next_user_idx):
+                        if k != found_idx:
+                            m = real_history[k]
+                            if m.get('role') in ('follower', 'model'):
+                                m['text'] = ""
+                                
+                self._save_session_to_disk(session_id)
+                return True
+            return False

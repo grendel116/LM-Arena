@@ -318,7 +318,7 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
 
         if is_player_target and status_effect:
             try:
-                from engine.character import load_character, save_character, add_effect, add_condition
+                from core.character import load_character, save_character, add_effect, add_condition
                 sheet = load_character(target_name)
                 add_condition(sheet, status_effect)
                 add_effect(sheet, {"name": status_effect.capitalize(), "duration_turns": 5, "source": f"{target_name}"})

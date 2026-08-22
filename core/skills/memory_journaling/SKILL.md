@@ -1,11 +1,11 @@
 ---
 name: memory_journaling
-description: Record specific details about the user or companion in a memory journal for future recall.
+description: Record specific details about the user or follower in a memory journal for future recall.
 summary: "Record user details and milestones using [add_journal_entry(keyphrases=\"...\", content=\"...\")]"
 retrieval: always
 ---
 # SKILL: Memory Journaling
-Record important details about the user or companion:
+Record important details about the user or follower:
 1. **Trigger**: Call the add_journal_entry tool when the user shares specific details about their life, preferences, relationships, or milestones.
 2. **Details**: Record only specific details. Examples of specific details include names, locations, dates, preferences, and milestones.
    Avoid writing general summaries of the conversation.
