@@ -34,7 +34,7 @@ core/followers/*
 # Ignore user-generated dynamic program sessions, databases, custom generated portraits, media, and memories
 core/followers/*/sessions/
 core/followers/*/portraits/*
-!core/followers/*/portraits/profile.png
+!core/followers/ria_silmane/portraits/profile.png
 core/followers/*/media/
 core/followers/*/uploads/
 core/followers/*/databank.db
@@ -53,7 +53,8 @@ media/
 
 
 # Local model weights
-models/
+models/*
+!models/models.py
 
 # TTS Speech Model weights and synthesized audio cache
 core/skills/speech_generation/speech_model/*.onnx
