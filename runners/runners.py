@@ -294,26 +294,6 @@ class BaseProgramRunner:
         cleaned = re.sub(pattern, "", text, flags=re.IGNORECASE)
         return re.sub(r"<\|channel\|>|<channel\|>", "", cleaned, flags=re.IGNORECASE).strip()
 
-    def _filter_story_mode_matches(self, matches: list, text: str) -> tuple[list, str]:
-        if not matches:
-            return matches, text
-
-        story_allowed = {
-            "generate_local_image",
-            "generate_follower_portrait",
-            "generate_imagen",
-            "generate_general_image",
-            "apply_comfy_workflow",
-            "add_journal_entry",
-        }
-        disallowed = [m for m in matches if m.group(1) not in story_allowed]
-        for m in disallowed:
-            text = text.replace(m.group(0), "")
-
-        text = re.sub(r"\n{3,}", "\n\n", text).strip()
-        filtered_matches = [m for m in matches if m.group(1) in story_allowed]
-        return filtered_matches, text
-
     async def _handle_image_tool_execution(
         self, match, bot_response_text: str, adapter: LocalHistoryAdapter, invocation_id: str
     ) -> tuple[str, list]:
@@ -466,7 +446,7 @@ class BaseProgramRunner:
             print(f"[DEBUG STATUS] {response.status_code}", flush=True)
             print(f"[DEBUG RAW RESPONSE] {repr(response.text)}", flush=True)
         except Exception as e:
-            # --- REMOTE CLOUD BACKUP ---
+            # --- REMOTE CLOUD BACKUP (OR LOCAL FALLBACK) ---
             if not is_cloud and remote_configured and os.getenv("REMOTE_CLOUD_URL"):
                 print(f"[LLM BACKUP] Local server failed ({e}). Switching to the cloud backup...", flush=True)
                 cloud_url = os.getenv("REMOTE_CLOUD_URL")
@@ -496,8 +476,7 @@ class BaseProgramRunner:
         bot_response_text = _convert_json_tool_calls_to_tags(bot_response_text)
 
         matches = list(re.finditer(r"\[(\w+)\(([\s\S]*?)\)\]", bot_response_text))
-        matches, bot_response_text = self._filter_story_mode_matches(matches, bot_response_text)
-
+        
         tool_calls = []
         if matches:
             # 1. Execute local tools and collect results
@@ -515,7 +494,7 @@ class BaseProgramRunner:
             adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
             adapter.append_tool_events(results, invocation_id)
 
-            # 2. Remote-first pass for subagents & multi-step tool output synthesis
+            # 2. Remote-first pass for subagents & multi-step tool output synthesis (with strict local fallback)
             post_url = os.getenv("REMOTE_CLOUD_URL") if remote_configured else REMOTE_SERVER_URL
             post_headers = {"Content-Type": "application/json"}
             if remote_configured and os.getenv("REMOTE_API_KEY"):
@@ -532,22 +511,47 @@ class BaseProgramRunner:
                 f"Tool Execution Logs: {json.dumps(tool_calls)}\n\n"
                 f"Synthesize the tool execution results to directly answer the user request."
             )
+            
             post_payload = {
                 "messages": [
                     {"role": "user", "content": post_prompt}
                 ],
                 "temperature": 0.3,
                 "max_tokens": 1024,
-                "model": os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite") if remote_configured else target_model,
             }
+
+            synthesis = ""
             try:
-                post_resp = await self._post_llm_request(post_url, post_payload, post_headers, timeout=60.0, session_id=session_id)
+                # Attempt primary remote-first pass
+                remote_model_name = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite") if remote_configured else target_model
+                remote_payload = {**post_payload, "model": remote_model_name}
+                post_resp = await self._post_llm_request(post_url, remote_payload, post_headers, timeout=60.0, session_id=session_id)
+                
                 if post_resp.status_code == 200:
                     synthesis = post_resp.json()["choices"][0]["message"].get("content", "").strip()
-                    if synthesis:
-                        bot_response_text += f"\n\n{synthesis}"
+                else:
+                    raise Exception(f"Remote server returned status code {post_resp.status_code}")
+
             except Exception as e:
-                print(f"[POST-PROCESSING ERROR] Tool synthesis failed: {e}", flush=True)
+                print(f"[POST-PROCESSING WARNING] Remote synthesis failed ({e}). Falling back to local model server...", flush=True)
+                try:
+                    # Explicitly target local server configuration for fallback
+                    local_post_url = REMOTE_SERVER_URL
+                    local_post_headers = get_remote_server_headers()
+                    local_fallback_model = os.getenv("LOCAL_MODEL_NAME") or target_model
+                    
+                    local_payload = {**post_payload, "model": local_fallback_model}
+                    local_resp = await self._post_llm_request(local_post_url, local_payload, local_post_headers, timeout=60.0, session_id=session_id)
+                    
+                    if local_resp.status_code == 200:
+                        synthesis = local_resp.json()["choices"][0]["message"].get("content", "").strip()
+                    else:
+                        print(f"[POST-PROCESSING ERROR] Local fallback server returned status {local_resp.status_code}", flush=True)
+                except Exception as local_e:
+                    print(f"[POST-PROCESSING ERROR] Local fallback synthesis connection failed: {local_e}", flush=True)
+
+            if synthesis:
+                bot_response_text += f"\n\n{synthesis}"
         else:
             adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
 
@@ -567,7 +571,7 @@ class BaseProgramRunner:
         )
 
         return bot_response_text, tool_calls
-
+    
     @property
     def sessions_dir(self) -> str:
         from core.save_manager import SAVES_DIR
@@ -757,6 +761,7 @@ class BaseProgramRunner:
 
     def _get_system_instructions(self, session_id: str, user_message: str = None) -> str:
         from core.follower_config import get_follower_name
+        from utils.utils import _ARENA_DIRECTIVE_PROMPT
         import re
 
         try:
@@ -775,50 +780,9 @@ class BaseProgramRunner:
 
             instructions = follower_config.get_compiled_instructions()
 
-            if "CONCISENESS" not in instructions and "brief, succinct, and natural" not in instructions:
-                instructions += (
-                    "\n\n# STYLE\n"
-                    "Be brief and natural. No monologues, lectures, or forced questions. Ask questions only if contextually natural.\n"
-                )
-
-        instructions += (
-            "\n\n# TRACKING TAGS DIRECTIVE (MANDATORY)\n"
-            "You MUST write your full response text FIRST.\n"
-            "Only append HTML tracking comments at the VERY END.\n"
-            "Example format:\n"
-            "Your actual response goes here...\n"
-            "<!--...-->\n"
-        )
-
-        instructions += (
-            "\n\n# CONTENT\n"
-            "Anarchist-communist ethics. Explicit/NSFW content is permitted.\n"
-        )
-
         instructions = self._inject_system_memories(instructions, session_id)
 
-        if not is_voice and user_message:
-            if re.search(r'https?://[^\s>)]+', user_message):
-                instructions += (
-                    "\n\n# PASTED LINK DIRECTIVE (MANDATORY)\n"
-                    "User shared links. You MUST use the `read_webpage` tool to fetch their content before responding. "
-                    "Do NOT guess, assume, or pretend to read the URL without calling the tool.\n"
-                )
-
-            project_keywords = {"mod", "code", "file", "folder", "directory", "project", "workspace", "repo", "program", "script", "source"}
-            msg_words = set(re.findall(r'\b\w+\b', user_message.lower()))
-            if msg_words & project_keywords:
-                instructions += (
-                    "\n\n# WORKSPACE EXPLORATION DIRECTIVE (MANDATORY)\n"
-                    "The user is asking about their files, modifications (mods), code, or project folders. "
-                    "You have direct access to their workspace folders. You MUST use the appropriate tool "
-                    "(e.g., `[get_workspace_structure()]` to list workspace files, or `[search_codebase(keyword=\"...\")]` "
-                    "to search for specific terms) to inspect their files before replying. "
-                    "Do NOT answer blindly or ask the user where they are—proactively look into the project folders first using your tools.\n"
-                )
-
-        if is_voice:
-            print(f"\n[VOICE CALL DEBUG] Active Voice Prompt:\n{instructions}\n[VOICE CALL DEBUG] END PROMPT\n", flush=True)
+        instructions += _ARENA_DIRECTIVE_PROMPT
 
         # Correctly indented portrait override directive
         if user_message and any(k in user_message for k in ("Generate a portrait of yourself", "[GENERATE_IMAGEN:", "generate_follower_portrait")):

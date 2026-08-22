@@ -5086,18 +5086,18 @@ async function loadHistory() {
             container.classList.remove('smooth-scroll');
         }
 
-        // If the session ID came from localStorage, verify it still exists on the server.
-        // If it is missing, default to 'default'.
-        if (!sessionFromUrl && sessionId !== 'default') {
+        if (!sessionFromUrl && sessionId !== 'eternal_champion') {
             try {
                 const res = await fetch('/api/sessions');
                 const data = await res.json();
+                
+                let fallbackId = (data.sessions && data.sessions.length > 0) ? data.sessions[0] : 'eternal_champion';
+                
                 if (data.sessions && !data.sessions.includes(sessionId)) {
-                    console.warn(`Last opened session "${sessionId}" is missing on the server. Falling back to default.`);
-                    sessionId = 'default';
-                    safeLocalStorage.setItem('follower_session_id', 'default');
+                    console.warn(`Last opened session "${sessionId}" is missing on the server. Falling back to "${fallbackId}".`);
+                    sessionId = fallbackId;
+                    safeLocalStorage.setItem('follower_session_id', sessionId);
                     
-                    // Update the UI header ID display if it exists
                     const sessionDisplay = document.getElementById('session-id-display');
                     if (sessionDisplay) {
                         sessionDisplay.textContent = `• ID: ${sessionId.slice(-4)}`;
@@ -10178,7 +10178,7 @@ if (sessionId) {
         window.history.replaceState({}, document.title, window.location.pathname);
     } catch (e) {}
 } else {
-    sessionId = safeLocalStorage.getItem('follower_session_id') || 'default';
+    sessionId = safeLocalStorage.getItem('follower_session_id') || 'eternal_champion';
     safeLocalStorage.setItem('follower_session_id', sessionId);
 }
 
