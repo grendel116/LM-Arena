@@ -16,9 +16,9 @@ import contextvars
 active_running_tools = {}
 _active_tools_lock = threading.Lock()
 
-current_session_id = contextvars.ContextVar('current_session_id', default='default')
-session_tool_calls = {}
+current_session_id = contextvars.ContextVar('current_session_id', default='eternal_champion')
 session_tool_calls_lock = threading.Lock()
+session_tool_calls = {}
 
 def track_tool_activity(func):
     @functools.wraps(func)

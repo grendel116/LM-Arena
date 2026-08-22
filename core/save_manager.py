@@ -210,6 +210,8 @@ def read_save(save_id: str = None) -> dict:
     return bundle
 
 
+import time
+
 def write_save(save_id: str, bundle: dict) -> None:
     """Write complete save bundle atomically to single-file JSON."""
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
@@ -239,9 +241,26 @@ def write_save(save_id: str, bundle: dict) -> None:
             bundle["meta"]["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Morning Star')}, 3E {t_date.get('year', 389)}"
 
     tmp_path = SAVES_DIR / f"{save_id}.json.tmp"
+    
+    # Ensure file is completely written and closed inside the 'with' block
     with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(bundle, f, indent=2, ensure_ascii=False)
-    tmp_path.replace(json_path)
+        f.flush()
+        os.fsync(f.fileno())
+
+    # Windows-safe replacement with a retry buffer for active file handles
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            if json_path.exists():
+                json_path.unlink() # Explicitly remove destination on Windows if locked
+            tmp_path.replace(json_path)
+            break
+        except (PermissionError, OSError) as e:
+            if attempt < max_retries - 1:
+                time.sleep(0.05) # Wait 50ms for the OS to release the handle
+            else:
+                raise e
 
 
 def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage") -> dict:

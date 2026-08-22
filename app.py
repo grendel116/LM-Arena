@@ -131,14 +131,15 @@ init_runner()
 
 def reload_follower_state():
     """Reload follower config, reinitialize the runner, and sync active save session."""
-    from core import follower_config, follower_config
-    importlib.reload(follower_config)
+    from core import follower_config
     importlib.reload(follower_config)
     init_runner()
+    
+    from core.save_manager import get_active_save_id
+    active_id = get_active_save_id()
+    
     if hasattr(runner, '_load_session_from_disk'):
-        runner._load_session_from_disk('default')
-
-reload_follower_state = reload_follower_state
+        runner._load_session_from_disk(active_id)
 
 
 def load_theme(follower_id):
@@ -477,7 +478,7 @@ def get_image_prompt():
 @app.route('/api/proactive_action', methods=['POST'])
 @requires_auth
 def proactive_action():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     selected_model = request.json.get('model')
     
     try:
@@ -660,7 +661,7 @@ You must return a valid JSON object matching the following schema:
 @app.route('/history', methods=['GET'])
 @requires_auth
 def history():
-    session_id = request.args.get('session_id', 'default')
+    session_id = request.args.get('session_id') or get_active_save_id()
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
         
@@ -733,7 +734,7 @@ def chat():
     image_data = request.json.get('image_data')
     image_mime = request.json.get('image_mime')
     media_path = request.json.get('media_path')
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     selected_model = request.json.get('model')
     is_voice_call = request.json.get('is_voice_call', False)
 
@@ -805,7 +806,7 @@ def chat():
 @app.route('/edit', methods=['POST'])
 @requires_auth
 def edit():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     msg_id = request.json.get('msg_id')
     new_text = request.json.get('new_text') # None means reroll (use original text)
     selected_model = request.json.get('model')
@@ -994,7 +995,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
 @app.route('/api/generate_user_message', methods=['POST'])
 @requires_auth
 def generate_user_message():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     model = request.json.get('model')
     user_profile = request.json.get('user_profile', '').strip()
     user_input = request.json.get('current_input', request.json.get('user_input', '')).strip()
@@ -1139,7 +1140,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
 @app.route('/api/execute_player_skill_check', methods=['POST'])
 @requires_auth
 def execute_player_skill_check():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     skill_name = request.json.get('skill_name', 'Agility')
     attribute_name = request.json.get('attribute_name', 'Agility')
     dc = request.json.get('dc', 15)
@@ -1164,7 +1165,7 @@ def execute_player_skill_check():
 @app.route('/update_message', methods=['POST'])
 @requires_auth
 def update_message():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     msg_id = request.json.get('msg_id')
     new_text = request.json.get('new_text')
     
@@ -1184,7 +1185,7 @@ def update_message():
 @app.route('/delete', methods=['POST'])
 @requires_auth
 def delete_message():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     msg_id = request.json.get('msg_id')
 
     if not msg_id:
@@ -1207,7 +1208,7 @@ def delete_message():
 @app.route('/reset', methods=['POST'])
 @requires_auth
 def reset():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     try:
         asyncio.run(runner.reset_session(session_id))
         return jsonify({'status': 'success'})
@@ -1218,7 +1219,7 @@ def reset():
 @app.route('/delete_image', methods=['POST'])
 @requires_auth
 def delete_image():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     image_url = request.json.get('image_url')
     if not image_url:
         return jsonify({'error': 'Missing image_url'}), 400
@@ -1238,7 +1239,7 @@ def delete_image():
 @app.route('/regenerate_image', methods=['POST'])
 @requires_auth
 def regenerate_image():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     old_image_url = request.json.get('old_image_url')
     prompt = request.json.get('prompt')
     
@@ -1380,7 +1381,7 @@ def run_background_video_gen(task_id, session_id, image_url, local_path, prompt)
 @app.route('/api/animate_image', methods=['POST'])
 @requires_auth
 def animate_image():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     image_url = request.json.get('image_url')
     prompt = request.json.get('prompt')
     
@@ -1488,7 +1489,7 @@ def get_pending_tool_call():
 @app.route('/api/cancel_chat', methods=['POST'])
 @requires_auth
 def cancel_chat():
-    session_id = request.json.get('session_id', 'default')
+    session_id = request.json.get('session_id') or get_active_save_id()
     from runners.runners import cancelled_sessions
     cancelled_sessions.add(session_id)
     print(f"[CANCEL] Session cancellation requested: {session_id}", flush=True)
@@ -1497,7 +1498,7 @@ def cancel_chat():
 @app.route('/api/session_tool_calls', methods=['GET'])
 @requires_auth
 def get_session_tool_calls():
-    session_id = request.args.get('session_id', 'default')
+    session_id = request.args.get('session_id') or get_active_save_id()
     import tools.tools as tools
     with tools.session_tool_calls_lock:
         calls = tools.session_tool_calls.get(session_id, [])
@@ -1540,7 +1541,7 @@ def get_models():
     # 1. Fetch dynamic local models (only actively loaded models in Local LLM server)
     models = fetch_local_models()
     
-    # Default fallback: use the first loaded local model if available, otherwise "local-llm"
+    # Default backup the first loaded local model if available, otherwise "local-llm"
     default_model = "local-llm"
     if models and models[0]["value"] != "local-llm":
         default_model = models[0]["value"]
@@ -1819,57 +1820,6 @@ def api_tts():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/voice_call/start', methods=['POST'])
-@requires_auth
-def start_voice_call_api():
-    try:
-        data = request.get_json() or {}
-        session_id = data.get('session_id', 'default')
-        voice_session_id = f"{session_id}_voice"
-        
-        # 1. Reset/Clear any existing voice session
-        asyncio.run(runner.reset_session(voice_session_id))
-        
-        # 2. Clone context from main session to voice session
-        asyncio.run(runner.clone_history(session_id, voice_session_id, []))
-        
-        print(f"[VOICE CALL] Initialized voice session: {voice_session_id} cloned from {session_id}")
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error in /api/voice_call/start: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/voice_call/save', methods=['POST'])
-@requires_auth
-def save_voice_call():
-    try:
-        data = request.get_json() or {}
-        session_id = data.get('session_id', 'default')
-        transcript = data.get('transcript')
-        voice_session_id = f"{session_id}_voice"
-        
-        if not transcript:
-            return jsonify({'error': 'Missing transcript'}), 400
-            
-        # 1. Save consolidated transcript message to main session history
-        success = asyncio.run(runner.append_voice_call(session_id, transcript))
-        
-        # 2. Reset/Clean up temporary voice session from memory/disk
-        asyncio.run(runner.reset_session(voice_session_id))
-        
-        print(f"[VOICE CALL] Saved transcript to main session {session_id} and cleared temporary voice session {voice_session_id}")
-        
-        if success:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': False, 'error': 'Failed to append voice call to session'}), 500
-    except Exception as e:
-        print(f"Error in /api/voice_call/save: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# --- VECTORIZED DATA BANK API ENDPOINTS ---
-from core.skills.vectorized_databank.databank import DataBankManager
-
-@app.route('/api/databank/files', methods=['GET'])
 @requires_auth
 def databank_list_files():
     try:
@@ -2182,7 +2132,7 @@ get_follower_memories = get_follower_memories
 @requires_auth
 def delete_memory():
     data = request.json or {}
-    session_id = data.get("session_id", "default")
+    session_id = data.get("session_id") or get_active_save_id()
     timestamp = data.get("timestamp")
     if timestamp is None:
         return jsonify({"error": "Missing timestamp"}), 400
@@ -2292,9 +2242,11 @@ def abandon_quest(quest_id):
         with open(history_path, 'w', encoding='utf-8') as f:
             json.dump(history, f, indent=2, ensure_ascii=False)
             
-        session_id = 'default'
+        from core.save_manager import get_active_save_id
+        session_id = get_active_save_id()
+        
         if request.is_json:
-            session_id = request.json.get('session_id', 'default')
+            session_id = request.json.get('session_id') or session_id
             
         title = quest_data.get("title", "")
         system_message = f"[SYSTEM: Player has abandoned and failed the side quest: \"{title}\"]"
@@ -2396,12 +2348,16 @@ def list_sessions():
                     session_name = file[:-5]
                     sessions.append(session_name)
         
-        # Ensure 'default' is always in the list
-        if 'default' not in sessions:
-            sessions.insert(0, 'default')
+        from core.save_manager import get_active_save_id
+        active_id = get_active_save_id()
+        
+        if active_id in sessions:
+            sessions.remove(active_id)
+            sessions.insert(0, active_id)
+        elif sessions:
+            sessions.insert(0, active_id)
         else:
-            sessions.remove('default')
-            sessions.insert(0, 'default')
+            sessions.insert(0, active_id)
             
         return jsonify({
             'status': 'success',
@@ -3119,7 +3075,7 @@ def toggle_equip_item():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         should_equip = data.get("equip", True)
-        req_session_id = data.get("session_id", "default")
+        req_session_id = data.get("session_id") or get_active_save_id()
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
@@ -3238,7 +3194,7 @@ def create_character_item_route():
     try:
         data = request.get_json(silent=True) or {}
         description = data.get("description", "").strip()
-        req_session_id = data.get("session_id", "default")
+        req_session_id = data.get("session_id") or get_active_save_id()
         model = data.get("model")
 
         if not description:
@@ -3274,7 +3230,7 @@ def remove_character_item_route():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         quantity = int(data.get("quantity", 1))
-        req_session_id = data.get("session_id", "default")
+        req_session_id = data.get("session_id") or get_active_save_id()
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
@@ -3310,7 +3266,7 @@ def remove_character_spell_route():
     try:
         data = request.get_json(silent=True) or {}
         spell_name = data.get("spell_name")
-        req_session_id = data.get("session_id", "default")
+        req_session_id = data.get("session_id") or get_active_save_id()
         
         if not spell_name:
             return jsonify({"error": "Missing spell_name"}), 400
@@ -3343,7 +3299,7 @@ def modify_character_gold_route():
         data = request.get_json(silent=True) or {}
         amount = int(data.get("amount", 0))
         action = data.get("action", "remove")
-        req_session_id = data.get("session_id", "default")
+        req_session_id = data.get("session_id") or get_active_save_id()
         
         from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, spend_gold, add_gold

@@ -10,9 +10,8 @@ from pathlib import Path
 
 import tools.tools as tools
 from utils.utils import (
-    _ARENA_TOOL_PROMPT,
     _merge_consecutive_messages,
-    _ARENA_DIRECTIVE_PROMPT,
+    _ARENA_DIRECTIVE_PROMPT
 )
 
 
@@ -194,7 +193,6 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
     def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str | None = None, response_only: bool = False) -> list[dict]:
         from core.follower_config import replace_placeholders
-        def is_story_mode(): return False
         from core.lorebook import get_active_lore
         from runners.follower import get_active_follower
         from variables import FOLLOWERS_DIR
@@ -275,12 +273,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 content_text = f"{content_text} (image: [Attached Image])".strip()
             raw_messages.append({"role": role, "content": content_text})
 
-        directive = _ARENA_TOOL_PROMPT
+        directive = _ARENA_DIRECTIVE_PROMPT
 
         system_content = f"{sys_inst}{directive}"
-        
-        if not response_only:
-            system_content += _ARENA_DIRECTIVE_PROMPT
             
         try:
             from core.banned_words import get_banned_words_directive

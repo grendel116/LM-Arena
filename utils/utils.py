@@ -22,16 +22,28 @@ VECTOR_TOP_K = 7
 VECTOR_SCORE_THRESHOLD = 0.25
 VECTOR_TOKEN_BUDGET = 2048
 
-_ARENA_TOOL_PROMPT = (
-    "\n\n# TOOL PROTOCOL\n"
-    'Tools are emulated by exact `[tool_name(key="value")]` tags. Use a tool only when it materially advances the current task; otherwise answer directly.\n'
-    "Available tools: google_search, web_search, read_webpage, read_file, write_file, replace_in_file, replace_file_content, multi_replace_file_content, "
-    "run_shell_command, run_command_async, manage_task, wait_task, get_workspace_structure, search_codebase, generate_local_image, generate_imagen, "
-    "apply_comfy_workflow, add_quest, add_journal_entry.\n"
-    "Use argument names shown by a retrieved skill or the tool's established signature. Do not invent tool results. After a tool result, continue the task concisely; do not repeat the tag.\n"
-    "For research, search first and read the most relevant pages; use distinct queries or URLs when continuing. Ground claims in retrieved facts.\n"
-    "Use image tools sparingly. Image prompts are short comma-separated tags, and image generation must be the only content in that model response.\n"
-    "Treat retrieved knowledge-base context as authoritative for the user's uploaded material.\n"
+_ARENA_DIRECTIVE_PROMPT = (
+    "\n\n# ARENA RPG DIRECTIVES\n"
+       "Tools:\n"
+    "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` Trigger player D20 check.\n"
+    "- `[arena_spend_magicka(amount=...)]` Deduct spell MP cost.\n"
+    "- `[arena_spend_stamina(amount=...)]` Deduct exertion Stamina.\n"
+    "- `[arena_take_damage(amount=...)]` Deduct injury HP.\n"
+    "- `[arena_heal(amount=...)]` Restore HP.\n"
+    "- `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` NPC/monster attack.\n"
+    "- `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` NPC/monster check.\n"
+    "- `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` Recruit permanent companion.\n"
+    "- `[generate_local_image(prompt=\"...\")]` / `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` Generate visual art.\n"
+    "- `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` / `[arena_remove_item(...)]` Inventory changes.\n"
+    "- `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` / `[arena_spend_gold(...)]` Currency changes.\n\n"
+        "Rules:\n"
+    "- SKILL CHECKS: Describe the attempt, call [arena_request_skill_check], and stop at the moment of action. Await the player's roll. Narrate success or failure only in the subsequent response.\n"
+    "- NPC ROLLS: Resolve NPC and creature actions instantly with [arena_roll_combat] or [arena_roll_check].\n"
+    "- VITALS: Deduct MP for magic, Stamina for physical exertion, and HP for wounds alongside narrative action.\n"
+    "- INVENTORY: Track all item and gold transactions precisely, with the [arena_inventory] skill.\n"
+    "- STATE: Resolve environment shifts with <!-- state: province=\"...\", location=\"...\", hours=... --> when location or time changes. Quest progression is handled strictly via [arena_advance_stage].\n"
+    "- NARRATION: Use gitty, kinetic prose with anthropological weighht. Do not pose questions or choices to {{user}}.\n"
+    "- LORE & NAMING: Adhere strictly to canonical Elder Scrolls lore and nomenclature.\n"
 )
 
 TOOL_ALIASES = {
@@ -499,32 +511,6 @@ def strip_narration(text: str) -> str:
     text = re.sub(r' +', ' ', text)
     
     return text.strip()
-
-
-_ARENA_DIRECTIVE_PROMPT = (
-    "\n\n# ARENA RPG DIRECTIVES\n"
-       "Tools:\n"
-    "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` Trigger player D20 check.\n"
-    "- `[arena_spend_magicka(amount=...)]` Deduct spell MP cost.\n"
-    "- `[arena_spend_stamina(amount=...)]` Deduct exertion Stamina.\n"
-    "- `[arena_take_damage(amount=...)]` Deduct injury HP.\n"
-    "- `[arena_heal(amount=...)]` Restore HP.\n"
-    "- `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` NPC/monster attack.\n"
-    "- `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` NPC/monster check.\n"
-    "- `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` Recruit permanent companion.\n"
-    "- `[generate_local_image(prompt=\"...\")]` / `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` Generate visual art.\n"
-    "- `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` / `[arena_remove_item(...)]` Inventory changes.\n"
-    "- `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` / `[arena_spend_gold(...)]` Currency changes.\n\n"
-        "Rules:\n"
-    "- SKILL CHECKS: Describe the attempt, call [arena_request_skill_check], and stop at the moment of action. Await the player's roll. Narrate success or failure only in the subsequent response.\n"
-    "- NPC ROLLS: Resolve NPC and creature actions instantly with [arena_roll_combat] or [arena_roll_check].\n"
-    "- VITALS: Deduct MP for magic, Stamina for physical exertion, and HP for wounds alongside narrative action.\n"
-    "- INVENTORY: Track all item and gold transactions precisely, with the [arena_inventory] skill.\n"
-    "- STATE: Resolve environment shifts with <!-- state: province=\"...\", location=\"...\", hours=... --> when location or time changes. Quest progression is handled strictly via [arena_advance_stage].\n"
-    "- NARRATION: Use gitty, kinetic prose with anthropological weighht. Do not pose questions or choices to {{user}}.\n"
-    "- LORE & NAMING: Adhere strictly to canonical Elder Scrolls lore and nomenclature.\n"
-)
-
 
 def _sanitize_tool_arg(val):
     if val is Ellipsis:

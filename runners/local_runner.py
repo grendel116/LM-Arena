@@ -173,11 +173,15 @@ def start_local_server(model_key):
     gpu_layers = os.getenv("LOCAL_GPU_LAYERS", "99")
     flash_attn = os.getenv("LOCAL_FLASH_ATTN", "true").lower() == "true"
     no_mmap = os.getenv("LOCAL_NO_MMAP", "false").lower() == "true"
+    batch_size = os.getenv("LOCAL_BATCH_SIZE", "2048")
+    ubatch_size = os.getenv("LOCAL_UBATCH_SIZE", "2048")
     
     cmd = [
         SERVER_EXE,
         "-m", model_path,
         "-c", context_size,
+        "-b", batch_size,
+        "-ub", ubatch_size,
         "--port", "1234",
         "--host", "127.0.0.1",
         "-ngl", gpu_layers,
