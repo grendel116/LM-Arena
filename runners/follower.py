@@ -79,7 +79,7 @@ def get_active_user() -> str:
 def get_player_name() -> str:
     """Returns the active player's name from their character sheet."""
     try:
-        from engine.character import load_character
+        from core.character import load_character
         return load_character().get("name") or "Eternal Champion"
     except Exception:
         return "Eternal Champion"

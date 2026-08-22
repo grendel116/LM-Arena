@@ -84,7 +84,7 @@ def track_tool_activity(func):
 
 def get_project_folders() -> list:
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         active_fol = get_active_follower()
     except Exception:
         active_fol = "ria_silmane"
@@ -1323,7 +1323,7 @@ def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, s
             raise Exception("Did not receive a prompt ID from ComfyUI")
 
         # Poll history endpoint for output
-        from runner_interface import cancelled_sessions
+        from runners.runners import cancelled_sessions
         for _ in range(300):
             # Honour session cancellation — stop polling and kill the ComfyUI job
             if session_id and session_id in cancelled_sessions:
@@ -1354,7 +1354,7 @@ def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, s
                                     
                                     # Delete the file from ComfyUI's folder to avoid accumulation
                                     try:
-                                        from utils.comfy_manager import COMFYUI_DIR
+                                        from adapters.comfy_manager import COMFYUI_DIR
                                         img_type = img.get("type", "temp")
                                         comfy_file = os.path.normpath(os.path.join(COMFYUI_DIR, img_type, img.get("subfolder", ""), filename))
                                         if os.path.exists(comfy_file):
@@ -1386,7 +1386,7 @@ def generate_local_image(prompt: str) -> str:
     import json
     
     def get_install_instructions(reason: str) -> str:
-        from utils.comfy_manager import check_comfy_running
+        from adapters.comfy_manager import check_comfy_running
         status = check_comfy_running()
         if status == "starting" or "ConnectionRefusedError" in reason or "10061" in reason:
             return (
@@ -1648,7 +1648,7 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
         
     # Copy and resize source image to ComfyUI's input directory using PIL
     from variables import COMFYUI_SERVER_URL
-    from utils.comfy_manager import COMFYUI_DIR
+    from adapters.comfy_manager import COMFYUI_DIR
     from PIL import Image
     comfy_input_dir = os.path.normpath(os.path.join(COMFYUI_DIR, "input"))
     os.makedirs(comfy_input_dir, exist_ok=True)
@@ -1719,12 +1719,12 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
     import json
     
     # Ensure ComfyUI server is running
-    from utils.comfy_manager import check_comfy_running
+    from adapters.comfy_manager import check_comfy_running
     if not check_comfy_running(force_refresh=True):
         raise Exception("ComfyUI server is offline. Please start the ComfyUI engine manually from the settings panel.")
             
     # Run dependency resolution inline to ensure missing custom nodes or models are downloaded/installed
-    from utils.comfy_manager import _resolver_worker, resolution_status
+    from adapters.comfy_manager import _resolver_worker, resolution_status
     print("[COMFY VIDEO] Checking and resolving workflow dependencies inline...")
     _resolver_worker(json.dumps(populated_workflow))
     if resolution_status.get("status") == "failed":
@@ -1799,7 +1799,7 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
                             
                     # 2. If no output media found in outputs, scan ComfyUI temp folder for civitai videos
                     if not completed_filename:
-                        from utils.comfy_manager import COMFYUI_DIR
+                        from adapters.comfy_manager import COMFYUI_DIR
                         temp_dir = os.path.normpath(os.path.join(COMFYUI_DIR, "temp"))
                         if os.path.exists(temp_dir):
                             newest_file = None
@@ -2196,7 +2196,7 @@ def multi_replace_file_content(path: str, replacement_chunks: list[dict]) -> str
 def add_quest(title: str, notes: str, due: str = None, location: str = "", reminder_minutes: int = 15) -> str:
     """Creates a new staged side quest and adds it to the user's quest log."""
     try:
-        from engine.side_quests import create_side_quest
+        from core.side_quests import create_side_quest
         res = create_side_quest(title=title, notes=notes, due=due, location=location, reminder_minutes=reminder_minutes)
         return res.get("message", f"Added side quest '{title}'")
     except Exception as e:
@@ -2210,14 +2210,14 @@ def arena_add_side_quest(title: str, notes: str, due: str = None, location: str 
 @track_tool_activity
 def arena_advance_side_quest(quest_id: str = None, *args, **kwargs) -> dict:
     """Advances an active side quest to its next sequential stage or marks it completed."""
-    from engine.side_quests import advance_side_quest
+    from core.side_quests import advance_side_quest
     qid = quest_id or kwargs.get("id") or (args[0] if args and isinstance(args[0], str) else None)
     return advance_side_quest(quest_id=qid)
 
 @track_tool_activity
 def arena_complete_side_quest(quest_id: str = None, *args, **kwargs) -> dict:
     """Directly completes and archives an active side quest."""
-    from engine.side_quests import complete_side_quest
+    from core.side_quests import complete_side_quest
     qid = quest_id or kwargs.get("id") or (args[0] if args and isinstance(args[0], str) else None)
     return complete_side_quest(quest_id=qid)
 
@@ -2231,7 +2231,7 @@ def add_journal_entry(keyphrases: str, content: str) -> str:
         content: The specific, important detail or memory to record (up to 300 characters).
     """
     try:
-        from utils.journals import add_journal_entry as add_entry
+        from core.journals import add_journal_entry as add_entry
         from utils.program import get_active_program
         active_prog = get_active_program()
         entry = add_entry(keyphrases, content, active_prog)
@@ -2322,10 +2322,10 @@ def cite_scripture(tradition: str = "all", topic: str = "") -> str:
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from engine.mechanics import roll_check, roll_combat, roll_initiative, roll_skill, sorcerer_absorb, request_skill_check
-from engine.world_engine import load_world_state, save_world_state, get_location_context, travel, advance_time, set_flag, discover_location, set_location
-from engine.quest_tracker import load_quest_stages, get_stage_context_injection, check_stage_conditions, advance_stage, advance_quest_stage
-from engine.spellmaker import evaluate_spell, get_school_for_effect
+from core.mechanics import roll_check, roll_combat, roll_initiative, roll_skill, sorcerer_absorb, request_skill_check
+from core.world_engine import load_world_state, save_world_state, get_location_context, travel, advance_time, set_flag, discover_location, set_location
+from core.quest_tracker import load_quest_stages, get_stage_context_injection, check_stage_conditions, advance_stage, advance_quest_stage
+from core.spellmaker import evaluate_spell, get_school_for_effect
 
 @track_tool_activity
 def arena_request_skill_check(skill_name: str, attribute_name: str, dc: int, reason: str = ""):
@@ -2407,7 +2407,7 @@ def arena_advance_stage(quest_id=None, *args, **kwargs):
     """Advances the main quest or a specified side quest to the next sequential stage."""
     qid = quest_id or kwargs.get("id") or (args[0] if args and isinstance(args[0], str) and (args[0].startswith("sq_") or args[0].startswith("quest_")) else None)
     if qid and (str(qid).startswith("sq_") or str(qid).startswith("quest_") or "side" in kwargs):
-        from engine.side_quests import advance_side_quest
+        from core.side_quests import advance_side_quest
         return advance_side_quest(quest_id=str(qid))
     return advance_quest_stage()
 
@@ -2453,7 +2453,7 @@ def arena_recruit_follower(follower_name, follower_race="Imperial", follower_cla
         return {"status": "recruited", "follower_name": follower_name, "message": str(e)}
 
 # ── Character sheet tools ─────────────────────────────────────────────────────
-from engine.character import (
+from core.character import (
     load_character, save_character, get_character_context,
     take_damage, heal, spend_magicka, restore_magicka, spend_stamina, restore_stamina, rest,
     spend_spell_points, restore_spell_points,
@@ -2597,7 +2597,7 @@ def arena_create_spell(spell_name, effect_description, school=None, target_type=
     Craft and inscribe a new custom spell at a Mages Guild or through arcane study.
     Calculates Magicka cost (SP), casting DC, and inscribers' fee.
     """
-    from engine.spellmaker import create_spell as craft_spell
+    from core.spellmaker import create_spell as craft_spell
     sheet = load_character()
     caster_int = sheet.get("intelligence", 50)
     

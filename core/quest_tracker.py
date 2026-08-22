@@ -172,7 +172,7 @@ def execute_action(state: dict, action: dict) -> dict:
 
 def advance_quest_stage(arg1=None, target_stage: int = None, **kwargs) -> dict:
     """Advances the active save quest stage and saves the world state."""
-    from engine.world_engine import load_world_state, save_world_state
+    from core.world_engine import load_world_state, save_world_state
     if isinstance(arg1, (int, float)):
         stage_num_target = int(arg1)
     elif target_stage is not None:
@@ -220,7 +220,7 @@ def set_quest_stage(stage_number: int, **kwargs) -> dict:
 
 def sync_quest_stage_with_location(character_name: str = None) -> dict:
     """Auto-advances quest stage if the player has moved past earlier milestones in the narrative."""
-    from engine.world_engine import load_world_state, save_world_state
+    from core.world_engine import load_world_state, save_world_state
     state = load_world_state()
     loc = str(state.get("current_location", "")).strip().lower()
     stage = state.get("quest_stage", 10)

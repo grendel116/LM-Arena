@@ -1,5 +1,6 @@
 """
-utils/lorebook.py — ST-compatible hybrid lorebook engine (Keyword + Vector).
+core/lorebooks.py — ST-compatible hybrid lorebook engine (Keyword + Vector).
+Consolidates engine logic and canonical exports into a single source of truth.
 
 Loads World Info entries from:
   1. data.character_book in the active follower's card JSON
@@ -192,7 +193,7 @@ def _perform_vector_scan(
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Public API & File Management Helpers
 # ---------------------------------------------------------------------------
 
 def get_active_lore(
@@ -286,10 +287,6 @@ def get_active_lore(
     after  = [e["content"] for e in combined_triggered if e["position"] == "after"]
     return before, after
 
-
-# ---------------------------------------------------------------------------
-# File management helpers
-# ---------------------------------------------------------------------------
 
 def list_lorebooks(follower_id: str, followers_dir: str | None = None) -> list[dict]:
     if followers_dir is None:
@@ -390,3 +387,16 @@ def delete_lorebook(follower_id: str, filename: str, followers_dir: str | None =
         return True
     return False
 
+
+# ---------------------------------------------------------------------------
+# Canonical Exports
+# ---------------------------------------------------------------------------
+
+__all__ = [
+    "get_active_lore",
+    "list_lorebooks",
+    "import_lorebook",
+    "delete_lorebook",
+    "_parse_lorebook",
+    "_normalise_entry",
+]

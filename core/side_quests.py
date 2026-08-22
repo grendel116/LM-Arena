@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).parent.parent
 def load_active_side_quests() -> list:
     """Loads active side quests from the active save bundle."""
     try:
-        from engine.save_manager import get_active_save_id, read_save
+        from core.save_manager import get_active_save_id, read_save
         save_id = get_active_save_id()
         if save_id:
             bundle = read_save(save_id)
@@ -24,7 +24,7 @@ def load_active_side_quests() -> list:
 def save_active_side_quests(quests: list) -> None:
     """Saves active side quests directly to the active save bundle."""
     try:
-        from engine.save_manager import get_active_save_id, read_save, write_save
+        from core.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()
         if save_id:
             bundle = read_save(save_id)
@@ -37,7 +37,7 @@ def save_active_side_quests(quests: list) -> None:
 def load_archived_side_quests() -> list:
     """Loads archived side quests from the active save bundle."""
     try:
-        from engine.save_manager import get_active_save_id, read_save
+        from core.save_manager import get_active_save_id, read_save
         save_id = get_active_save_id()
         if save_id:
             bundle = read_save(save_id)
@@ -50,7 +50,7 @@ def load_archived_side_quests() -> list:
 def save_archived_side_quests(history: list) -> None:
     """Saves archived side quests directly to the active save bundle."""
     try:
-        from engine.save_manager import get_active_save_id, read_save, write_save
+        from core.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()
         if save_id:
             bundle = read_save(save_id)

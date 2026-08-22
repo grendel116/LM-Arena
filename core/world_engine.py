@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).parent.parent
 def load_world_state(save_id: str = None) -> dict:
     """Loads the world state for the active save slot."""
     try:
-        from engine.save_manager import get_active_save_id, read_save
+        from core.save_manager import get_active_save_id, read_save
         slot = save_id or get_active_save_id()
         bundle = read_save(slot)
         state = bundle.get("world", {})
@@ -32,7 +32,7 @@ def load_world_state(save_id: str = None) -> dict:
 def save_world_state(arg1=None, arg2=None) -> None:
     """Saves the world state dict to the active save file."""
     try:
-        from engine.save_manager import get_active_save_id, read_save, write_save
+        from core.save_manager import get_active_save_id, read_save, write_save
         if isinstance(arg1, dict):
             state = arg1
             slot = arg2 or get_active_save_id()
@@ -413,7 +413,7 @@ def apply_state_snapshot(character_name: str, snapshot: dict) -> None:
     save_world_state(character_name, world_state)
 
     try:
-        from engine.character import load_character, save_character
+        from core.character import load_character, save_character
         sheet = load_character(character_name)
         char_modified = False
         vitals = snapshot.get("vitals")

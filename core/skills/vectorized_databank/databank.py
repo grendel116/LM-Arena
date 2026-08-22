@@ -21,8 +21,8 @@ def get_embedding_model():
 
 class DataBankManager:
     def __init__(self, follower_id: str = None, save_id: str = None, db_dir=None):
-        from utils.follower import get_active_follower
-        from engine.save_manager import get_active_save_id
+        from runners.follower import get_active_follower
+        from core.save_manager import get_active_save_id
         self.follower_id = follower_id or get_active_follower()
         self.follower_id = self.follower_id
         self.save_id = save_id or get_active_save_id()
@@ -37,7 +37,7 @@ class DataBankManager:
         if str(path) == "memories":
             # Save-bound memory compactions
             try:
-                from engine.save_manager import read_save, get_active_save_id
+                from core.save_manager import read_save, get_active_save_id
                 save_id = self.save_id or get_active_save_id()
                 bundle = read_save(save_id)
                 val = bundle.get("memories")
@@ -66,7 +66,7 @@ class DataBankManager:
         if str(path) == "memories":
             # Save-bound memory compactions
             try:
-                from engine.save_manager import read_save, write_save, get_active_save_id
+                from core.save_manager import read_save, write_save, get_active_save_id
                 save_id = self.save_id or get_active_save_id()
                 bundle = read_save(save_id)
                 bundle["memories"] = data

@@ -3,12 +3,12 @@ import json
 import uuid
 import time
 import re
-from utils.follower import get_active_follower
+from runners.follower import get_active_follower
 from variables import FOLLOWERS_DIR
 
 def get_journal_entries(follower_id: str = None) -> list:
     try:
-        from engine.save_manager import get_active_save_id, read_save, write_save
+        from core.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()
         bundle = read_save(save_id)
         
@@ -35,7 +35,7 @@ def get_journal_entries(follower_id: str = None) -> list:
 
 def save_journal_entries(entries: list, follower_id: str = None):
     try:
-        from engine.save_manager import get_active_save_id, read_save, write_save
+        from core.save_manager import get_active_save_id, read_save, write_save
         save_id = get_active_save_id()
         bundle = read_save(save_id)
         bundle["journals"] = entries

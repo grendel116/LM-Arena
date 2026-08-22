@@ -30,7 +30,7 @@ def _load_card_data(follower_id: str) -> dict:
 
 def get_follower_name() -> str:
     """Returns the active follower's character name."""
-    from utils.follower import get_active_follower
+    from runners.follower import get_active_follower
     active_follower = get_active_follower()
     card = _load_card_data(active_follower)
     # v3: data.name / legacy: name
@@ -43,7 +43,7 @@ def replace_placeholders(text: str, user_name: str = None, comp_name: str = None
     if not text:
         return text
     if not user_name:
-        from utils.follower import get_player_name
+        from runners.follower import get_player_name
         user_name = get_player_name()
     if not comp_name:
         comp_name = get_follower_name()
@@ -54,7 +54,7 @@ def replace_placeholders(text: str, user_name: str = None, comp_name: str = None
 
 def get_follower_greeting() -> str:
     """Returns the follower's first message from the card, with a default fallback."""
-    from utils.follower import get_active_follower
+    from runners.follower import get_active_follower
     active_follower = get_active_follower()
     card = _load_card_data(active_follower)
     # v3: data.first_mes / legacy: operation.example_message
@@ -94,7 +94,7 @@ def load_static_instructions() -> str:
     """Reads the active follower's card and compiles it into a system prompt.
     Also appends all modular skill instructions.
     """
-    from utils.follower import get_active_follower
+    from runners.follower import get_active_follower
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     active_follower = get_active_follower()
@@ -106,7 +106,7 @@ def load_static_instructions() -> str:
         instruction_content = f"# NAME: {active_follower.title()}\n"
             
     # Append compact toolbelt listing available capabilities
-    # Full skill instructions are vector-retrieved per turn in runner_interface.py
+    # Full skill instructions are vector-retrieved per turn in history_adapters.py
     try:
         from core.skill_retriever import get_toolbelt_block
         toolbelt = get_toolbelt_block()
@@ -128,8 +128,8 @@ def load_dynamic_runtime_context() -> str:
 
 def load_user_instructions() -> str:
     """Reads the active user profile configuration from the save JSON bundle to set private relationship context."""
-    from utils.follower import get_active_user
-    from engine.save_manager import read_save
+    from runners.follower import get_active_user
+    from core.save_manager import read_save
     active_profile = get_active_user()
 
     try:

@@ -8,6 +8,8 @@ import traceback
 import threading
 import uuid
 
+from adapters import comfy_manager
+
 # Automate copying of default .env configuration if it doesn't exist
 base_dir = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(base_dir, '.env')
@@ -23,7 +25,7 @@ if not os.path.exists(env_path):
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, Response, make_response
 import asyncio
 from functools import wraps
-from runner_interface import OpenSourceRunner
+from runners.runners import OpenSourceRunner
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -57,7 +59,7 @@ def check_follower_change():
     """Detect if active follower changed in project_settings.json and sync state."""
     global _cached_active_follower
     try:
-        from utils.follower import get_active_follower, get_active_user
+        from runners.follower import get_active_follower, get_active_user
         current_follower = get_active_follower()
         current_user = get_active_user()
         follower_changed = (_cached_active_follower is None or _cached_active_follower != current_follower)
@@ -89,7 +91,7 @@ def add_cache_control_headers(response):
 
 # Initialize active follower and active user cache
 try:
-    from utils.follower import get_active_follower, get_active_user
+    from runners.follower import get_active_follower, get_active_user
     _cached_active_follower = get_active_follower()
     _cached_active_user = get_active_user()
 except Exception as e:
@@ -102,14 +104,14 @@ def prewarm_caches():
         
     try:
         # Prewarm local models list
-        from utils.models import fetch_local_models
+        from models.models import fetch_local_models
         fetch_local_models(force_refresh=True)
     except Exception as e:
         print(f"Error prewarming local models: {e}")
         
     try:
         # Prewarm server status
-        from utils.local_llm_manager import check_status, check_installed
+        from adapters.local_llm_manager import check_status, check_installed
         llm_already_online = check_status(force_refresh=True)
         check_installed()
     except Exception as e:
@@ -188,7 +190,7 @@ def find_image_sidecar_json(image_filename, active_follower):
 
 def sanitize_response(response_text, session_id, follower_msg_id):
     """Apply banned words filter and update persisted message if sanitized."""
-    from utils.banned_words import sanitize_text
+    from core.banned_words import sanitize_text
     sanitized = sanitize_text(response_text)
     if sanitized != response_text:
         print(f"[BANNED WORDS] Sanitized response in session {session_id}")
@@ -243,7 +245,7 @@ def index():
     active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
     theme = load_theme(active_follower)
 
-    from utils.follower import get_active_user, get_player_name
+    from runners.follower import get_active_user, get_player_name
     active_user = get_active_user()
     if os.getenv("AUTH_USER") and request.authorization and active_user == "eternal_champion":
         # If Basic Auth is active, default active user to authenticated user
@@ -286,7 +288,7 @@ def app_icon():
 
 @app.route('/profile.png')
 def profile_png():
-    from utils.follower import get_active_follower
+    from runners.follower import get_active_follower
     active_follower = get_active_follower()
     path_png = os.path.join('core', 'followers', active_follower, 'portraits', 'profile.png')
     if os.path.exists(path_png):
@@ -325,7 +327,7 @@ follower_profile_png = follower_profile_png
 def save_profile_picture():
     try:
         from variables import FOLLOWERS_DIR
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         import base64
         import re
         
@@ -362,7 +364,7 @@ def crop_profile_picture():
     """Server-side crop: receives source image path and crop coordinates, uses PIL to crop and resize."""
     try:
         from variables import FOLLOWERS_DIR
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         from PIL import Image
         
         data = request.get_json(silent=True) or {}
@@ -426,7 +428,7 @@ def serve_image(filename):
         return send_from_directory(static_img_dir, filename)
 
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         active_follower = get_active_follower()
     except Exception:
         active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
@@ -449,7 +451,7 @@ def get_image_prompt():
         
     try:
         import json
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         active_follower = get_active_follower()
         
         if image_url.startswith('/images/'):
@@ -481,7 +483,7 @@ def proactive_action():
     try:
         import os
         import json
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         from variables import FOLLOWERS_DIR
         
         active_follower = get_active_follower()
@@ -508,7 +510,7 @@ def proactive_action():
                     print(f"Error reading follower config for proactive action: {ex}")
                     
         # Get active player name
-        from utils.follower import get_player_name
+        from runners.follower import get_player_name
         user_display_name = get_player_name()
 
         # Load session history
@@ -555,7 +557,7 @@ You must return a valid JSON object matching the following schema:
 """
 
         # Call the LLM
-        from utils.models import is_local_model
+        from models.models import is_local_model
         is_local = is_local_model(selected_model) if selected_model else True
         raw_response = None
         
@@ -662,7 +664,7 @@ def history():
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
         
-        from utils.follower import get_player_name
+        from runners.follower import get_player_name
         user_name = get_player_name()
 
         from core.follower_config import follower_name, get_follower_greeting, replace_placeholders
@@ -735,15 +737,16 @@ def chat():
     selected_model = request.json.get('model')
     is_voice_call = request.json.get('is_voice_call', False)
 
-    import tools
+    import tools.tools as tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
         tools.session_tool_calls[session_id] = []
 
-    from runner_interface import cancelled_sessions, voice_call_sessions
+    from runners.runners import cancelled_sessions
     cancelled_sessions.discard(session_id)
-    if is_voice_call:
-        voice_call_sessions.add(session_id)
+    # Voice calls are no longer supported
+    # if is_voice_call:
+    #     voice_call_sessions.add(session_id)
         
     start_time = time.time()
 
@@ -795,9 +798,9 @@ def chat():
         print(f"Error occurred in chat: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
-        from runner_interface import cancelled_sessions, voice_call_sessions
+        from runners.runners import cancelled_sessions
         cancelled_sessions.discard(session_id)
-        voice_call_sessions.discard(session_id)
+        # voice_call_sessions.discard(session_id)
 
 @app.route('/edit', methods=['POST'])
 @requires_auth
@@ -809,12 +812,12 @@ def edit():
     force_offload = request.json.get('force_offload', False)
     print(f"[EDIT ROUTE] session_id={session_id}, msg_id={msg_id}, new_text={repr(new_text)}, model={selected_model}, force_offload={force_offload}", flush=True)
 
-    import tools
+    import tools.tools as tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
         tools.session_tool_calls[session_id] = []
 
-    from runner_interface import cancelled_sessions
+    from runners.runners import cancelled_sessions
     cancelled_sessions.discard(session_id)
     start_time = time.time()
 
@@ -862,7 +865,7 @@ def edit():
         print(f"Error occurred during edit: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
-        from runner_interface import cancelled_sessions
+        from runners.runners import cancelled_sessions
         cancelled_sessions.discard(session_id)
 
 def generate_impersonated_message(session_id, user_profile, model, user_input="", msg_id=None, is_reroll=False, original_text=""):
@@ -892,8 +895,8 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
         history_text += f"{role}: {msg.get('text', '')}\n"
     
     from core.follower_config import GLOBAL_USER_FORMATTING, load_user_instructions, replace_placeholders
-    from utils.follower import get_active_user
-    from engine.character import load_character, get_character_context
+    from runners.follower import get_active_user
+    from core.character import load_character, get_character_context
 
     char_context = ""
     try:
@@ -969,7 +972,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
             )
     
     try:
-        from utils.banned_words import get_banned_words_directive, sanitize_text
+        from core.banned_words import get_banned_words_directive, sanitize_text
         banned_dir = get_banned_words_directive()
         if banned_dir:
             system_instruction += f"\n{banned_dir}"
@@ -980,7 +983,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
     try:
         raw_msg = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
         try:
-            from utils.banned_words import sanitize_text
+            from core.banned_words import sanitize_text
             return sanitize_text(raw_msg)
         except Exception:
             return raw_msg
@@ -1016,9 +1019,9 @@ def generate_user_message():
 
 def generate_player_skill_check_action(session_id, skill_name, attribute_name, dc, reason, model, is_flat_roll=False):
     import random
-    from utils.follower import get_active_user
-    from engine.character import load_character, get_character_context
-    from engine.mechanics import roll_check
+    from runners.follower import get_active_user
+    from core.character import load_character, get_character_context
+    from core.mechanics import roll_check
 
     active_user = get_active_user()
     sheet = load_character(active_user)
@@ -1083,7 +1086,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
         "- RESTRAINT: Focus purely on {{user}}'s immediate reaction."
     )
     try:
-        from utils.banned_words import get_banned_words_directive, sanitize_text
+        from core.banned_words import get_banned_words_directive, sanitize_text
         banned_dir = get_banned_words_directive()
         if banned_dir:
             system_instruction += f"\n{banned_dir}"
@@ -1119,7 +1122,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
     action_text = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
     action_text = action_text.strip().replace('"', '')
     try:
-        from utils.banned_words import sanitize_text
+        from core.banned_words import sanitize_text
         action_text = sanitize_text(action_text)
     except Exception:
         pass
@@ -1252,7 +1255,7 @@ def regenerate_image():
         filename = os.path.basename(old_image_url)
         # 1. Try to find the prompt in the follower sidecar JSON file (most reliable and clean)
         try:
-            from utils.follower import get_active_follower
+            from runners.follower import get_active_follower
             active_follower = get_active_follower()
             filename_only = os.path.basename(old_image_url)
             json_path = find_image_sidecar_json(filename_only, active_follower)
@@ -1299,7 +1302,7 @@ def regenerate_image():
             return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
 
     try:
-        import tools
+        import tools.tools as tools
         tools.current_session_id.set(session_id)
         with tools.session_tool_calls_lock:
             tools.session_tool_calls[session_id] = []
@@ -1340,7 +1343,7 @@ active_generations = {}
 active_generations_lock = threading.Lock()
 
 def run_background_video_gen(task_id, session_id, image_url, local_path, prompt):
-    import tools
+    import tools.tools as tools
     import asyncio
     
     with active_generations_lock:
@@ -1385,7 +1388,7 @@ def animate_image():
         return jsonify({'error': 'Missing image_url'}), 400
         
     try:
-        from runner_interface import _get_safe_local_path
+        from runners.runners import _get_safe_local_path
         
         # Resolve to safe local path
         local_path = _get_safe_local_path(image_url)
@@ -1464,7 +1467,7 @@ def list_images():
 @app.route('/pending_tool_call', methods=['GET'])
 @requires_auth
 def get_pending_tool_call():
-    import tools
+    import tools.tools as tools
     pending = None
     for call_id, info in list(tools.pending_tool_calls.items()):
         if info['status'] == 'pending':
@@ -1486,7 +1489,7 @@ def get_pending_tool_call():
 @requires_auth
 def cancel_chat():
     session_id = request.json.get('session_id', 'default')
-    from runner_interface import cancelled_sessions
+    from runners.runners import cancelled_sessions
     cancelled_sessions.add(session_id)
     print(f"[CANCEL] Session cancellation requested: {session_id}", flush=True)
     return jsonify({'status': 'success'})
@@ -1495,7 +1498,7 @@ def cancel_chat():
 @requires_auth
 def get_session_tool_calls():
     session_id = request.args.get('session_id', 'default')
-    import tools
+    import tools.tools as tools
     with tools.session_tool_calls_lock:
         calls = tools.session_tool_calls.get(session_id, [])
         return jsonify({'tool_calls': list(calls)})
@@ -1503,7 +1506,7 @@ def get_session_tool_calls():
 @app.route('/approve_tool', methods=['POST'])
 @requires_auth
 def approve_tool():
-    import tools
+    import tools.tools as tools
     call_id = request.json.get('call_id')
     status = request.json.get('status')
     
@@ -1515,7 +1518,7 @@ def approve_tool():
         return jsonify({'status': 'success'})
     return jsonify({'error': 'Tool call not found'}), 404
 
-from utils.models import fetch_local_models
+from models.models import fetch_local_models
 
 @app.route('/models', methods=['GET'])
 @requires_auth
@@ -1531,7 +1534,7 @@ def get_models():
         remote_cloud_url and remote_cloud_url.strip() and remote_cloud_url != "your_remote_cloud_url_here"
     )
     
-    from utils.local_llm_manager import check_status, check_installed
+    from adapters.local_llm_manager import check_status, check_installed
     is_local_online = check_status()
     
     # 1. Fetch dynamic local models (only actively loaded models in Local LLM server)
@@ -1565,7 +1568,7 @@ def project_settings():
     settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
     
     # Get active follower
-    from utils.follower import get_active_follower
+    from runners.follower import get_active_follower
     active_prog = get_active_follower()
     default_folder = os.path.normpath(os.path.join(os.getcwd(), 'core', 'followers', active_prog))
     
@@ -1870,7 +1873,7 @@ from core.skills.vectorized_databank.databank import DataBankManager
 @requires_auth
 def databank_list_files():
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         prog_id = request.args.get('follower_id') or get_active_follower()
         manager = DataBankManager(follower_id=prog_id)
         files = manager.list_documents()
@@ -1891,7 +1894,7 @@ def databank_upload():
         
     temp_path = None
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         prog_id = request.form.get('follower_id') or get_active_follower()
         # Create temp folder inside workspace for uploads
         temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp_uploads")
@@ -1928,7 +1931,7 @@ def databank_scrape():
         return jsonify({"error": "Missing URL"}), 400
         
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         prog_id = req_json.get('follower_id') or get_active_follower()
         manager = DataBankManager(follower_id=prog_id)
         doc_id = manager.ingest_url(url)
@@ -1946,7 +1949,7 @@ def databank_delete():
         return jsonify({"error": "Missing document ID"}), 400
         
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         prog_id = req_json.get('follower_id') or get_active_follower()
         manager = DataBankManager(follower_id=prog_id)
         success = manager.delete_document(doc_id)
@@ -1962,7 +1965,7 @@ def databank_delete():
 @requires_auth
 def databank_purge():
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         req_json = request.get_json(silent=True) or {}
         prog_id = req_json.get('follower_id') or request.args.get('follower_id') or get_active_follower()
         manager = DataBankManager(follower_id=prog_id)
@@ -1980,8 +1983,8 @@ def databank_purge():
 @requires_auth
 def list_lorebooks_route():
     try:
-        from utils.follower import get_active_follower
-        from utils.lorebook import list_lorebooks
+        from runners.follower import get_active_follower
+        from core.lorebook import list_lorebooks
         from variables import FOLLOWERS_DIR
         follower_id = get_active_follower()
         books = list_lorebooks(follower_id, FOLLOWERS_DIR)
@@ -1997,8 +2000,8 @@ def list_lorebooks_route():
 @requires_auth
 def import_lorebook_route():
     try:
-        from utils.follower import get_active_follower
-        from utils.lorebook import import_lorebook
+        from runners.follower import get_active_follower
+        from core.lorebook import import_lorebook
         from variables import FOLLOWERS_DIR
         follower_id = get_active_follower()
         if 'file' not in request.files:
@@ -2037,7 +2040,7 @@ def find_lorebook_path(filename, follower_id):
 @requires_auth
 def export_lorebook_route(filename):
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         follower_id = get_active_follower()
         fpath = find_lorebook_path(filename, follower_id)
         if not fpath or not os.path.exists(fpath):
@@ -2056,8 +2059,8 @@ def export_lorebook_route(filename):
 @requires_auth
 def delete_lorebook_route(filename):
     try:
-        from utils.follower import get_active_follower
-        from utils.lorebook import delete_lorebook
+        from runners.follower import get_active_follower
+        from core.lorebook import delete_lorebook
         from variables import FOLLOWERS_DIR
         follower_id = get_active_follower()
         deleted = delete_lorebook(follower_id, filename, FOLLOWERS_DIR)
@@ -2071,7 +2074,7 @@ def delete_lorebook_route(filename):
 def get_card_lorebook_entries():
     """Return entries from the embedded character_book in the active follower card."""
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         from variables import FOLLOWERS_DIR
         follower_id = get_active_follower()
         card_path = os.path.join(FOLLOWERS_DIR, follower_id, f'{follower_id}.json')
@@ -2093,7 +2096,7 @@ def get_card_lorebook_entries():
 def save_card_lorebook_entries():
     """Write updated entries back into character_book in the active follower card."""
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         from variables import FOLLOWERS_DIR
         follower_id = get_active_follower()
         card_path = os.path.join(FOLLOWERS_DIR, follower_id, f'{follower_id}.json')
@@ -2120,7 +2123,7 @@ def save_card_lorebook_entries():
 def get_lorebook_entries(filename):
     """Return the raw entry list for a lorebook file so the UI can render an editor."""
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         follower_id = get_active_follower()
         fpath = find_lorebook_path(filename, follower_id)
         if not fpath or not os.path.exists(fpath):
@@ -2141,7 +2144,7 @@ def get_lorebook_entries(filename):
 def save_lorebook_entries(filename):
     """Overwrite a lorebook file with updated entries from the editor."""
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         follower_id = get_active_follower()
         fpath = find_lorebook_path(filename, follower_id)
         if not fpath or not os.path.exists(fpath):
@@ -2198,8 +2201,8 @@ def delete_memory():
 @requires_auth
 def list_quests():
     try:
-        from utils.follower import get_active_follower, get_active_user
-        from engine.quest_tracker import load_quest_stages, get_current_stage, get_quest_display_data, sync_quest_stage_with_location
+        from runners.follower import get_active_follower, get_active_user
+        from core.quest_tracker import load_quest_stages, get_current_stage, get_quest_display_data, sync_quest_stage_with_location
 
         user = get_active_user()
         world_state = sync_quest_stage_with_location(user)
@@ -2215,7 +2218,7 @@ def list_quests():
                 q["location"] = f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}"
 
         # 3 & 4. Companion / Local Side Quests (Active & Archived)
-        from engine.side_quests import get_side_quest_display_data
+        from core.side_quests import get_side_quest_display_data
         side_active, side_archived = get_side_quest_display_data()
         quests.extend(side_active)
         completed_quests.extend(side_archived)
@@ -2234,7 +2237,7 @@ def list_quests():
 @requires_auth
 def delete_quest(quest_id):
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         active_follower = get_active_follower()
         quests_path = os.path.join('core', 'followers', active_follower, 'quest_log.json')
         
@@ -2255,7 +2258,7 @@ def delete_quest(quest_id):
 @requires_auth
 def abandon_quest(quest_id):
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         active_follower = get_active_follower()
         follower_dir = os.path.join('core', 'followers', active_follower)
         quests_path = os.path.join(follower_dir, 'quest_log.json')
@@ -2310,7 +2313,7 @@ def abandon_quest(quest_id):
 @requires_auth
 def download_quest(quest_id):
     try:
-        from utils.follower import get_active_follower
+        from runners.follower import get_active_follower
         active_follower = get_active_follower()
         quests_path = os.path.join('core', 'followers', active_follower, 'quest_log.json')
         if not os.path.exists(quests_path):
@@ -2509,7 +2512,7 @@ def select_follower():
         
         # Update active follower settings
         try:
-            from utils.follower import set_active_follower
+            from runners.follower import set_active_follower
             set_active_follower(follower_id)
         except Exception as e:
             print(f"Error persisting ACTIVE_FOLLOWER: {e}")
@@ -2602,7 +2605,7 @@ def delete_follower():
         if not os.path.exists(follower_path):
             return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
             
-        from utils.follower import get_active_follower, set_active_follower
+        from runners.follower import get_active_follower, set_active_follower
         active_follower = get_active_follower()
         is_active = (follower_id == active_follower)
         if is_active:
@@ -2701,7 +2704,7 @@ def rename_follower():
             active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
             was_active = (follower_id == active_follower)
             
-            from utils.follower import _load_settings, _save_settings
+            from runners.follower import _load_settings, _save_settings
             settings = _load_settings()
             
             if was_active:
@@ -2756,7 +2759,7 @@ rename_follower = rename_follower
 @requires_auth
 def get_follower_profile():
     try:
-        from utils.follower import get_active_follower, _load_settings
+        from runners.follower import get_active_follower, _load_settings
         from variables import FOLLOWERS_DIR
         import json
 
@@ -2788,7 +2791,7 @@ get_follower_profile = get_follower_profile
 @requires_auth
 def save_follower_profile():
     try:
-        from utils.follower import get_active_follower, set_tts_voice_for_follower, _load_settings, _save_settings
+        from runners.follower import get_active_follower, set_tts_voice_for_follower, _load_settings, _save_settings
         from variables import FOLLOWERS_DIR
         import json
 
@@ -2839,8 +2842,8 @@ save_follower_profile = save_follower_profile
 @requires_auth
 def get_follower_journals():
     try:
-        from utils.follower import get_active_follower
-        from utils.journals import get_journal_entries
+        from runners.follower import get_active_follower
+        from core.journals import get_journal_entries
         
         follower_id = request.args.get('follower_id') or request.args.get('follower_id') or get_active_follower()
         entries = get_journal_entries(follower_id)
@@ -2855,8 +2858,8 @@ get_follower_journals = get_follower_journals
 @requires_auth
 def save_follower_journals():
     try:
-        from utils.follower import get_active_follower
-        from utils.journals import get_journal_entries, save_journal_entries, add_journal_entry
+        from runners.follower import get_active_follower
+        from core.journals import get_journal_entries, save_journal_entries, add_journal_entry
         
         data = request.get_json(silent=True) or {}
         entry_id = data.get('id')
@@ -2889,8 +2892,8 @@ def save_follower_journals():
 @requires_auth
 def delete_follower_journals():
     try:
-        from utils.follower import get_active_follower
-        from utils.journals import delete_journal_entry
+        from runners.follower import get_active_follower
+        from core.journals import delete_journal_entry
         
         data = request.get_json(silent=True) or {}
         entry_id = data.get('id')
@@ -2912,11 +2915,11 @@ def delete_follower_journals():
 @requires_auth
 def get_character_status():
     try:
-        from utils.follower import get_active_user
-        from engine.save_manager import get_active_save_id
-        from engine.character import load_character
-        from engine.world_engine import load_world_state
-        from engine.mechanics import get_modifier
+        from runners.follower import get_active_user
+        from core.save_manager import get_active_save_id
+        from core.character import load_character
+        from core.world_engine import load_world_state
+        from core.mechanics import get_modifier
         
         active_user = get_active_user()
         save_id = get_active_save_id()
@@ -2946,8 +2949,8 @@ def get_character_status():
 def update_character_profile():
     try:
         data = request.get_json(silent=True) or {}
-        from engine.save_manager import get_active_save_id, sync_save_meta
-        from engine.character import load_character, save_character, update_character_identity
+        from core.save_manager import get_active_save_id, sync_save_meta
+        from core.character import load_character, save_character, update_character_identity
         
         save_id = get_active_save_id()
         sheet = load_character(save_id)
@@ -2965,7 +2968,7 @@ def update_character_profile():
         sync_save_meta(save_id)
         
         if new_name:
-            from engine.save_manager import read_save, write_save
+            from core.save_manager import read_save, write_save
             bundle = read_save(save_id)
             profile_text = bundle.get("profile", "")
             lines = profile_text.splitlines()
@@ -3003,7 +3006,7 @@ def get_world_provinces():
 @requires_auth
 def get_saves():
     try:
-        from engine.save_manager import list_saves, get_active_save_id
+        from core.save_manager import list_saves, get_active_save_id
         saves = list_saves()
         active_id = get_active_save_id()
         return jsonify({
@@ -3019,7 +3022,7 @@ def get_saves():
 @requires_auth
 def save_active_game():
     try:
-        from engine.save_manager import save_game
+        from core.save_manager import save_game
         meta = save_game()
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
@@ -3037,7 +3040,7 @@ def save_active_game():
 def create_new_save():
     try:
         data = request.get_json(silent=True) or {}
-        from engine.save_manager import create_save
+        from core.save_manager import create_save
         meta = create_save(
             name=data.get("name"),
             character_name=data.get("character_name", "Eternal Champion"),
@@ -3065,7 +3068,7 @@ def load_existing_save():
         if not save_id:
             return jsonify({"error": "Missing save_id"}), 400
             
-        from engine.save_manager import load_save
+        from core.save_manager import load_save
         meta = load_save(save_id)
         
         if hasattr(runner, 'sessions_history'):
@@ -3089,7 +3092,7 @@ def delete_existing_save():
         if not save_id:
             return jsonify({"error": "Missing save_id"}), 400
             
-        from engine.save_manager import delete_save
+        from core.save_manager import delete_save
         success = delete_save(save_id)
         
         if hasattr(runner, 'sessions_history'):
@@ -3121,8 +3124,8 @@ def toggle_equip_item():
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
             
-        from engine.save_manager import get_active_save_id
-        from engine.character import load_character, save_character, equip_item, unequip_item
+        from core.save_manager import get_active_save_id
+        from core.character import load_character, save_character, equip_item, unequip_item
         
         save_id = get_active_save_id()
         sheet = load_character(save_id)
@@ -3149,7 +3152,7 @@ def toggle_equip_item():
 def generate_inventory_item(description: str, model: str = None) -> dict:
     """Prompt the model to generate a structured RPG inventory item from a description."""
     import json, re, asyncio
-    from engine.character import get_item_category, get_item_weight
+    from core.character import get_item_category, get_item_weight
 
     global runner
     if 'runner' not in globals() or runner is None:
@@ -3243,8 +3246,8 @@ def create_character_item_route():
 
         item = generate_inventory_item(description, model=model)
 
-        from engine.save_manager import get_active_save_id
-        from engine.character import load_character, save_character, add_item
+        from core.save_manager import get_active_save_id
+        from core.character import load_character, save_character, add_item
 
         save_id = get_active_save_id()
         sheet = load_character(save_id)
@@ -3276,8 +3279,8 @@ def remove_character_item_route():
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
             
-        from engine.save_manager import get_active_save_id
-        from engine.character import load_character, save_character, remove_item
+        from core.save_manager import get_active_save_id
+        from core.character import load_character, save_character, remove_item
         
         save_id = get_active_save_id()
         sheet = load_character(save_id)
@@ -3312,8 +3315,8 @@ def remove_character_spell_route():
         if not spell_name:
             return jsonify({"error": "Missing spell_name"}), 400
             
-        from engine.save_manager import get_active_save_id
-        from engine.character import load_character, save_character, forget_spell
+        from core.save_manager import get_active_save_id
+        from core.character import load_character, save_character, forget_spell
         
         save_id = get_active_save_id()
         sheet = load_character(save_id)
@@ -3342,8 +3345,8 @@ def modify_character_gold_route():
         action = data.get("action", "remove")
         req_session_id = data.get("session_id", "default")
         
-        from engine.save_manager import get_active_save_id
-        from engine.character import load_character, save_character, spend_gold, add_gold
+        from core.save_manager import get_active_save_id
+        from core.character import load_character, save_character, spend_gold, add_gold
         
         save_id = get_active_save_id()
         sheet = load_character(save_id)
@@ -3388,8 +3391,8 @@ def extract_profile_display_name(profile_id: str, content: str) -> str:
 @requires_auth
 def list_user_profiles():
     try:
-        from engine.save_manager import list_saves, get_active_save_id, create_save
-        from utils.follower import get_active_user
+        from core.save_manager import list_saves, get_active_save_id, create_save
+        from runners.follower import get_active_user
         
         saves = list_saves()
         if not saves:
@@ -3400,7 +3403,7 @@ def list_user_profiles():
         
         profiles = []
         for s in saves:
-            from engine.save_manager import read_save
+            from core.save_manager import read_save
             bundle = read_save(s["id"])
             profile_text = bundle.get("profile") or f"A {s.get('race', 'Nord')} from Skyrim."
             profiles.append({
@@ -3429,7 +3432,7 @@ def select_user_profile():
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
         
-        from engine.save_manager import load_save
+        from core.save_manager import load_save
         load_save(profile_id)
         reload_follower_state()
             
@@ -3462,9 +3465,9 @@ def save_user_profile():
         if not profile_id:
             return jsonify({"error": "Invalid profile name"}), 400
             
-        from utils.follower import get_active_user
-        from engine.save_manager import read_save, write_save, create_save
-        from engine.character import update_character_identity
+        from runners.follower import get_active_user
+        from core.save_manager import read_save, write_save, create_save
+        from core.character import update_character_identity
         
         display_name = name or extract_profile_display_name(profile_id, content)
         bundle = read_save(profile_id)
@@ -3523,8 +3526,8 @@ def delete_user_profile():
         if not profile_id:
             return jsonify({"error": "Missing profile_id"}), 400
             
-        from utils.follower import get_active_user, set_active_user
-        from engine.save_manager import delete_save, set_active_save_id
+        from runners.follower import get_active_user, set_active_user
+        from core.save_manager import delete_save, set_active_save_id
         
         # Delete single-file save bound to this player profile
         deleted = delete_save(profile_id, force_delete=True)
@@ -3554,8 +3557,8 @@ def rename_user_profile():
         if not old_profile_id or not new_name:
             return jsonify({"error": "Missing old_profile_id or new_profile_name"}), 400
             
-        from engine.save_manager import SAVES_DIR, read_save, write_save, set_active_save_id, sync_save_meta
-        from utils.follower import get_active_user, set_active_user
+        from core.save_manager import SAVES_DIR, read_save, write_save, set_active_save_id, sync_save_meta
+        from runners.follower import get_active_user, set_active_user
         
         old_file = SAVES_DIR / f"{old_profile_id}.json"
         if not old_file.exists():
@@ -3662,7 +3665,7 @@ Output a single JSON object with EXACTLY these keys:
 }}"""
 
     raw_response = None
-    from utils.models import is_local_model
+    from models.models import is_local_model
     use_local = is_local_model(model)
 
     if use_local:
@@ -3991,7 +3994,7 @@ _last_broadcast_state = {}
 
 def _get_current_status():
     """Build the combined connection status payload."""
-    from utils import local_llm_manager, comfy_manager
+    from adapters import local_llm_manager
     remote_key = os.getenv("REMOTE_API_KEY")
     remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
     is_remote_configured = bool(
@@ -4095,11 +4098,11 @@ def sse_status_stream():
 
 
 # --- Headless Local LLM & Hugging Face Integration API ---
-from utils import local_llm_manager
-from utils import comfy_manager
+from adapters import local_llm_manager
+from adapters import comfy_manager
 
 # Wire SSE broadcast callbacks into both managers
-from utils import local_runner
+from runners import local_runner
 local_runner._on_status_change = broadcast_status
 comfy_manager._on_status_change = broadcast_status
 
@@ -4110,7 +4113,7 @@ def local_llm_status():
     online = local_llm_manager.check_status()
     loaded_models = []
     if online is True:
-        from utils.models import fetch_local_models
+        from models.models import fetch_local_models
         loaded_models = [m["value"] for m in fetch_local_models()]
     
     downloaded_models = local_llm_manager.list_local_models()
@@ -4240,7 +4243,7 @@ def comfy_resolve_workflow():
     if not workflow_json:
         try:
             from variables import FOLLOWERS_DIR, COMFYUI_CHECKPOINT
-            from utils.follower import get_active_follower
+            from runners.follower import get_active_follower
             active_follower = get_active_follower()
             
             combined_workflow = {}
@@ -4302,7 +4305,7 @@ def comfy_resolve_workflow():
 @requires_auth
 def comfy_checkpoints():
     try:
-        from utils.comfy_manager import list_local_checkpoints
+        from adapters.comfy_manager import list_local_checkpoints
         checkpoints = list_local_checkpoints()
         active = os.getenv("COMFYUI_CHECKPOINT", "sd_xl_base_1.0.safetensors")
         return jsonify({
@@ -4348,7 +4351,7 @@ def comfy_search_checkpoints():
     query = request.args.get('query', '').strip()
     if not query:
         return jsonify({"results": []})
-    from utils.comfy_manager import search_huggingface_checkpoints
+    from adapters.comfy_manager import search_huggingface_checkpoints
     results = search_huggingface_checkpoints(query)
     return jsonify({"results": results})
 
@@ -4360,14 +4363,14 @@ def comfy_download_checkpoint():
     if not url or not filename:
         return jsonify({"error": "Missing url or filename"}), 400
         
-    from utils.comfy_manager import trigger_checkpoint_download
+    from adapters.comfy_manager import trigger_checkpoint_download
     success, message = trigger_checkpoint_download(url, filename)
     return jsonify({"success": success, "message": message})
 
 @app.route('/api/comfy/checkpoints/download_status', methods=['GET'])
 @requires_auth
 def comfy_checkpoint_download_status():
-    from utils.comfy_manager import checkpoint_download_status
+    from adapters.comfy_manager import checkpoint_download_status
     return jsonify(checkpoint_download_status)
 
 
