@@ -6,7 +6,7 @@ import time
 import uuid
 import concurrent.futures
 
-from variables import COMFYUI_SERVER_URL, COMFYUI_CHECKPOINT, COMFYUI_VAE, DEFAULT_REMOTE_MODEL, VARIABLES_DIR
+from variables.settings import COMFYUI_SERVER_URL, COMFYUI_CHECKPOINT, COMFYUI_VAE, VARIABLES_DIR, FOLLOWERS_DIR
 
 _search_executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 import functools
@@ -323,106 +323,6 @@ def web_search(query: str) -> str:
     # Map older values to web_crawling
     if search_engine in ("sovereign_hybrid", "sovereign_search", "searxng", "google_grounding"):
         search_engine = "web_crawling"
-
-    def run_google(q):
-        remote_api_key = os.getenv("REMOTE_API_KEY")
-        if not remote_api_key:
-            return []
-        try:
-            from google import genai
-            from google.genai import types
-
-            client = genai.Client(api_key=remote_api_key)
-            grounding_tool = types.Tool(
-                google_search=types.GoogleSearch()
-            )
-            config = types.GenerateContentConfig(
-                tools=[grounding_tool],
-                temperature=0.0
-            )
-
-            response = client.models.generate_content(
-                model=DEFAULT_REMOTE_MODEL,
-                contents=f"Perform a search for: {q}. Output only a list of search hits with their titles, URLs, and very brief snippets.",
-                config=config
-            )
-
-            g_results = []
-
-            # Parse text response first for clean, original URLs and rich snippets
-            if response.text:
-                import re
-                lines = response.text.split('\n')
-                i = 0
-                while i < len(lines):
-                    line = lines[i].strip()
-                    match = re.search(r'\*\*([^*]+)\*\*$', line) or re.search(r'\*\*([^*]+)\*\*', line)
-                    if match:
-                        title = match.group(1).strip()
-                        url = ""
-                        snippet_lines = []
-                        j = i + 1
-                        url_found = False
-                        while j < min(i + 4, len(lines)):
-                            next_line = lines[j].strip()
-                            url_match = re.search(r'https?://[^\s)\]]+', next_line)
-                            if url_match and not url_found:
-                                url = url_match.group(0).strip()
-                                url_found = True
-                            elif next_line and not next_line.startswith(('*', '-', '+', '#')):
-                                snippet_lines.append(next_line)
-                            j += 1
-                        if url:
-                            content = " ".join(snippet_lines).strip()
-                            g_results.append({
-                                "title": title,
-                                "url": url,
-                                "content": content or title,
-                                "source": "Google"
-                            })
-                            i = j - 1
-                    i += 1
-
-            # Fall back to metadata chunks if text parsing was empty
-            if not g_results:
-                metadata = response.candidates[0].grounding_metadata if (response.candidates and response.candidates[0]) else None
-                if metadata and hasattr(metadata, 'grounding_chunks') and metadata.grounding_chunks:
-                    for chunk in metadata.grounding_chunks:
-                        web = getattr(chunk, 'web', None)
-                        if web and web.uri:
-                            title = web.title or "Web Result"
-                            g_results.append({
-                                "title": title,
-                                "url": web.uri,
-                                "content": title,
-                                "source": "Google"
-                            })
-            # Resolve Google search redirects concurrently to find clean target URLs
-            if g_results:
-                def resolve_url(item):
-                    url = item["url"]
-                    if "vertexaisearch.cloud.google.com/grounding-api-redirect" in url:
-                        try:
-                            headers = {
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-                            }
-                            r = requests.head(url, headers=headers, allow_redirects=True, timeout=2.0)
-                            if r.status_code < 400 and r.url:
-                                item["url"] = r.url
-                                return
-                            r = requests.get(url, headers=headers, allow_redirects=True, stream=True, timeout=2.0)
-                            if r.url:
-                                item["url"] = r.url
-                        except Exception:
-                            pass
-
-                with concurrent.futures.ThreadPoolExecutor(max_workers=len(g_results)) as executor:
-                    executor.map(resolve_url, g_results)
-
-            return g_results
-        except Exception as e:
-            print(f"[Google Grounding] Error: {e}")
-            return []
 
     def run_searxng(q):
         try:
@@ -790,8 +690,7 @@ def web_search(query: str) -> str:
         # Standard hybrid concurrent search blending
         if search_engine == "web_crawling":
             futures = {
-                _search_executor.submit(run_google, query): "Google",
-                _search_executor.submit(run_searxng, query): "SearXNG",
+                                _search_executor.submit(run_searxng, query): "SearXNG",
                 _search_executor.submit(run_baidu, query): "Baidu",
                 _search_executor.submit(run_duckduckgo, query): "DuckDuckGo",
                 _search_executor.submit(run_brave, query): "Brave",
@@ -1423,7 +1322,7 @@ def generate_local_image(prompt: str) -> str:
         )
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    from utils.program import get_active_program
+    from runners.follower import get_active_follower as get_active_program
     active_program = get_active_program()
     
     workflow_env_path = os.getenv("COMFYUI_IMAGE_WORKFLOW", "core/skills/portrait_generation/ImageWorkflow.json")
@@ -1469,7 +1368,7 @@ def generate_local_image(prompt: str) -> str:
 
 
         # Combine prompt and image details
-        from core.program_config import replace_placeholders
+        from core.follower_config import replace_placeholders
         final_prompt = replace_placeholders(prompt)
         if img_details_val:
             if final_prompt and not final_prompt.endswith(","):
@@ -1490,7 +1389,7 @@ def generate_local_image(prompt: str) -> str:
 
         timestamp = int(time.time())
         local_filename = f"portrait_{timestamp}.png"
-        portraits_dir = os.path.normpath(os.path.join(base_dir, "core", "programs", active_program, "portraits"))
+        portraits_dir = os.path.normpath(os.path.join(base_dir, "core", "followers", active_program, "portraits"))
         local_path = os.path.join(portraits_dir, local_filename)
 
         result_path = apply_comfy_workflow(workflow_path, replacements, local_path, session_id=current_session_id.get())
@@ -1512,110 +1411,7 @@ def generate_local_image(prompt: str) -> str:
 
 
 @track_tool_activity
-def generate_imagen(prompt: str, aspect_ratio: str = '1:1') -> str:
-    """Generates a cloud image based on the prompt using Google's Imagen model.
 
-    Args:
-        prompt: A descriptive prompt detailing the scene or object.
-        aspect_ratio: Aspect ratio for the image (default '1:1').
-
-    Returns:
-        A markdown link to the generated image, or an error message.
-    """
-    import os
-    import time
-    import uuid
-    import base64
-    import requests
-    from dotenv import load_dotenv
-
-    try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        load_dotenv(os.path.join(base_dir, ".env"))
-
-        api_key = os.getenv("REMOTE_API_KEY")
-        if not api_key:
-            return "Error: REMOTE_API_KEY not found in environment."
-
-        from core.program_config import replace_placeholders
-        resolved_prompt = replace_placeholders(prompt)
-        model_name = os.getenv("IMAGEN_MODEL", "imagen-4.0-generate-001")
-        print(f"[IMAGEN] Generating image with model {model_name} and prompt: {resolved_prompt}")
-
-        image_bytes = None
-
-        # 1. Try Google GenAI SDK if installed
-        try:
-            from google import genai
-            from google.genai import types
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_images(
-                model=model_name,
-                prompt=resolved_prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    output_mime_type='image/png',
-                    aspect_ratio=aspect_ratio
-                )
-            )
-            if response.generated_images:
-                img_obj = response.generated_images[0]
-                if hasattr(img_obj.image, 'image_bytes'):
-                    image_bytes = img_obj.image.image_bytes
-        except Exception as sdk_err:
-            print(f"[IMAGEN] SDK call skipped ({sdk_err}), trying direct REST API.")
-
-        # 2. Try Direct REST API endpoint
-        if not image_bytes:
-            candidate_models = [model_name, "imagen-4.0-generate-001", "imagen-4.0-fast-generate-001", "imagen-3.0-generate-002"]
-            seen = set()
-            for m in candidate_models:
-                if m in seen:
-                    continue
-                seen.add(m)
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:predict?key={api_key}"
-                payload = {
-                    "instances": [{"prompt": resolved_prompt}],
-                    "parameters": {
-                        "sampleCount": 1,
-                        "outputMimeType": "image/png",
-                        "aspectRatio": aspect_ratio
-                    }
-                }
-                res = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=60.0)
-                if res.status_code == 200:
-                    data = res.json()
-                    preds = data.get("predictions", [])
-                    if preds and "bytesBase64Encoded" in preds[0]:
-                        b64_str = preds[0]["bytesBase64Encoded"]
-                        image_bytes = base64.b64decode(b64_str)
-                        break
-                else:
-                    print(f"[IMAGEN] Model {m} returned {res.status_code}: {res.text[:200]}")
-
-        if not image_bytes:
-            return "Error: Unable to generate image with available Imagen models."
-
-        from utils.program import get_active_program
-        active_program = get_active_program()
-        media_dir = os.path.normpath(os.path.join(base_dir, "core", "programs", active_program, "media"))
-        os.makedirs(media_dir, exist_ok=True)
-
-        timestamp = int(time.time())
-        local_filename = f"gen_img_{timestamp}_{uuid.uuid4().hex[:6]}.png"
-        local_path = os.path.join(media_dir, local_filename)
-
-        with open(local_path, "wb") as f:
-            f.write(image_bytes)
-
-        return f"![Generated Image](/images/media/{local_filename})"
-
-    except Exception as e:
-        print(f"[IMAGEN] Error generating image: {e}")
-        return f"Error generating image: {e}"
-
-
-@track_tool_activity
 def generate_video_from_image(image_path: str, prompt: str) -> str:
     """Animates a local image using ComfyUI with a custom video-specific workflow template.
     
@@ -1634,7 +1430,7 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
     import requests
     
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    from utils.program import get_active_program
+    from runners.follower import get_active_follower as get_active_program
     active_program = get_active_program()
     
     workflow_env_path = os.getenv("COMFYUI_VIDEO_WORKFLOW", "core/skills/portrait_generation/VideoWorkflow.json")
@@ -2232,90 +2028,12 @@ def add_journal_entry(keyphrases: str, content: str) -> str:
     """
     try:
         from core.journals import add_journal_entry as add_entry
-        from utils.program import get_active_program
+        from runners.follower import get_active_follower as get_active_program
         active_prog = get_active_program()
         entry = add_entry(keyphrases, content, active_prog)
         return f"Successfully saved memory journal entry: {entry.get('content')}"
     except Exception as e:
         return f"Error saving memory journal entry: {e}"
-
-
-@track_tool_activity
-def cite_scripture(tradition: str = "all", topic: str = "") -> str:
-    """Searches the local scripture knowledge base for verses relevant to a spiritual topic.
-    
-    Args:
-        tradition: Faith tradition to search. One of 'quran', 'bible', 'gita', 'tao', 'dhammapada', or 'all'.
-        topic: The spiritual theme or question to find relevant passages for.
-    """
-    import json
-    import numpy as np
-    from utils.program import get_active_program
-    
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    active_program = get_active_program()
-    scriptures_path = os.path.join(base_dir, "core", "programs", active_program, "scriptures.json")
-    
-    if not os.path.exists(scriptures_path):
-        return "Scripture knowledge base not found. Run the scripture ingestion script to set up the local scripture store."
-    
-    try:
-        with open(scriptures_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        return f"Error loading scriptures: {e}"
-    
-    chunks = data.get("chunks", [])
-    if not chunks:
-        return "Scripture knowledge base is empty."
-    
-    # Filter by tradition if specified
-    if tradition.lower() != "all":
-        tradition_lower = tradition.lower()
-        chunks = [c for c in chunks if c.get("tradition", "").lower() == tradition_lower]
-        if not chunks:
-            return f"No scriptures found for tradition '{tradition}'."
-    
-    # Generate query embedding
-    try:
-        from core.skills.vectorized_databank.databank import get_embedding_model
-        model = get_embedding_model()
-        query_vector = model.encode(topic)
-    except Exception as e:
-        return f"Error loading embedding model: {e}"
-    
-    query_norm = np.linalg.norm(query_vector)
-    if query_norm == 0:
-        return "Empty query."
-    
-    # Cosine similarity search
-    results = []
-    for chunk in chunks:
-        vector = chunk.get("vector")
-        if not vector:
-            continue
-        chunk_vector = np.array(vector)
-        chunk_norm = np.linalg.norm(chunk_vector)
-        if chunk_norm == 0:
-            continue
-        similarity = np.dot(query_vector, chunk_vector) / (query_norm * chunk_norm)
-        if similarity >= 0.30:
-            results.append((similarity, chunk))
-    
-    results.sort(key=lambda x: x[0], reverse=True)
-    top_results = results[:5]
-    
-    if not top_results:
-        return f"No scripture passages found matching '{topic}'."
-    
-    formatted = []
-    for score, chunk in top_results:
-        source = chunk.get("source", "Unknown")
-        text = chunk.get("text", "")
-        trad = chunk.get("tradition", "Unknown").capitalize()
-        formatted.append(f"[{trad}] {source}\n{text}")
-    
-    return "\n\n---\n\n".join(formatted)
 
 # --- Arena Additions ---
 
@@ -2453,6 +2171,8 @@ def arena_recruit_follower(follower_name, follower_race="Imperial", follower_cla
         return {"status": "recruited", "follower_name": follower_name, "message": str(e)}
 
 # ── Character sheet tools ─────────────────────────────────────────────────────
+import os
+from core.save_manager import get_active_save_id
 from core.character import (
     load_character, save_character, get_character_context,
     take_damage, heal, spend_magicka, restore_magicka, spend_stamina, restore_stamina, rest,
@@ -2462,16 +2182,33 @@ from core.character import (
     add_experience, get_attribute, is_dead, tick_effects
 )
 
+def _get_active_sheet(kwargs: dict) -> tuple[str, dict]:
+    """Helper to fetch active save_id and load the corresponding sheet."""
+    save_id = kwargs.get("session_id") or get_active_save_id()
+    sheet = load_character(save_id)
+    return save_id, sheet
+
+def _commit_and_sync(save_id: str, sheet: dict, kwargs: dict):
+    """Helper to save character sheet and sync snapshot to history/frontend UI."""
+    save_character(save_id, sheet)
+    try:
+        from app import _sync_active_character_snapshot_to_history
+        session_id = kwargs.get("session_id") or save_id
+        _sync_active_character_snapshot_to_history(sheet, session_id)
+    except Exception as e:
+        print(f"[TOOL SYNC WARN] Failed to sync character snapshot: {e}", flush=True)
+
 @track_tool_activity
 def arena_take_damage(amount=0, damage_amount=None, damage=None, **kwargs):
     """Apply damage to the character. Updates HP on the character sheet."""
-    import os
     actual_amount = amount if amount else (damage_amount if damage_amount is not None else (damage if damage is not None else 0))
     inc_mult = float(os.getenv("INCOMING_DAMAGE_MULTIPLIER", "1.0"))
     scaled_amount = max(1, int(round(int(actual_amount) * inc_mult))) if int(actual_amount) > 0 else 0
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = take_damage(sheet, scaled_amount)
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     d = sheet["derived"]
     return {"hp_current": d["hp_current"], "hp_max": d["hp_max"], "dead": is_dead(sheet), "damage_inflicted": scaled_amount}
 
@@ -2479,9 +2216,11 @@ def arena_take_damage(amount=0, damage_amount=None, damage=None, **kwargs):
 def arena_heal(amount=0, heal_amount=None, healing=None, **kwargs):
     """Restore HP to the character up to their maximum."""
     actual_amount = amount if amount else (heal_amount if heal_amount is not None else (healing if healing is not None else 0))
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = heal(sheet, int(actual_amount))
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     d = sheet["derived"]
     return {"hp_current": d["hp_current"], "hp_max": d["hp_max"]}
 
@@ -2489,10 +2228,12 @@ def arena_heal(amount=0, heal_amount=None, healing=None, **kwargs):
 def arena_spend_magicka(amount=0, mp_amount=None, cost=None, **kwargs):
     """Spend Magicka (MP) to cast a spell. Returns success or failure if MP insufficient."""
     actual_amount = amount if amount else (mp_amount if mp_amount is not None else (cost if cost is not None else 0))
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet, success = spend_magicka(sheet, int(actual_amount))
     if success:
-        save_character(sheet)
+        _commit_and_sync(save_id, sheet, kwargs)
+        
     d = sheet["derived"]
     return {"success": success, "mp_current": d.get("mp_current", 0), "mp_max": d.get("mp_max", 42)}
 
@@ -2505,9 +2246,11 @@ def arena_spend_spell_points(amount=0, **kwargs):
 def arena_restore_magicka(amount=0, mp_amount=None, **kwargs):
     """Restore Magicka (MP) up to maximum (via potions, absorbing spells, or rest)."""
     actual_amount = amount if amount else (mp_amount if mp_amount is not None else 0)
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = restore_magicka(sheet, int(actual_amount))
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     d = sheet["derived"]
     return {"mp_current": d.get("mp_current", 0), "mp_max": d.get("mp_max", 42)}
 
@@ -2515,9 +2258,11 @@ def arena_restore_magicka(amount=0, mp_amount=None, **kwargs):
 def arena_spend_stamina(amount=0, stamina_amount=None, cost=None, **kwargs):
     """Spend Stamina for sprinting, heavy power strikes, dodging, or physical exertion."""
     actual_amount = amount if amount else (stamina_amount if stamina_amount is not None else (cost if cost is not None else 0))
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet, not_exhausted = spend_stamina(sheet, int(actual_amount))
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     d = sheet["derived"]
     return {"stamina_current": d.get("stamina_current", 0), "stamina_max": d.get("stamina_max", 50), "exhausted": not not_exhausted}
 
@@ -2525,22 +2270,26 @@ def arena_spend_stamina(amount=0, stamina_amount=None, cost=None, **kwargs):
 def arena_restore_stamina(amount=0, stamina_amount=None, **kwargs):
     """Restore Stamina up to maximum (potions, resting, catching breath)."""
     actual_amount = amount if amount else (stamina_amount if stamina_amount is not None else 0)
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = restore_stamina(sheet, int(actual_amount))
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     d = sheet["derived"]
     return {"stamina_current": d.get("stamina_current", 0), "stamina_max": d.get("stamina_max", 50)}
 
 @track_tool_activity
 def arena_rest(hours=8, safe=True, **kwargs):
     """Rest or sleep at an inn or camp to recover Health, Stamina, and Magicka."""
-    sheet = load_character()
+    save_id, sheet = _get_active_sheet(kwargs)
     d = sheet["derived"]
     hp_before = d.get("hp_current", 0)
     mp_before = d.get("mp_current", 0)
     stamina_before = d.get("stamina_current", 0)
+    
     sheet, summary = rest(sheet, int(hours), bool(safe))
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     d = sheet["derived"]
     return {
         "summary": summary,
@@ -2559,36 +2308,42 @@ def arena_rest(hours=8, safe=True, **kwargs):
 def arena_add_gold(amount=0, gold_amount=None, **kwargs):
     """Add gold to the character (loot, reward, sale)."""
     actual_amount = amount if amount else (gold_amount if gold_amount is not None else 0)
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = add_gold(sheet, int(actual_amount))
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     return {"gold": sheet["gold"]}
 
 @track_tool_activity
 def arena_spend_gold(amount=0, gold_amount=None, cost=None, **kwargs):
     """Spend gold on a purchase. Returns success or failure if funds insufficient."""
     actual_amount = amount if amount else (gold_amount if gold_amount is not None else (cost if cost is not None else 0))
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet, success = spend_gold(sheet, int(actual_amount))
     if success:
-        save_character(sheet)
+        _commit_and_sync(save_id, sheet, kwargs)
+        
     return {"success": success, "gold": sheet["gold"]}
 
 @track_tool_activity
 def arena_add_item(item_name, item_type="Item", quantity=1, **kwargs):
     """Add an item to the character's inventory (looted, purchased, found)."""
-    sheet = load_character()
-    sheet = add_item(sheet, {"name": item_name, "type": item_type, "quantity": quantity})
-    save_character(sheet)
+    save_id, sheet = _get_active_sheet(kwargs)
+    sheet = add_item(sheet, {"name": item_name, "type": item_type, "quantity": int(quantity)})
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     return {"inventory_count": len(sheet["inventory"]), "item": item_name}
 
 @track_tool_activity
 def arena_remove_item(item_name, quantity=1, **kwargs):
     """Remove an item from inventory (used, sold, consumed)."""
-    sheet = load_character()
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet, success = remove_item(sheet, item_name, int(quantity))
     if success:
-        save_character(sheet)
+        _commit_and_sync(save_id, sheet, kwargs)
+        
     return {"success": success, "item": item_name}
 
 @track_tool_activity
@@ -2598,7 +2353,7 @@ def arena_create_spell(spell_name, effect_description, school=None, target_type=
     Calculates Magicka cost (SP), casting DC, and inscribers' fee.
     """
     from core.spellmaker import create_spell as craft_spell
-    sheet = load_character()
+    save_id, sheet = _get_active_sheet(kwargs)
     caster_int = sheet.get("intelligence", 50)
     
     spell_info = craft_spell(
@@ -2632,7 +2387,7 @@ def arena_create_spell(spell_name, effect_description, school=None, target_type=
         "target_type": spell_info["target_type"],
         "effect_description": spell_info["effect_description"]
     })
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
     
     return {
         "success": True,
@@ -2645,38 +2400,43 @@ def arena_create_spell(spell_name, effect_description, school=None, target_type=
 @track_tool_activity
 def arena_learn_spell(spell_name, school="Restoration", tier=1, sp_cost=5, **kwargs):
     """Add a spell to the character's known spells."""
-    sheet = load_character()
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = learn_spell(sheet, {"name": spell_name, "school": school, "tier": tier, "sp_cost": sp_cost})
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     return {"spells": [s["name"] for s in sheet["spells"]]}
 
 @track_tool_activity
 def arena_add_effect(effect_name, duration_turns=1, source="", **kwargs):
     """Apply a status effect to the character (poisoned, paralysed, fortified, etc.)."""
-    sheet = load_character()
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = add_effect(sheet, {"name": effect_name, "duration_turns": duration_turns, "source": source})
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     return {"active_effects": [e["name"] for e in sheet["active_effects"]]}
 
 @track_tool_activity
 def arena_remove_effect(effect_name, **kwargs):
     """Remove a status effect (cured, expired, dispelled)."""
-    sheet = load_character()
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet = remove_effect(sheet, effect_name)
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     return {"active_effects": [e["name"] for e in sheet["active_effects"]]}
 
 @track_tool_activity
 def arena_add_experience(amount=0, xp_amount=None, **kwargs):
     """Award XP. Automatically handles level-up if threshold reached."""
     actual_amount = amount if amount else (xp_amount if xp_amount is not None else 0)
-    sheet = load_character()
+    
+    save_id, sheet = _get_active_sheet(kwargs)
     sheet, leveled_up = add_experience(sheet, int(actual_amount))
-    save_character(sheet)
+    _commit_and_sync(save_id, sheet, kwargs)
+    
     return {"experience": sheet["experience"], "level": sheet["level"], "leveled_up": leveled_up}
 
 @track_tool_activity
 def arena_get_character_context(**kwargs):
     """Return the current character sheet as a compact context string for the narrative."""
-    sheet = load_character()
+    _, sheet = _get_active_sheet(kwargs)
     return get_character_context(sheet)

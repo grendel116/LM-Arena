@@ -8,8 +8,6 @@ import traceback
 import threading
 import uuid
 
-from adapters import comfy_manager
-
 # Automate copying of default .env configuration if it doesn't exist
 base_dir = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(base_dir, '.env')
@@ -131,15 +129,14 @@ init_runner()
 
 def reload_follower_state():
     """Reload follower config, reinitialize the runner, and sync active save session."""
-    from core import follower_config
+    from core import follower_config, follower_config
+    importlib.reload(follower_config)
     importlib.reload(follower_config)
     init_runner()
-    
-    from core.save_manager import get_active_save_id
-    active_id = get_active_save_id()
-    
     if hasattr(runner, '_load_session_from_disk'):
-        runner._load_session_from_disk(active_id)
+        runner._load_session_from_disk('default')
+
+reload_follower_state = reload_follower_state
 
 
 def load_theme(follower_id):
@@ -303,7 +300,6 @@ def profile_png():
 
 
 @app.route('/followers/<follower_id>/profile.png')
-@app.route('/followers/<follower_id>/profile.png')
 def follower_profile_png(follower_id=None):
     fid = follower_id
     import re
@@ -322,7 +318,6 @@ def follower_profile_png(follower_id=None):
 follower_profile_png = follower_profile_png
 
 
-@app.route('/api/followers/profile_picture/save', methods=['POST'])
 @app.route('/api/followers/profile_picture/save', methods=['POST'])
 @requires_auth
 def save_profile_picture():
@@ -358,7 +353,6 @@ def save_profile_picture():
         print(f"Error saving profile picture: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/followers/profile_picture/crop', methods=['POST'])
 @app.route('/api/followers/profile_picture/crop', methods=['POST'])
 @requires_auth
 def crop_profile_picture():
@@ -478,7 +472,7 @@ def get_image_prompt():
 @app.route('/api/proactive_action', methods=['POST'])
 @requires_auth
 def proactive_action():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     selected_model = request.json.get('model')
     
     try:
@@ -661,22 +655,22 @@ You must return a valid JSON object matching the following schema:
 @app.route('/history', methods=['GET'])
 @requires_auth
 def history():
-    session_id = request.args.get('session_id') or get_active_save_id()
+    session_id = request.args.get('session_id', 'default')
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
         
-        from runners.follower import get_player_name
+        from runners.follower import get_active_follower, get_player_name
+        from core.follower_config import get_follower_greeting, get_follower_name, replace_placeholders
         user_name = get_player_name()
-
-        from core.follower_config import follower_name, get_follower_greeting, replace_placeholders
-        welcome_message = replace_placeholders(get_follower_greeting(), user_name=user_name)
-        active_follower = os.environ.get("ACTIVE_follower", "ria_silmane")
+        active_follower = get_active_follower()
+        welcome_message = replace_placeholders(get_follower_greeting(active_follower), user_name=user_name)
+        char_name = get_follower_name(active_follower)
         
         theme = load_theme(active_follower)
 
         return jsonify({
             'history': chat_history,
-            'character_name': follower_name,
+            'character_name': char_name,
             'user_name': user_name,
             'active_follower': active_follower,
             'theme': theme,
@@ -734,20 +728,19 @@ def chat():
     image_data = request.json.get('image_data')
     image_mime = request.json.get('image_mime')
     media_path = request.json.get('media_path')
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     selected_model = request.json.get('model')
     is_voice_call = request.json.get('is_voice_call', False)
 
-    import tools.tools as tools
+    import tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
         tools.session_tool_calls[session_id] = []
 
-    from runners.runners import cancelled_sessions
+    from runners.runners import cancelled_sessions, voice_call_sessions
     cancelled_sessions.discard(session_id)
-    # Voice calls are no longer supported
-    # if is_voice_call:
-    #     voice_call_sessions.add(session_id)
+    if is_voice_call:
+        voice_call_sessions.add(session_id)
         
     start_time = time.time()
 
@@ -799,21 +792,21 @@ def chat():
         print(f"Error occurred in chat: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
-        from runners.runners import cancelled_sessions
+        from runners.runners import cancelled_sessions, voice_call_sessions
         cancelled_sessions.discard(session_id)
-        # voice_call_sessions.discard(session_id)
+        voice_call_sessions.discard(session_id)
 
 @app.route('/edit', methods=['POST'])
 @requires_auth
 def edit():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     msg_id = request.json.get('msg_id')
     new_text = request.json.get('new_text') # None means reroll (use original text)
     selected_model = request.json.get('model')
     force_offload = request.json.get('force_offload', False)
     print(f"[EDIT ROUTE] session_id={session_id}, msg_id={msg_id}, new_text={repr(new_text)}, model={selected_model}, force_offload={force_offload}", flush=True)
 
-    import tools.tools as tools
+    import tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
         tools.session_tool_calls[session_id] = []
@@ -995,7 +988,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
 @app.route('/api/generate_user_message', methods=['POST'])
 @requires_auth
 def generate_user_message():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     model = request.json.get('model')
     user_profile = request.json.get('user_profile', '').strip()
     user_input = request.json.get('current_input', request.json.get('user_input', '')).strip()
@@ -1140,7 +1133,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
 @app.route('/api/execute_player_skill_check', methods=['POST'])
 @requires_auth
 def execute_player_skill_check():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     skill_name = request.json.get('skill_name', 'Agility')
     attribute_name = request.json.get('attribute_name', 'Agility')
     dc = request.json.get('dc', 15)
@@ -1165,7 +1158,7 @@ def execute_player_skill_check():
 @app.route('/update_message', methods=['POST'])
 @requires_auth
 def update_message():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     msg_id = request.json.get('msg_id')
     new_text = request.json.get('new_text')
     
@@ -1185,7 +1178,7 @@ def update_message():
 @app.route('/delete', methods=['POST'])
 @requires_auth
 def delete_message():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     msg_id = request.json.get('msg_id')
 
     if not msg_id:
@@ -1208,7 +1201,7 @@ def delete_message():
 @app.route('/reset', methods=['POST'])
 @requires_auth
 def reset():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     try:
         asyncio.run(runner.reset_session(session_id))
         return jsonify({'status': 'success'})
@@ -1219,7 +1212,7 @@ def reset():
 @app.route('/delete_image', methods=['POST'])
 @requires_auth
 def delete_image():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     image_url = request.json.get('image_url')
     if not image_url:
         return jsonify({'error': 'Missing image_url'}), 400
@@ -1239,7 +1232,7 @@ def delete_image():
 @app.route('/regenerate_image', methods=['POST'])
 @requires_auth
 def regenerate_image():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     old_image_url = request.json.get('old_image_url')
     prompt = request.json.get('prompt')
     
@@ -1303,7 +1296,7 @@ def regenerate_image():
             return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
 
     try:
-        import tools.tools as tools
+        import tools
         tools.current_session_id.set(session_id)
         with tools.session_tool_calls_lock:
             tools.session_tool_calls[session_id] = []
@@ -1344,7 +1337,7 @@ active_generations = {}
 active_generations_lock = threading.Lock()
 
 def run_background_video_gen(task_id, session_id, image_url, local_path, prompt):
-    import tools.tools as tools
+    import tools
     import asyncio
     
     with active_generations_lock:
@@ -1381,7 +1374,7 @@ def run_background_video_gen(task_id, session_id, image_url, local_path, prompt)
 @app.route('/api/animate_image', methods=['POST'])
 @requires_auth
 def animate_image():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     image_url = request.json.get('image_url')
     prompt = request.json.get('prompt')
     
@@ -1468,7 +1461,7 @@ def list_images():
 @app.route('/pending_tool_call', methods=['GET'])
 @requires_auth
 def get_pending_tool_call():
-    import tools.tools as tools
+    import tools
     pending = None
     for call_id, info in list(tools.pending_tool_calls.items()):
         if info['status'] == 'pending':
@@ -1489,7 +1482,7 @@ def get_pending_tool_call():
 @app.route('/api/cancel_chat', methods=['POST'])
 @requires_auth
 def cancel_chat():
-    session_id = request.json.get('session_id') or get_active_save_id()
+    session_id = request.json.get('session_id', 'default')
     from runners.runners import cancelled_sessions
     cancelled_sessions.add(session_id)
     print(f"[CANCEL] Session cancellation requested: {session_id}", flush=True)
@@ -1498,8 +1491,8 @@ def cancel_chat():
 @app.route('/api/session_tool_calls', methods=['GET'])
 @requires_auth
 def get_session_tool_calls():
-    session_id = request.args.get('session_id') or get_active_save_id()
-    import tools.tools as tools
+    session_id = request.args.get('session_id', 'default')
+    import tools
     with tools.session_tool_calls_lock:
         calls = tools.session_tool_calls.get(session_id, [])
         return jsonify({'tool_calls': list(calls)})
@@ -1507,7 +1500,7 @@ def get_session_tool_calls():
 @app.route('/approve_tool', methods=['POST'])
 @requires_auth
 def approve_tool():
-    import tools.tools as tools
+    import tools
     call_id = request.json.get('call_id')
     status = request.json.get('status')
     
@@ -1541,7 +1534,7 @@ def get_models():
     # 1. Fetch dynamic local models (only actively loaded models in Local LLM server)
     models = fetch_local_models()
     
-    # Default backup the first loaded local model if available, otherwise "local-llm"
+    # Default fallback: use the first loaded local model if available, otherwise "local-llm"
     default_model = "local-llm"
     if models and models[0]["value"] != "local-llm":
         default_model = models[0]["value"]
@@ -1820,6 +1813,57 @@ def api_tts():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/voice_call/start', methods=['POST'])
+@requires_auth
+def start_voice_call_api():
+    try:
+        data = request.get_json() or {}
+        session_id = data.get('session_id', 'default')
+        voice_session_id = f"{session_id}_voice"
+        
+        # 1. Reset/Clear any existing voice session
+        asyncio.run(runner.reset_session(voice_session_id))
+        
+        # 2. Clone context from main session to voice session
+        asyncio.run(runner.clone_history(session_id, voice_session_id, []))
+        
+        print(f"[VOICE CALL] Initialized voice session: {voice_session_id} cloned from {session_id}")
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error in /api/voice_call/start: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/voice_call/save', methods=['POST'])
+@requires_auth
+def save_voice_call():
+    try:
+        data = request.get_json() or {}
+        session_id = data.get('session_id', 'default')
+        transcript = data.get('transcript')
+        voice_session_id = f"{session_id}_voice"
+        
+        if not transcript:
+            return jsonify({'error': 'Missing transcript'}), 400
+            
+        # 1. Save consolidated transcript message to main session history
+        success = asyncio.run(runner.append_voice_call(session_id, transcript))
+        
+        # 2. Reset/Clean up temporary voice session from memory/disk
+        asyncio.run(runner.reset_session(voice_session_id))
+        
+        print(f"[VOICE CALL] Saved transcript to main session {session_id} and cleared temporary voice session {voice_session_id}")
+        
+        if success:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to append voice call to session'}), 500
+    except Exception as e:
+        print(f"Error in /api/voice_call/save: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# --- VECTORIZED DATA BANK API ENDPOINTS ---
+from core.skills.vectorized_databank.databank import DataBankManager
+
+@app.route('/api/databank/files', methods=['GET'])
 @requires_auth
 def databank_list_files():
     try:
@@ -2115,7 +2159,6 @@ def save_lorebook_entries(filename):
 
 
 @app.route('/api/followers/memories', methods=['GET'])
-@app.route('/api/followers/memories', methods=['GET'])
 @requires_auth
 def get_follower_memories():
     try:
@@ -2132,7 +2175,7 @@ get_follower_memories = get_follower_memories
 @requires_auth
 def delete_memory():
     data = request.json or {}
-    session_id = data.get("session_id") or get_active_save_id()
+    session_id = data.get("session_id", "default")
     timestamp = data.get("timestamp")
     if timestamp is None:
         return jsonify({"error": "Missing timestamp"}), 400
@@ -2242,11 +2285,9 @@ def abandon_quest(quest_id):
         with open(history_path, 'w', encoding='utf-8') as f:
             json.dump(history, f, indent=2, ensure_ascii=False)
             
-        from core.save_manager import get_active_save_id
-        session_id = get_active_save_id()
-        
+        session_id = 'default'
         if request.is_json:
-            session_id = request.json.get('session_id') or session_id
+            session_id = request.json.get('session_id', 'default')
             
         title = quest_data.get("title", "")
         system_message = f"[SYSTEM: Player has abandoned and failed the side quest: \"{title}\"]"
@@ -2348,16 +2389,12 @@ def list_sessions():
                     session_name = file[:-5]
                     sessions.append(session_name)
         
-        from core.save_manager import get_active_save_id
-        active_id = get_active_save_id()
-        
-        if active_id in sessions:
-            sessions.remove(active_id)
-            sessions.insert(0, active_id)
-        elif sessions:
-            sessions.insert(0, active_id)
+        # Ensure 'default' is always in the list
+        if 'default' not in sessions:
+            sessions.insert(0, 'default')
         else:
-            sessions.insert(0, active_id)
+            sessions.remove('default')
+            sessions.insert(0, 'default')
             
         return jsonify({
             'status': 'success',
@@ -2369,7 +2406,6 @@ def list_sessions():
 
 
 
-@app.route('/api/followers', methods=['GET'])
 @app.route('/api/followers', methods=['GET'])
 @requires_auth
 def list_followers():
@@ -2446,7 +2482,6 @@ def list_followers():
 
 list_followers = list_followers
 
-@app.route('/api/followers/select', methods=['POST'])
 @app.route('/api/followers/select', methods=['POST'])
 @requires_auth
 def select_follower():
@@ -2544,7 +2579,6 @@ def update_follower_palette():
 
 
 @app.route('/api/followers/delete', methods=['POST'])
-@app.route('/api/followers/delete', methods=['POST'])
 @requires_auth
 def delete_follower():
     try:
@@ -2583,7 +2617,6 @@ def delete_follower():
 delete_follower = delete_follower
 
 
-@app.route('/api/followers/rename', methods=['POST'])
 @app.route('/api/followers/rename', methods=['POST'])
 @requires_auth
 def rename_follower():
@@ -2711,7 +2744,6 @@ rename_follower = rename_follower
 
 
 @app.route('/api/followers/profile', methods=['GET'])
-@app.route('/api/followers/profile', methods=['GET'])
 @requires_auth
 def get_follower_profile():
     try:
@@ -2742,7 +2774,6 @@ def get_follower_profile():
 get_follower_profile = get_follower_profile
 
 
-@app.route('/api/followers/profile/save', methods=['POST'])
 @app.route('/api/followers/profile/save', methods=['POST'])
 @requires_auth
 def save_follower_profile():
@@ -2793,7 +2824,6 @@ def save_follower_profile():
 save_follower_profile = save_follower_profile
 
 
-@app.route('/api/followers/journals', methods=['GET'])
 @app.route('/api/followers/journals', methods=['GET'])
 @requires_auth
 def get_follower_journals():
@@ -3075,7 +3105,7 @@ def toggle_equip_item():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         should_equip = data.get("equip", True)
-        req_session_id = data.get("session_id") or get_active_save_id()
+        req_session_id = data.get("session_id", "default")
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
@@ -3194,7 +3224,7 @@ def create_character_item_route():
     try:
         data = request.get_json(silent=True) or {}
         description = data.get("description", "").strip()
-        req_session_id = data.get("session_id") or get_active_save_id()
+        req_session_id = data.get("session_id", "default")
         model = data.get("model")
 
         if not description:
@@ -3230,7 +3260,7 @@ def remove_character_item_route():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         quantity = int(data.get("quantity", 1))
-        req_session_id = data.get("session_id") or get_active_save_id()
+        req_session_id = data.get("session_id", "default")
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
@@ -3266,7 +3296,7 @@ def remove_character_spell_route():
     try:
         data = request.get_json(silent=True) or {}
         spell_name = data.get("spell_name")
-        req_session_id = data.get("session_id") or get_active_save_id()
+        req_session_id = data.get("session_id", "default")
         
         if not spell_name:
             return jsonify({"error": "Missing spell_name"}), 400
@@ -3299,7 +3329,7 @@ def modify_character_gold_route():
         data = request.get_json(silent=True) or {}
         amount = int(data.get("amount", 0))
         action = data.get("action", "remove")
-        req_session_id = data.get("session_id") or get_active_save_id()
+        req_session_id = data.get("session_id", "default")
         
         from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, spend_gold, add_gold
@@ -3618,6 +3648,12 @@ Output a single JSON object with EXACTLY these keys:
   "image_positive": "Comma-separated Stable Diffusion tags for ONLY physical appearance (e.g. silver hair, purple eyes, fair skin).",
   "image_negative": "Comma-separated SD negative tags to exclude (e.g. extra limbs, bad anatomy).",
   "main_color": "#RRGGBB — a hex color representing this character.",
+  "inversion": {{
+    "intimate": "How they behave when intimate/warm.",
+    "excited": "How they behave when excited/playful.",
+    "intense": "How they behave when intense/focused.",
+    "sad": "How they behave when sad/empathetic."
+  }}
 }}"""
 
     raw_response = None
@@ -3673,8 +3709,8 @@ Output a single JSON object with EXACTLY these keys:
         except Exception as e:
             print(f"Failed to parse card JSON: {e}. Raw: {raw_response}")
 
-    # Build a chara_card_v3 dict. Helper key _colors is popped by
-    # finalize_imported_follower before writing to disk.
+    # Build a chara_card_v3 dict. Helper keys _inversion and _colors are
+    # popped by finalize_imported_follower before writing to disk.
     card = {
         "spec": "chara_card_v3",
         "spec_version": "3.0",
@@ -3702,14 +3738,21 @@ Output a single JSON object with EXACTLY these keys:
                 }
             }
         },
+        # Helper keys consumed by finalize_imported_follower
+        "_inversion": parsed.get("inversion") or {
+            "intimate": f"{name} is now deeply affectionate and tender.",
+            "excited": f"{name} is now playful and energetic.",
+            "intense": f"{name} is now focused and direct.",
+            "sad": f"{name} is now empathetic and gentle."
+        },
         "_colors": {"main_color": parsed.get("main_color") or "#38bdf8"},
     }
     return card
 
 
 def finalize_imported_follower(follower_path, follower_id, card_json):
-    """Write theme, portraits dir, and chara_card_v3 JSON for a new follower."""
-    colors = card_json.pop("_colors", None) or card_json.pop("colors", None) or {}
+    """Write inversion, theme, portraits dir, and chara_card_v3 JSON for a new follower."""
+    
 
     main_color = colors.get("main_color", "#38bdf8")
     theme_data = generate_character_theme(main_color)
@@ -3730,7 +3773,6 @@ def finalize_imported_follower(follower_path, follower_id, card_json):
 finalize_imported_follower = finalize_imported_follower
 
 
-@app.route('/api/followers/<follower_id>/export/card', methods=['GET'])
 @app.route('/api/followers/<follower_id>/export/card', methods=['GET'])
 @requires_auth
 def export_follower_card(followerfollower_id=None):
@@ -3756,7 +3798,6 @@ def export_follower_card(followerfollower_id=None):
 export_follower_card = export_follower_card
 
 
-@app.route('/api/followers/<follower_id>/export/lorebook', methods=['GET'])
 @app.route('/api/followers/<follower_id>/export/lorebook', methods=['GET'])
 @requires_auth
 def export_follower_lorebook(followerfollower_id=None):
@@ -3784,7 +3825,6 @@ def export_follower_lorebook(followerfollower_id=None):
 export_follower_lorebook = export_follower_lorebook
 
 
-@app.route('/api/followers/import/tavern', methods=['POST'])
 @app.route('/api/followers/import/tavern', methods=['POST'])
 @requires_auth
 def import_tavern_follower():
@@ -3892,8 +3932,7 @@ def import_tavern_follower():
         if "image_details" not in arena:
             arena["image_details"] = {"positive": "", "negative": ""}
 
-        main_color = arena.pop("main_color", None) or "#38bdf8"
-
+        
         card_v3["_colors"] = {"main_color": main_color}
 
         finalize_imported_follower(follower_path, follower_id, card_v3)
@@ -3906,7 +3945,6 @@ def import_tavern_follower():
 import_tavern_follower = import_tavern_follower
 
 
-@app.route('/api/followers/import/describe', methods=['POST'])
 @app.route('/api/followers/import/describe', methods=['POST'])
 @requires_auth
 def import_describe_follower():
@@ -3950,7 +3988,7 @@ _last_broadcast_state = {}
 
 def _get_current_status():
     """Build the combined connection status payload."""
-    from adapters import local_llm_manager
+    from adapters import local_llm_manager, comfy_manager
     remote_key = os.getenv("REMOTE_API_KEY")
     remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
     is_remote_configured = bool(

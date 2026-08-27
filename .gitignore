@@ -18,6 +18,7 @@ certs/
 # Ignore all runtime and user variables except code dependencies, template examples, and default profile
 variables/*
 !variables/__init__.py
+!variables/settings.py
 !variables/user.md.example
 !variables/banned_words.json
 !variables/saves/
@@ -34,7 +35,7 @@ core/followers/*
 # Ignore user-generated dynamic program sessions, databases, custom generated portraits, media, and memories
 core/followers/*/sessions/
 core/followers/*/portraits/*
-!core/followers/ria_silmane/portraits/profile.png
+!core/followers/*/portraits/profile.png
 core/followers/*/media/
 core/followers/*/uploads/
 core/followers/*/databank.db
@@ -53,8 +54,7 @@ media/
 
 
 # Local model weights
-models/*
-!models/models.py
+models/
 
 # TTS Speech Model weights and synthesized audio cache
 core/skills/speech_generation/speech_model/*.onnx

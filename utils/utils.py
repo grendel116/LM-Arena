@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 
 import tools.tools as tools
-from variables import FOLLOWERS_DIR, REMOTE_SERVER_URL, get_remote_server_headers
+from variables.settings import FOLLOWERS_DIR, LOCAL_SERVER_URL, get_local_server_headers
 from models.models import is_local_model
 from runners.follower import get_active_follower
 
@@ -33,7 +33,7 @@ _ARENA_DIRECTIVE_PROMPT = (
     "- `[arena_roll_combat(attacker_name=\"...\", attacker_strength=..., attacker_agility=..., attacker_class_archetype=\"...\", weapon_name=\"...\", weapon_damage_tier=..., weapon_attribute=\"...\", target_name=\"...\", target_agility=...)]` NPC/monster attack.\n"
     "- `[arena_roll_check(attribute_name=\"...\", attribute_value=..., dc=...)]` NPC/monster check.\n"
     "- `[arena_recruit_follower(follower_name=\"...\", follower_race=\"...\", follower_class=\"...\", persona_description=\"...\")]` Recruit permanent companion.\n"
-    "- `[generate_local_image(prompt=\"...\")]` / `[generate_imagen(prompt=\"...\", aspect_ratio=\"...\")]` Generate visual art.\n"
+    "- `[generate_local_image(prompt=\"...\")]` Generate visual art via ComfyUI.\n"
     "- `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` / `[arena_remove_item(...)]` Inventory changes.\n"
     "- `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` / `[arena_spend_gold(...)]` Currency changes.\n\n"
         "Rules:\n"

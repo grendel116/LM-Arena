@@ -336,7 +336,7 @@ const appConfig = window.__ARENA_CONFIG || {};
 const localIp = appConfig.localIp || "127.0.0.1";
 let chatContainer = document.getElementById('chat-container');
 let userInput = document.getElementById('user-input');
-let followerWelcomeMessage = null;
+let followerWelcomeMessage = (appConfig && appConfig.welcomeMessage) || null;
 let activePlayerName = (appConfig && appConfig.userName) || "";
 
 function replacePlaceholders(text) {
@@ -530,9 +530,7 @@ async function softReloadApp() {
             const onboarding = document.getElementById('onboarding-container');
             if (onboarding) onboarding.remove();
         } else {
-            if (!connectionStatus.remote_configured  && !connectionStatus.local_online) {
-                showOnboardingCard();
-            } else {
+            if (!isNewGamePendingStart) {
                 showWelcomeMessage();
             }
         }
@@ -855,7 +853,7 @@ async function initializeModelSelect() {
             connectionStatus = data.status;
             updateConnectionModalStatus();
             if (document.getElementById('onboarding-container')) {
-                showOnboardingCard();
+                showWelcomeMessage();
             }
         }
 
@@ -874,7 +872,7 @@ async function initializeModelSelect() {
                 if (data.status && data.status.local_online) {
                     opt.textContent = 'Local Model (No Model Loaded)';
                 } else {
-                    opt.textContent = 'Local Model (Disconnected)';
+                    opt.textContent = 'Local LLM (Offline)';
                 }
                 modelSelectElement.appendChild(opt);
             } else {
@@ -908,7 +906,7 @@ async function initializeModelSelect() {
             if (modelSelectElement.children.length === 0) {
                 const opt = document.createElement('option');
                 opt.value = 'local-llm';
-                opt.textContent = 'Local Model (Disconnected)';
+                opt.textContent = 'Local LLM (Offline)';
                 modelSelectElement.appendChild(opt);
             }
         }
@@ -917,153 +915,12 @@ async function initializeModelSelect() {
 
 // --- showOnboardingCard ---
 function showOnboardingCard() {
-    // Remove existing welcome or onboarding first
     const welcome = document.getElementById('welcome-message');
     if (welcome) welcome.remove();
-    let onboarding = document.getElementById('onboarding-container');
+    
+    const onboarding = document.getElementById('onboarding-container');
     if (onboarding) onboarding.remove();
-    
-    onboarding = document.createElement('div');
-    onboarding.id = 'onboarding-container';
-    onboarding.className = 'onboarding-card';
-
-    // Build local LLM onboarding card section based on engine state
-    let localContent = '';
-    if (connectionStatus.local_online === 'starting' || _localStarting) {
-        localContent = `
-            <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">Local LLM engine is starting up in the background. Please wait...</p>
-            <button disabled class="onboarding-btn connect-cloud-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-bottom: 15px; opacity: 0.7;">Starting...</button>
-        `;
-    } else if (_localStopping) {
-        localContent = `
-            <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">Local LLM engine is stopping. Please wait...</p>
-            <button disabled class="onboarding-btn connect-cloud-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-bottom: 15px; opacity: 0.7;">Stopping...</button>
-        `;
-    } else if (!connectionStatus.local_online) {
-        localContent = `
-            <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">Local LLM engine is offline. Start the server or search Hugging Face below to download a GGUF model.</p>
-            <button onclick="startLocalLLM(this)" class="onboarding-btn connect-cloud-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-bottom: 15px;">Start Server</button>
-            
-            <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
-                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Search Hugging Face (GGUF)</label>
-                <div style="display: flex; gap: 8px; margin-top: 5px;">
-                    <input type="text" id="hf-search-input" placeholder="e.g. qwen2.5-0.5b" class="onboarding-input" style="flex: 1; font-size: 0.8rem; padding: 6px;" onkeydown="if(event.key==='Enter') searchHFModels('hf-search-input', 'hf-search-results')">
-                    <button onclick="searchHFModels('hf-search-input', 'hf-search-results')" class="onboarding-btn" style="margin: 0; padding: 0 15px; font-size: 0.8rem;">Search</button>
-                </div>
-                <div id="hf-search-results" style="margin-top: 10px; max-height: 150px; overflow-y: auto; font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;"></div>
-            </div>
-        `;
-    } else {
-        localContent = `
-            <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">Local LLM engine is running and active.</p>
-            <div class="local-steps" style="font-size: 0.8rem; gap: 6px; margin-bottom: 15px;">
-                <div class="step-item" style="color: var(--success-bright);">
-                    <span class="step-num" style="background: hsla(115, 70%, 45%, 0.12); color: var(--success-bright); border: 1px solid hsla(115, 70%, 45%, 0.25);">✓</span>
-                    <span>Engine online. Choose a model in the header selector to start conversing.</span>
-                </div>
-            </div>
-
-            
-            <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
-                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">Search Hugging Face (GGUF)</label>
-                <div style="display: flex; gap: 8px; margin-top: 5px;">
-                    <input type="text" id="hf-search-input" placeholder="e.g. qwen2.5-0.5b" class="onboarding-input" style="flex: 1; font-size: 0.8rem; padding: 6px;" onkeydown="if(event.key==='Enter') searchHFModels('hf-search-input', 'hf-search-results')">
-                    <button onclick="searchHFModels('hf-search-input', 'hf-search-results')" class="onboarding-btn" style="margin: 0; padding: 0 15px; font-size: 0.8rem;">Search</button>
-                </div>
-                <div id="hf-search-results" style="margin-top: 10px; max-height: 150px; overflow-y: auto; font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;"></div>
-            </div>
-        `;
-    }
-    
-    onboarding.innerHTML = `
-        <div class="onboarding-header">
-            <h2>👾 LM-Arena Connection Guide</h2>
-            <p>Your follower needs a language model "brain" to speak. Choose one or both options below to connect.</p>
-        </div>
-        
-        <div class="onboarding-options">
-            <!-- Option 1: Cloud Gemini -->
-            <div class="onboarding-option-box cloud-box">
-                <div class="option-header">
-                    <h3>Remote Connection (Cloud)</h3>
-                    <span id="onboarding-gemini-status" class="status-badge ${connectionStatus.remote_configured ? 'status-configured' : 'status-unconfigured'}">
-                        ${connectionStatus.remote_configured ? 'Configured' : 'Unconfigured'}
-                    </span>
-                </div>
-                <p class="option-desc">Connect to a remote cloud LLM. Requires an API Key and Server URL.</p>
-                <div class="input-group">
-                    <label for="onboarding-api-key">Remote API Key</label>
-                    <input type="password" id="onboarding-api-key" placeholder="e.g. sk-or-... or AIzaSy..." class="onboarding-input">
-                </div>
-                <div class="input-group">
-                    <label for="onboarding-project-id">Remote Server URL</label>
-                    <input type="text" id="onboarding-project-id" placeholder="https://api.deepseek.com/v1/chat/completions" class="onboarding-input">
-                </div>
-                <div class="input-group">
-                    <label for="onboarding-gemini-model">Remote Model Name</label>
-                    <input type="text" id="onboarding-gemini-model" placeholder="e.g. deepseek-chat or gpt-4o" class="onboarding-input">
-                </div>
-                <button onclick="saveOnboardingConfig()" class="onboarding-btn connect-cloud-btn">Save & Connect Cloud</button>
-                <div class="helper-text">
-                    Save credentials to enable remote model offloading.
-                </div>
-            </div>
-
-            <!-- Option 2: Local LLM -->
-            <div class="onboarding-option-box local-box">
-                <div class="option-header">
-                    <h3>Local LLM</h3>
-                    <span id="onboarding-local-status" class="status-badge ${connectionStatus.local_online === 'starting' ? 'status-starting' : (connectionStatus.local_online ? 'status-online' : 'status-offline')}">
-                        ${connectionStatus.local_online === 'starting' ? 'Starting...' : (connectionStatus.local_online ? 'Online' : 'Offline')}
-                    </span>
-                </div>
-                ${localContent}
-            </div>
-        </div>
-        
-        <div class="onboarding-footer">
-            <span>Active Configuration File:</span>
-            <code class="env-path">C:/LLM/LM-Arena/.env</code>
-        </div>
-    `;
-    chatContainer.appendChild(onboarding);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-// --- saveConfigData ---
-async function saveConfigData(apiKey, projectId, geminiModel = null) {
-    if (!apiKey && !projectId && !geminiModel) {
-        showCustomAlert("Validation Error", "Please provide at least one configuration value.");
-        return;
-    }
-    try {
-        const bodyObj = {};
-        if (apiKey) bodyObj.remote_api_key = apiKey;
-        if (projectId) bodyObj.remote_cloud_url = projectId;
-        if (geminiModel) bodyObj.remote_model = geminiModel;
-
-        const res = await fetch('/api/save_config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyObj)
-        });
-        const data = await res.json();
-        if (data.error) {
-            showCustomAlert("Error Saving Config", data.error);
-        } else {
-            showCustomAlert("Configuration Saved", "Your credentials have been successfully updated.");
-            await initializeModelSelect();
-            if (connectionStatus.remote_configured  || connectionStatus.local_online) {
-                const onboarding = document.getElementById('onboarding-container');
-                if (onboarding) onboarding.remove();
-                showWelcomeMessage();
-            }
-            closeConnectionModal();
-        }
-    } catch (e) {
-        console.error("Error saving config:", e);
-        showCustomAlert("Error", "Failed to contact server to save config.");
-    }
+    return;
 }
 
 // --- saveOnboardingConfig ---
@@ -1477,7 +1334,7 @@ function pollInstallStatus(btn) {
                 await startLocalLLM();
                 await initializeModelSelect();
                 if (document.getElementById('onboarding-container')) {
-                    showOnboardingCard();
+                    showWelcomeMessage();
                 }
                 updateConnectionModalStatus();
             }
@@ -1499,7 +1356,7 @@ async function startLocalLLM(btn) {
     connectionStatus.local_online = 'starting';
     updateConnectionModalStatus();
     if (document.getElementById('onboarding-container')) {
-        showOnboardingCard();
+        showWelcomeMessage();
     }
     try {
         const res = await fetch('/api/local_llm/start', { method: 'POST' });
@@ -2035,7 +1892,7 @@ async function startComfyUI(btn) {
     comfyStatus.running = 'starting';
     updateComfyModalStatus(true);
     if (document.getElementById('onboarding-container')) {
-        showOnboardingCard();
+        showWelcomeMessage();
     }
     try {
         const res = await fetch('/api/comfy/start', { method: 'POST' });
@@ -3116,11 +2973,7 @@ function updateConnectionStatus(status) {
     
     // Update Header status indicator
     if (headerStatusText) {
-        if (status.remote_configured  || status.local_online) {
-            headerStatusText.textContent = "";
-        } else {
-            headerStatusText.textContent = "Disconnected";
-        }
+        headerStatusText.textContent = "";
     }
 
 }
@@ -5174,19 +5027,14 @@ async function loadHistory() {
                 }
             }
 
-            // Check connection status
-            if (!connectionStatus.remote_configured  && !connectionStatus.local_online) {
-                showOnboardingCard();
-            } else {
-                prepareNewGameStart();
-                // On a new chat session (no history), default to local model
-                const defaultModel = safeLocalStorage.getItem('follower_default_model') || 'local-llm';
-                selectedModel = defaultModel;
-                safeLocalStorage.setItem('follower_selected_model', selectedModel);
-                const modelSelectElement = document.getElementById('model-select');
-                if (modelSelectElement) {
-                    modelSelectElement.value = selectedModel;
-                }
+            prepareNewGameStart();
+            // On a new chat session (no history), default to local model
+            const defaultModel = safeLocalStorage.getItem('follower_default_model') || 'local-llm';
+            selectedModel = defaultModel;
+            safeLocalStorage.setItem('follower_selected_model', selectedModel);
+            const modelSelectElement = document.getElementById('model-select');
+            if (modelSelectElement) {
+                modelSelectElement.value = selectedModel;
             }
         }
         fetchCharacterStatus();
@@ -5220,7 +5068,7 @@ async function loadHistory() {
             } catch (e) {}
         }
         if (!connectionStatus.remote_configured  && !connectionStatus.local_online) {
-            showOnboardingCard();
+            showWelcomeMessage();
         } else {
             showWelcomeMessage();
         }

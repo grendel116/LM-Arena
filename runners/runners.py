@@ -20,35 +20,72 @@ from utils.utils import (
     _execute_emulated_tool,
     _get_databank_contexts,
     _get_safe_local_path,
-    _is_remote_configured,
     _normalize_tool_name,
     _parse_emulated_tool_call,
     is_real_user_msg,
     strip_story,
 )
-from variables import (
+from variables.settings import (
     FOLLOWERS_DIR,
-    REMOTE_SERVER_URL,
-    get_remote_server_headers,
+    LOCAL_SERVER_URL,
+    get_local_server_headers,
+    is_thinking_enabled,
+    DISABLED_THINKING,
 )
 
 # Global State
 cancelled_sessions: set[str] = set()
+voice_call_sessions: set[str] = set()
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+_http_client: httpx.AsyncClient | None = None
+_http_client_loop: asyncio.AbstractEventLoop | None = None
 
-def _is_cloud_model_check(model: str) -> bool:
-    """Checks whether the requested model targets remote cloud infrastructure."""
-    if not model or not _is_remote_configured():
-        return False
 
-    norm_model = model.replace("\\", "/").strip().lower()
-    remote_model = os.getenv("REMOTE_MODEL", "").replace("\\", "/").strip().lower()
+def get_http_client() -> httpx.AsyncClient:
+    """Returns a persistent, connection-pooled AsyncClient for the current event loop."""
+    global _http_client, _http_client_loop
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
 
-    if norm_model == remote_model:
-        return True
+    if (
+        _http_client is None
+        or _http_client.is_closed
+        or _http_client_loop != current_loop
+    ):
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=10.0),
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+        )
+        _http_client_loop = current_loop
+    return _http_client
 
-    return not is_local_model(model)
+
+def _trim_context_messages(messages: list[dict], max_chars: int = 26000) -> list[dict]:
+    """Trims oldest non-system chat messages from context if payload exceeds character budget."""
+    if not messages:
+        return messages
+    total = sum(len(m.get("content", "") or "") for m in messages)
+    if total <= max_chars:
+        return messages
+
+    sys_msgs = [m for m in messages if m.get("role") == "system"]
+    non_sys = [m for m in messages if m.get("role") != "system"]
+    sys_chars = sum(len(m.get("content", "") or "") for m in sys_msgs)
+    avail = max_chars - sys_chars
+
+    kept = []
+    cur = 0
+    for m in reversed(non_sys):
+        c = len(m.get("content", "") or "")
+        if cur + c > avail and kept:
+            break
+        kept.append(m)
+        cur += c
+    kept.reverse()
+    return sys_msgs + kept
 
 
 class BaseProgramRunner:
@@ -402,84 +439,48 @@ class BaseProgramRunner:
         new_message_text: str,
         invocation_id: str,
     ) -> tuple[str, list]:
-    # --- STAGE 1: LOCAL PREPROCESSING ---
+        # --- STAGE 1: LOCAL PREPROCESSING & TIERED TRIMMING ---
         sys_instructions = self._get_system_instructions(session_id, user_message=new_message_text)
+
+        # The adapter automatically builds, prioritizes, and trims system blocks, 
+        # chat history, and post-injections to fit within MAX_INPUT_TOKENS (6500)
         messages = adapter.get_openai_messages(sys_instructions, rag_context)
 
-        # Rough token estimation (~4 chars per token)
-        # Reserve ~1500 tokens for system prompt, RAG, and output generation budget
-        MAX_INPUT_TOKENS = 6500  # Leave headroom for 8k local context
-        total_chars = sum(len(m.get("content", "")) for m in messages)
-
-        if total_chars > (MAX_INPUT_TOKENS * 4):
-            print(f"[CONTEXT TRIM] Context payload (~{total_chars // 4} tokens) exceeds local budget. Trimming older turns...", flush=True)
-            system_msgs = [m for m in messages if m.get("role") == "system"]
-            chat_msgs = [m for m in messages if m.get("role") != "system"]
-            
-            # Keep trimming oldest chat messages until within budget
-            while chat_msgs and sum(len(m.get("content", "")) for m in system_msgs + chat_msgs) > (MAX_INPUT_TOKENS * 4):
-                chat_msgs.pop(0)
-                
-            messages = system_msgs + chat_msgs
-
-        # --- STAGE 2: SINGLE PROCESSING PASS ---
         temperature = self._load_temperature_setting()
-        is_cloud = _is_cloud_model_check(model)
-        remote_configured = _is_remote_configured()
-        
-        if is_cloud and remote_configured:
-            url = os.getenv("REMOTE_CLOUD_URL")
-            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.getenv('REMOTE_API_KEY')}"}
-            target_model = model
-        else:
-            url = REMOTE_SERVER_URL
-            headers = get_remote_server_headers()
-            target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
+        local_url = LOCAL_SERVER_URL
+        local_headers = get_local_server_headers()
+        local_model = os.getenv("LOCAL_MODEL_NAME") or (model if model and model != "local-llm" else "local-llm")
 
-        payload = {"messages": messages, "temperature": temperature, "max_tokens": 1024}
-        if target_model:
-            payload["model"] = target_model
+        trimmed_messages = _trim_context_messages(messages, max_chars=26000)
 
-        try:
-            response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
-            bot_response_text = response.json()["choices"][0]["message"]["content"] if response.status_code == 200 else f"Error: {response.text}"
-            print(f"[DEBUG STATUS] {response.status_code}", flush=True)
-            print(f"[DEBUG RAW RESPONSE] {repr(response.text)}", flush=True)
-        except Exception as e:
-            # --- REMOTE CLOUD BACKUP (OR LOCAL FALLBACK) ---
-            if not is_cloud and remote_configured and os.getenv("REMOTE_CLOUD_URL"):
-                print(f"[LLM BACKUP] Local server failed ({e}). Switching to the cloud backup...", flush=True)
-                cloud_url = os.getenv("REMOTE_CLOUD_URL")
-                cloud_headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.getenv('REMOTE_API_KEY')}"}
-                
-                cloud_payload = {
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": 1024,
-                    "model": os.getenv("REMOTE_MODEL", "gemini-2.5-flash")
-                }
-                
-                try:
-                    response = await self._post_llm_request(cloud_url, cloud_payload, cloud_headers, timeout=60.0, session_id=session_id)
-                    if response.status_code == 200:
-                        bot_response_text = response.json()["choices"][0]["message"]["content"]
-                        target_model = cloud_payload["model"] # update tracked model for memory pipeline
-                    else:
-                        bot_response_text = f"Error: Local server failed and cloud backup returned status {response.status_code} - {response.text}"
-                except Exception as cloud_err:
-                    bot_response_text = f"Error connecting to local model server and cloud backup also failed: {cloud_err}"
-            else:
-                bot_response_text = f"Error connecting to model server: {e}"
+        async def _invoke_llm(msg_history):
+            """Executes inference on the local LLM server."""
+            payload = {
+                "messages": msg_history,
+                "temperature": temperature,
+                "max_tokens": 1024,
+                "model": local_model
+            }
+            if not is_thinking_enabled() and isinstance(DISABLED_THINKING, dict):
+                payload.update(DISABLED_THINKING)
 
-        # --- STAGE 3: POST-PROCESSING (TOOLS, SUBAGENTS & CLEANUP) ---
+            response = await self._post_llm_request(local_url, payload, local_headers, timeout=120.0, session_id=session_id)
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"], local_model
+            raise RuntimeError(f"Local LLM server returned HTTP {response.status_code}: {response.text}")
+
+        # --- STAGE 2: SINGLE PROCESSING PASS (IN INITIAL TURN) ---
+        bot_response_text, target_model = await _invoke_llm(trimmed_messages)
+
+        # --- STAGE 3: POST-PROCESSING & TOOL EXECUTION ---
         bot_response_text = self._sanitize_thinking_tags(bot_response_text)
         bot_response_text = _convert_json_tool_calls_to_tags(bot_response_text)
 
         matches = list(re.finditer(r"\[(\w+)\(([\s\S]*?)\)\]", bot_response_text))
-        
         tool_calls = []
+
         if matches:
-            # 1. Execute local tools and collect results
+            # 1. Execute tools locally
             results = []
             for m_tool in matches:
                 if session_id in cancelled_sessions:
@@ -490,77 +491,37 @@ class BaseProgramRunner:
             for idx, (t_name, t_args, t_output) in enumerate(results):
                 tool_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
 
-            bot_response_text = re.sub(r"\[\w+\([\s\S]*?\n?\)\]", "", bot_response_text, flags=re.DOTALL).strip()
-            adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
+            clean_initial_response = re.sub(r"\[\w+\([\s\S]*?\n?\)\]", "", bot_response_text, flags=re.DOTALL).strip()
+            
+            adapter.append_assistant_message(clean_initial_response, tool_calls, invocation_id)
             adapter.append_tool_events(results, invocation_id)
 
-            # 2. Remote-first pass for subagents & multi-step tool output synthesis (with strict local fallback)
-            post_url = os.getenv("REMOTE_CLOUD_URL") if remote_configured else REMOTE_SERVER_URL
-            post_headers = {"Content-Type": "application/json"}
-            if remote_configured and os.getenv("REMOTE_API_KEY"):
-                post_headers["Authorization"] = f"Bearer {os.getenv('REMOTE_API_KEY')}"
-            else:
-                post_headers = get_remote_server_headers()
-
-            # Pull strictly the latest user query without history or system prompts
-            latest_user_text = new_message_text if new_message_text else ""
-
-            post_prompt = (
-                f"User Request: {latest_user_text}\n"
-                f"Initial Output: {bot_response_text}\n"
-                f"Tool Execution Logs: {json.dumps(tool_calls)}\n\n"
-                f"Synthesize the tool execution results to directly answer the user request."
-            )
+            # 2. Local-First Synthesis Pass (Appends Tool outputs directly to messages payload)
+            synthesis_messages = list(messages)
+            synthesis_messages.append({"role": "assistant", "content": clean_initial_response})
             
-            post_payload = {
-                "messages": [
-                    {"role": "user", "content": post_prompt}
-                ],
-                "temperature": 0.3,
-                "max_tokens": 1024,
-            }
+            formatted_tool_logs = "\n".join([f"Tool '{name}' Output:\n{out}" for name, _, out in results])
+            synthesis_prompt = f"Tool Execution Output Log:\n{formatted_tool_logs}\n\nPlease synthesize these results to directly answer the user's initial request."
+            synthesis_messages.append({"role": "user", "content": synthesis_prompt})
 
-            synthesis = ""
             try:
-                # Attempt primary remote-first pass
-                remote_model_name = os.getenv("REMOTE_MODEL", "gemini-3.1-flash-lite") if remote_configured else target_model
-                remote_payload = {**post_payload, "model": remote_model_name}
-                post_resp = await self._post_llm_request(post_url, remote_payload, post_headers, timeout=60.0, session_id=session_id)
-                
-                if post_resp.status_code == 200:
-                    synthesis = post_resp.json()["choices"][0]["message"].get("content", "").strip()
-                else:
-                    raise Exception(f"Remote server returned status code {post_resp.status_code}")
-
-            except Exception as e:
-                print(f"[POST-PROCESSING WARNING] Remote synthesis failed ({e}). Falling back to local model server...", flush=True)
-                try:
-                    # Explicitly target local server configuration for fallback
-                    local_post_url = REMOTE_SERVER_URL
-                    local_post_headers = get_remote_server_headers()
-                    local_fallback_model = os.getenv("LOCAL_MODEL_NAME") or target_model
-                    
-                    local_payload = {**post_payload, "model": local_fallback_model}
-                    local_resp = await self._post_llm_request(local_post_url, local_payload, local_post_headers, timeout=60.0, session_id=session_id)
-                    
-                    if local_resp.status_code == 200:
-                        synthesis = local_resp.json()["choices"][0]["message"].get("content", "").strip()
-                    else:
-                        print(f"[POST-PROCESSING ERROR] Local fallback server returned status {local_resp.status_code}", flush=True)
-                except Exception as local_e:
-                    print(f"[POST-PROCESSING ERROR] Local fallback synthesis connection failed: {local_e}", flush=True)
-
-            if synthesis:
-                bot_response_text += f"\n\n{synthesis}"
+                synthesis_text, target_model = await _invoke_llm(synthesis_messages)
+                if synthesis_text:
+                    bot_response_text = f"{clean_initial_response}\n\n{synthesis_text}"
+            except Exception as synth_err:
+                print(f"[SYNTHESIS WARNING] Synthesis pass failed: {synth_err}", flush=True)
+                bot_response_text = clean_initial_response
         else:
             adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
 
+        # Final formatting & cleanup
         adapter.post_process_thoughts(invocation_id)
         bot_response_text = self._ensure_images_are_embedded(bot_response_text)
+
         if isinstance(session_id, str) and session_id.endswith("_voice"):
             bot_response_text = strip_story(bot_response_text)
 
-        # Trigger background 3-Step Memory Pass post-turn
+        # Background Memory Pipeline Task
         asyncio.create_task(
             self._process_memory_pipeline(
                 session_id=session_id,
@@ -810,20 +771,9 @@ class OpenSourceRunner(BaseProgramRunner):
     async def generate_impersonation(
         self, prompt: str, system_instruction: str, model: str = None, temperature: float = 0.7
     ) -> str:
-        remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
-        remote_key = os.getenv("REMOTE_API_KEY")
-        is_cloud = _is_cloud_model_check(model)
-
-        url = remote_cloud_url if is_cloud else REMOTE_SERVER_URL
-        headers = {"Content-Type": "application/json"}
-
-        if is_cloud:
-            headers["Authorization"] = f"Bearer {remote_key}"
-            target_model = model if model else os.getenv("REMOTE_MODEL", "gemini-2.5-flash")
-        else:
-            if remote_key:
-                headers["Authorization"] = f"Bearer {remote_key}"
-            target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
+        url = LOCAL_SERVER_URL
+        headers = get_local_server_headers()
+        target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
 
         payload = {
             "messages": [
@@ -833,12 +783,8 @@ class OpenSourceRunner(BaseProgramRunner):
             "temperature": temperature,
             "max_tokens": 512,
         }
-
-        if is_cloud:
-            from variables import DISABLED_THINKING, is_thinking_enabled
-
-            if not is_thinking_enabled(is_cloud):
-                payload.update(DISABLED_THINKING)
+        if not is_thinking_enabled() and isinstance(DISABLED_THINKING, dict):
+            payload.update(DISABLED_THINKING)
         if target_model:
             payload["model"] = target_model
 

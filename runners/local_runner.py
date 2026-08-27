@@ -13,17 +13,30 @@ _proc = None
 _starting = False
 _start_lock = threading.Lock()
 _on_status_change = None  # Callback set by app.py to broadcast SSE events
+_cached_gpu_type = None
+_http_session = None
+
+def _get_http_session() -> requests.Session:
+    global _http_session
+    if _http_session is None:
+        _http_session = requests.Session()
+    return _http_session
 
 def detect_gpu_type() -> str:
     """Detects if the system has an AMD, Nvidia, or Vulkan compatible GPU on Windows.
     Returns 'amd', 'nvidia', or 'vulkan'.
     """
+    global _cached_gpu_type
     forced_gpu = os.getenv("LOCAL_GPU_TYPE")
     if forced_gpu in ("amd", "nvidia", "vulkan"):
         return forced_gpu
         
+    if _cached_gpu_type:
+        return _cached_gpu_type
+
     if os.name != 'nt':
-        return 'vulkan'
+        _cached_gpu_type = 'vulkan'
+        return _cached_gpu_type
         
     try:
         # Run PowerShell to get video controller names
@@ -35,18 +48,21 @@ def detect_gpu_type() -> str:
         )
         output_lower = output.lower()
         if "nvidia" in output_lower:
-            return "nvidia"
+            _cached_gpu_type = "nvidia"
+            return _cached_gpu_type
         elif "amd" in output_lower or "radeon" in output_lower:
-            return "amd"
+            _cached_gpu_type = "amd"
+            return _cached_gpu_type
     except Exception:
         pass
-    return "vulkan"
+    _cached_gpu_type = "vulkan"
+    return _cached_gpu_type
 
 def download_llama_server():
     os.makedirs(LLAMA_BIN_DIR, exist_ok=True)
     api_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
     try:
-        resp = requests.get(api_url, headers={"User-Agent": "LM-Arena-Client/1.0"}, timeout=10.0).json()
+        resp = _get_http_session().get(api_url, headers={"User-Agent": "LM-Arena-Client/1.0"}, timeout=10.0).json()
         assets = resp.get("assets", [])
         
         gpu_type = detect_gpu_type()
@@ -77,7 +93,7 @@ def download_llama_server():
 
         print(f"[llama-runner] Downloading {asset['name']}...", flush=True)
         temp_zip = os.path.join(LLAMA_BIN_DIR, asset["name"])
-        with requests.get(asset["browser_download_url"], stream=True) as r:
+        with _get_http_session().get(asset["browser_download_url"], stream=True) as r:
             with open(temp_zip, 'wb') as f:
                 for chunk in r.iter_content(8192):
                     f.write(chunk)
@@ -186,17 +202,21 @@ def start_local_server(model_key):
         "-c", context_size,
         "-b", batch_size,
         "-ub", ubatch_size,
-        "--cache-type-k", "q8_0",
-        "--cache-type-v", "q8_0",
         "--port", "1234",
         "--host", "127.0.0.1",
         "-ngl", gpu_layers,
         "-np", "1",
+        "-fa", "on",
+        "--no-warmup",
         "--fit", "off"
     ]
-    from variables import is_thinking_enabled
-    if not is_thinking_enabled(is_cloud=False):
+
+    from variables.settings import is_thinking_enabled
+    if not is_thinking_enabled():
         cmd.extend(["--reasoning", "off", "--reasoning-budget", "0"])
+
+    from core.banned_words import generate_llama_cli_args
+    cmd.extend(generate_llama_cli_args(model_path))
 
     if flash_attn:
         cmd.extend(["-fa", "on"])
@@ -283,7 +303,7 @@ def stop_local_server():
 
 def check_local_server_status():
     try:
-        resp = requests.get("http://127.0.0.1:1234/health", timeout=1.0)
+        resp = _get_http_session().get("http://127.0.0.1:1234/health", timeout=1.0)
         if resp.status_code == 200:
             return True
         if resp.status_code == 503:
@@ -298,8 +318,6 @@ def check_local_server_status():
     return False
 
 def _atexit_clean():
-    # If Flask reloader is active, let the parent process handle cleanup on Ctrl+C
-    # so we don't kill the server on child process reloads.
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         return
     stop_local_server()

@@ -191,6 +191,69 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         except Exception as e:
             print(f"[COMPACTION OS ERROR] Background distillation failed: {e}", flush=True)
 
+    def _build_tiered_messages(
+        self,
+        system_content: str,
+        raw_messages: list[dict],
+        post_injection: str,
+        max_input_tokens: int = 6500
+    ) -> list[dict]:
+        """
+        Assembles OpenAI payload using a 4-tier context prioritization system:
+          - Tier 1 (Crucial): System Instructions, Core Directives, Banned Words, Latest User Query, & Post-Injection State.
+          - Tier 2 (High): Chat history turns (newest to oldest).
+          - Tier 3 (Medium): World Info / Lorebook & RAG / Knowledge Base excerpts.
+          - Tier 4 (Low): System Memory of older conversation turns.
+        """
+        CHAR_BUDGET = max_input_tokens * 4
+
+        # 1. Isolate user/assistant turns and latest query (Tier 1 & Tier 2 candidate)
+        chat_turns = [m for m in raw_messages if m.get("role") != "system"]
+        latest_user_turn = chat_turns.pop() if chat_turns else None
+
+        # Apply post-injection payload directly to the latest user message (Tier 1 Core)
+        if latest_user_turn and post_injection:
+            if isinstance(latest_user_turn["content"], str):
+                latest_user_turn["content"] += f"\n\n{post_injection}"
+            elif isinstance(latest_user_turn["content"], list):
+                latest_user_turn["content"].append({"type": "text", "text": f"\n\n{post_injection}"})
+
+        # Calculate base Tier 1 core footprint
+        latest_user_len = sum(
+            len(item.get("text", "")) if isinstance(item, dict) else len(item)
+            for item in (latest_user_turn["content"] if isinstance(latest_user_turn["content"], list) else [latest_user_turn["content"]])
+        ) if latest_user_turn else 0
+
+        tier1_base_len = len(system_content) + latest_user_len
+        remaining_budget = CHAR_BUDGET - tier1_base_len
+
+        # 2. Add Tier 2: Truncate chat history from oldest to newest to fit remaining budget
+        trimmed_chat_turns = []
+        accumulated_chat_chars = 0
+
+        for turn in reversed(chat_turns):
+            turn_text = turn["content"] if isinstance(turn["content"], str) else "".join(
+                item.get("text", "") for item in turn["content"] if isinstance(item, dict)
+            )
+            turn_len = len(turn_text)
+
+            if accumulated_chat_chars + turn_len <= (remaining_budget * 0.70):  # Reserve 30% headroom for Tier 3/4
+                trimmed_chat_turns.insert(0, turn)
+                accumulated_chat_chars += turn_len
+            else:
+                break
+
+        # 3. Assemble final OpenAI message array
+        final_messages = [{"role": "system", "content": system_content.strip()}]
+        final_messages.extend(trimmed_chat_turns)
+        
+        if latest_user_turn:
+            final_messages.append(latest_user_turn)
+        elif post_injection:
+            final_messages.append({"role": "user", "content": post_injection})
+
+        return _merge_consecutive_messages(final_messages)
+
     def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str | None = None, response_only: bool = False) -> list[dict]:
         from core.follower_config import replace_placeholders
         from core.lorebook import get_active_lore
@@ -217,7 +280,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             filtered_history = [latest_user] if latest_user else []
 
         if not filtered_history:
-            return [{"role": "system", "content": sys_inst}]
+            return [{"role": "system", "content": f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"}]
 
         latest_img_idx = -1
         has_new_image = bool((self.image_data and self.image_mime) or self.file_path_resolved)
@@ -273,9 +336,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 content_text = f"{content_text} (image: [Attached Image])".strip()
             raw_messages.append({"role": role, "content": content_text})
 
-        directive = _ARENA_DIRECTIVE_PROMPT
-
-        system_content = f"{sys_inst}{directive}"
+        # Base System instructions and Directives (Tier 1)
+        system_content = f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"
             
         try:
             from core.banned_words import get_banned_words_directive
@@ -287,6 +349,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
         active_fol = get_active_follower()
 
+        # Tier 3: World Info / Lore Injection
         try:
             lore_before, lore_after = get_active_lore(active_fol, filtered_history)
             if lore_before:
@@ -296,6 +359,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         except Exception as le:
             print(f"[lorebook] Injection error: {le}")
 
+        # Tier 4: Memory and RAG Knowledge Context
         context_parts = []
         for msg in history:
             if msg.get("role") == "system-memory" and msg.get("text", "").strip():
@@ -343,13 +407,14 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         if context_parts:
             system_content += "\n\n" + "\n\n".join(context_parts)
 
+        # Image generation system override
         is_image_request = (
             "[GENERATE_IMAGE" in (last_user_msg or "")
             or "Send me a portrait of yourself" in (last_user_msg or "")
             or (last_user_msg or "").startswith("[Render image")
         )
         if is_image_request:
-            image_inst = (
+            system_content += (
                 "\n\n[CRITICAL IMAGE DIRECTIVE: The user requested an image of the active companion. "
                 "You must ONLY output the image generation tool call tag: `[generate_local_image(prompt=\"...\")]` "
                 "or `[generate_imagen(prompt=\"...\")]` depicting an image of the active companion character. "
@@ -358,33 +423,15 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 "Do NOT call any gameplay mechanics tools or add/remove items. "
                 "Output ONLY the image tool call tag.]"
             )
-            system_content += image_inst
 
-        openai_messages = _merge_consecutive_messages([{"role": "system", "content": system_content}] + raw_messages)
-
-        try:
-            json_path = Path(FOLLOWERS_DIR) / active_fol / f"{active_fol}.json"
-            if json_path.is_file():
-                raw = json.loads(json_path.read_text(encoding="utf-8"))
-                post_inst = raw.get("data", raw).get("post_history_instructions", "").strip()
-                if post_inst:
-                    if openai_messages and openai_messages[-1]["role"] == "user":
-                        prev = openai_messages[-1]["content"]
-                        if isinstance(prev, str):
-                            openai_messages[-1]["content"] += f"\n\n{post_inst}"
-                        else:
-                            openai_messages[-1]["content"].append({"type": "text", "text": f"\n\n{post_inst}"})
-                    else:
-                        openai_messages.append({"role": "user", "content": post_inst})
-        except Exception as e:
-            print(f"Error loading post-history instructions: {e}", flush=True)
-
-        # Inject Unified Player Character Status & World State verbatim after the chat history
+        # Gather Post-History User Injection (Character Sheet, World Engine State & Quests)
+        full_post_injection = ""
         try:
             from runners.follower import get_active_user
             from core.save_manager import get_active_save_id
             from core.world_engine import load_world_state
             from core.character import load_character, get_character_context
+
             active_user = get_active_user()
             active_save_id = get_active_save_id()
             sheet = load_character(active_save_id)
@@ -394,24 +441,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
             hour = t_date.get("hour", 6)
             
-            if 5 <= hour < 7:
-                period = "Dawn"
-            elif 7 <= hour < 12:
-                period = "Morning"
-            elif 12 <= hour < 14:
-                period = "Midday"
-            elif 14 <= hour < 18:
-                period = "Afternoon"
-            elif 18 <= hour < 20:
-                period = "Dusk"
-            elif 20 <= hour < 23:
-                period = "Evening"
-            else:
-                period = "Night"
-                
-            disp_hour = hour % 12
-            if disp_hour == 0:
-                disp_hour = 12
+            disp_hour = hour % 12 or 12
             am_pm = "AM" if hour < 12 else "PM"
             time_display = f"{disp_hour}:00 {am_pm}"
             
@@ -433,72 +463,38 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 q_stage_num = world.get("quest_stage", 10)
                 current_stage = get_current_stage(q_stage_num, stages)
                 if current_stage:
-                    q_title = current_stage.get("quest_title", "Main Quest")
-                    q_obj = current_stage.get("objective", "")
-                    q_next = current_stage.get("next_stage", "Complete")
-                    quest_block = (
+                    post_blocks.append(
                         f"<active_main_quest>\n"
-                        f"Quest: {q_title}\n"
+                        f"Quest: {current_stage.get('quest_title', 'Main Quest')}\n"
                         f"Stage: {q_stage_num}\n"
-                        f"Objective: {q_obj} (Call [arena_advance_stage] when completed).\n"
-                        f"Next Stage: {q_next}\n"
+                        f"Objective: {current_stage.get('objective', '')} (Call [arena_advance_stage] when completed).\n"
+                        f"Next Stage: {current_stage.get('next_stage', 'Complete')}\n"
                         f"</active_main_quest>"
                     )
-                    post_blocks.append(quest_block)
             except Exception as _qe:
                 print(f"Error compiling active quest context: {_qe}", flush=True)
 
-            try:
-                from core.side_quests import load_active_side_quests
-                active_sq = load_active_side_quests()
-                for sq in active_sq:
-                    sq_id = sq.get("id")
-                    sq_title = sq.get("title", "Side Quest")
-                    sq_stage = sq.get("stage", 10)
-                    sq_obj = sq.get("active_objective", "")
-                    sq_next = sq.get("next_stage")
-                    next_str = f"{sq_next}" if sq_next else "Complete"
-                    sq_block = (
-                        f"<active_side_quest>\n"
-                        f"Quest: {sq_title}\n"
-                        f"Quest ID: {sq_id}\n"
-                        f"Stage: {sq_stage}\n"
-                        f"Objective: {sq_obj} (Call [arena_advance_side_quest(quest_id=\"{sq_id}\")] when completed).\n"
-                        f"Next Stage: {next_str}\n"
-                        f"</active_side_quest>"
-                    )
-                    post_blocks.append(sq_block)
-            except Exception as _sqe:
-                print(f"Error compiling active side quest context: {_sqe}", flush=True)
-
             if sheet and sheet.get("derived", {}).get("hp_current", 1) <= 0:
-                game_over_inst = (
+                post_blocks.append(
                     "\n\n[CRITICAL GAME OVER DIRECTIVE: The player character's health has reached 0 (DEAD). "
                     "You MUST narrate the fatal strike and perishing of the hero in visceral detail. "
                     "Declare a definitive GAME OVER state. "
                     "Do NOT allow the player to survive, take further actions, or recover. "
                     "Conclude the narrative with their tragic perishing in Tamriel.]"
                 )
-                post_blocks.append(game_over_inst)
             post_blocks.append(state_tag)
-            
             full_post_injection = "\n\n".join(post_blocks)
-            
-            found_user = False
-            for m in reversed(openai_messages):
-                if m["role"] == "user":
-                    if isinstance(m["content"], str):
-                        m["content"] += f"\n\n{full_post_injection}"
-                    else:
-                        m["content"].append({"type": "text", "text": f"\n\n{full_post_injection}"})
-                    found_user = True
-                    break
-            if not found_user and openai_messages:
-                openai_messages[0]["content"] += f"\n\n[Current Player & World State]:\n{full_post_injection}"
+
         except Exception as e:
             print(f"Error compiling unified player status / world state in post history: {e}", flush=True)
 
-        return openai_messages
+        # Build final array adhering to tiered budget limits
+        return self._build_tiered_messages(
+            system_content=system_content,
+            raw_messages=raw_messages,
+            post_injection=full_post_injection,
+            max_input_tokens=6500
+        )
 
     def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str, intermediate: bool = False):
         from runners.follower import get_active_user

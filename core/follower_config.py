@@ -1,23 +1,40 @@
 import datetime
+import json
 import logging
 import os
 import re
 import shutil
 import sys
 
-
-# Ensure the parent directory is in sys.path so we can import variables package
+# Ensure parent directory is in sys.path
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-from variables import DEFAULT_REMOTE_MODEL, FOLLOWERS_DIR
+from variables.settings import (
+    FOLLOWERS_DIR, USER_MD_FILE, USER_PROFILES_DIR, SAVES_DIR
+)
+from runners.follower import get_active_follower, get_active_user, get_player_name
 
-# --- SYSTEM CONTEXT COMPILER ---
+# Global formatting rules for narrative roleplay
+GLOBAL_FORMATTING = (
+    "\n\n# MESSAGE FORMAT (MANDATORY)\n"
+    "- Use separate lines and paragraphs for narration and dialogue.\n"
+    "- Narration: Use *italics*, first or third person as appropriate, and present tense for actions, expressions, and environmental details.\n"
+    "- Dialogue: Use plain text without quotation marks. Use **bold** for emphasis.\n"
+    "- State all claims directly and affirmatively in single assertions.\n"
+    "- FORBIDDEN: Do not use contrast structures ('not X, but Y', 'it is not A, it is B', 'not just X, it is Y'). Express ideas positively without negating alternatives.\n"
+    "- Style: Use short words and precise phrasing. Write with linear progression.\n"
+    "- Be succinct, atmospheric, and faithful to Elder Scrolls lore and character persona.\n"
+)
+
+GLOBAL_USER_FORMATTING = GLOBAL_FORMATTING
+
 
 def _load_card_data(follower_id: str) -> dict:
-    """Loads the follower's chara_card_v3 JSON and returns the data block."""
-    import json
+    """Loads the follower's chara_card_v3 JSON or card dictionary."""
+    if not follower_id:
+        follower_id = get_active_follower()
     json_path = os.path.join(FOLLOWERS_DIR, follower_id, f"{follower_id}.json")
     if os.path.exists(json_path):
         try:
@@ -25,161 +42,175 @@ def _load_card_data(follower_id: str) -> dict:
                 raw = json.load(f)
             return raw.get("data", raw)
         except Exception as e:
-            print(f"Error loading card for '{follower_id}': {e}")
+            logging.error(f"Error loading follower card for '{follower_id}': {e}")
     return {}
 
-def get_follower_name() -> str:
-    """Returns the active follower's character name."""
-    from runners.follower import get_active_follower
-    active_follower = get_active_follower()
-    card = _load_card_data(active_follower)
-    # v3: data.name / legacy: name
-    return card.get("name") or active_follower.title()
 
-get_follower_name = get_follower_name
+def get_follower_name(follower_id: str = None) -> str:
+    """Returns the follower's character name."""
+    if not follower_id:
+        follower_id = get_active_follower()
+    card = _load_card_data(follower_id)
+    return card.get("name") or follower_id.replace("_", " ").title()
 
-def replace_placeholders(text: str, user_name: str = None, comp_name: str = None) -> str:
-    """Replaces {{user}} and {{char}} placeholders (case-insensitive) with their actual values."""
+
+def follower_name() -> str:
+    """Alias for get_follower_name for backwards compatibility."""
+    return get_follower_name()
+
+
+def replace_placeholders(text: str, user_name: str = None, follower_id: str = None) -> str:
+    """Replaces {{user}} and {{char}} placeholders with actual names."""
     if not text:
         return text
     if not user_name:
-        from runners.follower import get_player_name
         user_name = get_player_name()
-    if not comp_name:
-        comp_name = get_follower_name()
-    
+    try:
+        char_name = get_follower_name(follower_id)
+    except Exception:
+        char_name = "Follower"
+
     text = re.sub(r'(?i)\{\{user\}\}', user_name, text)
-    text = re.sub(r'(?i)\{\{char\}\}', comp_name, text)
+    text = re.sub(r'(?i)\{\{char\}\}', char_name, text)
     return text
 
-def get_follower_greeting() -> str:
-    """Returns the follower's first message from the card, with a default fallback."""
-    from runners.follower import get_active_follower
-    active_follower = get_active_follower()
-    card = _load_card_data(active_follower)
-    # v3: data.first_mes / legacy: operation.example_message
-    greeting = card.get("first_mes") or card.get("operation", {}).get("example_message", "")
-    return greeting.strip() if greeting.strip() else "Hello, {{user}}."
 
-get_follower_greeting = get_follower_greeting
+def get_follower_greeting(follower_id: str = None) -> str:
+    """Returns the follower's first message from card data with a sensible fallback."""
+    if not follower_id:
+        follower_id = get_active_follower()
+    card = _load_card_data(follower_id)
+    first_mes = card.get("first_mes")
+    if first_mes:
+        return first_mes
+    return f"Greetings, {get_player_name()}. I stand ready to assist you in Tamriel."
+
 
 def compile_instructions_from_card(card: dict) -> str:
-    """Compiles a system prompt from a chara_card_v3 data block."""
-    name = card.get("name", "Follower")
-    prompt_parts = [f"# IDENTITY: {name}"]
+    """Compiles character card fields into a cohesive system instruction block."""
+    prompt_parts = []
+    
+    name = card.get("name", "").strip()
+    if name:
+        prompt_parts.append(f"# CHARACTER IDENTITY: {name}")
 
     description = card.get("description", "").strip()
     if description:
-        prompt_parts.append(f"## CHARACTER\n{description}")
+        prompt_parts.append(f"## DESCRIPTION & BACKGROUND\n{description}")
 
     personality = card.get("personality", "").strip()
     if personality:
-        prompt_parts.append(f"## PERSONALITY\n{personality}")
+        prompt_parts.append(f"## PERSONALITY & TRAITS\n{personality}")
 
     scenario = card.get("scenario", "").strip()
     if scenario:
-        prompt_parts.append(f"## SCENARIO\n{scenario}")
+        prompt_parts.append(f"## SCENARIO & CONTEXT\n{scenario}")
 
-    mes_example = card.get("mes_example", "").strip()
+    mes_example = (card.get("mes_example") or "").strip()
     if mes_example:
-        prompt_parts.append(f"## EXAMPLE MESSAGE\n{mes_example}")
+        prompt_parts.append(f"## DIALOGUE EXAMPLES\n{mes_example}")
 
     system_prompt = card.get("system_prompt", "").strip()
     if system_prompt:
-        prompt_parts.append(f"## RESPONSE INSTRUCTIONS\n{system_prompt}")
+        prompt_parts.append(f"## SPECIAL INSTRUCTIONS\n{system_prompt}")
 
     return replace_placeholders("\n\n".join(prompt_parts))
 
-def load_static_instructions() -> str:
+
+def compile_instructions_from_json(card_json: dict) -> str:
+    """Alias for compile_instructions_from_card."""
+    data = card_json.get("data", card_json) if isinstance(card_json, dict) else {}
+    return compile_instructions_from_card(data)
+
+
+def load_static_instructions(follower_id: str = None) -> str:
     """Reads the active follower's card and compiles it into a system prompt.
-    Also appends all modular skill instructions.
+    Also appends available toolbelt capabilities.
     """
-    from runners.follower import get_active_follower
-
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    active_follower = get_active_follower()
-
-    card = _load_card_data(active_follower)
+    if not follower_id:
+        follower_id = get_active_follower()
+    card = _load_card_data(follower_id)
     if card:
         instruction_content = compile_instructions_from_card(card)
     else:
-        instruction_content = f"# NAME: {active_follower.title()}\n"
-            
-    # Append compact toolbelt listing available capabilities
-    # Full skill instructions are vector-retrieved per turn in history_adapters.py
+        instruction_content = f"# FOLLOWER: {follower_id.replace('_', ' ').title()}\n"
+        
     try:
         from core.skill_retriever import get_toolbelt_block
         toolbelt = get_toolbelt_block()
         if toolbelt:
             instruction_content += "\n\n" + toolbelt
     except Exception as e:
-        print(f"[follower_config] Error loading toolbelt: {e}")
-            
+        logging.error(f"[follower_config] Error loading toolbelt: {e}")
+
     return instruction_content
 
 
 def load_dynamic_runtime_context() -> str:
-    """Compiles dynamic, time-sensitive system data points for runtime grounding."""
+    """Compiles dynamic time and environment parameters for runtime grounding."""
     now = datetime.datetime.now()
+    temporal_block = (
+        "### SYSTEM TEMPORAL CONTEXT\n"
+        f"- Local Time: {now.strftime('%Y-%m-%d %I:%M %p')}\n"
+        f"- Local Day: {now.strftime('%A, %B %d, %Y')}\n"
+    )
+    env_block = (
+        "### SYSTEM ENVIRONMENT CONTEXT\n"
+        "- Active Engine: LM-Arena Local LLM Runner\n"
+        "- Host OS: Windows\n"
+    )
     return (
-        "\n\n# RUNTIME CONTEXT\n"
-        f"Local Time: {now.strftime('%Y-%m-%d %I:%M %p')} ({now.strftime('%A')})\n"
+        "\n\n# DYNAMIC RUNTIME CONTEXT\n"
+        f"{temporal_block}\n"
+        f"{env_block}"
     )
 
+
 def load_user_instructions() -> str:
-    """Reads the active user profile configuration from the save JSON bundle to set private relationship context."""
-    from runners.follower import get_active_user
-    from core.save_manager import read_save
+    """Reads the active user/player profile context."""
     active_profile = get_active_user()
+    if not os.path.exists(USER_PROFILES_DIR):
+        try:
+            os.makedirs(USER_PROFILES_DIR, exist_ok=True)
+        except Exception as e:
+            logging.error(f"Error creating user profiles directory: {e}")
 
-    try:
-        bundle = read_save(active_profile)
-        content = bundle.get("profile", "").strip()
-        if not content:
-            meta = bundle.get("meta", {})
-            race = meta.get("race", "Nord")
-            content = f"A {race} from Skyrim."
-        return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{content}\n"
-    except Exception as e:
-        print(f"Failed to read user instructions: {e}")
-        fallback_msg = "A Nord from Skyrim."
-        return f"\n\n# USER PROFILE & RELATIONSHIP CONTEXT\n{fallback_msg}\n"
+    profile_path = os.path.join(USER_PROFILES_DIR, f"{active_profile}.md")
+    if not os.path.exists(profile_path):
+        if os.path.exists(USER_MD_FILE):
+            try:
+                shutil.copy(USER_MD_FILE, profile_path)
+            except Exception:
+                pass
+        else:
+            try:
+                with open(profile_path, "w", encoding="utf-8") as f:
+                    f.write(f"# PLAYER CONTEXT: {active_profile.replace('_', ' ').title()}\n- Hero of Tamriel.\n")
+            except Exception:
+                pass
 
+    if os.path.exists(profile_path):
+        try:
+            with open(profile_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                return f"\n\n# PLAYER PROFILE\n{content}\n"
+        except Exception:
+            pass
 
-
-GLOBAL_FORMATTING = (
-    "\n\n# MESSAGE FORMAT & NARRATIVE PERSPECTIVE\n"
-    "- FORMAT: Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
-    "- PERSPECTIVE: Address {{user}} directly in second person ('you', 'your'). Describe NPCs and environment in third person present tense.\n"
-    "- RESTRAINT: Separate dialogue from narration. Never narrate outcomes or reactions for {{user}}'s actions.\n"
-    "- STYLE: Grim, dark fantasy atmosphere with cosmic lore, mature themes, and cartoon absurdity.\n"
-)
-
-GLOBAL_USER_FORMATTING = (
-    "- FORMAT: Narration in *italics*. Spoken dialogue as plain text without quotation marks. Lore and written text \"enclosed in quotes\".\n"
-    "- PERSPECTIVE: Write in FIRST PERSON ('I', 'my') as {{user}}. Short, concise and concise.\n"
-    "- TENSE: Strict PRESENT TENSE (e.g. 'I draw my dagger...', 'I examine the stone runes...').\n"
-    "- RESTRAINT: Focus on {{user}}'s initiative and intent. Avoid narrating outcomes, hits, or world changes.\n"
-    "- STYLE: Grim, dark fantasy atmosphere with cosmic lore, mature themes, and cartoon absurdity."
-)
+    return f"\n\n# PLAYER PROFILE\n- Hero: {get_player_name()}\n"
 
 
-
-def get_compiled_instructions() -> str:
-    """Merges static identity profiles, dynamic temporal/runtime contexts, and user relationship settings."""
-    base = replace_placeholders(load_static_instructions() + load_user_instructions())
+def get_compiled_instructions(follower_id: str = None) -> str:
+    """Merges follower card instructions, player profile context, formatting, and runtime context."""
+    base = replace_placeholders(load_static_instructions(follower_id) + load_user_instructions())
     base += GLOBAL_FORMATTING
     base += load_dynamic_runtime_context()
     return base
 
-# Determine follower name dynamically from the active follower configuration
-follower_name = get_follower_name()
-follower_name = follower_name
 
-# LlmAgent requires the name to be a valid identifier. Sanitize it.
-sanitized_agent_name = re.sub(r'[^a-zA-Z0-9_]', '_', follower_name)
+# Sanitized identifier for agent initialization
+sanitized_agent_name = re.sub(r'[^a-zA-Z0-9_]', '_', get_follower_name())
 if not sanitized_agent_name or not (sanitized_agent_name[0].isalpha() or sanitized_agent_name[0] == '_'):
     sanitized_agent_name = '_' + sanitized_agent_name
 
-# Dynamically initialize/reload the sovereign instruction
 instruction = get_compiled_instructions()
