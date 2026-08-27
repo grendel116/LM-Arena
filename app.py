@@ -98,8 +98,6 @@ except Exception as e:
 
 def prewarm_caches():
     print(">>> Pre-warming backend caches in background...")
-    # Gemini models cache prewarming removed to favor decoupled remote configs
-        
     try:
         # Prewarm local models list
         from models.models import fetch_local_models
@@ -107,6 +105,7 @@ def prewarm_caches():
     except Exception as e:
         print(f"Error prewarming local models: {e}")
         
+    llm_already_online = False
     try:
         # Prewarm server status
         from adapters.local_llm_manager import check_status, check_installed
@@ -116,12 +115,47 @@ def prewarm_caches():
         print(f"Error prewarming Local LLM server status: {e}")
         llm_already_online = False
 
-    # Auto-start disabled: Local LLM and ComfyUI are manual only.
-    # Use the UI controls to start each server when needed.
-    print(">>> Local LLM auto-start disabled (manual only).")
-    print(">>> ComfyUI auto-start disabled (manual only).")
+    auto_start_llm = os.getenv("AUTO_START_LOCAL_LLM", "true").lower() in ("true", "1", "yes")
+    if auto_start_llm and not llm_already_online:
+        # Double-check: if anything is already listening on port 1234 (e.g. Sanctuary),
+        # treat it as online and do not attempt to start (which would kill it).
+        import socket
+        port_in_use = False
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                port_in_use = s.connect_ex(("127.0.0.1", 1234)) == 0
+        except Exception:
+            pass
+        if port_in_use:
+            print(">>> Local LLM port 1234 already in use (another app?). Skipping auto-start.")
+        else:
+            try:
+                print(">>> Auto-starting Local LLM server (llama-server)...")
+                from adapters.local_llm_manager import start_server
+                success, msg = start_server()
+                print(f">>> Local LLM auto-start: {msg} (success={success})")
+            except Exception as e:
+                print(f">>> Failed to auto-start Local LLM server: {e}")
+    elif llm_already_online:
+        print(">>> Local LLM server is already online.")
+    else:
+        print(">>> Local LLM auto-start disabled (manual only).")
 
+    print(">>> ComfyUI auto-start disabled (manual only).")
     print(">>> Backend caches pre-warmed successfully!")
+
+def _trigger_early_prewarm():
+    # Only auto-start in the active Werkzeug child worker, not the parent process.
+    # The parent's _atexit_clean may kill llama-server on reload, causing races.
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        global _prewarm_started
+        with _prewarm_lock:
+            if not _prewarm_started:
+                _prewarm_started = True
+                threading.Thread(target=prewarm_caches, daemon=True).start()
+
+_trigger_early_prewarm()
 
 # Initialize the dynamic runner based on configuration
 init_runner()
