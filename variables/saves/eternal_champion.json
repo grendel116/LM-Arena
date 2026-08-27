@@ -13,7 +13,7 @@
     "quest_stage": 10,
     "tamrielic_date": "1 Morning Star, 3E 389",
     "created_at": "2026-08-26T23:56:45.640011",
-    "updated_at": "2026-08-26T23:59:00.003427"
+    "updated_at": "2026-08-27T00:07:15.332672"
   },
   "character": {
     "name": "Eternal Champion",
@@ -61,7 +61,10 @@
       {
         "name": "Prison Rags",
         "type": "armor",
-        "equipped": true
+        "equipped": true,
+        "equipped_slot": "body",
+        "weight": 1.0,
+        "quantity": 1
       }
     ],
     "spells": [

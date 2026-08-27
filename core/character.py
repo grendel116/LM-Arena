@@ -56,7 +56,7 @@ DEFAULT_SHEET = {
     },
     "gold": 0,
     "inventory": [
-        { "name": "Prison Rags", "type": "armor", "equipped": True }
+        { "name": "Prison Rags", "type": "armor", "equipped": True, "equipped_slot": "body", "weight": 1.0, "quantity": 1 }
     ],
     "spells": [
         { "name": "Spark", "school": "Destruction", "tier": 1, "mp_cost": 4 }
@@ -86,9 +86,22 @@ def load_character(save_id: str = None) -> dict:
         if "stamina_current" not in d:
             endurance = sheet.get("attributes", {}).get("endurance", 50)
             strength = sheet.get("attributes", {}).get("strength", 50)
-            stamina_val = int((endurance + strength) * 0.6)
             d["stamina_current"] = stamina_val
             d["stamina_max"] = stamina_val
+            
+        for it in sheet.get("inventory", []):
+            if it.get("equipped") and not it.get("equipped_slot"):
+                cat = get_item_category(it)
+                if cat in ("armor", "body"):
+                    it["equipped_slot"] = "body"
+                elif cat == "weapon":
+                    it["equipped_slot"] = "main_hand"
+                elif cat in ("shield", "torch"):
+                    it["equipped_slot"] = "off_hand"
+                elif cat in ("head", "hands", "feet", "neck", "ring", "back"):
+                    it["equipped_slot"] = cat
+                else:
+                    it["equipped_slot"] = "body"
         return sheet
     except Exception:
         import copy
@@ -492,17 +505,80 @@ def spend_gold(sheet: dict, amount: int) -> tuple[dict, bool]:
 
 # ── Inventory & Equip Logic ───────────────────────────────────────────────────
 
+def normalize_item(item: dict) -> dict:
+    """Standardizes an item dictionary across all creation sources."""
+    if not isinstance(item, dict):
+        item = {"name": str(item)}
+        
+    raw_name = str(item.get("name", "Unknown Item")).strip()
+    raw_type = str(item.get("type", "")).strip().lower()
+    temp_item = {"name": raw_name, "type": raw_type}
+    inferred_cat = get_item_category(temp_item)
+    final_type = inferred_cat if inferred_cat else (raw_type if raw_type and raw_type != "item" else "misc")
+    
+    weight = item.get("weight")
+    if weight is not None:
+        try:
+            final_weight = round(float(weight), 1)
+        except (ValueError, TypeError):
+            final_weight = get_item_weight(temp_item)
+    else:
+        final_weight = get_item_weight(temp_item)
+        
+    qty = item.get("quantity", 1)
+    try:
+        final_qty = max(1, int(qty))
+    except (ValueError, TypeError):
+        final_qty = 1
+        
+    is_equipped = bool(item.get("equipped", False))
+    equipped_slot = item.get("equipped_slot")
+    if is_equipped and not equipped_slot:
+        if final_type in ("armor", "body"):
+            equipped_slot = "body"
+        elif final_type == "weapon":
+            equipped_slot = "main_hand"
+        elif final_type in ("shield", "torch"):
+            equipped_slot = "off_hand"
+        elif final_type in ("head", "hands", "feet", "neck", "ring", "back"):
+            equipped_slot = final_type
+        else:
+            equipped_slot = "body"
+            
+    res = {
+        "name": raw_name,
+        "type": final_type,
+        "weight": final_weight,
+        "quantity": final_qty,
+        "equipped": is_equipped,
+        "description": str(item.get("description", "")).strip()
+    }
+    if is_equipped and equipped_slot:
+        res["equipped_slot"] = equipped_slot
+    return res
+
+
 def add_item(sheet: dict, item: dict) -> dict:
     """
-    Add an item to inventory. item must have at minimum: name, type.
-    Optional keys: equipped (bool), quantity (int).
+    Add an item to inventory with standardized fields.
     If item with same name exists, increments quantity.
+    Recalculates carried encumbrance and armor rating.
     """
-    for existing in sheet["inventory"]:
-        if existing["name"].lower() == item["name"].lower():
-            existing["quantity"] = existing.get("quantity", 1) + item.get("quantity", 1)
+    norm_item = normalize_item(item)
+    inventory = sheet.setdefault("inventory", [])
+    
+    for existing in inventory:
+        if existing.get("name", "").lower() == norm_item["name"].lower():
+            existing["quantity"] = existing.get("quantity", 1) + norm_item.get("quantity", 1)
+            if "weight" not in existing or existing["weight"] is None or existing["weight"] == 1.0:
+                existing["weight"] = norm_item["weight"]
+            if not existing.get("type") or existing.get("type") in ("item", "Item"):
+                existing["type"] = norm_item["type"]
+            recalculate_derived_stats(sheet)
             return sheet
-    sheet["inventory"].append(item)
+            
+    inventory.append(norm_item)
+    recalculate_derived_stats(sheet)
     return sheet
 
 
@@ -510,18 +586,25 @@ def remove_item(sheet: dict, item_name: str, quantity: int = 1) -> tuple[dict, b
     """
     Remove quantity of item. Returns (sheet, success).
     Removes entry entirely when quantity reaches zero.
+    Recalculates carried encumbrance and armor rating.
     """
-    for i, item in enumerate(sheet["inventory"]):
-        if item["name"].lower() == item_name.lower():
+    inventory = sheet.setdefault("inventory", [])
+    success = False
+    for i, item in enumerate(inventory):
+        if item.get("name", "").lower() == item_name.lower():
             if "quantity" in item:
                 if item["quantity"] <= quantity:
-                    sheet["inventory"].pop(i)
+                    inventory.pop(i)
                 else:
                     item["quantity"] -= quantity
             else:
-                sheet["inventory"].pop(i)
-            return sheet, True
-    return sheet, False
+                inventory.pop(i)
+            success = True
+            break
+            
+    if success:
+        recalculate_derived_stats(sheet)
+    return sheet, success
 
 
 def reconcile_inventory_from_turn(sheet: dict, user_text: str, follower_text: str) -> tuple[dict, list[dict]]:

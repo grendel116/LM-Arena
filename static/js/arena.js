@@ -2459,13 +2459,31 @@ function renderCharacterStatusModal(data) {
                 }
                 
                 const qtyStr = item.quantity && item.quantity > 1 ? ` x${item.quantity}` : '';
-                const itemWtStr = item.weight ? ` (${item.weight} kg)` : '';
-                const slotLabel = item.equipped_slot ? item.equipped_slot.replace('_', ' ').toUpperCase() : 'EQUIPPED';
+                let slotLabel = 'BODY';
+                if (item.equipped_slot) {
+                    slotLabel = item.equipped_slot.replace('_', ' ').toUpperCase();
+                } else if (['weapon', '1h_weapon', '2h_weapon'].includes(typeLower) || nameLower.includes('sword') || nameLower.includes('dagger') || nameLower.includes('staff')) {
+                    slotLabel = 'MAIN HAND';
+                } else if (['shield', 'torch'].includes(typeLower) || nameLower.includes('shield') || nameLower.includes('torch')) {
+                    slotLabel = 'OFF HAND';
+                } else if (['head', 'helmet', 'hood'].includes(typeLower) || nameLower.includes('helm') || nameLower.includes('hood')) {
+                    slotLabel = 'HEAD';
+                } else if (['hands', 'gloves', 'gauntlets'].includes(typeLower) || nameLower.includes('glove') || nameLower.includes('gauntlet')) {
+                    slotLabel = 'HANDS';
+                } else if (['feet', 'boots'].includes(typeLower) || nameLower.includes('boot')) {
+                    slotLabel = 'FEET';
+                } else if (typeLower === 'ring' || nameLower.includes('ring')) {
+                    slotLabel = 'RING';
+                } else if (['neck', 'amulet'].includes(typeLower) || nameLower.includes('amulet') || nameLower.includes('necklace')) {
+                    slotLabel = 'NECK';
+                } else if (['back', 'cloak', 'cape'].includes(typeLower) || nameLower.includes('cloak')) {
+                    slotLabel = 'BACK';
+                }
                 const tag = isEq ? `<span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: hsla(var(--gold-h), var(--gold-s), 45%, 0.22); color: var(--text-bright); border: 1px solid var(--border-color); font-weight: 700; letter-spacing: 0.03em;">${slotLabel}</span>` : (canEquip ? '<span style="font-size: 0.65rem; color: var(--text-muted);">[Equip]</span>' : '');
                 
                 const equipLabel = document.createElement('div');
                 equipLabel.style.cssText = `background: transparent; border: none; padding: 0; font-size: 0.82rem; color: ${isEq ? 'var(--primary-accent)' : 'var(--text-bright)'}; display: inline-flex; align-items: center; gap: 6px;`;
-                equipLabel.innerHTML = `<span>${item.name}${qtyStr}${itemWtStr}</span> ${tag}`;
+                equipLabel.innerHTML = `<span>${item.name}${qtyStr}</span> ${tag}`;
                 itemRow.appendChild(equipLabel);
 
 

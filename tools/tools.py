@@ -2328,10 +2328,21 @@ def arena_spend_gold(amount=0, gold_amount=None, cost=None, **kwargs):
     return {"success": success, "gold": sheet["gold"]}
 
 @track_tool_activity
-def arena_add_item(item_name, item_type="Item", quantity=1, **kwargs):
+def arena_add_item(item_name, item_type="Item", quantity=1, weight=None, **kwargs):
     """Add an item to the character's inventory (looted, purchased, found)."""
     save_id, sheet = _get_active_sheet(kwargs)
-    sheet = add_item(sheet, {"name": item_name, "type": item_type, "quantity": int(quantity)})
+    item_dict = {
+        "name": str(item_name).strip(),
+        "type": str(item_type).strip(),
+        "quantity": int(quantity)
+    }
+    if weight is not None:
+        try:
+            item_dict["weight"] = float(weight)
+        except (ValueError, TypeError):
+            pass
+            
+    sheet = add_item(sheet, item_dict)
     _commit_and_sync(save_id, sheet, kwargs)
     
     return {"inventory_count": len(sheet["inventory"]), "item": item_name}
