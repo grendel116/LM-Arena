@@ -210,7 +210,7 @@ def get_active_lore(
       3. Follower-specific lorebooks (core/followers/<follower_id>/lorebooks/)
     """
     if followers_dir is None:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         followers_dir = FOLLOWERS_DIR
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -290,7 +290,7 @@ def get_active_lore(
 
 def list_lorebooks(follower_id: str, followers_dir: str | None = None) -> list[dict]:
     if followers_dir is None:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         followers_dir = FOLLOWERS_DIR
 
     results = []
@@ -364,7 +364,7 @@ def list_lorebooks(follower_id: str, followers_dir: str | None = None) -> list[d
 
 def import_lorebook(follower_id: str, book_data: dict, filename: str, followers_dir: str | None = None) -> str:
     if followers_dir is None:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         followers_dir = FOLLOWERS_DIR
     lorebooks_dir = os.path.join(followers_dir, follower_id, "lorebooks")
     os.makedirs(lorebooks_dir, exist_ok=True)
@@ -379,7 +379,7 @@ def import_lorebook(follower_id: str, book_data: dict, filename: str, followers_
 
 def delete_lorebook(follower_id: str, filename: str, followers_dir: str | None = None) -> bool:
     if followers_dir is None:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         followers_dir = FOLLOWERS_DIR
     fpath = os.path.join(followers_dir, follower_id, "lorebooks", filename)
     if os.path.exists(fpath):

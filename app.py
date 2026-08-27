@@ -66,7 +66,7 @@ def check_follower_change():
             _cached_active_follower = current_follower
             os.environ["ACTIVE_FOLLOWER"] = current_follower
             try:
-                from variables import FOLLOWERS_DIR
+                from variables.settings import FOLLOWERS_DIR
                 follower_path = os.path.join(FOLLOWERS_DIR, current_follower)
                 if os.path.isdir(follower_path):
                     portraits_dir = os.path.join(follower_path, 'portraits')
@@ -155,7 +155,7 @@ def load_theme(follower_id):
 
 def load_temperature():
     """Read temperature from project settings, locked to 0.85 for LM-Arena balance."""
-    from variables import VARIABLES_DIR
+    from variables.settings import VARIABLES_DIR
     settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
     if os.path.exists(settings_path):
         try:
@@ -174,7 +174,7 @@ def find_image_sidecar_json(image_filename, active_follower):
     json_path = png_path.rsplit('.', 1)[0] + '.json'
     if os.path.exists(json_path):
         return json_path
-    from variables import FOLLOWERS_DIR
+    from variables.settings import FOLLOWERS_DIR
     if os.path.exists(FOLLOWERS_DIR):
         for fol in os.listdir(FOLLOWERS_DIR):
             candidate = os.path.normpath(
@@ -322,7 +322,7 @@ follower_profile_png = follower_profile_png
 @requires_auth
 def save_profile_picture():
     try:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         from runners.follower import get_active_follower
         import base64
         import re
@@ -358,7 +358,7 @@ def save_profile_picture():
 def crop_profile_picture():
     """Server-side crop: receives source image path and crop coordinates, uses PIL to crop and resize."""
     try:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         from runners.follower import get_active_follower
         from PIL import Image
         
@@ -479,7 +479,7 @@ def proactive_action():
         import os
         import json
         from runners.follower import get_active_follower
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         
         active_follower = get_active_follower()
         follower_path = os.path.join(FOLLOWERS_DIR, active_follower)
@@ -558,7 +558,7 @@ You must return a valid JSON object matching the following schema:
         
         if is_local:
             import requests
-            from variables import REMOTE_SERVER_URL, get_remote_server_headers
+            from variables.settings import REMOTE_SERVER_URL, get_remote_server_headers
             target_model = selected_model if (selected_model and selected_model != 'local-llm') else os.getenv("LOCAL_MODEL_NAME")
             payload = {
                 "messages": [{"role": "user", "content": prompt}],
@@ -732,7 +732,7 @@ def chat():
     selected_model = request.json.get('model')
     is_voice_call = request.json.get('is_voice_call', False)
 
-    import tools
+    import tools.tools as tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
         tools.session_tool_calls[session_id] = []
@@ -806,7 +806,7 @@ def edit():
     force_offload = request.json.get('force_offload', False)
     print(f"[EDIT ROUTE] session_id={session_id}, msg_id={msg_id}, new_text={repr(new_text)}, model={selected_model}, force_offload={force_offload}", flush=True)
 
-    import tools
+    import tools.tools as tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
         tools.session_tool_calls[session_id] = []
@@ -1296,7 +1296,7 @@ def regenerate_image():
             return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
 
     try:
-        import tools
+        import tools.tools as tools
         tools.current_session_id.set(session_id)
         with tools.session_tool_calls_lock:
             tools.session_tool_calls[session_id] = []
@@ -1337,7 +1337,7 @@ active_generations = {}
 active_generations_lock = threading.Lock()
 
 def run_background_video_gen(task_id, session_id, image_url, local_path, prompt):
-    import tools
+    import tools.tools as tools
     import asyncio
     
     with active_generations_lock:
@@ -1461,7 +1461,7 @@ def list_images():
 @app.route('/pending_tool_call', methods=['GET'])
 @requires_auth
 def get_pending_tool_call():
-    import tools
+    import tools.tools as tools
     pending = None
     for call_id, info in list(tools.pending_tool_calls.items()):
         if info['status'] == 'pending':
@@ -1492,7 +1492,7 @@ def cancel_chat():
 @requires_auth
 def get_session_tool_calls():
     session_id = request.args.get('session_id', 'default')
-    import tools
+    import tools.tools as tools
     with tools.session_tool_calls_lock:
         calls = tools.session_tool_calls.get(session_id, [])
         return jsonify({'tool_calls': list(calls)})
@@ -1500,7 +1500,7 @@ def get_session_tool_calls():
 @app.route('/approve_tool', methods=['POST'])
 @requires_auth
 def approve_tool():
-    import tools
+    import tools.tools as tools
     call_id = request.json.get('call_id')
     status = request.json.get('status')
     
@@ -1557,7 +1557,7 @@ def get_models():
 @app.route('/api/project_settings', methods=['GET', 'POST'])
 @requires_auth
 def project_settings():
-    from variables import VARIABLES_DIR
+    from variables.settings import VARIABLES_DIR
     import json
     settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
     
@@ -1674,7 +1674,7 @@ def project_settings():
 @requires_auth
 def save_generation_params():
     try:
-        from variables import VARIABLES_DIR
+        from variables.settings import VARIABLES_DIR
         settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
         
         data = request.get_json() or {}
@@ -1979,7 +1979,7 @@ def list_lorebooks_route():
     try:
         from runners.follower import get_active_follower
         from core.lorebook import list_lorebooks
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_id = get_active_follower()
         books = list_lorebooks(follower_id, FOLLOWERS_DIR)
         for b in books:
@@ -1996,7 +1996,7 @@ def import_lorebook_route():
     try:
         from runners.follower import get_active_follower
         from core.lorebook import import_lorebook
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_id = get_active_follower()
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
@@ -2021,7 +2021,7 @@ def find_lorebook_path(filename, follower_id):
                 return os.path.join(root, filename)
                 
     # 2. Search in follower-specific lorebooks
-    from variables import FOLLOWERS_DIR
+    from variables.settings import FOLLOWERS_DIR
     fol_lore_dir = os.path.join(FOLLOWERS_DIR, follower_id, 'lorebooks')
     fpath = os.path.join(fol_lore_dir, filename)
     if os.path.exists(fpath):
@@ -2055,7 +2055,7 @@ def delete_lorebook_route(filename):
     try:
         from runners.follower import get_active_follower
         from core.lorebook import delete_lorebook
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_id = get_active_follower()
         deleted = delete_lorebook(follower_id, filename, FOLLOWERS_DIR)
         return jsonify({'success': deleted})
@@ -2069,7 +2069,7 @@ def get_card_lorebook_entries():
     """Return entries from the embedded character_book in the active follower card."""
     try:
         from runners.follower import get_active_follower
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_id = get_active_follower()
         card_path = os.path.join(FOLLOWERS_DIR, follower_id, f'{follower_id}.json')
         if not os.path.exists(card_path):
@@ -2091,7 +2091,7 @@ def save_card_lorebook_entries():
     """Write updated entries back into character_book in the active follower card."""
     try:
         from runners.follower import get_active_follower
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_id = get_active_follower()
         card_path = os.path.join(FOLLOWERS_DIR, follower_id, f'{follower_id}.json')
         if not os.path.exists(card_path):
@@ -2411,7 +2411,7 @@ def list_sessions():
 def list_followers():
     try:
         active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         followers_dir = FOLLOWERS_DIR
         
         followers = []
@@ -2590,7 +2590,7 @@ def delete_follower():
         if follower_id == 'ria_silmane':
             return jsonify({'error': 'Cannot delete default follower Ria Silmane'}), 400
             
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
         if not os.path.exists(follower_path):
             return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
@@ -2635,7 +2635,7 @@ def rename_follower():
         if not new_id:
             return jsonify({'error': 'Invalid new name (must contain letters, numbers, or underscores)'}), 400
             
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         old_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, follower_id))
         new_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, new_id))
         
@@ -2748,7 +2748,7 @@ rename_follower = rename_follower
 def get_follower_profile():
     try:
         from runners.follower import get_active_follower, _load_settings
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         import json
 
         follower_id = request.args.get('follower_id') or request.args.get('follower_id') or get_active_follower()
@@ -2779,7 +2779,7 @@ get_follower_profile = get_follower_profile
 def save_follower_profile():
     try:
         from runners.follower import get_active_follower, set_tts_voice_for_follower, _load_settings, _save_settings
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         import json
 
         incoming = request.get_json(silent=True) or {}
@@ -3683,7 +3683,7 @@ Output a single JSON object with EXACTLY these keys:
         if is_remote_configured:
             try:
                 import requests
-                from variables import DEFAULT_REMOTE_MODEL
+                from variables.settings import DEFAULT_REMOTE_MODEL
                 target_model = model if model else DEFAULT_REMOTE_MODEL
                 headers = {"Content-Type": "application/json", "Authorization": f"Bearer {remote_key}"}
                 payload = {
@@ -3779,7 +3779,7 @@ def export_follower_card(followerfollower_id=None):
     """Download the follower's card as a SillyTavern-compatible JSON file."""
     fid = follower_id or follower_id
     try:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         card_path = os.path.join(FOLLOWERS_DIR, fid, f'{fid}.json')
         if not os.path.exists(card_path):
             return jsonify({'error': 'Follower not found'}), 404
@@ -3804,7 +3804,7 @@ def export_follower_lorebook(followerfollower_id=None):
     """Download the embedded character_book as a standalone lorebook JSON."""
     fid = follower_id or follower_id
     try:
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         card_path = os.path.join(FOLLOWERS_DIR, fid, f'{fid}.json')
         if not os.path.exists(card_path):
             return jsonify({'error': 'Follower not found'}), 404
@@ -3920,7 +3920,7 @@ def import_tavern_follower():
 
         name = card_v3["data"].get("name", "Follower").strip()
         follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', name).lower() or ("follower_" + str(int(time.time())))
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
         if os.path.exists(follower_path):
             return jsonify({'error': f"Follower folder '{follower_id}' already exists"}), 400
@@ -3961,7 +3961,7 @@ def import_describe_follower():
         if not follower_id:
             follower_id = "follower_" + str(int(time.time()))
             
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
         follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
         if os.path.exists(follower_path):
             return jsonify({'error': f"Follower folder '{follower_id}' already exists"}), 400
@@ -3999,7 +3999,7 @@ def _get_current_status():
     # Load temperature dynamically
     temperature = 0.95
     try:
-        from variables import VARIABLES_DIR
+        from variables.settings import VARIABLES_DIR
         settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
         if os.path.exists(settings_path):
             with open(settings_path, "r", encoding="utf-8") as f:
@@ -4236,7 +4236,7 @@ def comfy_resolve_workflow():
     workflow_json = request.json.get("workflow_json")
     if not workflow_json:
         try:
-            from variables import FOLLOWERS_DIR, COMFYUI_CHECKPOINT
+            from variables.settings import FOLLOWERS_DIR, COMFYUI_CHECKPOINT
             from runners.follower import get_active_follower
             active_follower = get_active_follower()
             

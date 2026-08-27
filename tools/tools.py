@@ -88,7 +88,7 @@ def get_project_folders() -> list:
         active_fol = get_active_follower()
     except Exception:
         active_fol = "ria_silmane"
-    from variables import FOLLOWERS_DIR
+    from variables.settings import FOLLOWERS_DIR
     default_folder = os.path.normpath(os.path.join(FOLLOWERS_DIR, active_fol))
     
     folders = [default_folder]
@@ -1443,7 +1443,7 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
         raise Exception(f"Source image not found at '{image_path}'")
         
     # Copy and resize source image to ComfyUI's input directory using PIL
-    from variables import COMFYUI_SERVER_URL
+    from variables.settings import COMFYUI_SERVER_URL
     from adapters.comfy_manager import COMFYUI_DIR
     from PIL import Image
     comfy_input_dir = os.path.normpath(os.path.join(COMFYUI_DIR, "input"))
@@ -2145,7 +2145,7 @@ def arena_recruit_follower(follower_name, follower_race="Imperial", follower_cla
     """Recruit an NPC into your party as an active follower when they agree to join or follow you narratively."""
     try:
         import os, re, time, json
-        from variables import BASE_DIR, FOLLOWERS_DIR
+        from variables.settings import BASE_DIR, FOLLOWERS_DIR
         follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', follower_name).lower()
         if not follower_id:
             follower_id = f"follower_{int(time.time())}"
@@ -2184,16 +2184,16 @@ from core.character import (
 
 def _get_active_sheet(kwargs: dict) -> tuple[str, dict]:
     """Helper to fetch active save_id and load the corresponding sheet."""
-    save_id = kwargs.get("session_id") or get_active_save_id()
+    save_id = kwargs.get("session_id") or current_session_id.get() or get_active_save_id()
     sheet = load_character(save_id)
     return save_id, sheet
 
 def _commit_and_sync(save_id: str, sheet: dict, kwargs: dict):
     """Helper to save character sheet and sync snapshot to history/frontend UI."""
-    save_character(save_id, sheet)
+    save_character(sheet, save_id)
     try:
         from app import _sync_active_character_snapshot_to_history
-        session_id = kwargs.get("session_id") or save_id
+        session_id = kwargs.get("session_id") or current_session_id.get() or save_id
         _sync_active_character_snapshot_to_history(sheet, session_id)
     except Exception as e:
         print(f"[TOOL SYNC WARN] Failed to sync character snapshot: {e}", flush=True)

@@ -311,7 +311,7 @@ class BaseProgramRunner:
                 meta["recent_chapters"].clear()
 
     def _load_temperature_setting(self, default_temp: float = 0.95) -> float:
-        from variables import VARIABLES_DIR
+        from variables.settings import VARIABLES_DIR
 
         settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
         if os.path.exists(settings_path):
@@ -805,26 +805,23 @@ class OpenSourceRunner(BaseProgramRunner):
     def _save_session_to_disk(self, session_id: str):
         with self._lock:
             try:
-                data = {
-                    "messages": self.sessions_history.get(session_id, []),
-                    "memory_state": self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
-                }
-                with open(self._get_session_path(session_id), "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
+                from core.save_manager import get_active_save_id, read_save, write_save
+                target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
+                bundle = read_save(target_id)
+                bundle["messages"] = self.sessions_history.get(session_id, [])
+                bundle["memory_state"] = self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
+                write_save(target_id, bundle)
             except Exception as e:
                 print(f"Error saving OS session {session_id} to disk: {e}")
 
     def _load_session_from_disk(self, session_id: str) -> bool:
         with self._lock:
-            path = self._get_session_path(session_id)
-            if not os.path.exists(path):
-                return False
             try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-
-                self.sessions_history[session_id] = data.get("messages", [])
-                self.sessions_memory_state[session_id] = data.get("memory_state", {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
+                from core.save_manager import get_active_save_id, read_save
+                target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
+                bundle = read_save(target_id)
+                self.sessions_history[session_id] = bundle.get("messages", [])
+                self.sessions_memory_state[session_id] = bundle.get("memory_state", {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
                 self._ensure_first_message(session_id)
                 return True
             except Exception as e:

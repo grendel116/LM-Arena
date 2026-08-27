@@ -1,17 +1,19 @@
 {
-  "messages": [
-    {
-      "id": "first_mes_30168d1774b2454bbd1b84c38e40ea08",
-      "role": "follower",
-      "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the floor of a prison cell somewhere beneath the Imperial City. A single torch flickers in the corridor outside. The door is locked — and they are, as far as anyone above knows, already forgotten.*\n\n*Then the air chills. A cold blue luminescence bleeds through the wall, and she is there: a woman, translucent as winter ice, her robes drifting in a wind that isn't blowing. Her expression carries the particular sorrow of someone who has already lost everything except purpose.*\n\nI am Ria Silmane. Jagar Tharn has taken the Emperor's place, and the Council believes his disguise. No one would hear my word over his — but now I've found you. The Empire abandoned you. That was a mistake.\n\n*Her gaze moves to the north wall. She drifts closer, studying you with eyes that still hold warmth despite what they've seen. On the north wall, against the ceiling, a narrow ledge holds a small ruby key. In torchlight it reads amber more than red.*\n\nAbove those stones in the wall, there's a small ruby key. It unlocks this cell. Some of the passages here were once Tharn's private vaults. You may find enough coin to sustain yourself, but be cautious; Rats and goblins have made these sewers their home.\n\n*The cell is four paces across, cold stone, with a wooden pallet in the corner.  The door is iron, its lock old but solid. Beyond the cell, the corridor is dark, water dripping onto the stone floor.*\n\nTo the west and south you'll find a Shift Gate — it will carry you beyond the Empire's reach. After that, rest as soon as you can. You're walking into the Arena, Eternal Champion, but there's something special in you... I have to believe that.",
-      "tool_calls": [],
-      "timestamp": 1787371052.8494108
-    }
-  ],
-  "memory_state": {
-    "unsummarized_buffer": [],
-    "recent_chapters": [],
-    "epic_chronicle": ""
+  "meta": {
+    "id": "eternal_champion",
+    "name": "Eternal Champion",
+    "character_name": "Eternal Champion",
+    "race": "Nord",
+    "gender": "Male",
+    "class": "Mage",
+    "level": 1,
+    "gold": 0,
+    "current_province": "Cyrodiil",
+    "current_location": "Imperial Dungeon",
+    "quest_stage": 10,
+    "tamrielic_date": "1 Morning Star, 3E 389",
+    "created_at": "2026-08-26T23:56:45.640011",
+    "updated_at": "2026-08-26T23:59:00.003427"
   },
   "character": {
     "name": "Eternal Champion",
@@ -21,23 +23,26 @@
     "level": 1,
     "experience": 0,
     "attributes": {
-      "strength": 50,
+      "strength": 60,
       "intelligence": 65,
       "willpower": 65,
       "agility": 50,
       "speed": 50,
-      "endurance": 50,
+      "endurance": 60,
       "personality": 50,
       "luck": 50
     },
     "derived": {
-      "hp_current": 30,
-      "hp_max": 30,
+      "hp_current": 32,
+      "hp_max": 32,
       "mp_current": 162,
       "mp_max": 162,
-      "stamina_current": 60,
-      "stamina_max": 60,
-      "armor_rating": 0
+      "stamina_current": 72,
+      "stamina_max": 72,
+      "armor_rating": 0,
+      "encumbrance_max": 120.0,
+      "encumbrance_current": 1.0,
+      "is_encumbered": false
     },
     "skills": {
       "destruction": 35,
@@ -69,20 +74,6 @@
     ],
     "active_effects": [],
     "conditions": []
-  },
-  "meta": {
-    "id": "eternal_champion",
-    "updated_at": "2026-08-21T20:58:36.121983",
-    "character_name": "Eternal Champion",
-    "race": "Nord",
-    "gender": "Male",
-    "class": "Mage",
-    "level": 1,
-    "gold": 0,
-    "current_province": "Cyrodiil",
-    "current_location": "Imperial Dungeon",
-    "quest_stage": 10,
-    "tamrielic_date": "1 Morning Star, 3E 389"
   },
   "world": {
     "tamrielic_date": {
@@ -130,5 +121,38 @@
       "temple_of_stendarr": 0,
       "noble_courts": 0
     }
+  },
+  "history": [
+    {
+      "id": "first_mes_8dcdc84b75db",
+      "role": "follower",
+      "timestamp": 1787813805.640011
+    }
+  ],
+  "memories": {
+    "documents": [],
+    "chunks": []
+  },
+  "databank": {
+    "documents": [],
+    "chunks": []
+  },
+  "journals": [],
+  "side_quests": [],
+  "archived_side_quests": [],
+  "profile": "A Nord from Skyrim.",
+  "messages": [
+    {
+      "id": "first_mes_0cfca725edfe4b81aa8bc7083b334d48",
+      "role": "follower",
+      "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the floor of a prison cell somewhere beneath the Imperial City. A single torch flickers in the corridor outside. The door is locked — and they are, as far as anyone above knows, already forgotten.*\n\n*Then the air chills. A cold blue luminescence bleeds through the wall, and she is there: a woman, translucent as winter ice, her robes drifting in a wind that isn't blowing. Her expression carries the particular sorrow of someone who has already lost everything except purpose.*\n\nI am Ria Silmane. Jagar Tharn has taken the Emperor's place, and the Council believes his disguise. No one would hear my word over his — but now I've found you. The Empire abandoned you. That was a mistake.\n\n*Her gaze moves to the north wall. She drifts closer, studying you with eyes that still hold warmth despite what they've seen. On the north wall, against the ceiling, a narrow ledge holds a small ruby key. In torchlight it reads amber more than red.*\n\nAbove those stones in the wall, there's a small ruby key. It unlocks this cell. Some of the passages here were once Tharn's private vaults. You may find enough coin to sustain yourself, but be cautious; Rats and goblins have made these sewers their home.\n\n*The cell is four paces across, cold stone, with a wooden pallet in the corner.  The door is iron, its lock old but solid. Beyond the cell, the corridor is dark, water dripping onto the stone floor.*\n\nTo the west and south you'll find a Shift Gate — it will carry you beyond the Empire's reach. After that, rest as soon as you can. You're walking into the Arena, Eternal Champion, but there's something special in you... I have to believe that.",
+      "tool_calls": [],
+      "timestamp": 1787813805.7751906
+    }
+  ],
+  "memory_state": {
+    "unsummarized_buffer": [],
+    "recent_chapters": [],
+    "epic_chronicle": ""
   }
 }

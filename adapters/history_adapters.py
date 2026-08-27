@@ -258,7 +258,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         from core.follower_config import replace_placeholders
         from core.lorebook import get_active_lore
         from runners.follower import get_active_follower
-        from variables import FOLLOWERS_DIR
+        from variables.settings import FOLLOWERS_DIR
 
         history = self.runner_obj.sessions_history.get(self.session_id, [])
         filtered_history = [

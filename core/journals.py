@@ -4,7 +4,7 @@ import uuid
 import time
 import re
 from runners.follower import get_active_follower
-from variables import FOLLOWERS_DIR
+from variables.settings import FOLLOWERS_DIR
 
 def get_journal_entries(follower_id: str = None) -> list:
     try:

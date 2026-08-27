@@ -8600,7 +8600,7 @@ async function openDataBank() {
     loadProjectSettings();
     if (!currentEditingfollowerId) {
         try {
-            const res = await fetch(`/history?session_id=default&t=${Date.now()}`);
+            const res = await fetch(`/history?session_id=${sessionId}&t=${Date.now()}`);
             const data = await res.json();
             if (data.active_follower) {
                 currentEditingfollowerId = data.active_follower;

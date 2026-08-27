@@ -1,1 +1,0 @@
-from variables.settings import *

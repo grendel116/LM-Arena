@@ -92,7 +92,7 @@ def sync_save_meta(save_id: str) -> dict:
 
 def get_save_path(save_id: str = None) -> Path:
     """Return path to save file or legacy directory."""
-    if not save_id:
+    if not save_id or save_id == "default":
         save_id = get_active_save_id()
     
     json_path = SAVES_DIR / f"{save_id}.json"
@@ -108,7 +108,7 @@ def get_save_path(save_id: str = None) -> Path:
 
 def read_save(save_id: str = None) -> dict:
     """Read complete save bundle from single-file JSON or legacy directory."""
-    if not save_id:
+    if not save_id or save_id == "default":
         save_id = get_active_save_id()
     
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
@@ -214,6 +214,9 @@ import time
 
 def write_save(save_id: str, bundle: dict) -> None:
     """Write complete save bundle atomically to single-file JSON."""
+    if not save_id or save_id == "default":
+        save_id = get_active_save_id()
+        
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
     json_path = SAVES_DIR / f"{save_id}.json"
     
