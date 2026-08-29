@@ -14,3 +14,13 @@ markdownify
 pypdf
 ddgs
 musicbrainzngs
+llama-cpp-python
+diffusers
+pywebview
+cryptography
+faster-whisper
+torch
+torch-directml
+transformers
+safetensors
+accelerate

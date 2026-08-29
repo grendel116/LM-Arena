@@ -62,3 +62,15 @@ _env_comfyui_dir = os.getenv("COMFYUI_DIR")
 COMFYUI_DIR = _env_comfyui_dir.strip() if (_env_comfyui_dir and _env_comfyui_dir.strip()) else os.path.normpath(os.path.join(BASE_DIR, "..", "ComfyUI"))
 COMFYUI_CHECKPOINT = os.getenv("COMFYUI_CHECKPOINT", "sd_xl_base_1.0.safetensors")
 COMFYUI_VAE = os.getenv("COMFYUI_VAE", "sdxl_vae.safetensors")
+
+# Centralized Models directory hierarchy & Logs
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+LLM_MODELS_DIR = os.path.join(MODELS_DIR, "llm")
+CHECKPOINTS_DIR = os.path.join(MODELS_DIR, "checkpoints")
+LORAS_DIR = os.path.join(MODELS_DIR, "loras")
+VAE_DIR = os.path.join(MODELS_DIR, "vae")
+
+for _dir in (MODELS_DIR, LLM_MODELS_DIR, CHECKPOINTS_DIR, LORAS_DIR, VAE_DIR, FOLLOWERS_DIR, LOREBOOKS_DIR, SAVES_DIR, LOGS_DIR):
+    os.makedirs(_dir, exist_ok=True)
+

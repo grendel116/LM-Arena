@@ -17,17 +17,15 @@ if not exist .venv (
 
 REM 3. Install Dependencies
 echo --- Installing Dependencies ---
-call .venv\Scripts\python.exe -m pip install -r requirements.txt
+call .venv\Scripts\python.exe -m pip install -q -r requirements.txt
 
 REM 4. Environment Variables
-REM Copy .env.example to .env if missing
 if not exist .env (
     echo --- Creating .env from .env.example ---
     copy .env.example .env >nul
 )
 
-REM 5. Start LM Arena
-echo --- Starting LM Arena ---
-set OPEN_BROWSER=true
-.venv\Scripts\python app.py
-pause
+REM 5. Start LM Arena Desktop
+echo --- Starting LM Arena Desktop ---
+start "" ".venv\Scripts\pythonw.exe" desktop.py
+exit /b 0

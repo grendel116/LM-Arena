@@ -1862,82 +1862,6 @@ async function pollComfyCheckpointDownloads() {
     }
 }
 
-// --- installComfyUI ---
-async function installComfyUI(btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<span class="animate-spin" style="display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>Starting installation...`;
-    try {
-        const res = await fetch('/api/comfy/install', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-            // Update state immediately to show progress bar and start background polling
-            updateComfyModalStatus();
-        } else {
-            showCustomAlert("Installation Failed", data.message);
-            btn.disabled = false;
-            btn.textContent = "Auto-Install ComfyUI";
-        }
-    } catch (e) {
-        showCustomAlert("Error", "Failed to contact backend.");
-        btn.disabled = false;
-        btn.textContent = "Auto-Install ComfyUI";
-    }
-}
-
-// --- startComfyUI ---
-async function startComfyUI(btn) {
-    if (_comfyStarting) return;
-    _comfyStarting = true;
-    // Optimistic UI state
-    comfyStatus.running = 'starting';
-    updateComfyModalStatus(true);
-    if (document.getElementById('onboarding-container')) {
-        showWelcomeMessage();
-    }
-    try {
-        const res = await fetch('/api/comfy/start', { method: 'POST' });
-        const data = await res.json();
-        if (!data.success) {
-            comfyStatus.running = false;
-            showCustomAlert("Failed to Start", data.message);
-        }
-    } catch (e) {
-        comfyStatus.running = false;
-        showCustomAlert("Error", "Failed to start ComfyUI.");
-    } finally {
-        _comfyStarting = false;
-        updateComfyModalStatus(true);
-    }
-}
-
-// --- resolveWorkflowDependencies ---
-async function resolveWorkflowDependencies(btn) {
-    if (_comfyResolving) return;
-    _comfyResolving = true;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="animate-spin" style="display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>Analyzing Workflow...`;
-    try {
-        const res = await fetch('/api/comfy/resolve_workflow', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({}) 
-        });
-        const data = await res.json();
-        if (data.success) {
-            updateComfyModalStatus();
-        } else {
-            showCustomAlert("Resolution Failed", data.error || data.message);
-            btn.disabled = false;
-            btn.textContent = "Resolve Workflow Dependencies";
-        }
-    } catch (e) {
-        showCustomAlert("Error", "Failed to trigger dependency resolution.");
-        btn.disabled = false;
-        btn.textContent = "Resolve Workflow Dependencies";
-    } finally {
-        _comfyResolving = false;
-    }
-}
 
 /* ==========================================================================
    V. 4. DYNAMIC UI ACCESSORIES & PROMPTS
@@ -3002,15 +2926,6 @@ function updateConnectionModalStatus() {
     const modalProjectId = document.getElementById('modal-project-id');
     const modalGeminiModel = document.getElementById('modal-gemini-model');
     
-    // Dynamically set dynamism slider
-    const tempVal = connectionStatus.temperature !== undefined ? connectionStatus.temperature : 0.95;
-    const dynamismSlider = document.getElementById('dynamism-slider');
-    const dynamismCurrentVal = document.getElementById('dynamism-current-val');
-    if (dynamismSlider) {
-        dynamismSlider.value = tempVal;
-        if (dynamismCurrentVal) dynamismCurrentVal.textContent = parseFloat(tempVal).toFixed(2);
-    }
-    
     if (connectionStatus.remote_configured ) {
         if (modalApiKey && !modalApiKey.value) modalApiKey.placeholder = "•••••••••••••••• (Configured)";
         if (modalProjectId && !modalProjectId.value && connectionStatus.remote_url) {
@@ -3028,287 +2943,26 @@ function updateConnectionModalStatus() {
     }
     
     updateConnectionStatus(connectionStatus);
-
-    // Update the Local box panel states inside settings modal
-    const localBox = document.getElementById('modal-local-box-container');
-    if (localBox) {
-        const localDesc = document.getElementById('modal-local-desc');
-        const startBtn = document.getElementById('modal-local-start-btn');
-        const stopBtn = document.getElementById('modal-local-stop-btn');
-        
-        if (connectionStatus.local_online === 'starting' || _localStarting) {
-            if (localDesc) localDesc.textContent = "Local LLM engine is currently starting up in the background. Please wait...";
-            if (startBtn) {
-                startBtn.style.display = 'block';
-                startBtn.disabled = true;
-                startBtn.textContent = "Starting...";
-            }
-            if (stopBtn) stopBtn.style.display = 'none';
-        } else if (_localStopping) {
-            if (localDesc) localDesc.textContent = "Local LLM engine is stopping. Please wait...";
-            if (startBtn) {
-                startBtn.style.display = 'block';
-                startBtn.disabled = true;
-                startBtn.textContent = "Stopping...";
-            }
-            if (stopBtn) stopBtn.style.display = 'none';
-        } else if (!connectionStatus.local_online) {
-            if (localDesc) localDesc.textContent = "Local LLM engine is offline. Start the server or search Hugging Face below to download a GGUF model.";
-            if (startBtn) {
-                startBtn.style.display = 'block';
-                startBtn.disabled = false;
-                startBtn.textContent = "Start Server";
-            }
-            if (stopBtn) stopBtn.style.display = 'none';
-        } else {
-            if (localDesc) localDesc.textContent = "Local LLM server is running. Select active models via the header dropdown.";
-            if (startBtn) startBtn.style.display = 'none';
-            if (stopBtn) {
-                stopBtn.style.display = 'block';
-                stopBtn.disabled = false;
-                stopBtn.textContent = "Stop Server";
-            }
-        }
-        fetchAndRenderLocalModels();
-    }
+    fetchNativeModelsSummary();
 }
 
 // --- updateComfyModalStatus ---
-// skipFetch: when true, use in-memory comfyStatus (already populated by SSE or button handlers)
-async function updateComfyModalStatus(skipFetch = false) {
-    // Debounce: coalesce rapid consecutive calls into a single update
-    if (_comfyUpdateRunning) {
-        if (!_comfyUpdateTimer) {
-            _comfyUpdateTimer = setTimeout(() => {
-                _comfyUpdateTimer = null;
-                updateComfyModalStatus(skipFetch);
-            }, 200);
-        }
-        return;
-    }
-    _comfyUpdateRunning = true;
-
-    try {
-        if (!skipFetch) {
-            const res = await fetch('/api/comfy/status');
-            comfyStatus = await res.json();
-        }
-        
-        const comfyBox = document.getElementById('modal-comfy-box-container');
-        if (comfyBox) {
-            const statusBadge = document.getElementById('modal-comfy-status');
-            if (statusBadge) {
-                if (comfyStatus.running === true || comfyStatus.running === 'online') {
-                    statusBadge.textContent = "Running";
-                    statusBadge.className = "status-badge status-online";
-                } else if (comfyStatus.running === 'starting') {
-                    statusBadge.textContent = "Starting...";
-                    statusBadge.className = "status-badge status-starting";
-                } else if (comfyStatus.running === 'stopping') {
-                    statusBadge.textContent = "Stopping...";
-                    statusBadge.className = "status-badge status-starting";
-                } else if (comfyStatus.installed) {
-                    statusBadge.textContent = "Offline";
-                    statusBadge.className = "status-badge status-offline";
-                } else {
-                    statusBadge.textContent = "Uninstalled";
-                    statusBadge.className = "status-badge status-offline";
-                }
-            }
-            
-            if (!comfyStatus.installed) {
-                _comfyCheckpointsInitialized = false;
-                if (comfyStatus.resolution_status && comfyStatus.resolution_status.status === "resolving") {
-                    let percentWidth = "0%";
-                    const text = comfyStatus.resolution_status.progress;
-                    const match = text.match(/(\d+)%/);
-                    if (match) {
-                        percentWidth = match[1] + '%';
-                    }
-                    
-                    comfyBox.innerHTML = `
-                        <div class="option-header">
-                            <h4 style="margin: 0; font-size: 1.05rem; font-weight: 600;">ComfyUI (Portraits)</h4>
-                            <span class="status-badge status-offline">Installing...</span>
-                        </div>
-                        <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">ComfyUI is installing in the background.</p>
-                        <div id="comfy-install-progress" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-main);">
-                            <div style="font-weight: 500; margin-bottom: 5px;">Status: INSTALLING</div>
-                            <div style="font-style: italic; margin-bottom: 8px;" id="comfy-install-progress-text">${comfyStatus.resolution_status.progress}</div>
-                            <div style="background: hsla(215, 5%, 100%, 0.05); border-radius: 4px; height: 6px; width: 100%; overflow: hidden;">
-                                <div id="comfy-install-progress-bar" style="background: var(--primary-accent); height: 100%; width: ${percentWidth};"></div>
-                            </div>
-                        </div>
-                    `;
-                    setTimeout(() => updateComfyModalStatus(false), 2000);
-                } else {
-                    comfyBox.innerHTML = `
-                        <div class="option-header">
-                            <h4 style="margin: 0; font-size: 1.05rem; font-weight: 600;">ComfyUI (Portraits)</h4>
-                            <span id="modal-comfy-status" class="status-badge status-offline">Uninstalled</span>
-                        </div>
-                        <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 15px 0;">ComfyUI is not detected in your workspace or destination directory.</p>
-                        <button onclick="installComfyUI(this)" class="onboarding-btn connect-cloud-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 10px;">Auto-Install ComfyUI</button>
-                    `;
-                }
-            } else {
-                // Check if checkpoint manager is already rendered to avoid resetting user inputs/lists
-                const managerExists = document.getElementById('comfy-checkpoint-manager');
-                if (managerExists) {
-                    // Just update status and button controls dynamically
-                    const badge = document.getElementById('modal-comfy-status');
-                    if (badge) {
-                        if (comfyStatus.running === true || comfyStatus.running === 'online') {
-                            badge.textContent = "Running";
-                            badge.className = "status-badge status-online";
-                        } else if (comfyStatus.running === 'starting') {
-                            badge.textContent = "Starting...";
-                            badge.className = "status-badge status-starting";
-                        } else if (comfyStatus.running === 'stopping') {
-                            badge.textContent = "Stopping...";
-                            badge.className = "status-badge status-starting";
-                        } else {
-                            badge.textContent = "Offline";
-                            badge.className = "status-badge status-offline";
-                        }
-                    }
-                    
-                    // Defer controls update when user is interacting with the search input
-                    const activeEl = document.activeElement;
-                    const isUserTyping = activeEl && (activeEl.id === 'comfy-hf-search-input');
-                    
-                    // Update the controls container (Start/Stop button etc.) only when not mid-operation
-                    const controls = document.getElementById('comfy-engine-controls');
-                    if (controls && !_comfyResolving) {
-                        const isRunning = comfyStatus.running === true || comfyStatus.running === 'online';
-                        const isStarting = comfyStatus.running === 'starting' || _comfyStarting;
-                        const isStopping = comfyStatus.running === 'stopping' || _comfyStopping;
-                        
-                        if (isRunning) {
-                            controls.innerHTML = `
-                                <button onclick="stopComfyUI(this)" class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px;">Stop ComfyUI</button>
-                                <button onclick="resolveWorkflowDependencies(this)" class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 8px; margin-bottom: 5px;">Resolve Workflow Dependencies</button>
-                            `;
-                        } else if (isStarting) {
-                            controls.innerHTML = `
-                                <button disabled class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px; opacity: 0.7;">Starting ComfyUI...</button>
-                            `;
-                        } else if (isStopping) {
-                            controls.innerHTML = `
-                                <button disabled class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px; opacity: 0.7;">Stopping ComfyUI...</button>
-                            `;
-                        } else {
-                            controls.innerHTML = `
-                                <button onclick="startComfyUI(this)" class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px;">Start ComfyUI</button>
-                            `;
-                        }
-                    }
-                    
-                    // Update progress bar if resolving
-                    const progressDiv = document.getElementById('comfy-resolution-progress');
-                    if (progressDiv && comfyStatus.resolution_status) {
-                        const r = comfyStatus.resolution_status;
-                        if (r.status !== "idle") {
-                            let errorHtml = "";
-                            if (r.errors && r.errors.length > 0) {
-                                errorHtml = `<div style="color: var(--danger-bright); margin-top: 4px;">Errors: ${r.errors.join(", ")}</div>`;
-                            }
-                            progressDiv.innerHTML = `
-                                <div style="font-weight: 500; color: var(--text-main); margin-top: 8px; margin-bottom: 3px;">Status: ${r.status.toUpperCase()}</div>
-                                <div style="margin-top: 2px; font-style: italic;">${r.progress}</div>
-                                ${errorHtml}
-                            `;
-                            if (r.status === "resolving") {
-                                setTimeout(() => updateComfyModalStatus(false), 2000);
-                            }
-                        } else {
-                            progressDiv.innerHTML = '';
-                        }
-                    }
-                } else {
-                    // Render full ComfyUI installed view (including Checkpoint Manager)
-                    comfyBox.innerHTML = `
-                         <div class="option-header">
-                             <h4 style="margin: 0; font-size: 1.05rem; font-weight: 600;">ComfyUI (Portraits)</h4>
-                             <span id="modal-comfy-status" class="status-badge ${comfyStatus.running === 'starting' || comfyStatus.running === 'stopping' ? 'status-starting' : (comfyStatus.running ? 'status-online' : 'status-offline')}">
-                                 ${comfyStatus.running === 'starting' ? 'Starting...' : (comfyStatus.running === 'stopping' ? 'Stopping...' : (comfyStatus.running ? 'Running' : 'Offline'))}
-                             </span>
-                         </div>
-                         <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 10px 0;">Generate follower portraits locally using ComfyUI.</p>
-                         
-                         <div id="comfy-engine-controls">
-                             ${comfyStatus.running === true || comfyStatus.running === 'online' ? `
-                                 <button onclick="stopComfyUI(this)" class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px;">Stop ComfyUI</button>
-                                 <button onclick="resolveWorkflowDependencies(this)" class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 8px; margin-bottom: 5px;">Resolve Workflow Dependencies</button>
-                             ` : (comfyStatus.running === 'starting' ? `
-                                 <button disabled class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px; opacity: 0.7;">Starting ComfyUI...</button>
-                             ` : (comfyStatus.running === 'stopping' ? `
-                                 <button disabled class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px; opacity: 0.7;">Stopping ComfyUI...</button>
-                             ` : `
-                                 <button onclick="startComfyUI(this)" class="onboarding-btn" style="width: 100%; font-size: 0.85rem; padding: 10px; margin-top: 5px;">Start ComfyUI</button>
-                             `))}
-                         </div>
-                        <div id="comfy-resolution-progress" style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.3;"></div>
-                        
-                        <div id="comfy-checkpoint-manager" style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 15px; text-align: left;">
-                            <div style="margin-bottom: 15px;">
-                                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 6px;">Active Checkpoint Model:</label>
-                                <select id="comfy-checkpoint-select" onchange="changeComfyCheckpoint()" class="onboarding-input glass-select" style="width: 100%; font-size: 0.8rem; background: rgba(0,0,0,0.25); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; outline: none; height: 32px; box-sizing: border-box;">
-                                    <option>Loading checkpoints...</option>
-                                </select>
-                                <button onclick="fetchComfyCheckpoints()" class="onboarding-btn" style="width: 100%; margin-top: 8px; font-size: 0.8rem; padding: 6px; height: 32px;">Refresh Checkpoints</button>
-                            </div>
-                            
-                            <div style="margin-bottom: 10px;">
-                                <label style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 6px;">Search Hugging Face (Checkpoints):</label>
-                                <input type="text" id="comfy-hf-search-input" placeholder="e.g. sd_xl, pony, custom_art" class="onboarding-input" style="width: 100%; font-size: 0.8rem; padding: 6px 10px; height: 32px; box-sizing: border-box;" onkeydown="if(event.key==='Enter') searchComfyHFCheckpoints()">
-                                <button onclick="searchComfyHFCheckpoints()" class="onboarding-btn" style="width: 100%; margin-top: 8px; font-size: 0.8rem; padding: 6px; height: 32px;">Search Checkpoints</button>
-                                <div id="comfy-hf-search-results" style="margin-top: 10px; max-height: 140px; overflow-y: auto; font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;"></div>
-                            </div>
-                            
-                            <div id="comfy-checkpoint-downloads-container" style="display: none; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid hsla(215, 5%, 100%, 0.05); padding-top: 10px; margin-top: 10px;">
-                                <div style="font-weight: 600; color: var(--text-color); margin-bottom: 5px;">Active Downloads:</div>
-                                <div id="comfy-checkpoint-downloads-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    // Trigger initial checkpoints loading only once per panel lifecycle
-                    if (!_comfyCheckpointsInitialized) {
-                        _comfyCheckpointsInitialized = true;
-                        fetchComfyCheckpoints();
-                        pollComfyCheckpointDownloads();
-                    }
-                }
-            }
-        }
-    } catch (e) {
-        console.error("Error fetching ComfyUI status:", e);
-    } finally {
-        _comfyUpdateRunning = false;
-
-    }
+async function updateComfyModalStatus() {
+    fetchNativeModelsSummary();
 }
-
-
 
 // --- openConnectionModal ---
 function openConnectionModal() {
     document.getElementById('connection-modal').style.display = 'flex';
-    updateConnectionModalStatus();
-    verifyConnections(true);
-    updateComfyModalStatus();
+    fetchNativeModelsSummary();
 }
+
 
 // --- closeConnectionModal ---
 function closeConnectionModal() {
     document.getElementById('connection-modal').style.display = 'none';
-    _comfyCheckpointsInitialized = false;
-    if (_comfyUpdateTimer) {
-        clearTimeout(_comfyUpdateTimer);
-        _comfyUpdateTimer = null;
-    }
 }
+
 
 // --- openUserProfileModal ---
 function openUserProfileModal() {
@@ -8615,7 +8269,6 @@ async function openDataBank() {
     document.getElementById('databank-modal').style.display = 'flex';
     switchDataBankTab('upload');
     loadDataBankFiles();
-    loadProjectSettings();
     if (!currentEditingfollowerId) {
         try {
             const res = await fetch(`/history?session_id=${sessionId}&t=${Date.now()}`);
@@ -9412,119 +9065,7 @@ async function deleteLorebook(filename, name) {
 
 
 // --- Project Settings JS Methods ---
-let currentProjectSettings = {
-    folders: [],
-    security_preset: "ask_always",
-    artifact_review_policy: "ask_always",
-    search_engine: "web_crawling",
-    searxng_url: "",
-    tts_voice: "af_heart"
-};
 
-function toggleSearxUrlVisibility() {
-    const engine = document.getElementById('project-search-engine').value;
-    const container = document.getElementById('searxng-url-container');
-    if (container) {
-        if (engine === 'web_crawling') {
-            container.style.display = 'flex';
-        } else {
-            container.style.display = 'none';
-        }
-    }
-}
-
-async function loadProjectSettings() {
-    try {
-        const res = await fetch('/api/project_settings');
-        const data = await res.json();
-        if (data.error) {
-            console.error("Error loading project settings:", data.error);
-            return;
-        }
-        currentProjectSettings = data;
-        
-        // Populate form controls
-        let secPreset = data.security_preset || 'ask_always';
-        if (secPreset === 'turbo') secPreset = 'auto';
-        document.getElementById('project-security-preset').value = secPreset;
-        document.getElementById('project-review-policy').value = data.artifact_review_policy || 'ask_always';
-        document.getElementById('project-search-engine').value = data.search_engine || 'web_crawling';
-        document.getElementById('project-searxng-url').value = data.searxng_url || '';
-        
-        toggleSearxUrlVisibility();
-        renderProjectFolders();
-    } catch (e) {
-        console.error("Failed to load project settings:", e);
-    }
-}
-
-function renderProjectFolders() {
-    const list = document.getElementById('project-folders-list');
-    if (!list) return;
-    list.innerHTML = '';
-    
-    currentProjectSettings.folders.forEach((folder, idx) => {
-        const isDefault = idx === 0; // The first folder is the default workspace root
-        const row = document.createElement('div');
-        row.className = 'list-entry-row row-layout';
-        row.style.fontFamily = 'monospace';
-        
-        row.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
-                <span style="display: inline-flex; align-items: center; width: 14px; height: 14px; color: var(--text-muted); opacity: 0.85; vertical-align: middle;">${getLogIconSvg('folder')}</span>
-                <span title="${folder}">${folder}</span>
-            </div>
-            ${isDefault ? '<span class="badge-default">Default</span>' : `
-                <span onclick="removeProjectFolder('${folder.replace(/\\/g, '\\\\')}')" style="cursor: pointer; opacity: 0.6; font-size: 1.1rem; font-family: sans-serif; line-height: 1;" title="Remove Folder">&times;</span>
-            `}
-        `;
-        list.appendChild(row);
-    });
-}
-
-async function saveProjectSettings() {
-    currentProjectSettings.security_preset = document.getElementById('project-security-preset').value;
-    currentProjectSettings.artifact_review_policy = document.getElementById('project-review-policy').value;
-    currentProjectSettings.search_engine = document.getElementById('project-search-engine').value;
-    currentProjectSettings.searxng_url = document.getElementById('project-searxng-url').value;
-    
-    try {
-        const res = await fetch('/api/project_settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentProjectSettings)
-        });
-        const data = await res.json();
-        if (data.error) {
-            showCustomAlert("Error Saving Settings", data.error);
-        } else {
-            currentProjectSettings = data.settings;
-            renderProjectFolders();
-        }
-    } catch (e) {
-        console.error("Failed to save project settings:", e);
-        showCustomAlert("Error Saving Settings", "Failed to connect to backend.");
-    }
-}
-
-async function addProjectFolder() {
-    const folderPath = prompt("Enter absolute path to additional workspace folder:");
-    if (!folderPath || !folderPath.trim()) return;
-    
-    const cleanPath = folderPath.trim();
-    if (currentProjectSettings.folders.includes(cleanPath)) {
-        showCustomAlert("Folder Exists", "This folder is already in the workspace.");
-        return;
-    }
-    
-    currentProjectSettings.folders.push(cleanPath);
-    await saveProjectSettings();
-}
-
-async function removeProjectFolder(folder) {
-    currentProjectSettings.folders = currentProjectSettings.folders.filter(f => f !== folder);
-    await saveProjectSettings();
-}
 
 // --- loadDataBankFiles ---
 async function loadDataBankFiles() {
@@ -11144,3 +10685,143 @@ document.addEventListener('error', function (event) {
         }
     }
 }, true);
+
+// --- Native Model Management Helpers ---
+async function openNativeModelsFolder(folderType = 'root') {
+    try {
+        const res = await fetch('/api/models/native/open_folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder: folderType })
+        });
+        const data = await res.json();
+        if (!data.success) {
+            showCustomAlert("Folder", data.error || "Could not open folder.");
+        }
+    } catch (e) {
+        showCustomAlert("Error", "Failed to open folder: " + e.message);
+    }
+}
+
+async function fetchNativeModelsSummary() {
+    try {
+        const res = await fetch('/api/models/native/list');
+        const data = await res.json();
+        if (data.error) return;
+
+        // 1. Native LLM Engine Card
+        const llmStatusBadge = document.getElementById('modal-local-status');
+        const llmSelect = document.getElementById('native-llm-select');
+        const llmSummary = document.getElementById('modal-native-llm-summary');
+        const llmDesc = document.getElementById('modal-local-desc');
+
+        if (data.gguf_models && data.gguf_models.length > 0) {
+            if (llmStatusBadge) {
+                llmStatusBadge.textContent = "Online";
+                llmStatusBadge.className = "status-badge status-online";
+            }
+            if (llmDesc) {
+                llmDesc.textContent = "Ready for in-process chat. Select active model below.";
+            }
+            if (llmSelect) {
+                llmSelect.innerHTML = data.gguf_models.map(m => 
+                    `<option value="${m.filename}" ${(data.active_llm === m.name || data.active_llm === m.filename) ? 'selected' : ''}>${m.name} (${m.size_gb} GB)</option>`
+                ).join('');
+            }
+            if (llmSummary) {
+                llmSummary.innerHTML = `<strong>${data.gguf_models.length}</strong> model(s) detected in <code>models/llm/</code>.`;
+            }
+        } else {
+            if (llmStatusBadge) {
+                llmStatusBadge.textContent = "No Models";
+                llmStatusBadge.className = "status-badge status-offline";
+            }
+            if (llmDesc) {
+                llmDesc.textContent = "Place your .gguf chat models in models/llm/ to enable.";
+            }
+            if (llmSelect) {
+                llmSelect.innerHTML = `<option value="">No .gguf models found</option>`;
+            }
+            if (llmSummary) {
+                llmSummary.innerHTML = `<em>Drop GGUF files into models/llm/ to start.</em>`;
+            }
+        }
+
+        // 2. Native Diffusion Engine Card
+        const diffStatusBadge = document.getElementById('modal-diffusion-status');
+        const diffSelect = document.getElementById('native-diffusion-select');
+        const diffSummary = document.getElementById('modal-native-diffusion-summary');
+
+        const ckpts = data.checkpoints || [];
+        const loras = data.loras || [];
+
+        if (ckpts.length > 0) {
+            if (diffStatusBadge) {
+                diffStatusBadge.textContent = "Online";
+                diffStatusBadge.className = "status-badge status-online";
+            }
+            if (diffSelect) {
+                diffSelect.innerHTML = ckpts.map(c => 
+                    `<option value="${c.filename}" ${(data.active_checkpoint === c.filename || data.active_checkpoint === c.name) ? 'selected' : ''}>${c.name} (${c.size_gb} GB)</option>`
+                ).join('');
+            }
+        } else {
+            if (diffStatusBadge) {
+                diffStatusBadge.textContent = "No Checkpoints";
+                diffStatusBadge.className = "status-badge status-offline";
+            }
+            if (diffSelect) {
+                diffSelect.innerHTML = `<option value="">No SafeTensors checkpoints found</option>`;
+            }
+        }
+
+        if (diffSummary) {
+            diffSummary.innerHTML = `
+                <div>• <strong>${ckpts.length}</strong> checkpoint(s) in <code>models/checkpoints/</code></div>
+                <div>• <strong>${loras.length}</strong> LoRA(s) detected in <code>models/loras/</code></div>
+            `;
+        }
+    } catch (e) {
+        console.error("fetchNativeModelsSummary error:", e);
+    }
+}
+
+async function onSelectNativeLLM(modelName) {
+    if (!modelName) return;
+    try {
+        const res = await fetch('/api/models/native/load_llm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model_name: modelName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showCustomAlert("Model Active", `Loaded '${data.active_model}' for in-process chat.`);
+        }
+    } catch (e) {
+        console.error("onSelectNativeLLM error:", e);
+    }
+}
+
+async function onSelectNativeCheckpoint(ckptName) {
+    if (!ckptName) return;
+    try {
+        const res = await fetch('/api/models/native/select_checkpoint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ checkpoint_name: ckptName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showCustomAlert("Checkpoint Active", `Selected checkpoint '${data.active_checkpoint}' for native portrait generation.`);
+        }
+    } catch (e) {
+        console.error("onSelectNativeCheckpoint error:", e);
+    }
+}
+
+// Automatically populate native models when DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+    fetchNativeModelsSummary();
+});
+

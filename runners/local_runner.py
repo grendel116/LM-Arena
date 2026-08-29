@@ -37,7 +37,7 @@ def detect_gpu_type() -> str:
     if os.name != 'nt':
         _cached_gpu_type = 'vulkan'
         return _cached_gpu_type
-        
+
     try:
         # Run PowerShell to get video controller names
         output = subprocess.check_output(
@@ -49,56 +49,58 @@ def detect_gpu_type() -> str:
         output_lower = output.lower()
         if "nvidia" in output_lower:
             _cached_gpu_type = "nvidia"
-            return _cached_gpu_type
         elif "amd" in output_lower or "radeon" in output_lower:
             _cached_gpu_type = "amd"
-            return _cached_gpu_type
+        else:
+            _cached_gpu_type = "vulkan"
+        return _cached_gpu_type
     except Exception:
         pass
+
     _cached_gpu_type = "vulkan"
     return _cached_gpu_type
 
 def download_llama_server():
     os.makedirs(LLAMA_BIN_DIR, exist_ok=True)
-    api_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+    api_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases"
     try:
-        resp = _get_http_session().get(api_url, headers={"User-Agent": "LM-Arena-Client/1.0"}, timeout=10.0).json()
-        assets = resp.get("assets", [])
+        resp = requests.get(api_url, headers={"User-Agent": "LM-Arena-Client/1.0"}, timeout=10.0).json()
+        release = next(r for r in resp if len(r.get("assets", [])) > 5)
+        assets = release.get("assets", [])
         
         gpu_type = detect_gpu_type()
         print(f"[llama-runner] Detected GPU type: {gpu_type}", flush=True)
         
-        target_keyword = "vulkan"
         if gpu_type == "amd":
-            target_keyword = "hip"
+            target_keywords = ["win-rocm", "win-hip", "win-vulkan-x64"]
         elif gpu_type == "nvidia":
-            target_keyword = "cuda"
+            target_keywords = ["win-cuda-12.4-x64", "win-cuda", "win-vulkan-x64"]
+        else:
+            target_keywords = ["win-vulkan-x64"]
             
-        # Flexible asset matching
+        # Try to find the best target asset
         asset = None
-        for a in assets:
-            name = a.get("name", "").lower()
-            if target_keyword in name and "x64" in name and name.endswith(".zip"):
-                asset = a
+        for kw in target_keywords:
+            for a in assets:
+                name = a.get("name", "").lower()
+                if kw in name and name.endswith(".zip"):
+                    asset = a
+                    break
+            if asset:
                 break
                 
-        # Fallback search for Vulkan if primary fails
         if not asset:
-            print(f"[llama-runner] Target asset '{target_keyword}' not found, searching for Vulkan zip...", flush=True)
-            asset = next((a for a in assets if "vulkan" in a.get("name", "").lower() and a.get("name", "").endswith(".zip")), None)
-
-        if not asset:
-            print("[llama-runner] Could not find a matching zip asset in llama.cpp releases.", flush=True)
-            return False
-
+            print("[llama-runner] Target asset not found, falling back to Vulkan", flush=True)
+            asset = next(a for a in assets if "win-vulkan-x64" in a.get("name", "").lower() and a.get("name", "").endswith(".zip"))
+            
         print(f"[llama-runner] Downloading {asset['name']}...", flush=True)
         temp_zip = os.path.join(LLAMA_BIN_DIR, asset["name"])
-        with _get_http_session().get(asset["browser_download_url"], stream=True) as r:
+        with requests.get(asset["browser_download_url"], stream=True) as r:
             with open(temp_zip, 'wb') as f:
                 for chunk in r.iter_content(8192):
                     f.write(chunk)
                     
-        # Clean existing bin directory before extracting
+        # Clean existing bin directory before extracting to prevent DLL conflicts
         for f_name in os.listdir(LLAMA_BIN_DIR):
             f_path = os.path.join(LLAMA_BIN_DIR, f_name)
             if os.path.isfile(f_path) and f_name != asset["name"]:
@@ -128,9 +130,12 @@ def resolve_model_path(model_key):
 
 _current_model = None
 
-def start_local_server(model_key):
+def start_local_server(model_key=None):
     global _proc, _current_model, _starting
     
+    if not model_key:
+        model_key = os.getenv("LOCAL_MODEL_NAME", "")
+
     with _start_lock:
         if _starting:
             return True, "Already starting"
@@ -189,6 +194,13 @@ def start_local_server(model_key):
         except Exception:
             pass
             
+    # 0. Free any VRAM allocated by ComfyUI / in-process diffusion engine before starting LLM
+    try:
+        from core import engine_diffusion
+        engine_diffusion.unload_diffusion_models()
+    except Exception as e:
+        print(f"[llama-runner] Note: Could not unload diffusion models: {e}", flush=True)
+
     context_size = os.getenv("LOCAL_CONTEXT", "8192")
     gpu_layers = os.getenv("LOCAL_GPU_LAYERS", "99")
     flash_attn = os.getenv("LOCAL_FLASH_ATTN", "true").lower() == "true"
@@ -215,23 +227,31 @@ def start_local_server(model_key):
     if not is_thinking_enabled():
         cmd.extend(["--reasoning", "off", "--reasoning-budget", "0"])
 
-    from core.banned_words import generate_llama_cli_args
-    cmd.extend(generate_llama_cli_args(model_path))
-
-    if flash_attn:
+    if flash_attn and "-fa" not in cmd:
         cmd.extend(["-fa", "on"])
-    if no_mmap:
-        cmd.append("--no-mmap")
-        
+    # --- AUTOMATIC LOGIT BIAS INJECTION ---
     try:
-        log_file = os.path.join(BASE_DIR, "llama_server.log")
+        from core.banned_words import generate_llama_cli_args
+        # Generates token-level bias flags dynamically from the active model's GGUF file
+        bias_args = generate_llama_cli_args(model_path)
+        if bias_args:
+            cmd.extend(bias_args)
+            print(f"[llama-runner] Applied logit bias suppression rules from banned_words.json", flush=True)
+    except Exception as e:
+        print(f"[llama-runner] Warning: Could not apply logit bias: {e}", flush=True)
+    # --------------------------------------
+
+    try:
+        from variables.settings import LOGS_DIR
+        log_file = os.path.join(LOGS_DIR, "llama_server.log")
         with open(log_file, "a", encoding="utf-8") as log_fd:
             log_fd.write(f"\n--- START {time.asctime()} ---\n")
             if os.name == 'nt':
                 si = subprocess.STARTUPINFO()
                 si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 si.wShowWindow = 0
-                _proc = subprocess.Popen(cmd, stdout=log_fd, stderr=log_fd, startupinfo=si, shell=False)
+                flags = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0x08000000
+                _proc = subprocess.Popen(cmd, stdout=log_fd, stderr=log_fd, startupinfo=si, creationflags=flags, shell=False)
             else:
                 _proc = subprocess.Popen(cmd, stdout=log_fd, stderr=log_fd, shell=False)
                 
@@ -246,13 +266,11 @@ def start_local_server(model_key):
             try:
                 for _ in range(300):
                     time.sleep(1.0)
+                    if _proc and _proc.poll() is not None:
+                        break
                     status = check_local_server_status()
                     if status is True:
                         _current_model = model_key
-                        break
-                    if status is False:
-                        break
-                    if _proc and _proc.poll() is not None:
                         break
             finally:
                 with _start_lock:
@@ -270,7 +288,13 @@ def start_local_server(model_key):
 def _kill_all_llama_processes():
     if os.name == 'nt':
         try:
-            subprocess.run(["taskkill", "/F", "/IM", "llama-server.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            flags = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0x08000000
+            subprocess.run(
+                ["taskkill", "/F", "/IM", "llama-server.exe"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=flags
+            )
         except Exception:
             pass
     else:
@@ -289,7 +313,7 @@ def stop_local_server():
     if _proc:
         try:
             _proc.terminate()
-            _proc.wait(timeout=1.0)
+            _proc.wait(timeout=1.5)
         except Exception:
             try:
                 _proc.kill()
@@ -298,12 +322,13 @@ def stop_local_server():
         _proc = None
         
     _kill_all_llama_processes()
-    time.sleep(0.5)
+    time.sleep(1.5)
     return True, "Stopped"
 
 def check_local_server_status():
     try:
-        resp = _get_http_session().get("http://127.0.0.1:1234/health", timeout=1.0)
+        session = _get_http_session()
+        resp = session.get("http://127.0.0.1:1234/health", timeout=1.0)
         if resp.status_code == 200:
             return True
         if resp.status_code == 503:
@@ -318,6 +343,8 @@ def check_local_server_status():
     return False
 
 def _atexit_clean():
+    # If Flask reloader is active, let the parent process handle cleanup on Ctrl+C
+    # so we don't kill the server on child process reloads.
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         return
     stop_local_server()
