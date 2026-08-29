@@ -124,56 +124,64 @@ class BaseProgramRunner:
             _check_cancellation()
 
             try:
-                async with httpx.AsyncClient() as client:
-                    if session_id:
-                        req_payload = {**payload, "stream": True}
-                        req_headers = {**headers, "Accept-Encoding": "identity"}
+                from runners import local_runner
+                status = local_runner.check_local_server_status()
+                if not status or status == "stopped":
+                    print("[Local LLM] Server is currently stopped. Auto-restarting local server on demand...", flush=True)
+                    local_runner.start_local_server()
+                    await asyncio.sleep(1.0)
+                    continue
 
-                        async with client.stream("POST", url, json=req_payload, headers=req_headers, timeout=timeout) as r:
-                            if r.status_code == 503 and is_local:
-                                await r.aread()
-                                if time.time() - start_time < max_retry_time:
-                                    print(f"[Local LLM] Server is loading model (503). Retrying in {retry_interval}s...", flush=True)
-                                    await asyncio.sleep(retry_interval)
-                                    continue
+                client = get_http_client()
+                if session_id:
+                    req_payload = {**payload, "stream": True}
+                    req_headers = {**headers, "Accept-Encoding": "identity"}
 
-                            if r.status_code != 200:
-                                await r.aread()
-                                return httpx.Response(status_code=r.status_code, headers=r.headers, content=r.content, request=r.request)
+                    async with client.stream("POST", url, json=req_payload, headers=req_headers, timeout=timeout) as r:
+                        if r.status_code == 503 and is_local:
+                            await r.aread()
+                            if time.time() - start_time < max_retry_time:
+                                print(f"[Local LLM] Server is loading model (503). Retrying in {retry_interval}s...", flush=True)
+                                await asyncio.sleep(retry_interval)
+                                continue
 
-                            content_parts = []
-                            async for line in r.aiter_lines():
-                                _check_cancellation()
+                        if r.status_code != 200:
+                            await r.aread()
+                            return httpx.Response(status_code=r.status_code, headers=r.headers, content=r.content, request=r.request)
 
-                                line = line.strip()
-                                if not line or not line.startswith("data:"):
-                                    continue
+                        content_parts = []
+                        async for line in r.aiter_lines():
+                            _check_cancellation()
 
-                                data_str = line[5:].strip()
-                                if data_str == "[DONE]":
-                                    break
+                            line = line.strip()
+                            if not line or not line.startswith("data:"):
+                                continue
 
-                                try:
-                                    delta = json.loads(data_str).get("choices", [{}])[0].get("delta", {})
-                                    if content := delta.get("content"):
-                                        content_parts.append(content)
-                                except Exception:
-                                    pass
+                            data_str = line[5:].strip()
+                            if data_str == "[DONE]":
+                                break
 
-                            mock_data = {
-                                "choices": [{"message": {"role": "assistant", "content": "".join(content_parts)}}],
-                                "model": payload.get("model", ""),
-                            }
-                            return httpx.Response(status_code=200, headers=r.headers, content=json.dumps(mock_data).encode("utf-8"), request=r.request)
+                            try:
+                                delta = json.loads(data_str).get("choices", [{}])[0].get("delta", {})
+                                if content := delta.get("content"):
+                                    content_parts.append(content)
+                            except Exception:
+                                pass
 
-                    response = await client.post(url, json=payload, headers=headers, timeout=timeout)
-                    if response.status_code == 503 and is_local:
-                        if time.time() - start_time < max_retry_time:
-                            print(f"[Local LLM] Server is loading model (503). Retrying in {retry_interval}s...", flush=True)
-                            await asyncio.sleep(retry_interval)
-                            continue
+                        mock_data = {
+                            "choices": [{"message": {"role": "assistant", "content": "".join(content_parts)}}],
+                            "model": payload.get("model", ""),
+                        }
+                        return httpx.Response(status_code=200, headers=r.headers, content=json.dumps(mock_data).encode("utf-8"), request=r.request)
 
-                    return response
+                response = await client.post(url, json=payload, headers=headers, timeout=timeout)
+                if response.status_code == 503 and is_local:
+                    if time.time() - start_time < max_retry_time:
+                        print(f"[Local LLM] Server is loading model (503). Retrying in {retry_interval}s...", flush=True)
+                        await asyncio.sleep(retry_interval)
+                        continue
+
+                return response
 
             except httpx.TimeoutException:
                 raise
@@ -310,17 +318,9 @@ class BaseProgramRunner:
 
                 meta["recent_chapters"].clear()
 
-    def _load_temperature_setting(self, default_temp: float = 0.95) -> float:
-        from variables.settings import VARIABLES_DIR
-
-        settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
-        if os.path.exists(settings_path):
-            try:
-                with open(settings_path, "r", encoding="utf-8") as f:
-                    return json.load(f).get("temperature", default_temp)
-            except Exception as e:
-                print(f"Error reading project settings in _execute_local_llm_loop: {e}")
+    def _load_temperature_setting(self, default_temp: float = 0.75) -> float:
         return default_temp
+
 
     def _sanitize_thinking_tags(self, text: str) -> str:
         pattern = (
@@ -455,6 +455,8 @@ class BaseProgramRunner:
 
         async def _invoke_llm(msg_history):
             """Executes inference on the local LLM server."""
+            from core.banned_words import get_logit_bias_dict
+
             payload = {
                 "messages": msg_history,
                 "temperature": temperature,
@@ -463,6 +465,10 @@ class BaseProgramRunner:
             }
             if not is_thinking_enabled() and isinstance(DISABLED_THINKING, dict):
                 payload.update(DISABLED_THINKING)
+
+            logit_bias = get_logit_bias_dict(local_url)
+            if logit_bias:
+                payload["logit_bias"] = logit_bias
 
             response = await self._post_llm_request(local_url, payload, local_headers, timeout=120.0, session_id=session_id)
             if response.status_code == 200:
@@ -775,6 +781,8 @@ class OpenSourceRunner(BaseProgramRunner):
         headers = get_local_server_headers()
         target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
 
+        from core.banned_words import get_logit_bias_dict
+
         payload = {
             "messages": [
                 {"role": "system", "content": system_instruction},
@@ -787,6 +795,10 @@ class OpenSourceRunner(BaseProgramRunner):
             payload.update(DISABLED_THINKING)
         if target_model:
             payload["model"] = target_model
+
+        logit_bias = get_logit_bias_dict(url)
+        if logit_bias:
+            payload["logit_bias"] = logit_bias
 
         r = await self._post_llm_request(url, payload, headers, timeout=60.0)
         if r.status_code == 200:

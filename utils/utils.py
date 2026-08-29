@@ -24,7 +24,7 @@ VECTOR_TOKEN_BUDGET = 2048
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG DIRECTIVES\n"
-       "Tools:\n"
+    "Tools:\n"
     "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` Trigger player D20 check.\n"
     "- `[arena_spend_magicka(amount=...)]` Deduct spell MP cost.\n"
     "- `[arena_spend_stamina(amount=...)]` Deduct exertion Stamina.\n"
@@ -36,15 +36,17 @@ _ARENA_DIRECTIVE_PROMPT = (
     "- `[generate_local_image(prompt=\"...\")]` Generate visual art via ComfyUI.\n"
     "- `[arena_add_item(character_name=\"{{user}}\", item_name=\"...\", item_type=\"...\", quantity=1)]` / `[arena_remove_item(...)]` Inventory changes.\n"
     "- `[arena_add_gold(character_name=\"{{user}}\", amount=...)]` / `[arena_spend_gold(...)]` Currency changes.\n\n"
-        "Rules:\n"
-    "- SKILL CHECKS: Describe the attempt, call [arena_request_skill_check], and stop at the moment of action. Await the player's roll. Narrate success or failure only in the subsequent response.\n"
+    "Rules:\n"
+    "- FORMATTING (MANDATORY): Wrap ALL narration, atmospheric descriptions, environmental details, physical movements, and sensory details in *asterisks* (e.g. *The wall is slick with moisture, and the ledge sits high above.*). Spoken dialogue MUST be in plain text without quotation marks and without asterisks (e.g. Watch your step, {{user}}.). Never output unformatted narration.\n"
+    "- SKILL CHECKS: Describe the attempt in *asterisks*, call [arena_request_skill_check], and stop at the moment of action. Await the player's roll. Narrate success or failure only in the subsequent response.\n"
     "- NPC ROLLS: Resolve NPC and creature actions instantly with [arena_roll_combat] or [arena_roll_check].\n"
     "- VITALS: Deduct MP for magic, Stamina for physical exertion, and HP for wounds alongside narrative action.\n"
     "- INVENTORY: Track all item and gold transactions precisely, with the [arena_inventory] skill.\n"
     "- STATE: Resolve environment shifts with <!-- state: province=\"...\", location=\"...\", hours=... --> when location or time changes. Quest progression is handled strictly via [arena_advance_stage].\n"
-    "- NARRATION: Use gitty, kinetic prose with anthropological weighht. Do not pose questions or choices to {{user}}.\n"
+    "- NARRATION: Use gritty, kinetic prose with anthropological weight. Do not pose questions or choices to {{user}}.\n"
     "- LORE & NAMING: Adhere strictly to canonical Elder Scrolls lore and nomenclature.\n"
 )
+
 
 TOOL_ALIASES = {
     "generate_follower_portrait": "generate_local_image",

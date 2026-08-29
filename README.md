@@ -54,9 +54,16 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 
 ## GETTING STARTED
 
-### Windows (Quick Start):
-Double-click `run_local.bat` (or run `./run_local.ps1` in PowerShell).
-Open your browser at **`http://localhost:5000`**
+### Windows (Quick Start Native Desktop App):
+Double-click `run_local.bat` (or run `./run_local.ps1` in PowerShell, or `./run_local.sh` on Linux/macOS).
+This launches **LM-Arena** directly as a native standalone desktop application with EdgeChromium / WebView2 audio support and integrated local in-process engines.
+
+### Model Placement:
+Place your model files in the designated subdirectories under `models/`:
+* **Chat LLM (GGUF)**: `models/llm/`
+* **Portraits / Checkpoints (SDXL / SD 1.5)**: `models/checkpoints/`
+* **LoRAs**: `models/loras/`
+* **VAE**: `models/vae/`
 
 ### Manual Installation:
 1. Open a terminal in the project directory:
@@ -70,30 +77,29 @@ Open your browser at **`http://localhost:5000`**
    ```bash
    pip install -r requirements.txt
    ```
-4. Start the application:
+4. Start the native desktop application or web server:
    ```bash
+   python desktop.py
+   # Or for browser-only mode:
    python app.py
    ```
-5. Navigate to **`http://localhost:5000`** in your browser.
+5. Navigate to **`http://localhost:5000`** in your browser if running in web mode.
 
 ---
 
 ## PROJECT STRUCTURE
 
+* **`desktop.py`**: Standalone native desktop application window with pywebview.
 * **`app.py`**: Main Flask backend server and REST API endpoints.
-* **`engine/`**: Core game logic:
-  * `mechanics.py`: d20 dice checks, combat resolution, and ability modifiers.
-  * `character.py`: Character sheet definitions, inventory operations, and starting equipment.
-  * `world_engine.py`: Travel calculations, calendar time progression, and world states.
-  * `quest_tracker.py`: Main quest condition validation and stage advancements.
-  * `spellmaker.py`: Arcane school classification and DC evaluation.
-  * `save_manager.py`: Multi-slot save management and synchronization.
-* **`core/lorebooks/`**: Context-triggered world information and lore injection:
-  * `quest/`: The Imperial Simulacrum and Staff of Chaos storyline.
-  * `character/`: Playable heritages and class archetypes.
-  * `world/`: Bestiary, 16 Artifacts, Factions, Services, and Calendar.
-  * `gameplay/`: Combat mechanics, magic schools, and d20 rules.
-* **`core/world/`**: Static province, city, dungeon, and quest stage JSON definitions.
-* **`core/programs/`**: Companion guide profiles, portraits, and dialog scripts (Ria Silmane).
-* **`tools.py`**: LLM tool calls for dice rolling, travel, quest tracking, and spell evaluation.
-* **`static/` & `templates/`**: Responsive web UI, CSS styling, and client-side application logic.
+* **`core/`**:
+  * `engine_diffusion.py` & `comfy_engine/`: In-process GPU diffusion engine for portrait art generation.
+  * `character.py`, `world_engine.py`, `side_quests.py`, `quest_tracker.py`, `save_manager.py`: RPG game logic and world state.
+  * `followers/`: Companion profiles, dialogue scripts, and character cards (Ria Silmane).
+  * `lorebooks/`: Lore grounding for Tamriel, bestiary, artifacts, and factions.
+* **`runners/`**:
+  * `engine_llm.py`, `local_runner.py`, `local_server.py`: In-process GGUF LLM execution and server process orchestration.
+  * `runners.py`: Decoupled open-source runner backend.
+* **`tools/tools.py`**: LLM gameplay tools for D20 skill checks, combat rolls, quest tracking, inventory, and portrait art generation.
+* **`variables/`**: Game saves, settings, and banned words logit suppression dictionaries.
+* **`static/` & `templates/`**: Responsive fantasy web UI, CSS styling, custom scroll app icons, and client logic.
+

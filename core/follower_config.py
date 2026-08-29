@@ -18,15 +18,16 @@ from runners.follower import get_active_follower, get_active_user, get_player_na
 
 # Global formatting rules for narrative roleplay
 GLOBAL_FORMATTING = (
-    "\n\n# MESSAGE FORMAT (MANDATORY)\n"
-    "- Use separate lines and paragraphs for narration and dialogue.\n"
-    "- Narration: Use *italics*, first or third person as appropriate, and present tense for actions, expressions, and environmental details.\n"
-    "- Dialogue: Use plain text without quotation marks. Use **bold** for emphasis.\n"
-    "- State all claims directly and affirmatively in single assertions.\n"
+    "\n\n# MESSAGE FORMAT & STYLING RULES (MANDATORY)\n"
+    "- Narration: Wrap EVERY paragraph, sentence, and phrase of narration, action, expression, physical movement, and environmental detail in *asterisks* (e.g. *The wall is slick with moisture, and the ledge sits high above.*).\n"
+    "- Dialogue: Output spoken speech in plain text without quotation marks and without asterisks (e.g. I am Ria Silmane. We must act quickly.). Use **bold** only for vocal emphasis.\n"
+    "- Paragraph Separation: Keep narration and dialogue separated into distinct, separate lines and paragraphs.\n"
+    "- Claims: State all claims directly and affirmatively in single assertions.\n"
     "- FORBIDDEN: Do not use contrast structures ('not X, but Y', 'it is not A, it is B', 'not just X, it is Y'). Express ideas positively without negating alternatives.\n"
     "- Style: Use short words and precise phrasing. Write with linear progression.\n"
     "- Be succinct, atmospheric, and faithful to Elder Scrolls lore and character persona.\n"
 )
+
 
 GLOBAL_USER_FORMATTING = GLOBAL_FORMATTING
 

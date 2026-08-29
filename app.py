@@ -160,6 +160,12 @@ _trigger_early_prewarm()
 # Initialize the dynamic runner based on configuration
 init_runner()
 
+@app.route('/api/health')
+def health_check():
+    """Lightweight endpoint for desktop launcher readiness detection."""
+    return jsonify({"status": "ok"})
+
+
 
 def reload_follower_state():
     """Reload follower config, reinitialize the runner, and sync active save session."""
@@ -188,16 +194,9 @@ def load_theme(follower_id):
 
 
 def load_temperature():
-    """Read temperature from project settings, locked to 0.85 for LM-Arena balance."""
-    from variables.settings import VARIABLES_DIR
-    settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
-    if os.path.exists(settings_path):
-        try:
-            with open(settings_path, "r", encoding="utf-8") as f:
-                return json.load(f).get("temperature", 0.85)
-        except Exception:
-            pass
-    return 0.85
+    """Returns the pre-defined gameplay temperature (0.75) optimized for Elder Scrolls narrative consistency and formatting."""
+    return 0.75
+
 
 
 def find_image_sidecar_json(image_filename, active_follower):
@@ -317,6 +316,13 @@ def app_icon():
     res = make_response(response)
     res.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return res
+
+@app.route('/favicon.ico')
+def favicon_ico():
+    ico_path = os.path.join('static', 'img', 'app_icon.ico')
+    if os.path.exists(ico_path):
+        return send_file(ico_path, mimetype='image/x-icon')
+    return send_file('static/img/app_icon.png', mimetype='image/png')
 
 @app.route('/profile.png')
 def profile_png():
@@ -4030,17 +4036,8 @@ def _get_current_status():
         remote_cloud_url and remote_cloud_url.strip() and remote_cloud_url != "your_remote_cloud_url_here"
     )
     
-    # Load temperature dynamically
-    temperature = 0.95
-    try:
-        from variables.settings import VARIABLES_DIR
-        settings_path = os.path.join(VARIABLES_DIR, "project_settings.json")
-        if os.path.exists(settings_path):
-            with open(settings_path, "r", encoding="utf-8") as f:
-                settings = json.load(f)
-                temperature = settings.get("temperature", 0.95)
-    except Exception:
-        pass
+    temperature = 0.75
+
         
     comfy_running_state = comfy_manager.check_comfy_running(force_refresh=True)
     if not comfy_running_state and getattr(comfy_manager, '_starting', False):
@@ -4395,16 +4392,168 @@ def comfy_download_checkpoint():
     success, message = trigger_checkpoint_download(url, filename)
     return jsonify({"success": success, "message": message})
 
-@app.route('/api/comfy/checkpoints/download_status', methods=['GET'])
+@app.route('/api/browse_folder', methods=['POST'])
 @requires_auth
-def comfy_checkpoint_download_status():
-    from adapters.comfy_manager import checkpoint_download_status
-    return jsonify(checkpoint_download_status)
+def browse_folder():
+    import sys, subprocess, os, json
+    title = "Select Workspace Folder"
+    selected_folder = ""
+
+    if sys.platform == 'darwin':
+        try:
+            cmd = ['osascript', '-e', f'set f to choose folder with prompt {json.dumps(title)}', '-e', 'POSIX path of f']
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip():
+                selected_folder = res.stdout.strip()
+        except Exception as e:
+            print(f"macOS folder dialog error: {e}")
+    elif sys.platform.startswith('linux'):
+        try:
+            cmd = ['zenity', '--file-selection', '--directory', f'--title={title}']
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip():
+                selected_folder = res.stdout.strip()
+        except Exception:
+            pass
+
+    if not selected_folder:
+        script = (
+            "import tkinter as tk\n"
+            "from tkinter import filedialog\n"
+            "root = tk.Tk()\n"
+            "root.withdraw()\n"
+            "root.attributes('-topmost', True)\n"
+            "root.focus_force()\n"
+            f"folder = filedialog.askdirectory(title={json.dumps(title)})\n"
+            "root.destroy()\n"
+            "if folder:\n"
+            "    print(folder)\n"
+        )
+        try:
+            res = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip():
+                selected_folder = res.stdout.strip()
+        except Exception as e:
+            print(f"Tkinter folder dialog error: {e}")
+
+    if selected_folder:
+        return jsonify({"folder": os.path.normpath(selected_folder)})
+    return jsonify({"folder": None, "cancelled": True})
+
+
+# --- Native In-Process Models Management API ---
+
+@app.route('/api/models/native/list', methods=['GET'])
+@requires_auth
+def list_native_models():
+    """Lists all user-placed GGUF models, Diffusion Checkpoints, LoRAs, and VAEs."""
+    try:
+        from runners import engine_llm
+        from core import engine_diffusion
+        from variables.settings import MODELS_DIR, LLM_MODELS_DIR, CHECKPOINTS_DIR, LORAS_DIR, VAE_DIR
+
+        ggufs = engine_llm.list_gguf_models()
+        checkpoints = engine_diffusion.list_checkpoints()
+        loras = engine_diffusion.list_loras()
+        vaes = engine_diffusion.list_vaes()
+
+        return jsonify({
+            "models_dir": MODELS_DIR,
+            "llm_models_dir": LLM_MODELS_DIR,
+            "checkpoints_dir": CHECKPOINTS_DIR,
+            "loras_dir": LORAS_DIR,
+            "vae_dir": VAE_DIR,
+            "gguf_models": ggufs,
+            "checkpoints": checkpoints,
+            "loras": loras,
+            "vaes": vaes,
+            "active_llm": engine_llm.get_loaded_model_name(),
+            "llm_loaded": engine_llm.is_loaded(),
+            "active_checkpoint": engine_diffusion.get_active_checkpoint()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/models/native/load_llm', methods=['POST'])
+@requires_auth
+def load_native_llm():
+    """Loads a GGUF model into in-process memory."""
+    try:
+        from runners import engine_llm
+        data = request.get_json() or {}
+        model_name = data.get("model_name", "")
+        n_ctx = int(data.get("n_ctx")) if data.get("n_ctx") else None
+        n_gpu_layers = int(data.get("n_gpu_layers")) if data.get("n_gpu_layers") is not None else None
+        success, message = engine_llm.load_model(model_name, n_ctx=n_ctx, n_gpu_layers=n_gpu_layers)
+        return jsonify({"success": success, "message": message, "active_model": engine_llm.get_loaded_model_name()})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/api/models/native/select_checkpoint', methods=['POST'])
+@requires_auth
+def select_native_checkpoint():
+    """Sets the active in-process diffusion checkpoint."""
+    try:
+        from core import engine_diffusion
+        data = request.get_json() or {}
+        ckpt_name = data.get("checkpoint_name", "")
+        success = engine_diffusion.set_active_checkpoint(ckpt_name)
+        return jsonify({"success": success, "active_checkpoint": engine_diffusion.get_active_checkpoint()})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/api/models/native/unload_llm', methods=['POST'])
+@requires_auth
+def unload_native_llm():
+    """Unloads the active in-process GGUF model."""
+    try:
+        from runners import engine_llm
+        success = engine_llm.unload_model()
+        return jsonify({"success": success, "message": "Model unloaded." if success else "No model was loaded."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/api/models/native/open_folder', methods=['POST'])
+@requires_auth
+def open_models_folder():
+    """Opens the requested models folder in the native OS file explorer."""
+    try:
+        import subprocess, sys
+        from variables.settings import MODELS_DIR, LLM_MODELS_DIR, CHECKPOINTS_DIR, LORAS_DIR, VAE_DIR
+
+        data = request.get_json(silent=True) or {}
+        folder_type = data.get("folder", "root")
+
+        target_map = {
+            "root": MODELS_DIR,
+            "llm": LLM_MODELS_DIR,
+            "checkpoints": CHECKPOINTS_DIR,
+            "loras": LORAS_DIR,
+            "vae": VAE_DIR
+        }
+        target_dir = target_map.get(folder_type, MODELS_DIR)
+        os.makedirs(target_dir, exist_ok=True)
+
+        if sys.platform == 'win32':
+            os.startfile(target_dir)
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', target_dir])
+        else:
+            subprocess.Popen(['xdg-open', target_dir])
+
+        return jsonify({"success": True, "path": target_dir})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # Prewarming is now handled on the first request inside start_prewarm_on_first_request()
 
 if __name__ == '__main__':
+
     host = os.getenv('HOST', '0.0.0.0')
     port = int(os.getenv('PORT', '5000'))
     
