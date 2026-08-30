@@ -30,7 +30,7 @@ def start_img() -> bool:
 
         try:
             from runners import engine_llm
-            if hasattr(engine_llm, "is_loaded") and engine_llm.is_loaded():
+            if engine_llm.is_loaded():
                 engine_llm.unload_model()
         except Exception:
             pass
