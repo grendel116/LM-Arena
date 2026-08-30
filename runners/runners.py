@@ -6,9 +6,23 @@ import os
 import re
 import threading
 import time
-import uuid
+cancelled_sessions = set()
+voice_call_sessions = set()
 
-import httpx
+_session_update_listeners = set()
+
+def register_session_listener(q):
+    _session_update_listeners.add(q)
+
+def unregister_session_listener(q):
+    _session_update_listeners.discard(q)
+
+def broadcast_session_update(session_id: str):
+    for q in list(_session_update_listeners):
+        try:
+            q.put_nowait(session_id)
+        except Exception:
+            pass
 
 from adapters.history_adapters import LocalHistoryAdapter, OsHistoryAdapter
 from models.models import is_local_model
@@ -824,6 +838,7 @@ class OpenSourceRunner(BaseProgramRunner):
                 bundle["messages"] = self.sessions_history.get(session_id, [])
                 bundle["memory_state"] = self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
                 write_save(target_id, bundle)
+                broadcast_session_update(session_id)
             except Exception as e:
                 print(f"Error saving OS session {session_id} to disk: {e}")
 

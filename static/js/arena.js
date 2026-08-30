@@ -9857,11 +9857,36 @@ setInterval(async () => {
 
 
 
+let sseEventSource = null;
+
+function initSessionSync() {
+    if (sseEventSource) {
+        sseEventSource.close();
+        sseEventSource = null;
+    }
+    if (typeof sessionId === 'undefined' || !sessionId) return;
+    try {
+        sseEventSource = new EventSource(`/api/stream_events?session_id=${encodeURIComponent(sessionId)}`);
+        sseEventSource.addEventListener('session_updated', (e) => {
+            if (typeof isGenerating === 'undefined' || !isGenerating) {
+                console.log("[SYNC] Session updated remotely, syncing history...");
+                loadHistory();
+            }
+        });
+        sseEventSource.onerror = (err) => {
+            console.warn("[SYNC] SSE connection issue, retrying...", err);
+        };
+    } catch (e) {
+        console.error("[SYNC] Could not start EventSource:", e);
+    }
+}
+
 // Load previous chat history on DOM ready
 function initMainApp() {
     updateProfileImages();
     loadHistory();
     fetchCharacterStatus();
+    initSessionSync();
 }
 if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', initMainApp);
