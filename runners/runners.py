@@ -120,17 +120,18 @@ class BaseProgramRunner:
                 print(f"[CANCEL] Aborting HTTP request for session {session_id}", flush=True)
                 raise asyncio.CancelledError("Session cancelled by user request.")
 
+        # Pre-flight check: ensure local LLM server is booted and ready before making requests
+        if is_local:
+            from adapters.vram_orchestrator import start_llm_async
+            target_model = payload.get("model")
+            server_ready = await start_llm_async(target_model)
+            if not server_ready:
+                raise RuntimeError(f"Local LLM server is offline or failed to start (model: {target_model or 'default'}). Check logs/llama_server.log for details.")
+
         while True:
             _check_cancellation()
 
             try:
-                from runners import local_runner
-                status = local_runner.check_local_server_status()
-                if not status or status == "stopped":
-                    print("[Local LLM] Server is currently stopped. Auto-restarting local server on demand...", flush=True)
-                    local_runner.start_local_server()
-                    await asyncio.sleep(1.0)
-                    continue
 
                 client = get_http_client()
                 if session_id:

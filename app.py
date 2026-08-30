@@ -1370,6 +1370,125 @@ def regenerate_image():
         print(f"Error regenerating image in session {session_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
+def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "") -> str:
+    """Extracts comma-separated visual tags from the latest conversation and follower context
+    by querying the LLM (which automatically triggers start_llm()).
+    """
+    if custom_prompt and custom_prompt.strip():
+        return custom_prompt.strip()
+
+    from runners.follower import get_active_follower
+    active_fol = get_active_follower()
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    fol_json = os.path.normpath(os.path.join(base_dir, "core", "followers", active_fol, f"{active_fol}.json"))
+    description = ""
+    scenario = ""
+    char_name = active_fol.replace("_", " ").title()
+    user_name = "User"
+    
+    if os.path.exists(fol_json):
+        try:
+            with open(fol_json, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            card = raw.get("data", raw)
+            char_name = card.get("name") or char_name
+            description = card.get("description", "").strip()
+            scenario = card.get("scenario", "").strip()
+        except Exception:
+            pass
+
+    chat_history = []
+    try:
+        chat_history = asyncio.run(runner.get_history(session_id))
+    except Exception:
+        pass
+
+    recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
+    history_text = ""
+    for msg in recent_history:
+        role = user_name if msg.get('role') == 'user' else char_name
+        text_val = msg.get('text', '')
+        if text_val and not text_val.startswith("![Portrait"):
+            history_text += f"{role}: {text_val}\n"
+
+    system_instruction = (
+        "You are an expert Stable Diffusion prompt tagger. "
+        f"Your task is to generate precise visual image tags depicting the character '{char_name}' in the current scene.\n"
+        "Rules for tag generation:\n"
+        f"1. Main Subject: Focus on '{char_name}' (e.g. '1girl, solo'). Do NOT include additional characters.\n"
+        "2. Character & Outfit: Include the character's clothing/outfit, features, and accessories.\n"
+        "3. Setting & Environment: Include environment details combined with the active scene context.\n"
+        "4. Pose & Expression: Capture the character's posture, action, and expression.\n"
+        "5. Format: Output ONLY comma-separated tags. "
+        "ONLY output the comma-separated prompt tags."
+    )
+
+    prompt_parts = []
+    if description:
+        prompt_parts.append(f"Character Profile ({char_name}):\n{description}")
+    if scenario:
+        prompt_parts.append(f"Default Setting / Scenario:\n{scenario}")
+    if history_text:
+        prompt_parts.append(f"Recent Scene & Dialogue:\n{history_text.strip()}")
+    prompt_parts.append(f"Output comma-separated Stable Diffusion tags for {char_name} in this scene:")
+    prompt = "\n\n".join(prompt_parts)
+
+    try:
+        from adapters.vram_orchestrator import start_llm
+        start_llm()
+        tags = asyncio.run(runner.generate_impersonation(prompt, system_instruction, temperature=0.3))
+        if tags:
+            import re
+            tags = re.sub(r'<think>.*?</think>', '', tags, flags=re.DOTALL).strip()
+            tags = tags.strip('`"\'').strip()
+            if tags:
+                print(f"[Portrait] LLM extracted tags: {tags}", flush=True)
+                return tags
+    except Exception as e:
+        print(f"[Portrait] Error querying LLM for tags: {e}", flush=True)
+
+    return custom_prompt
+
+
+@app.route('/api/portrait/generate', methods=['POST'])
+@requires_auth
+def api_generate_portrait():
+    session_id = request.json.get('session_id', 'default')
+    custom_prompt = request.json.get('prompt', '')
+
+    try:
+        import tools.tools as tools
+        tools.current_session_id.set(session_id)
+        with tools.session_tool_calls_lock:
+            tools.session_tool_calls[session_id] = []
+
+        # 1. Decoupled tag extraction via LLM (auto-starts LLM if paused)
+        extracted_tags = extract_portrait_tags_from_context(session_id, custom_prompt)
+
+        # 2. Local GPU image generation (unloads LLM before running diffusion engine)
+        new_markdown = tools.generate_local_image(extracted_tags)
+
+        if new_markdown.startswith("Error"):
+            return jsonify({'error': new_markdown}), 500
+
+        # Extract image URL
+        new_image_url = None
+        if new_markdown.startswith("![") and new_markdown.endswith(")"):
+            new_image_url = new_markdown.split("(", 1)[1][:-1]
+
+        # Append directly to session history as an image message
+        asyncio.run(runner.append_message_to_session(session_id, "follower", new_markdown))
+
+        return jsonify({
+            'status': 'success',
+            'markdown': new_markdown,
+            'image_url': new_image_url
+        })
+    except Exception as e:
+        print(f"Error generating direct portrait: {e}")
+        return jsonify({'error': str(e)}), 500
+
 import threading
 import uuid
 

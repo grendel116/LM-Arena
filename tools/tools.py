@@ -327,12 +327,8 @@ def generate_local_image(prompt: str) -> str:
 
     # Execute in-process DirectML GPU diffusion engine
     try:
-        try:
-            from runners import local_runner
-            print("[engine_diffusion] Unloading local LLM server to release VRAM for ComfyUI...")
-            local_runner.stop_local_server()
-        except Exception as unload_err:
-            print(f"[engine_diffusion] Note unloading local LLM: {unload_err}")
+        from adapters.vram_orchestrator import start_img
+        start_img()
 
         from core.engine_diffusion import generate_portrait_image
         generate_portrait_image(
