@@ -83,7 +83,7 @@ Place your model files in the designated subdirectories under `models/`:
    # Or for browser-only mode:
    python app.py
    ```
-5. Navigate to **`http://localhost:5000`** in your browser if running in web mode.
+5. Navigate to **`http://localhost:5000`** (or your LAN hostname/IP at port `5000`) in your browser if running in web mode.
 
 ---
 
