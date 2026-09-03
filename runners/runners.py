@@ -1,28 +1,13 @@
 import asyncio
 import copy
+import httpx
 import json
 import mimetypes
 import os
 import re
 import threading
 import time
-cancelled_sessions = set()
-voice_call_sessions = set()
-
-_session_update_listeners = set()
-
-def register_session_listener(q):
-    _session_update_listeners.add(q)
-
-def unregister_session_listener(q):
-    _session_update_listeners.discard(q)
-
-def broadcast_session_update(session_id: str):
-    for q in list(_session_update_listeners):
-        try:
-            q.put_nowait(session_id)
-        except Exception:
-            pass
+import uuid
 
 from adapters.history_adapters import LocalHistoryAdapter, OsHistoryAdapter
 from models.models import is_local_model
@@ -51,6 +36,9 @@ from variables.settings import (
 cancelled_sessions: set[str] = set()
 voice_call_sessions: set[str] = set()
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+TOOL_TAG_RE = re.compile(r"\[(\w+)\(([\s\S]*?)\)\]")
+TOOL_TAG_STRIP_RE = re.compile(r"\[\w+\([\s\S]*?\n?\)\]", flags=re.DOTALL)
 
 _http_client: httpx.AsyncClient | None = None
 _http_client_loop: asyncio.AbstractEventLoop | None = None
@@ -222,7 +210,7 @@ class BaseProgramRunner:
             payload["model"] = target_model
 
         try:
-            response = await self._post_llm_request(REMOTE_SERVER_URL, payload, get_remote_server_headers(), timeout=60.0)
+            response = await self._post_llm_request(LOCAL_SERVER_URL, payload, get_local_server_headers(), timeout=180.0)
             if response.status_code == 200:
                 raw_text = response.json()["choices"][0]["message"].get("content", "").strip()
                 think_pattern = r"(?:<think>|\[think\])[\s\S]*?(?:</think>|\[/think\]|<\/\s*think>|\[\s*/\s*think\s*\]|$)"
@@ -291,47 +279,63 @@ class BaseProgramRunner:
     async def _process_memory_pipeline(self, session_id: str, active_model: str, user_text: str, assistant_text: str):
         """Asynchronous post-turn worker handling Step 2 (Chapters) and Step 3 (Epic & RAG)."""
         meta = self._get_memory_meta(session_id)
-        buffer = meta["unsummarized_buffer"]
+        history = self.sessions_history.get(session_id, [])
 
-        # 1. Append exchange to buffer
-        buffer.append({"user": user_text, "assistant": assistant_text})
+        # Filter to user and follower/assistant messages only
+        dialogue_messages = [
+            msg for msg in history 
+            if msg.get("role") in ("user", "assistant", "follower", "program")
+        ]
+        
+        turn_count = len(dialogue_messages) // 2
 
-        # 2. STEP 2 TRIGGER: Every 12 turns, generate a mid-term Chapter Summary
-        if len(buffer) >= 12:
+        # Trigger summary every 12 full turns using trimmed history
+        if turn_count > 0 and turn_count % 12 == 0:
+            # Take the last 24 dialogue entries (12 full turns)
+            recent_turns = dialogue_messages[-24:]
+            
+            # Format and truncate long messages if needed to fit context limits
             formatted_turns = "\n".join(
-                f"User: {turn['user']}\nAssistant: {turn['assistant']}" for turn in buffer
+                f"{('User' if msg.get('role') == 'user' else 'Follower')}: {(msg.get('text') or msg.get('content') or '')[:1000]}" 
+                for msg in recent_turns
             )
+
             chapter_summary = await self._generate_local_summary(
                 text_to_summarize=formatted_turns,
                 active_model=active_model,
-                prior_memories=meta["recent_chapters"]
+                prior_memories=meta.get("recent_chapters", [])
             )
 
-            meta["recent_chapters"].append(chapter_summary)
-            buffer.clear()
+            if chapter_summary and not chapter_summary.startswith("Memory compaction summary generation failed"):
+                meta.setdefault("recent_chapters", []).append(chapter_summary)
 
-            # 3. STEP 3 TRIGGER: Every 5 chapters, distill Epic Chronicle & offload to Vector DB
-            if len(meta["recent_chapters"]) >= 5:
-                all_chapters_text = "\n\n".join(meta["recent_chapters"])
-                
-                meta["epic_chronicle"] = await self._distill_epic_chronicle(
-                    text_to_distill=all_chapters_text,
-                    active_model=active_model
-                )
+                # STEP 3 TRIGGER: Every 5 chapters, distill Epic Chronicle & offload to Vector DB
+                if len(meta["recent_chapters"]) >= 5:
+                    all_chapters_text = "\n\n".join(meta["recent_chapters"])
+                    
+                    epic_summary = await self._distill_epic_chronicle(
+                        text_to_distill=all_chapters_text,
+                        active_model=active_model
+                    )
+                    if epic_summary and not epic_summary.startswith("Distillation failed"):
+                        meta["epic_chronicle"] = epic_summary
 
-                try:
-                    from core.skills.vectorized_databank.databank import DataBankManager
-                    db = DataBankManager()
-                    for idx, ch in enumerate(meta["recent_chapters"]):
-                        db.add_document(
-                            text=ch,
-                            source_type="chapter_memory",
-                            metadata={"session_id": session_id, "chapter_index": idx}
-                        )
-                except Exception as e:
-                    print(f"[MEMORY PIPELINE] Error offloading chapters to Vector DB: {e}", flush=True)
+                    try:
+                        from core.skills.vectorized_databank.databank import DataBankManager
+                        db = DataBankManager()
+                        for idx, ch in enumerate(meta["recent_chapters"]):
+                            db.add_document(
+                                text=ch,
+                                source_type="chapter_memory",
+                                metadata={"session_id": session_id, "chapter_index": idx}
+                            )
+                    except Exception as e:
+                        print(f"[MEMORY PIPELINE] Error offloading chapters to Vector DB: {e}", flush=True)
 
-                meta["recent_chapters"].clear()
+                    meta["recent_chapters"].clear()
+
+                self._save_session_to_disk(session_id)
+
 
     def _load_temperature_setting(self, default_temp: float = 0.75) -> float:
         return default_temp
@@ -346,105 +350,6 @@ class BaseProgramRunner:
         cleaned = re.sub(pattern, "", text, flags=re.IGNORECASE)
         return re.sub(r"<\|channel\|>|<channel\|>", "", cleaned, flags=re.IGNORECASE).strip()
 
-    async def _handle_image_tool_execution(
-        self, match, bot_response_text: str, adapter: LocalHistoryAdapter, invocation_id: str
-    ) -> tuple[str, list]:
-        tool_name = match.group(1)
-        args_str = match.group(2)
-
-        adapter.append_assistant_message(bot_response_text, [], invocation_id)
-        parsed_args, new_markdown = _execute_emulated_tool(tool_name, args_str)
-        normalized_name = _normalize_tool_name(tool_name)
-
-        original_tag = match.group(0)
-        image_succeeded = new_markdown.startswith("![") and new_markdown.endswith(")")
-
-        if image_succeeded:
-            bot_response_text = bot_response_text.replace(original_tag, new_markdown)
-        else:
-            bot_response_text = bot_response_text.replace(original_tag, f"*({new_markdown})*").strip()
-
-        resolved_args = (
-            parsed_args["kwargs"]
-            if parsed_args["kwargs"]
-            else {"prompt": parsed_args["args"][0] if parsed_args["args"] else ""}
-        )
-        t_calls = _build_tool_calls_pair(normalized_name, resolved_args, new_markdown)
-        call_id = t_calls[0]["id"]
-
-        adapter.append_image_tool_events(normalized_name, t_calls[0]["args"], new_markdown, call_id, invocation_id)
-
-        final_embedded_text = (
-            self._ensure_images_are_embedded(bot_response_text) if image_succeeded else bot_response_text
-        )
-        adapter.append_assistant_message(final_embedded_text, t_calls, invocation_id)
-
-        return final_embedded_text, t_calls
-
-    async def _handle_non_blocking_tools(
-        self, matches: list, bot_response_text: str, adapter: LocalHistoryAdapter, session_id: str, invocation_id: str
-    ) -> tuple[str, list]:
-        clean_response = bot_response_text
-        for m in matches:
-            clean_response = clean_response.replace(m.group(0), "")
-        clean_response = re.sub(r"[ \t]+", " ", clean_response)
-        clean_response = re.sub(r"\n{3,}", "\n\n", clean_response).strip()
-
-        results = []
-        for m_tool in matches:
-            if session_id in cancelled_sessions:
-                raise asyncio.CancelledError("Session cancelled by user request.")
-            parsed_args, output = _execute_emulated_tool(m_tool.group(1), m_tool.group(2))
-            results.append((_normalize_tool_name(m_tool.group(1)), parsed_args["kwargs"], output))
-
-        t_calls = []
-        for idx, (t_name, t_args, t_output) in enumerate(results):
-            t_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
-
-        adapter.append_assistant_message(clean_response, t_calls, invocation_id)
-        adapter.append_tool_events(results, invocation_id)
-        return clean_response, t_calls
-
-    async def _handle_sequential_tools(
-        self, matches: list, bot_response_text: str, seen_tool_calls: set, adapter: LocalHistoryAdapter, session_id: str, invocation_id: str
-    ) -> list:
-        first_match_start = min(m.start() for m in matches)
-        text_before = bot_response_text[:first_match_start].strip()
-
-        results = []
-        for m_tool in matches:
-            if session_id in cancelled_sessions:
-                raise asyncio.CancelledError("Session cancelled by user request.")
-
-            t_name = m_tool.group(1)
-            a_str = m_tool.group(2)
-            normalized_name = _normalize_tool_name(t_name)
-            parsed_args = _parse_emulated_tool_call(normalized_name, a_str)
-
-            key_arg = (
-                str(list(parsed_args["kwargs"].values())[0])
-                if parsed_args["kwargs"]
-                else (str(parsed_args["args"][0]) if parsed_args["args"] else "")
-            )
-            dedup_key = (normalized_name, key_arg)
-
-            if dedup_key in seen_tool_calls:
-                output = f"[Skipped: '{normalized_name}' with this input was already called. Use a different query or URL.]"
-                results.append((normalized_name, parsed_args["kwargs"], output))
-                continue
-
-            seen_tool_calls.add(dedup_key)
-            parsed_args, output = _execute_emulated_tool(t_name, a_str)
-            results.append((normalized_name, parsed_args["kwargs"], output))
-
-        t_calls = []
-        for idx, (t_name, t_args, t_output) in enumerate(results):
-            t_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
-
-        adapter.append_assistant_message(text_before, t_calls, invocation_id, intermediate=True)
-        adapter.append_tool_events(results, invocation_id)
-        return t_calls
-
     async def _execute_local_llm_loop(
         self,
         session_id: str,
@@ -454,93 +359,148 @@ class BaseProgramRunner:
         new_message_text: str,
         invocation_id: str,
     ) -> tuple[str, list]:
-        # --- STAGE 1: LOCAL PREPROCESSING & TIERED TRIMMING ---
-        sys_instructions = self._get_system_instructions(session_id, user_message=new_message_text)
+        max_iterations = 5
+        iteration = 0
+        all_tool_calls = []
+        final_response_text = ""
+        target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
 
-        # The adapter automatically builds, prioritizes, and trims system blocks, 
-        # chat history, and post-injections to fit within MAX_INPUT_TOKENS (6500)
-        messages = adapter.get_openai_messages(sys_instructions, rag_context)
+        while iteration < max_iterations:
+            iteration += 1
 
-        temperature = self._load_temperature_setting()
-        local_url = LOCAL_SERVER_URL
-        local_headers = get_local_server_headers()
-        local_model = os.getenv("LOCAL_MODEL_NAME") or (model if model and model != "local-llm" else "local-llm")
+            # --- STAGE 1: LOCAL PREPROCESSING ---
+            sys_instructions = self._get_system_instructions(session_id, user_message=new_message_text)
+            messages = adapter.get_openai_messages(sys_instructions, rag_context)
+            messages = _trim_context_messages(messages, max_chars=26000)
 
-        trimmed_messages = _trim_context_messages(messages, max_chars=26000)
+            # --- STAGE 2: LOCAL PROCESSING PASS ---
+            temperature = self._load_temperature_setting()
+            url = LOCAL_SERVER_URL
+            headers = get_local_server_headers()
 
-        async def _invoke_llm(msg_history):
-            """Executes inference on the local LLM server."""
+            from variables.settings import is_thinking_enabled, DISABLED_THINKING
             from core.banned_words import get_logit_bias_dict
 
             payload = {
-                "messages": msg_history,
+                "messages": messages,
                 "temperature": temperature,
                 "max_tokens": 1024,
-                "model": local_model
             }
             if not is_thinking_enabled() and isinstance(DISABLED_THINKING, dict):
                 payload.update(DISABLED_THINKING)
+            if target_model:
+                payload["model"] = target_model
 
-            logit_bias = get_logit_bias_dict(local_url)
+            logit_bias = get_logit_bias_dict(url)
             if logit_bias:
                 payload["logit_bias"] = logit_bias
 
-            response = await self._post_llm_request(local_url, payload, local_headers, timeout=120.0, session_id=session_id)
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"], local_model
-            raise RuntimeError(f"Local LLM server returned HTTP {response.status_code}: {response.text}")
+            bot_response_text = ""
+            try:
+                response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+                if response.status_code == 200:
+                    bot_response_text = response.json()["choices"][0]["message"]["content"]
+                else:
+                    bot_response_text = f"Error: {response.text}"
+            except Exception as e:
+                # Query in-process engine if external server is offline
+                try:
+                    from runners import engine_llm
+                    if engine_llm.is_loaded():
+                        bot_response_text = await asyncio.to_thread(
+                            engine_llm.generate_text,
+                            messages,
+                            temperature,
+                            1024
+                        )
+                except Exception:
+                    pass
 
-        # --- STAGE 2: SINGLE PROCESSING PASS (IN INITIAL TURN) ---
-        bot_response_text, target_model = await _invoke_llm(trimmed_messages)
+                if not bot_response_text:
+                    bot_response_text = f"Error: Could not connect to LLM ({e}). Ensure local llama-server is running."
 
-        # --- STAGE 3: POST-PROCESSING & TOOL EXECUTION ---
-        bot_response_text = self._sanitize_thinking_tags(bot_response_text)
-        bot_response_text = _convert_json_tool_calls_to_tags(bot_response_text)
+            # --- STAGE 3: POST-PROCESSING (TOOLS & CLEANUP) ---
+            bot_response_text = self._sanitize_thinking_tags(bot_response_text)
+            bot_response_text = _convert_json_tool_calls_to_tags(bot_response_text)
 
-        matches = list(re.finditer(r"\[(\w+)\(([\s\S]*?)\)\]", bot_response_text))
-        tool_calls = []
+            matches = list(TOOL_TAG_RE.finditer(bot_response_text))
 
-        if matches:
-            # 1. Execute tools locally
-            results = []
-            for m_tool in matches:
+            if matches:
                 if session_id in cancelled_sessions:
                     raise asyncio.CancelledError("Session cancelled by user request.")
-                parsed_args, output = _execute_emulated_tool(m_tool.group(1), m_tool.group(2))
-                results.append((_normalize_tool_name(m_tool.group(1)), parsed_args["kwargs"], output))
 
-            for idx, (t_name, t_args, t_output) in enumerate(results):
-                tool_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, idx))
+                loop = asyncio.get_running_loop()
+                tasks = [
+                    loop.run_in_executor(None, _execute_emulated_tool, m.group(1), m.group(2))
+                    for m in matches
+                ]
+                raw_results = await asyncio.gather(*tasks)
 
-            clean_initial_response = re.sub(r"\[\w+\([\s\S]*?\n?\)\]", "", bot_response_text, flags=re.DOTALL).strip()
-            
-            adapter.append_assistant_message(clean_initial_response, tool_calls, invocation_id)
-            adapter.append_tool_events(results, invocation_id)
+                results = [
+                    (_normalize_tool_name(m.group(1)), parsed_args["kwargs"], output)
+                    for m, (parsed_args, output) in zip(matches, raw_results)
+                ]
 
-            # 2. Local-First Synthesis Pass (Appends Tool outputs directly to messages payload)
-            synthesis_messages = list(messages)
-            synthesis_messages.append({"role": "assistant", "content": clean_initial_response})
-            
-            formatted_tool_logs = "\n".join([f"Tool '{name}' Output:\n{out}" for name, _, out in results])
-            synthesis_prompt = f"Tool Execution Output Log:\n{formatted_tool_logs}\n\nPlease synthesize these results to directly answer the user's initial request."
-            synthesis_messages.append({"role": "user", "content": synthesis_prompt})
+                tool_calls = []
+                for idx, (t_name, t_args, t_output) in enumerate(results):
+                    tool_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, len(all_tool_calls) + idx))
+                all_tool_calls.extend(tool_calls)
 
-            try:
-                synthesis_text, target_model = await _invoke_llm(synthesis_messages)
-                if synthesis_text:
-                    bot_response_text = f"{clean_initial_response}\n\n{synthesis_text}"
-            except Exception as synth_err:
-                print(f"[SYNTHESIS WARNING] Synthesis pass failed: {synth_err}", flush=True)
-                bot_response_text = clean_initial_response
-        else:
-            adapter.append_assistant_message(bot_response_text, tool_calls, invocation_id)
+                clean_text = TOOL_TAG_STRIP_RE.sub("", bot_response_text).strip()
 
-        # Final formatting & cleanup
+                # Terminal / side-effect tools that do not require continued LLM turn
+                terminal_tools = {
+                    "add_journal_entry",
+                    "add_quest",
+                    "generate_local_image",
+                    "generate_follower_portrait",
+                    "generate_player_portrait",
+                    "generate_environment_image",
+                    "generate_program_portrait",
+                    "generate_general_image",
+                    "generate_imagen",
+                    "apply_comfy_workflow",
+                    "generate_video_from_image",
+                }
+                if all(t_name in terminal_tools for t_name, _, _ in results):
+                    final_response_text = clean_text
+                    image_tools = {
+                        "generate_local_image",
+                        "generate_follower_portrait",
+                        "generate_player_portrait",
+                        "generate_environment_image",
+                        "generate_program_portrait",
+                        "generate_general_image",
+                        "generate_imagen",
+                        "apply_comfy_workflow",
+                    }
+                    if any(t_name in image_tools for t_name, _, _ in results):
+                        msg_lower = new_message_text.lower()
+                        is_portrait_turn = any(k in msg_lower for k in ("portrait", "draw", "picture", "image", "photo", "selfie", "generate_program_portrait", "generate_local_image", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"))
+                        if is_portrait_turn:
+                            final_response_text = ""
+                    adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id)
+                    break
+
+                adapter.append_assistant_message(clean_text, tool_calls, invocation_id, intermediate=True)
+                adapter.append_tool_events(results, invocation_id)
+
+                if clean_text:
+                    final_response_text = clean_text
+
+                continue
+            else:
+                clean_text = bot_response_text.strip()
+                final_response_text = clean_text if clean_text else final_response_text
+
+                adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id)
+                break
+
         adapter.post_process_thoughts(invocation_id)
-        bot_response_text = self._ensure_images_are_embedded(bot_response_text)
+        final_response_text = self._ensure_images_are_embedded(final_response_text)
 
         if isinstance(session_id, str) and session_id.endswith("_voice"):
-            bot_response_text = strip_story(bot_response_text)
+            final_response_text = strip_story(final_response_text)
 
         # Background Memory Pipeline Task
         asyncio.create_task(
@@ -548,11 +508,11 @@ class BaseProgramRunner:
                 session_id=session_id,
                 active_model=target_model or "",
                 user_text=new_message_text,
-                assistant_text=bot_response_text
+                assistant_text=final_response_text
             )
         )
 
-        return bot_response_text, tool_calls
+        return final_response_text, all_tool_calls
     
     @property
     def sessions_dir(self) -> str:
@@ -766,14 +726,32 @@ class BaseProgramRunner:
 
         instructions += _ARENA_DIRECTIVE_PROMPT
 
-        # Correctly indented portrait override directive
-        if user_message and any(k in user_message for k in ("Generate a portrait of yourself", "[GENERATE_IMAGEN:", "generate_follower_portrait")):
-            instructions += (
-                "\n\n# IMMEDIATE PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
-                "The user requested an image generation. You MUST output ONLY the tool call tag "
-                "`[generate_follower_portrait(prompt=\"...\")]`. Do NOT write dialogue, story progression, "
-                "or narrative descriptions. Output NOTHING except the tool call."
-            )
+        # Image and portrait generation directives
+        if user_message and any(k in user_message for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:", "[GENERATE_PLAYER_PORTRAIT:", "[GENERATE_ENVIRONMENT:", "[GENERATE_FOLLOWER_PORTRAIT:", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image")):
+            msg_lower = user_message.lower()
+            if any(k in msg_lower for k in ("player character", "player portrait", "[generate_player_portrait:")):
+                instructions += (
+                    "\n\n# IMMEDIATE PLAYER PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
+                    "The user requested a portrait of their player character. Using the active player character's name, race, gender, class, worn gear, and appearance, "
+                    "construct detailed comma-separated visual tags and output ONLY the tool call tag "
+                    "`[generate_player_portrait(prompt=\"1man/1girl, solo, [race], [class], [appearance tags]...\")]`. "
+                    "Do NOT depict {{char}}. Do NOT write dialogue, story progression, or narrative descriptions. Output NOTHING except the tool call."
+                )
+            elif any(k in msg_lower for k in ("environment", "landscape", "scenic view", "[generate_environment:")):
+                instructions += (
+                    "\n\n# IMMEDIATE ENVIRONMENT SCENE DIRECTIVE (CRITICAL OVERRIDE)\n"
+                    "The user requested a visual depiction of the current environment and surroundings. "
+                    "Construct detailed comma-separated visual tags describing the scenery, architecture, lighting, dungeon/wilderness atmosphere, and materials without any people or characters, and output ONLY the tool call tag "
+                    "`[generate_environment_image(prompt=\"scenery, environment, landscape, [location], [lighting], [atmosphere], no humans...\")]`. "
+                    "Do NOT depict any characters. Do NOT write dialogue, story progression, or narrative descriptions. Output NOTHING except the tool call."
+                )
+            else:
+                instructions += (
+                    "\n\n# IMMEDIATE COMPANION PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
+                    "The user requested an image generation of {{char}}. You MUST output ONLY the tool call tag "
+                    "`[generate_follower_portrait(prompt=\"...\")]`. Do NOT write dialogue, story progression, "
+                    "or narrative descriptions. Output NOTHING except the tool call."
+                )
 
         return instructions
 
@@ -838,7 +816,6 @@ class OpenSourceRunner(BaseProgramRunner):
                 bundle["messages"] = self.sessions_history.get(session_id, [])
                 bundle["memory_state"] = self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
                 write_save(target_id, bundle)
-                broadcast_session_update(session_id)
             except Exception as e:
                 print(f"Error saving OS session {session_id} to disk: {e}")
 
@@ -1222,12 +1199,13 @@ class OpenSourceRunner(BaseProgramRunner):
 
             modified = False
             indices_to_delete = set()
-            pattern = r"!\[[^\]]*\]\(" + re.escape(image_url) + r"\)"
+            base_url = image_url.split("?")[0]
+            pattern = r"!\[[^\]]*\]\(" + re.escape(base_url) + r"(?:\?[^)]*)?\)"
 
             for i, msg in enumerate(history):
                 has_image = False
 
-                if msg.get("text") and image_url in msg["text"]:
+                if msg.get("text") and base_url in msg["text"]:
                     has_image = True
                     remaining_text = re.sub(pattern, "", msg["text"]).strip()
                     if not re.sub(r"^[:\s\-\*]+|[:\s\-\*]+$", "", remaining_text):
@@ -1236,7 +1214,7 @@ class OpenSourceRunner(BaseProgramRunner):
                         msg["text"] = remaining_text
                     modified = True
 
-                if msg.get("image_url") == image_url:
+                if msg.get("image_url") and base_url in msg["image_url"]:
                     has_image = True
                     msg["image_url"] = None
                     if not (msg.get("text") or "").strip():
@@ -1246,7 +1224,7 @@ class OpenSourceRunner(BaseProgramRunner):
                 if tool_calls := msg.get("tool_calls"):
                     cleared_call_ids = set()
                     for tc in tool_calls:
-                        if tc.get("type") == "response" and tc.get("response") and image_url in tc["response"]:
+                        if tc.get("type") == "response" and tc.get("response") and base_url in tc["response"]:
                             has_image = True
                             tc["response"] = re.sub(pattern, "", tc["response"]).strip()
                             if not tc["response"]:
@@ -1269,7 +1247,7 @@ class OpenSourceRunner(BaseProgramRunner):
 
                 if has_image and i > 0:
                     prev_msg = history[i - 1]
-                    if prev_msg.get("role") == "user" and "Generate a portrait of yourself" in (prev_msg.get("text") or ""):
+                    if prev_msg.get("role") == "user" and any(k in (prev_msg.get("text") or "") for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:")):
                         indices_to_delete.add(i - 1)
 
             for idx in sorted(indices_to_delete, reverse=True):

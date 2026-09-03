@@ -14,19 +14,16 @@ backups/
 scratch/
 reports/
 certs/
+core/comfy_engine/temp/
 
 # Ignore all runtime and user variables except code dependencies, template examples, and default profile
 variables/*
 !variables/__init__.py
 !variables/settings.py
-!variables/user.md.example
 !variables/banned_words.json
 !variables/saves/
 variables/saves/*
 !variables/saves/eternal_champion.json
-variables/user_profiles/*
-!variables/user_profiles/
-!variables/user_profiles/.gitkeep
 
 # Ignore all companion profiles under core/followers except the default Arena guide
 core/followers/*

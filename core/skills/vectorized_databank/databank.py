@@ -76,11 +76,14 @@ class DataBankManager:
         else:
             # Follower-bound databank JSON file
             try:
-                os.makedirs(self.follower_dir, exist_ok=True)
-                with open(self.db_path, "w", encoding="utf-8") as f:
+                os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
+                temp_path = f"{self.db_path}.tmp"
+                with open(temp_path, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
+                os.replace(temp_path, self.db_path)
             except Exception as e:
                 print(f"Error saving follower databank to {self.db_path}: {e}")
+
 
     def clean_html(self, html_content: str) -> str:
         """Parses HTML and extracts clean readable text, removing boilerplate markup."""

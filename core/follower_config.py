@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import re
-import shutil
 import sys
 
 # Ensure parent directory is in sys.path
@@ -11,9 +10,7 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-from variables.settings import (
-    FOLLOWERS_DIR, USER_MD_FILE, USER_PROFILES_DIR, SAVES_DIR
-)
+from variables.settings import FOLLOWERS_DIR, SAVES_DIR
 from runners.follower import get_active_follower, get_active_user, get_player_name
 
 # Global formatting rules for narrative roleplay
@@ -168,35 +165,15 @@ def load_dynamic_runtime_context() -> str:
 
 
 def load_user_instructions() -> str:
-    """Reads the active user/player profile context."""
-    active_profile = get_active_user()
-    if not os.path.exists(USER_PROFILES_DIR):
-        try:
-            os.makedirs(USER_PROFILES_DIR, exist_ok=True)
-        except Exception as e:
-            logging.error(f"Error creating user profiles directory: {e}")
-
-    profile_path = os.path.join(USER_PROFILES_DIR, f"{active_profile}.md")
-    if not os.path.exists(profile_path):
-        if os.path.exists(USER_MD_FILE):
-            try:
-                shutil.copy(USER_MD_FILE, profile_path)
-            except Exception:
-                pass
-        else:
-            try:
-                with open(profile_path, "w", encoding="utf-8") as f:
-                    f.write(f"# PLAYER CONTEXT: {active_profile.replace('_', ' ').title()}\n- Hero of Tamriel.\n")
-            except Exception:
-                pass
-
-    if os.path.exists(profile_path):
-        try:
-            with open(profile_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                return f"\n\n# PLAYER PROFILE\n{content}\n"
-        except Exception:
-            pass
+    """Reads the active player profile context from the save file."""
+    try:
+        from core.save_manager import read_save
+        bundle = read_save()
+        profile_content = (bundle.get("profile") or "").strip()
+        if profile_content:
+            return f"\n\n# PLAYER PROFILE\n{profile_content}\n"
+    except Exception as e:
+        logging.error(f"Error reading profile from save: {e}")
 
     return f"\n\n# PLAYER PROFILE\n- Hero: {get_player_name()}\n"
 

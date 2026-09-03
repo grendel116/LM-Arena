@@ -272,14 +272,15 @@ def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, s
     except Exception as e:
         return f"Error executing ComfyUI workflow: {e}"
 @track_tool_activity
-def generate_local_image(prompt: str) -> str:
-    """Generates a local portrait image using the in-process GPU diffusion engine.
+def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
+    """Generates a local image using the in-process GPU diffusion engine.
     
     Args:
         prompt: A prompt describing what you are doing or the scene/expression.
+        subject_type: "follower", "player", "environment", or "auto" (detected from prompt)
         
     Returns:
-        A markdown link to the generated portrait image, or an error message.
+        A markdown link to the generated image, or an error message.
     """
     import os
     import random
@@ -290,24 +291,63 @@ def generate_local_image(prompt: str) -> str:
     from runners.follower import get_active_follower
     active_follower = get_active_follower()
 
-    # Load image prompt tags from follower profile
+    prompt_lower = prompt.lower()
+    if subject_type == "auto":
+        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "dungeon corridor", "exterior", "architectural")):
+            mode = "environment"
+        elif any(w in prompt_lower for w in ("player character", "player portrait", "the hero", "adventurer", "named ")) and not any(w in prompt_lower for w in ("ria silmane", "spectral", "ghost woman")):
+            mode = "player"
+        else:
+            mode = "follower"
+    else:
+        mode = subject_type
+
     img_details_val = ""
     neg_details_val = ""
-    
-    follower_json_path = os.path.normpath(os.path.join(
-        base_dir, "core", "followers", active_follower, f"{active_follower}.json"
-    ))
-    if os.path.exists(follower_json_path):
+
+    if mode == "player":
         try:
-            with open(follower_json_path, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            card = raw.get("data", raw)
-            arena_ext = card.get("extensions", {}).get("arena", {})
-            img_details = arena_ext.get("image_details", {})
-            img_details_val = img_details.get("positive", "")
-            neg_details_val = img_details.get("negative", "")
-        except Exception as e:
-            print(f"[DEBUG] Error reading active follower JSON for image generation: {e}", flush=True)
+            from core.character import load_character
+            from runners.follower import get_active_user
+            sheet = load_character(get_active_user())
+            race = sheet.get("race", "Nord")
+            gender = sheet.get("gender", "Male")
+            char_class = sheet.get("class", "Warrior")
+            img_details_val = f"Elder Scrolls fantasy character art, {gender} {race} {char_class}, portrait, highly detailed, dramatic lighting"
+            neg_details_val = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text, modern clothing, contemporary"
+        except Exception as pe:
+            print(f"[DEBUG] Error reading player details for image generation: {pe}", flush=True)
+            img_details_val = "Elder Scrolls fantasy character art, portrait, highly detailed, dramatic lighting"
+            neg_details_val = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
+    elif mode == "environment":
+        try:
+            from core.world_engine import load_world_state
+            from runners.follower import get_active_user
+            world = load_world_state(get_active_user())
+            loc = world.get("current_location", "Imperial Dungeon")
+            prov = world.get("current_province", "Cyrodiil")
+            img_details_val = f"scenery, environment landscape art, {loc}, {prov}, Elder Scrolls aesthetic, atmospheric lighting, detailed architecture, empty, no humans, no people"
+            neg_details_val = "worst quality, low quality, character, human, person, 1girl, 1boy, face, portrait, deformed, watermark, text"
+        except Exception as ee:
+            print(f"[DEBUG] Error reading environment details for image generation: {ee}", flush=True)
+            img_details_val = "scenery, environment landscape art, Elder Scrolls aesthetic, atmospheric lighting, detailed architecture, empty, no humans, no people"
+            neg_details_val = "worst quality, low quality, character, human, person, 1girl, 1boy, face, portrait, deformed, watermark, text"
+    else:
+        # Follower mode: Load image prompt tags from active follower profile
+        follower_json_path = os.path.normpath(os.path.join(
+            base_dir, "core", "followers", active_follower, f"{active_follower}.json"
+        ))
+        if os.path.exists(follower_json_path):
+            try:
+                with open(follower_json_path, "r", encoding="utf-8") as f:
+                    raw = json.load(f)
+                card = raw.get("data", raw)
+                arena_ext = card.get("extensions", {}).get("arena", {})
+                img_details = arena_ext.get("image_details", {})
+                img_details_val = img_details.get("positive", "")
+                neg_details_val = img_details.get("negative", "")
+            except Exception as e:
+                print(f"[DEBUG] Error reading active follower JSON for image generation: {e}", flush=True)
 
     # Combine prompt and image details
     from core.follower_config import replace_placeholders
@@ -339,13 +379,31 @@ def generate_local_image(prompt: str) -> str:
         json_path = os.path.join(portraits_dir, f"portrait_{timestamp}.json")
         try:
             with open(json_path, "w", encoding="utf-8") as jf:
-                json.dump({"prompt": prompt, "full_prompt": final_prompt, "engine": "in_process_gpu"}, jf, indent=4)
+                json.dump({"prompt": prompt, "full_prompt": final_prompt, "mode": mode, "engine": "in_process_gpu"}, jf, indent=4)
         except Exception:
             pass
         return f"![Portrait](/images/portraits/{local_filename}?v={timestamp})"
     except Exception as e:
-        print(f"[engine_diffusion] Error generating portrait: {e}")
+        print(f"[engine_diffusion] Error generating image: {e}")
         return f"Error generating portrait: {e}"
+
+
+@track_tool_activity
+def generate_follower_portrait(prompt: str) -> str:
+    """Generates a portrait of the active companion."""
+    return generate_local_image(prompt, subject_type="follower")
+
+
+@track_tool_activity
+def generate_player_portrait(prompt: str) -> str:
+    """Generates a portrait of the player character based on character sheet and profile."""
+    return generate_local_image(prompt, subject_type="player")
+
+
+@track_tool_activity
+def generate_environment_image(prompt: str) -> str:
+    """Generates an atmospheric scene depiction of the current environment and location."""
+    return generate_local_image(prompt, subject_type="environment")
 
 
 

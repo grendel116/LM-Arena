@@ -26,8 +26,8 @@
       "arena": {
         "follower_id": "ria_silmane",
         "image_details": {
-          "positive": "see-through_body, slime girl, liquid hair, (plump:0.7), soft glow, blue luminescence, ectoplasm",
-          "negative": "ugly, bad anatomy, deformed, muscular, purple slime"
+          "positive": "translucent body, ghost woman, blue luminescence, spectral form, made of ectoplasm, (plump:0.7),",
+          "negative": "opaque, solid body, solid form, muscular, deformed, bad anatomy, jewelry, runes,"
         }
       }
     }

@@ -13,8 +13,8 @@ DEFAULT_BIAS_WEIGHT = -100.0
 
 # Strict pattern for 'not X, [it's] Y' or 'not A; B' contrast structures
 ANTITHESIS_PATTERN = re.compile(
-    r"\b(?:it's|that's|this\s+is)\s+not\s+[^;,.!?]+[;,]?\s*(?:it's|it\s+is|you're|there's)\b"
-    r"|\bnot\s+a\s+[^;,.!?]+[;,]\s*(?:it's|it\s+is|this\s+is)\b",
+    r"\b(?:it's|it\s+is|that's|that\s+is|this\s+is|you're|you\s+are)\s+not\s+[^;,.!?]+[;,]?\s*(?:it's|it\s+is|that's|that\s+is|this\s+is|you're|you\s+are|there's)\b"
+    r"|\bnot\s+a\s+[^;,.!?]+[;,]\s*(?:it's|it\s+is|this\s+is|that's|that\s+is|you're|you\s+are)\b",
     re.IGNORECASE
 )
 
@@ -221,3 +221,61 @@ def get_banned_words_directive() -> str:
         return ""
     words_list = ", ".join(f'"{w}"' for w in words)
     return f"\n- FORBIDDEN VOCABULARY: Do NOT use any of these words: {words_list}."
+
+async def _rewrite_single_sentence(sentence: str, llm_call_func, target_model: str, banned_regex) -> str:
+    """Evaluates and rewrites individual sentences while retaining Markdown formatting."""
+    found_banned = set(banned_regex.findall(sentence)) if banned_regex else set()
+    has_antithesis = bool(ANTITHESIS_PATTERN.search(sentence))
+
+    if not found_banned and not has_antithesis:
+        return sentence
+
+    instructions = []
+    if found_banned:
+        words_str = ", ".join(f'"{w}"' for w in found_banned)
+        instructions.append(f"- Replace these forbidden words: {words_str}.")
+
+    if has_antithesis:
+        instructions.append("- Convert 'not X, it is Y' contrast structures into direct, positive assertions.")
+
+    rules_text = "\n".join(instructions)
+    prompt = f"""[INST] Rewrite this single sentence adhering strictly to these rules:
+
+{rules_text}
+
+CRITICAL: Preserve ALL Markdown syntax, including asterisks for actions (*action*) and emphasis (**bold**). Output ONLY the direct rewritten sentence.
+
+Sentence: "{sentence}" [/INST]"""
+
+    try:
+        max_tokens = max(64, int(len(sentence.split()) * 2))
+        rewritten = await llm_call_func(
+            prompt=prompt,
+            model=target_model,
+            temperature=0.4,
+            max_tokens=max_tokens
+        )
+        if rewritten and len(rewritten.strip()) > 0:
+            return rewritten.strip().strip('"')
+    except Exception as e:
+        print(f"[REWRITE ERROR] {e}", flush=True)
+
+    return sentence
+
+async def replace_banned_words_async(text: str, llm_call_func, target_model: str) -> str:
+    """Splits text into sentences and runs concurrent rewrites."""
+    if not text:
+        return text
+
+    banned_regex = get_banned_words_regex()
+    sentence_ending = re.compile(r'(?<=[.!?])\s+')
+    sentences = sentence_ending.split(text)
+
+    tasks = [
+        _rewrite_single_sentence(s, llm_call_func, target_model, banned_regex)
+        for s in sentences
+    ]
+
+    rewritten_sentences = await asyncio.gather(*tasks)
+    return " ".join(rewritten_sentences)
+

@@ -1677,37 +1677,6 @@ def cancel_chat():
         
     return jsonify({'status': 'success'})
 
-@app.route('/api/stream_events', methods=['GET'])
-@requires_auth
-def stream_events():
-    session_id = request.args.get('session_id', 'default')
-    import queue
-    import time
-    from flask import Response
-    from runners.runners import register_session_listener, unregister_session_listener
-
-    q = queue.Queue()
-    register_session_listener(q)
-
-    def event_generator():
-        try:
-            yield f"event: connected\ndata: {json.dumps({'status': 'ok'})}\n\n"
-            while True:
-                try:
-                    updated_id = q.get(timeout=25.0)
-                    if updated_id == session_id:
-                        yield f"event: session_updated\ndata: {json.dumps({'session_id': session_id, 'timestamp': time.time()})}\n\n"
-                except queue.Empty:
-                    yield "event: heartbeat\ndata: {}\n\n"
-        finally:
-            unregister_session_listener(q)
-
-    return Response(event_generator(), mimetype='text/event-stream', headers={
-        'Cache-Control': 'no-cache',
-        'X-Accel-Buffering': 'no',
-        'Connection': 'keep-alive'
-    })
-
 @app.route('/api/session_tool_calls', methods=['GET'])
 @requires_auth
 def get_session_tool_calls():
@@ -2738,11 +2707,11 @@ def select_follower():
         if os.path.exists(profile_path):
             has_profile = True
 
-        from core.follower_config import follower_name
+        from core.follower_config import get_follower_name
         return jsonify({
             'status': 'success',
             'active': follower_id,
-            'character_name': follower_name,
+            'character_name': get_follower_name(follower_id),
             'theme': theme,
             'has_profile': has_profile
         })
@@ -3050,12 +3019,23 @@ def get_follower_journals():
     try:
         from runners.follower import get_active_follower
         from core.journals import get_journal_entries
+        from core.save_manager import get_active_save_id, read_save
         
-        follower_id = request.args.get('follower_id') or request.args.get('follower_id') or get_active_follower()
+        follower_id = request.args.get('follower_id') or get_active_follower()
+        session_id = request.args.get('session_id', 'default')
         entries = get_journal_entries(follower_id)
-        return jsonify({'journals': entries})
+
+        target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
+        bundle = read_save(target_id)
+        memory_meta = bundle.get("memory_state")
+
+        return jsonify({
+            'journals': entries,
+            'memory_state': memory_meta
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 get_follower_journals = get_follower_journals
 
