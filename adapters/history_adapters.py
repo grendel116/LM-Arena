@@ -193,41 +193,44 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
     def _build_tiered_messages(
         self,
-        system_content: str,
-        raw_messages: list[dict],
-        post_injection: str,
-        max_input_tokens: int = 6500
+        core_system_content: str = "",
+        raw_messages: list[dict] = None,
+        post_injection: str = "",
+        auxiliary_context: list[str] | None = None,
+        max_input_tokens: int = 6500,
+        system_content: str = None,
     ) -> list[dict]:
         """
-        Assembles OpenAI payload using a 4-tier context prioritization system:
-          - Tier 1 (Crucial): System Instructions, Core Directives, Banned Words, Latest User Query, & Post-Injection State.
-          - Tier 2 (High): Chat history turns (newest to oldest).
-          - Tier 3 (Medium): World Info / Lorebook & RAG / Knowledge Base excerpts.
-          - Tier 4 (Low): System Memory of older conversation turns.
+        Assembles OpenAI payload using a prioritized 3-tier context allocation:
+          - Tier 1: Core System Directives (Persona, Banned Words, Formatting) & Latest User Turn (with State Injection).
+          - Tier 2: Chat History (newest to oldest). Guaranteed budget to ensure narrative continuity.
+          - Tier 3: Auxiliary Context (Lorebook, Triggered Skills, Databank/RAG, System Memory) fitted into remaining space.
         """
+        core_system = (core_system_content or system_content or "").strip()
+        raw_messages = list(raw_messages or [])
+        auxiliary_context = auxiliary_context or []
         CHAR_BUDGET = max_input_tokens * 4
 
-        # 1. Isolate user/assistant turns and latest query (Tier 1 & Tier 2 candidate)
+        # 1. Isolate user/assistant turns and latest query (Tier 1)
         chat_turns = [m for m in raw_messages if m.get("role") != "system"]
         latest_user_turn = chat_turns.pop() if chat_turns else None
 
-        # Apply post-injection payload directly to the latest user message (Tier 1 Core)
         if latest_user_turn and post_injection:
             if isinstance(latest_user_turn["content"], str):
                 latest_user_turn["content"] += f"\n\n{post_injection}"
             elif isinstance(latest_user_turn["content"], list):
                 latest_user_turn["content"].append({"type": "text", "text": f"\n\n{post_injection}"})
 
-        # Calculate base Tier 1 core footprint
         latest_user_len = sum(
             len(item.get("text", "")) if isinstance(item, dict) else len(item)
             for item in (latest_user_turn["content"] if isinstance(latest_user_turn["content"], list) else [latest_user_turn["content"]])
         ) if latest_user_turn else 0
 
-        tier1_base_len = len(system_content) + latest_user_len
-        remaining_budget = CHAR_BUDGET - tier1_base_len
+        tier1_len = len(core_system) + latest_user_len
+        budget_after_tier1 = max(0, CHAR_BUDGET - tier1_len)
 
-        # 2. Add Tier 2: Truncate chat history from oldest to newest to fit remaining budget
+        # 2. Allocate Chat History (Tier 2) - guarantee substantial headroom for conversation turns
+        max_history_budget = min(budget_after_tier1, max(14000, int(budget_after_tier1 * 0.80)))
         trimmed_chat_turns = []
         accumulated_chat_chars = 0
 
@@ -237,16 +240,34 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             )
             turn_len = len(turn_text)
 
-            if accumulated_chat_chars + turn_len <= (remaining_budget * 0.70):  # Reserve 30% headroom for Tier 3/4
+            if accumulated_chat_chars + turn_len <= max_history_budget:
                 trimmed_chat_turns.insert(0, turn)
                 accumulated_chat_chars += turn_len
             else:
                 break
 
-        # 3. Assemble final OpenAI message array
-        final_messages = [{"role": "system", "content": system_content.strip()}]
+        # 3. Allocate Auxiliary Context (Tier 3: lore, skills, memory) into remaining budget
+        remaining_aux_budget = max(0, CHAR_BUDGET - tier1_len - accumulated_chat_chars)
+        included_aux = []
+        accumulated_aux_chars = 0
+
+        for block in auxiliary_context:
+            block_str = str(block).strip()
+            if not block_str:
+                continue
+            block_len = len(block_str)
+            if accumulated_aux_chars + block_len <= remaining_aux_budget:
+                included_aux.append(block_str)
+                accumulated_aux_chars += block_len
+
+        # 4. Assemble system prompt and message array
+        full_system = core_system
+        if included_aux:
+            full_system += "\n\n" + "\n\n".join(included_aux)
+
+        final_messages = [{"role": "system", "content": full_system}]
         final_messages.extend(trimmed_chat_turns)
-        
+
         if latest_user_turn:
             final_messages.append(latest_user_turn)
         elif post_injection:
@@ -336,36 +357,18 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 content_text = f"{content_text} (image: [Attached Image])".strip()
             raw_messages.append({"role": role, "content": content_text})
 
-        # Base System instructions and Directives (Tier 1)
-        system_content = f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"
+        # Base System instructions and Directives (Tier 1 Core)
+        core_system = f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"
             
         try:
             from core.banned_words import get_banned_words_directive
             banned_dir = get_banned_words_directive()
             if banned_dir:
-                system_content += f"\n\n{banned_dir}"
+                core_system += f"\n\n{banned_dir}"
         except Exception:
             pass
 
-        active_fol = get_active_follower()
-
-        # Tier 3: World Info / Lore Injection
-        try:
-            lore_before, lore_after = get_active_lore(active_fol, filtered_history)
-            if lore_before:
-                system_content = f"[WORLD INFO]\n{'\n\n'.join(lore_before)}\n[END WORLD INFO]\n\n" + system_content
-            if lore_after:
-                system_content += f"\n\n[WORLD INFO]\n{'\n\n'.join(lore_after)}\n[END WORLD INFO]"
-        except Exception as le:
-            print(f"[lorebook] Injection error: {le}")
-
-        # Tier 4: Memory and RAG Knowledge Context
-        context_parts = []
-        for msg in history:
-            if msg.get("role") == "system-memory" and msg.get("text", "").strip():
-                clean_mem = msg["text"].replace("[System Memory of older conversation turns]:", "").strip()
-                context_parts.append(f"<conversation_memory>\n{replace_placeholders(clean_mem)}\n</conversation_memory>")
-
+        # Image generation system override (Tier 1 Core)
         last_user_msg = next(
             (
                 m.get("text", "") for m in reversed(filtered_history)
@@ -376,21 +379,60 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             "",
         )
 
+        is_image_request = (
+            "[GENERATE_IMAGE" in (last_user_msg or "")
+            or "Send me a portrait of yourself" in (last_user_msg or "")
+            or (last_user_msg or "").startswith("[Render image")
+        )
+        if is_image_request:
+            core_system += (
+                "\n\n[CRITICAL IMAGE DIRECTIVE: The user requested an image of the active companion. "
+                "You must ONLY output the image generation tool call tag: `[generate_local_image(prompt=\"...\")]` "
+                "or `[generate_imagen(prompt=\"...\")]` depicting an image of the active companion character. "
+                "Do NOT write any story narrative or dialogue. "
+                "Do NOT advance the plot. "
+                "Do NOT call any gameplay mechanics tools or add/remove items. "
+                "Output ONLY the image tool call tag.]"
+            )
+
+        # Tier 3 & 4 Auxiliary Blocks (Lore, Memory, Journals, RAG, Skills)
+        auxiliary_blocks = []
+        active_fol = get_active_follower()
+
+        # Lore Injection
+        try:
+            lore_before, lore_after = get_active_lore(active_fol, filtered_history)
+            if lore_before:
+                auxiliary_blocks.append(f"[WORLD INFO]\n{'\n\n'.join(lore_before)}\n[END WORLD INFO]")
+            if lore_after:
+                auxiliary_blocks.append(f"[WORLD INFO]\n{'\n\n'.join(lore_after)}\n[END WORLD INFO]")
+        except Exception as le:
+            print(f"[lorebook] Injection error: {le}")
+
+        # System Memory
+        for msg in history:
+            if msg.get("role") == "system-memory" and msg.get("text", "").strip():
+                clean_mem = msg["text"].replace("[System Memory of older conversation turns]:", "").strip()
+                auxiliary_blocks.append(f"<conversation_memory>\n{replace_placeholders(clean_mem)}\n</conversation_memory>")
+
+        # Journals
         if last_user_msg and not response_only:
             try:
                 from core.journals import match_journals
                 matched = match_journals(last_user_msg, active_fol)
                 if matched:
                     journals_text = "\n".join(f"- {replace_placeholders(e['content'])}" for e in matched)
-                    context_parts.append(f"<recalled_journals>\n{journals_text}\n</recalled_journals>")
+                    auxiliary_blocks.append(f"<recalled_journals>\n{journals_text}\n</recalled_journals>")
             except Exception as je:
                 print(f"Error matching journals: {je}")
 
+        # Knowledge Base & Archived Memory
         if rag_context:
-            context_parts.append(f"<knowledge_base>\n{rag_context}\n</knowledge_base>")
+            auxiliary_blocks.append(f"<knowledge_base>\n{rag_context}\n</knowledge_base>")
         if memory_context and not response_only:
-            context_parts.append(f"<archived_memory>\n{replace_placeholders(memory_context)}\n</archived_memory>")
+            auxiliary_blocks.append(f"<archived_memory>\n{replace_placeholders(memory_context)}\n</archived_memory>")
 
+        # Skills (On-demand trigger retrieval)
         if last_user_msg and not response_only:
             try:
                 from core.skill_retriever import retrieve_skill_instructions
@@ -400,29 +442,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     top_k=2,
                 )
                 if skills:
-                    context_parts.append(skills)
+                    auxiliary_blocks.append(skills)
             except Exception as se:
                 print(f"[skills] Retrieval error: {se}")
-
-        if context_parts:
-            system_content += "\n\n" + "\n\n".join(context_parts)
-
-        # Image generation system override
-        is_image_request = (
-            "[GENERATE_IMAGE" in (last_user_msg or "")
-            or "Send me a portrait of yourself" in (last_user_msg or "")
-            or (last_user_msg or "").startswith("[Render image")
-        )
-        if is_image_request:
-            system_content += (
-                "\n\n[CRITICAL IMAGE DIRECTIVE: The user requested an image of the active companion. "
-                "You must ONLY output the image generation tool call tag: `[generate_local_image(prompt=\"...\")]` "
-                "or `[generate_imagen(prompt=\"...\")]` depicting an image of the active companion character. "
-                "Do NOT write any story narrative or dialogue. "
-                "Do NOT advance the plot. "
-                "Do NOT call any gameplay mechanics tools or add/remove items. "
-                "Output ONLY the image tool call tag.]"
-            )
 
         # Gather Post-History User Injection (Character Sheet, World Engine State & Quests)
         full_post_injection = ""
@@ -438,7 +460,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             char_ctx = get_character_context(sheet) if sheet else ""
 
             world = load_world_state(active_user)
-            t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+            t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
             hour = t_date.get("hour", 6)
             
             disp_hour = hour % 12 or 12
@@ -448,7 +470,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             prov = world.get("current_province", "Cyrodiil")
             loc = world.get("current_location", "Imperial Dungeon")
             day = t_date.get("day", 1)
-            month = t_date.get("month", "Morning Star")
+            month = t_date.get("month", "Hearthfire")
             year = t_date.get("year", 389)
             
             state_tag = f'<!-- state: province="{prov}", location="{loc}", date="{day} {month}, 3E {year}", hour={hour}, time="{time_display}" -->'
@@ -490,9 +512,10 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
         # Build final array adhering to tiered budget limits
         return self._build_tiered_messages(
-            system_content=system_content,
+            core_system_content=core_system,
             raw_messages=raw_messages,
             post_injection=full_post_injection,
+            auxiliary_context=auxiliary_blocks,
             max_input_tokens=6500
         )
 
@@ -514,7 +537,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         cleaned_text, updated_snapshot = extract_hidden_state_footer(text, current_snapshot)
         apply_state_snapshot(active_user, updated_snapshot)
 
-        t_date = (updated_snapshot.get("date") if updated_snapshot else None) or world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+        t_date = (updated_snapshot.get("date") if updated_snapshot else None) or world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
 
         history = self.runner_obj.sessions_history[self.session_id]
 

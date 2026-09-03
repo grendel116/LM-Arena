@@ -363,7 +363,7 @@ def get_character_context(sheet: dict) -> str:
             
     effects = [e["name"] for e in sheet.get("active_effects", [])] or ["none"]
     conditions = sheet.get("conditions", []) or ["none"]
-    spells = [s["name"] for s in sheet.get("spells", [])]
+    spells = [f"{s.get('name')} ({s.get('mp_cost', 4)} MP)" for s in sheet.get("spells", [])]
 
     mp_cur = d.get("mp_current", d.get("sp_current", 42))
     mp_max = d.get("mp_max", d.get("sp_max", 42))
@@ -374,15 +374,20 @@ def get_character_context(sheet: dict) -> str:
     max_enc = calculate_max_encumbrance(sheet)
     enc_status = "Encumbered (Slowed)" if cur_enc > max_enc else "Light"
 
+    cur_lvl = sheet.get('level', 1)
+    cur_xp = sheet.get('experience', 0)
+    xp_needed = 100 * cur_lvl
+
     return (
         f"[CHARACTER STATUS]\n"
-        f"Name: {sheet.get('name', 'Eternal Champion')} | {sheet.get('race', 'Nord')} {sheet.get('class', 'Mage')} | Level {sheet.get('level', 1)}\n"
+        f"Name: {sheet.get('name', 'Eternal Champion')} | {sheet.get('race', 'Nord')} {sheet.get('class', 'Mage')} | Level {cur_lvl} (XP: {cur_xp}/{xp_needed})\n"
         f"Vitals: HP {d.get('hp_current', 28)}/{d.get('hp_max', 28)} | MP {mp_cur}/{mp_max} | Stamina {stm_cur}/{stm_max} | Armor {d.get('armor_rating', 4)} | Gold {sheet.get('gold', 0)}\n"
         f"Encumbrance: {cur_enc}/{max_enc} kg ({enc_status})\n"
         f"Equipped: {', '.join(equipped_parts) or 'none'}\n"
         f"Carried Inventory: {', '.join(inv_parts) or 'empty'}\n"
-        f"(Track changes: [arena_add_item] gained, [arena_remove_item] lost/given/used.)\n"
         f"Spells: {', '.join(spells) or 'none'}\n"
+        f"(Deduct MP when spells are cast: [arena_spend_magicka(amount=...)]. Insufficient MP causes spell to fizzle and fail.)\n"
+        f"(Award XP when foes are defeated: [arena_add_experience(amount=...)]. Crossing threshold triggers Level Up.)\n"
         f"Active Effects: {', '.join(effects)} | Conditions: {', '.join(conditions)}"
     )
 
@@ -902,9 +907,19 @@ def add_experience(sheet: dict, amount: int) -> tuple[dict, bool]:
     if sheet["experience"] >= threshold:
         sheet["experience"] -= threshold
         sheet["level"] += 1
-        # Increase hp_max and sp_max on level up
-        sheet["derived"]["hp_max"] += 4
-        sheet["derived"]["sp_max"] += 6
+        # Increase max vitals on level up and expand current reserves
+        d = sheet["derived"]
+        d["hp_max"] += 4
+        d["hp_current"] = min(d["hp_max"], d.get("hp_current", d["hp_max"]) + 4)
+        
+        mp_gain = 6
+        d["mp_max"] = d.get("mp_max", d.get("sp_max", 42)) + mp_gain
+        d["mp_current"] = min(d["mp_max"], d.get("mp_current", d["mp_max"]) + mp_gain)
+        d["sp_max"] = d["mp_max"]
+        d["sp_current"] = d["mp_current"]
+        
+        d["stamina_max"] = d.get("stamina_max", 50) + 4
+        d["stamina_current"] = d["stamina_max"]
         return sheet, True
     return sheet, False
 

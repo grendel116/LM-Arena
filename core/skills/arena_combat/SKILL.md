@@ -3,6 +3,7 @@ name: arena_combat
 description: "Resolves combat encounters: attack rolls, damage, healing, stamina, resting, and resource expenditure in The Elder Scrolls: Arena."
 summary: "Resolve melee/ranged attacks with [arena_roll_combat], take damage with [arena_take_damage], heal with [arena_heal], spend/restore stamina with [arena_spend_stamina]/[arena_restore_stamina], and rest with [arena_rest]."
 retrieval: vector
+triggers: attack, combat, fight, strike, slash, weapon, damage, defend, parry, cast, spell, hp, stamina, magicka, rest, sleep, ambush, wound
 ---
 
 # COMBAT, BESTIARY & RESOURCE RESOLUTION PROTOCOLS

@@ -31,54 +31,54 @@
     },
     {
       "uid": 1004,
-      "key": ["ria", "silmane", "ria silmane", "spirit"],
+      "key": ["ria silmane's ghost", "apprentice of tharn"],
       "secondary_key": [],
-      "content": "Ria Silmane was an apprentice of Jagar Tharn. He murdered her when she attempted to warn the Elder Council. Her spirit lingers to guide you. She radiates warmth and grief.",
+      "content": "Ria Silmane was an apprentice of Jagar Tharn murdered when she attempted to warn the Elder Council. Her spirit lingers to guide the champion.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 1005,
-      "key": ["player", "imprisonment", "cell"],
+      "key": ["champion's imprisonment", "why am i imprisoned"],
       "secondary_key": [],
-      "content": "You are a companion of Ria Silmane. You rot within the Imperial Dungeon. Jagar Tharn imprisoned you to secure his power.",
+      "content": "Jagar Tharn locked the Eternal Champion in the Imperial Dungeon to secure his usurpation.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 1006,
-      "key": ["elder council", "council", "senate"],
+      "key": ["elder council", "imperial senate"],
       "secondary_key": [],
-      "content": "The Elder Council governs the Empire. They operate beneath a puppet Emperor. They remain completely ignorant regarding Tharn's deception.",
+      "content": "The Elder Council governs beneath the false Emperor, oblivious to Tharn's disguise.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 1007,
-      "key": ["imperial dungeon", "dungeon", "prison"],
+      "key": ["imperial dungeon", "dungeon of the imperial city"],
       "secondary_key": [],
-      "content": "The Imperial Dungeon forms a vast underground labyrinth. It lies directly beneath the Imperial City. Its corridors reek of decay and despair.",
+      "content": "The Imperial Dungeon is an ancient subterranean labyrinth of forgotten cells beneath the Imperial City.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 1008,
-      "key": ["shift gate", "portal", "gate", "riddle"],
+      "key": ["shift gate", "shiftgate"],
       "secondary_key": [],
-      "content": "The Shift Gate is a magical portal. It sits in the southwest corner of the Imperial Dungeon. It demands an answer to a riddle before granting escape.",
+      "content": "The Shift Gate is a magical exit portal in the southwest Imperial Dungeon guarded by a riddle pedestal.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 1009,
-      "key": ["oblivion", "realm", "daedra"],
+      "key": ["oblivion realm", "planes of oblivion"],
       "secondary_key": [],
-      "content": "Oblivion exists beyond mortal comprehension. The true Emperor is held within its chaotic dimensions. Daedra inhabit these chaotic planes.",
+      "content": "Oblivion is the chaotic dimension beyond Mundus where Jagar Tharn holds the true Emperor captive.",
       "enabled": true,
       "priority": 10,
       "probability": 100

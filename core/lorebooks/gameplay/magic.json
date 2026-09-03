@@ -4,99 +4,99 @@
   "entries": [
     {
       "uid": 5001,
-      "key": ["school", "schools", "destruction", "restoration", "illusion", "alteration", "thaumaturgy", "mysticism", "conjuration", "sorcery"],
+      "key": ["schools of magic", "mysticism", "alteration", "thaumaturgy", "conjuration"],
       "secondary_key": [],
-      "content": "Magic divides into eight recognized schools. These define the nature of the spell effect. Mages study these paths to control arcane forces.",
+      "content": "Magic divides into eight schools (Destruction, Restoration, Illusion, Alteration, Thaumaturgy, Mysticism, Conjuration, Sorcery) that define spell effects.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5002,
-      "key": ["tier", "minor", "apprentice", "journeyman", "expert", "master", "spell"],
+      "key": ["spell tier", "spell tiers"],
       "secondary_key": [],
-      "content": "Spells exist across five power tiers. Minor spells require DC eight. Apprentice needs eleven. Journeyman needs fourteen. Expert demands seventeen. Master requires twenty.",
+      "content": "Spell casting DCs by tier: Minor (DC 8), Apprentice (DC 11), Journeyman (DC 14), Expert (DC 17), Master (DC 20).",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5003,
-      "key": ["cast", "casting", "intelligence"],
+      "key": ["cast spell", "casting spell", "spell roll"],
       "secondary_key": [],
-      "content": "Casting requires an Intelligence check. You roll a d20 plus your Intelligence modifier against the spell DC. Success manifests the magic safely.",
+      "content": "Casting requires rolling d20 + Intelligence modifier against the spell tier DC.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5004,
-      "key": ["spell absorption", "absorb", "sorcerer"],
+      "key": ["spell absorption", "absorb spell"],
       "secondary_key": [],
-      "content": "Spell Absorption nullifies incoming magic. The chance equals Intelligence plus Willpower divided by two. The maximum chance caps at seventy five percent.",
+      "content": "Sorcerer Spell Absorption chance equals (Intelligence + Willpower) / 2, capped at 75%. Nullifies incoming magic into Magicka.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5005,
-      "key": ["spellmaker", "custom spell", "design"],
+      "key": ["spellmaker", "custom spell"],
       "secondary_key": [],
-      "content": "The Spellmaker allows custom magical creation. You describe your desired effect explicitly. The system automatically assigns the appropriate school and tier.",
+      "content": "The Spellmaker allows custom spell crafting, automatically assigning school, MP cost, and tier based on desired effect.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5006,
-      "key": ["fatigue", "backfire", "fumble"],
+      "key": ["spell fumble", "magical backfire"],
       "secondary_key": [],
-      "content": "Magical fumbles cause dangerous backfires. A natural one on casting twists the spell wildly. You suffer minor unintended effects or localized damage.",
+      "content": "A natural 1 on casting causes a dangerous backfire, twisting the spell into localized recoil or unintended effects.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5007,
-      "key": ["mage advantage", "mage"],
+      "key": ["mage advantage", "mage casting"],
       "secondary_key": [],
-      "content": "The Mage class receives natural casting advantages. They roll with advantage regarding all spell casting checks. They command magic effortlessly.",
+      "content": "Mages gain advantage on spell casting checks.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5008,
-      "key": ["destruction", "fireball", "shock"],
+      "key": ["destruction spell", "fireball", "lightning bolt"],
       "secondary_key": [],
-      "content": "Destruction magic harms enemies directly. It manifests as fire or frost or lightning. The effects are violent and spectacular.",
+      "content": "Destruction magic unleashes direct elemental harm: fire, frost, or lightning.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5009,
-      "key": ["restoration", "heal", "cure"],
+      "key": ["restoration spell", "healing spell"],
       "secondary_key": [],
-      "content": "Restoration magic mends physical wounds. It cures lingering diseases. It glows with a soothing golden light.",
+      "content": "Restoration magic mends wounds, restores attributes, and purges disease.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5010,
-      "key": ["soul gem", "soul gems", "soul trap", "charging magic", "recharge", "enchanting", "petty soul gem", "lesser soul gem", "common soul gem", "greater soul gem", "grand soul gem", "black soul gem", "azura's star"],
-      "secondary_key": ["magic", "mysticism", "soul", "gem", "charge"],
-      "content": "SOUL GEMS & MAGICAL CHARGING:\n• Nature of Soul Gems: Naturally crystalline morpholiths capable of capturing and storing spiritual energy (animus) upon a target's death via the Mysticism spell 'Soul Trap'.\n• Magical Recharging & Enchanting: Soul gems are the fundamental power source for enchanting new gear and recharging depleted magical weapons, staves, and relics. Releasing the trapped energy restores an enchanted weapon's magical charges.\n• White Souls: Derived from creatures and non-sentient beasts. Stored in five standard gem tiers: Petty (mudcrabs, rats), Lesser (wolves, goblins), Common (bears, skeletons), Greater (giants, minor daedra), and Grand (mammoths, liches, golden saints).\n• Black Souls & Black Soul Gems: Sentient mortal races (men, mer, and beastfolk) possess complex black souls protected by the Arkayian divine ward. Only artificial Black Soul Gems or forbidden Daedric vessels can trap mortal souls for necromantic rituals and extreme enchantments.",
+      "key": ["soul gem", "soul gems", "soul trap"],
+      "secondary_key": ["magic", "soul"],
+      "content": "Soul gems store spiritual animus captured via Soul Trap to power enchantments and recharge magic items. White souls come from beasts (Petty to Grand). Black souls come from sentient mortals and require Black Soul Gems.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 5011,
-      "key": ["soul", "souls", "animus", "vestige", "ideal masters", "eternal masters", "soul cairn", "necromancy", "mortal soul"],
-      "secondary_key": ["oblivion", "magic", "spirit", "undead"],
-      "content": "SOULS, ANIMUS & THE IDEAL MASTERS:\n• Mortal Animus: Mortals possess an Anuic animus—a divine spark of creation granted at birth that journeys to Aetherius upon natural death unless forcibly trapped or bargained away.\n• Daedric Vestiges: Daedra lack mortal souls; their consciousness is a Padomaic vestige that reforms from Chaotic Creatia in the Waters of Oblivion whenever destroyed.\n• The Ideal Masters (Eternal Masters): Ancient mortal sorcerers from the early Merethic Era who shed their physical bodies to transcend mortality, becoming vast, disembodied crystalline intelligences ruling the pocket realm of the Soul Cairn. They trade dark necromantic power, summoning rituals, and forgotten arcane secrets to mortal sorcerers in exchange for a constant harvest of trapped mortal souls.",
+      "key": ["soul cairn", "ideal masters", "animus"],
+      "secondary_key": ["oblivion", "soul"],
+      "content": "Mortal souls (Anuic animus) journey to Aetherius upon death unless trapped. Daedric vestiges reform in Oblivion. The Ideal Masters rule the Soul Cairn, trading necromantic power for harvested mortal souls.",
       "enabled": true,
       "priority": 10,
       "probability": 100

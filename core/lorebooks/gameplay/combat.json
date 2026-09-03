@@ -4,81 +4,81 @@
   "entries": [
     {
       "uid": 4001,
-      "key": ["d20", "roll", "check", "modifier"],
+      "key": ["d20 roll", "skill check", "attribute check"],
       "secondary_key": [],
-      "content": "All action checks utilize a d20 system. You add your attribute modifier to the roll. The modifier equals your attribute minus fifty, divided by ten, rounded. Agility to-hit bonus and Strength damage bonus follow dedicated combat progressions.",
+      "content": "Action checks use a d20: roll + attribute modifier vs DC. The modifier is (Attribute - 50) / 10.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4002,
-      "key": ["dc", "difficulty", "trivial", "easy", "standard", "hard", "legendary"],
+      "key": ["difficulty class", "target dc"],
       "secondary_key": [],
-      "content": "Tasks follow a set difficulty scale. Trivial is five. Easy is ten. Standard is fifteen. Hard is twenty. Legendary is twenty five.",
+      "content": "Task difficulty DCs: Trivial (5), Easy (10), Standard (15), Hard (20), Legendary (25).",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4003,
-      "key": ["attack", "melee", "ranged", "strike"],
+      "key": ["melee attack", "ranged attack"],
       "secondary_key": [],
-      "content": "Attack rolls use specific attributes. Melee attacks add your Strength or Agility modifier. Ranged attacks use your Agility modifier. You roll against the target Defense DC (10 + target Agility to-hit modifier).",
+      "content": "Melee attacks add STR or AGI modifier; ranged attacks use AGI modifier vs target Defense DC (10 + AGI modifier).",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4004,
-      "key": ["defense", "armor", "dodge"],
+      "key": ["defense dc", "dodge attack"],
       "secondary_key": [],
-      "content": "Your Defense DC represents evasion and agility. Armor protects against lethal strikes and reduces incoming physical harm according to material quality and coverage.",
+      "content": "Defense DC represents evasion (10 + Agility modifier). Armor reduces incoming physical damage based on material and coverage.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4005,
-      "key": ["hit", "graze", "solid", "devastating"],
+      "key": ["graze damage", "devastating blow"],
       "secondary_key": [],
-      "content": "Hit outcomes scale by the success margin. A graze causes partial damage. A solid hit deals regular base weapon damage plus Strength bonus. A devastating blow inflicts massive harm with bonus damage.",
+      "content": "Hit outcomes scale by margin: graze deals partial damage; solid hit deals weapon damage + STR bonus; devastating blow adds bonus damage.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4006,
-      "key": ["critical", "fumble", "natural"],
+      "key": ["critical hit", "critical fumble", "natural twenty", "natural one"],
       "secondary_key": [],
-      "content": "A natural twenty always constitutes a critical success dealing double base damage plus bonus. A natural one represents a critical fumble, introducing catastrophic narrative complications.",
+      "content": "A natural 20 deals double base damage + bonus. A natural 1 triggers a catastrophic fumble complication.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4007,
-      "key": ["initiative", "speed", "turn"],
+      "key": ["combat initiative", "roll initiative"],
       "secondary_key": [],
-      "content": "Initiative determines action order. You roll a d20 and add your Speed modifier. The highest total acts first during combat.",
+      "content": "Initiative: roll d20 + Speed modifier. Highest total acts first.",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4008,
-      "key": ["weapon damage", "weapons", "blade", "bow"],
+      "key": ["weapon damage", "base weapon damage"],
       "secondary_key": [],
-      "content": "Arena weapons have canonical base damage profiles: Daggers (1-6), Shortswords/Staffs/Short Bows (2-8), Broadswords/Longswords/Katanas/Sabers (3-12), Long Bows (3-10), Claymores/Battleaxes/Warhammers (3-16), Dai-katanas (4-16).",
+      "content": "Weapon damage ranges: Dagger (1-6), Shortsword/Staff/Shortbow (2-8), Broadsword/Longsword/Katana (3-12), Longbow (3-10), Claymore/Battleaxe/Warhammer (3-16), Dai-katana (4-16).",
       "enabled": true,
       "priority": 10,
       "probability": 100
     },
     {
       "uid": 4009,
-      "key": ["material", "mithril", "ebony", "elven", "dwarven", "adamantium", "silver"],
+      "key": ["mithril", "adamantium", "ebony weapon", "silver weapon"],
       "secondary_key": [],
-      "content": "Weapon and armor materials alter combat effectiveness: Iron/Steel (1.0x baseline), Silver (1.0x, strikes incorporeal undead), Elven (1.25x damage, light), Dwarven/Mithril (1.5x damage, superior durability), Adamantium/Ebony (2.0x damage, legendary lethality).",
+      "content": "Materials: Iron/Steel (1.0x), Silver (1.0x, strikes spirits), Elven (1.25x), Dwarven/Mithril (1.5x), Adamantium/Ebony (2.0x).",
       "enabled": true,
       "priority": 10,
       "probability": 100

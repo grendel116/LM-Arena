@@ -5,12 +5,10 @@
     {
       "uid": 7201,
       "key": [
-        "name", "npc", "merchant", "guard", "stranger", "tavern", "person", "citizen",
-        "character", "imperial", "nord", "dunmer", "altmer", "bosmer", "breton",
-        "redguard", "orc", "argonian", "khajiit"
+        "name", "npc", "merchant", "guard", "stranger", "tavern", "innkeeper"
       ],
       "secondary_key": [],
-      "content": "When creating or introducing non player characters (NPCs) in Tamriel, construct authentic names strictly adhering to Elder Scrolls lore by heritage:\n- Imperials: Latinate/Roman first names and cognomens (e.g. Caius Cosades, Lex, Amantius Allectus, Valeria Motierre, Decimus Caro).\n- Nords: Scandinavian first names with descriptive clan titles or patronymics (e.g. Jauffre, Thoronir, Ysolda, Skingrad, Iron-Hand, Battle-Born, Gray-Mane).\n- Dark Elves (Dunmer): Resdayn/Velothi names with historic house surnames (e.g. Jiub, Athyn Sarano, Divayth Fyr, Karliah Indoril, Barenziah, Reloth).\n- High Elves (Altmer): Ornate Elven names with formal lineage honorifics (e.g. Ocato, Carahil, Mankar Camoran, Calindil, Raminus Polus).\n- Wood Elves (Bosmer): Nature linked soft Elven names (e.g. Fargoth, Glarthir, Thoronir, Methredhel, Green-Leaf).\n- Bretons: Anglo-Norman / French medieval names with feudal surnames (e.g. Francois Motierre, Armand Christophe, Bernadette Beauchamp).\n- Redguards: Arabic/North African single or compound honorific names (e.g. Cyrus, Trayvond, Azani Radhad, Baurus, al-Skaven, af-Sentinel).\n- Orcs (Orsimer): Guttural names with patronymic/matronymic clan prefixes (e.g. Agronak gro-Malog, Mazoga gra-Abrak, Yadba gro-Khash).\n- Argonians: Jel names or translated titles (e.g. Dar-Ma, Ocheeva, Teinaava, Runs-With-Swamps, City-Swimmer, Hauls-Rope).\n- Khajiit: Ta'agra names with honorific prefixes (e.g. M'aiq the Liar, S'drassa, J'skar, Ri'Zakar, Ahdarji).",
+      "content": "When introducing Tamriel NPCs, construct authentic names strictly adhering to Elder Scrolls lore:\n- Imperials: Latinate (e.g. Caius Cosades, Hieronymus Lex, Valeria Motierre).\n- Nords: Scandinavian / clan titles (e.g. Jauffre, Thoronir, Battle-Born, Gray-Mane).\n- Dunmer: Resdayn / Great House (e.g. Jiub, Divayth Fyr, Indoril, Hlaalu).\n- Altmer: Formal Elven (e.g. Ocato, Carahil, Mankar Camoran, Calindil).\n- Bosmer: Nature Elven (e.g. Fargoth, Glarthir, Methredhel).\n- Bretons: Anglo-Norman / French (e.g. Francois Motierre, Armand Christophe).\n- Redguards: Arabic / North African (e.g. Cyrus, Trayvond, Azani Radhad).\n- Orcs: gro- (male) / gra- (female) clan prefixes (e.g. Agronak gro-Malog, Mazoga gra-Abrak).\n- Argonians: Jel or hyphenated titles (e.g. Dar-Ma, Runs-With-Swamps, City-Swimmer).\n- Khajiit: Ta'agra honorifics (e.g. M'aiq the Liar, S'drassa, J'skar).",
       "enabled": true,
       "priority": 95,
       "probability": 100

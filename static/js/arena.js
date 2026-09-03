@@ -90,9 +90,160 @@ const PROVINCE_MAP_COORDS = {
     }
 };
 
+const CANONICAL_ANCHOR_LOCATIONS = {
+    "Cyrodiil": {
+        "Imperial City": { pinX: 565.0, pinY: 368.0, type: "capital" },
+        "Imperial Dungeon": { pinX: 565.0, pinY: 368.0, type: "dungeon" },
+        "Chorrol": { pinX: 465.0, pinY: 310.0, type: "city" },
+        "Bruma": { pinX: 545.0, pinY: 268.0, type: "city" },
+        "Cheydinhal": { pinX: 648.0, pinY: 325.0, type: "city" },
+        "Skingrad": { pinX: 455.0, pinY: 415.0, type: "city" },
+        "Anvil": { pinX: 358.0, pinY: 425.0, type: "city" },
+        "Bravil": { pinX: 590.0, pinY: 455.0, type: "city" },
+        "Leyawiin": { pinX: 635.0, pinY: 565.0, type: "city" }
+    },
+    "Skyrim": {
+        "Solitude": { pinX: 525.0, pinY: 95.0, type: "capital" },
+        "Whiterun": { pinX: 570.0, pinY: 155.0, type: "city" },
+        "Windhelm": { pinX: 650.0, pinY: 140.0, type: "city" },
+        "Riften": { pinX: 665.0, pinY: 215.0, type: "city" },
+        "Markarth": { pinX: 455.0, pinY: 145.0, type: "city" },
+        "Winterhold": { pinX: 610.0, pinY: 100.0, type: "city" },
+        "Dawnstar": { pinX: 560.0, pinY: 95.0, type: "city" },
+        "Falkreath": { pinX: 535.0, pinY: 195.0, type: "city" },
+        "Labyrinthian": { pinX: 550.0, pinY: 135.0, type: "dungeon" }
+    },
+    "High Rock": {
+        "Daggerfall": { pinX: 144.0, pinY: 255.0, type: "capital" },
+        "Wayrest": { pinX: 255.0, pinY: 180.0, type: "city" },
+        "Crypt of Hearts": { pinX: 290.0, pinY: 140.0, type: "dungeon" }
+    },
+    "Hammerfell": {
+        "Sentinel": { pinX: 210.0, pinY: 275.0, type: "capital" },
+        "Rihad": { pinX: 275.0, pinY: 415.0, type: "city" },
+        "Taneth": { pinX: 345.0, pinY: 395.0, type: "city" },
+        "Fang Lair": { pinX: 385.0, pinY: 230.0, type: "dungeon" }
+    },
+    "Morrowind": {
+        "Mournhold": { pinX: 835.0, pinY: 360.0, type: "capital" },
+        "Vivec": { pinX: 810.0, pinY: 340.0, type: "city" },
+        "Balmora": { pinX: 795.0, pinY: 305.0, type: "city" },
+        "Dagoth Ur": { pinX: 805.0, pinY: 260.0, type: "dungeon" }
+    },
+    "Valenwood": {
+        "Falinesti": { pinX: 420.0, pinY: 530.0, type: "capital" },
+        "Silvenar": { pinX: 410.0, pinY: 570.0, type: "city" },
+        "Haven": { pinX: 450.0, pinY: 645.0, type: "city" },
+        "Woodhearth": { pinX: 335.0, pinY: 565.0, type: "city" },
+        "Elden Grove": { pinX: 445.0, pinY: 615.0, type: "dungeon" }
+    },
+    "Elsweyr": {
+        "Torval": { pinX: 550.0, pinY: 600.0, type: "capital" },
+        "Corinthe": { pinX: 575.0, pinY: 625.0, type: "city" },
+        "Rimmen": { pinX: 615.0, pinY: 550.0, type: "city" },
+        "Dune": { pinX: 505.0, pinY: 580.0, type: "city" },
+        "Halls of Colossus": { pinX: 580.0, pinY: 630.0, type: "dungeon" }
+    },
+    "Summerset Isle": {
+        "Alinor": { pinX: 150.0, pinY: 615.0, type: "capital" },
+        "Cloudrest": { pinX: 180.0, pinY: 540.0, type: "city" },
+        "Lillandril": { pinX: 100.0, pinY: 575.0, type: "city" },
+        "Crystal Tower": { pinX: 170.0, pinY: 560.0, type: "dungeon" }
+    },
+    "Black Marsh": {
+        "Stormhold": { pinX: 770.0, pinY: 520.0, type: "capital" },
+        "Gideon": { pinX: 730.0, pinY: 560.0, type: "city" },
+        "Soulrest": { pinX: 740.0, pinY: 660.0, type: "city" },
+        "Murkwood": { pinX: 810.0, pinY: 610.0, type: "dungeon" }
+    }
+};
+
+function proceduralHash(s) {
+    let h = 2166136261;
+    const str = (s || '').trim().toLowerCase();
+    for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 16777619) >>> 0;
+    }
+    return h;
+}
+
+function resolveLocationAnchor(provinceName, locationName, knownCity = null) {
+    const prov = provinceName || 'Cyrodiil';
+    const anchors = CANONICAL_ANCHOR_LOCATIONS[prov] || CANONICAL_ANCHOR_LOCATIONS['Cyrodiil'];
+    const locClean = (locationName || 'Imperial Dungeon').trim();
+    const locLower = locClean.toLowerCase();
+
+    // 1. Direct match with a canonical base location
+    for (const [name, data] of Object.entries(anchors)) {
+        if (locLower === name.toLowerCase()) {
+            return {
+                locationName: locClean,
+                anchorName: name,
+                anchorType: data.type,
+                pinX: data.pinX,
+                pinY: data.pinY,
+                orientation: name
+            };
+        }
+    }
+
+    // 2. Determine nearest canonical base anchor
+    let anchorName = null;
+    for (const name of Object.keys(anchors)) {
+        if (locLower.includes(name.toLowerCase())) {
+            anchorName = name;
+            break;
+        }
+    }
+
+    if (!anchorName && knownCity && anchors[knownCity]) {
+        anchorName = knownCity;
+    }
+
+    if (!anchorName) {
+        // Default to province primary anchor / capital
+        anchorName = Object.keys(anchors)[0];
+    }
+
+    const anchorData = anchors[anchorName];
+
+    // 3. Procedural mathematical offset using deterministic trigonometry
+    const h = proceduralHash(locClean);
+    const angleRad = (h % 360) * (Math.PI / 180.0);
+    const radius = 22.0 + (h % 18);
+    const dx = Math.round(radius * Math.cos(angleRad) * 10) / 10;
+    const dy = Math.round(radius * Math.sin(angleRad) * 10) / 10;
+
+    return {
+        locationName: locClean,
+        anchorName: anchorName,
+        anchorType: anchorData.type,
+        pinX: anchorData.pinX + dx,
+        pinY: anchorData.pinY + dy,
+        orientation: `${locClean} (near ${anchorName})`
+    };
+}
+
+function showMapWaypointTooltip(e, name) {
+    const tooltip = document.getElementById('map-cursor-tooltip');
+    if (!tooltip) return;
+    tooltip.innerHTML = `
+        <div style="font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; color: var(--gold-warm); margin-bottom: 2px;">📍 ${name}</div>
+        <div style="font-size: 11px; color: #94a3b8;">Discovered Landmark</div>
+    `;
+    tooltip.style.opacity = '1';
+    tooltip.style.transform = 'scale(1)';
+    positionMapProvinceTooltip(e);
+}
+
 async function openMapModal() {
     const modal = document.getElementById('map-modal');
     if (modal) modal.style.display = 'flex';
+    try {
+        await fetchCharacterStatus();
+    } catch (e) {
+        console.error("Error refreshing character status before map open:", e);
+    }
     await renderTamrielMap();
 }
 
@@ -120,13 +271,38 @@ async function renderTamrielMap() {
     const curProvince = world.current_province || 'Cyrodiil';
     const curLocation = world.current_location || 'Imperial Dungeon';
 
+    const activeLocation = resolveLocationAnchor(curProvince, curLocation);
+
     if (headerLoc) {
-        headerLoc.innerHTML = `<strong>Current Position:</strong> ${curLocation}, <span style="color: var(--arena-gold);">${curProvince}</span>`;
+        headerLoc.innerHTML = `<strong>Current Position:</strong> ${activeLocation.orientation}, <span style="color: var(--arena-gold);">${curProvince}</span>`;
     }
 
     if (!selectedProvinceName) selectedProvinceName = curProvince;
 
-    const pinCoords = PROVINCE_MAP_COORDS[curProvince] || { pinX: 653.9, pinY: 416.8 };
+    // Build waypoints for other discovered locations
+    const discovered = world.cities_discovered || [];
+    let waypointsSvg = '';
+    const curLocLower = curLocation.toLowerCase().trim();
+    const seenWpKeys = new Set();
+
+    for (const loc of discovered) {
+        const locLower = loc.toLowerCase().trim();
+        if (locLower === curLocLower) continue;
+        const wp = resolveLocationAnchor(curProvince, loc);
+        if (wp) {
+            const coordKey = `${Math.round(wp.pinX)}_${Math.round(wp.pinY)}`;
+            if (seenWpKeys.has(coordKey)) continue;
+            seenWpKeys.add(coordKey);
+            const safeLoc = loc.replace(/'/g, "\\'");
+            waypointsSvg += `
+                <g class="map-waypoint" transform="translate(${wp.pinX}, ${wp.pinY})" style="cursor: pointer;" pointer-events="all" onmousemove="showMapWaypointTooltip(event, '${safeLoc}')" onmouseleave="hideMapProvinceTooltip()">
+                    <circle cx="0" cy="0" r="5" fill="#facc15" stroke="#0f172a" stroke-width="1.8" />
+                    <circle cx="0" cy="0" r="2" fill="#ffffff" />
+                    <text x="8" y="4" fill="#cbd5e1" font-size="10" font-family="'Cinzel', serif" font-weight="600" style="text-shadow: 0 1px 4px rgba(0,0,0,0.95); pointer-events: none;">${loc}</text>
+                </g>
+            `;
+        }
+    }
 
     let clickZonesSvg = '';
     for (const [pName, data] of Object.entries(PROVINCE_MAP_COORDS)) {
@@ -139,6 +315,9 @@ async function renderTamrielMap() {
     }
 
     // High resolution Map SVG with floating cursor tooltip
+    const badgeText = activeLocation.locationName || curLocation;
+    const badgeWidth = Math.max(100, badgeText.length * 8.5 + 20);
+
     container.innerHTML = `
         <svg viewBox="0 0 1024 768" onmouseleave="hideMapProvinceTooltip()" style="width: 100%; height: auto; display: block; background: #000; border-radius: 8px; user-select: none;">
             <defs>
@@ -155,11 +334,14 @@ async function renderTamrielMap() {
             <!-- Tamriel Map Image (1024x768) -->
             <image href="/static/img/tamriel_map.png" x="0" y="0" width="1024" height="768" />
 
-            <!-- Invisible Click Hotspots for each province (no label badges) -->
+            <!-- Invisible Click Hotspots for each province -->
             ${clickZonesSvg}
 
-            <!-- Real-time Location Pin 📍 (Clean glowing concentric marker centered on Imperial City / active location) -->
-            <g transform="translate(${pinCoords.pinX}, ${pinCoords.pinY})" filter="url(#pinGlow)" pointer-events="none">
+            <!-- Discovered Landmarks / Waypoints -->
+            ${waypointsSvg}
+
+            <!-- Real-time Location Pin 📍 (Glowing concentric marker with current location badge) -->
+            <g transform="translate(${activeLocation.pinX}, ${activeLocation.pinY})" filter="url(#pinGlow)" pointer-events="none" style="transition: transform 0.5s ease-out;">
                 <!-- Pulse animation rings -->
                 <circle cx="0" cy="0" r="18" fill="none" stroke-width="2.2" opacity="0.85" style="stroke: var(--gold-warm)">
                     <animate attributeName="r" values="8;30" dur="2s" repeatCount="indefinite" />
@@ -168,6 +350,11 @@ async function renderTamrielMap() {
                 <!-- Center Pin Marker -->
                 <circle cx="0" cy="0" r="8" stroke-width="2" style="fill: var(--danger-vivid); stroke: #ffffff" />
                 <circle cx="0" cy="0" r="3" fill="#ffffff" />
+                <!-- Current Location Badge -->
+                <g transform="translate(14, -14)">
+                    <rect x="0" y="0" width="${badgeWidth}" height="24" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="hsl(45, 80%, 55%)" stroke-width="1.2" />
+                    <text x="10" y="16" fill="#fef08a" font-size="11.5" font-family="'Cinzel', serif" font-weight="700" letter-spacing="0.5">${badgeText}</text>
+                </g>
             </g>
         </svg>
 
@@ -2253,9 +2440,9 @@ function renderCharacterStatusModal(data) {
 
     const dateEl = document.getElementById('modal-char-date');
     if (dateEl) {
-        const tDate = world.date || world.tamrielic_date || { day: 1, month: "Morning Star", year: 389, hour: 6 };
+        const tDate = world.date || world.tamrielic_date || { day: 1, month: "Hearthfire", year: 389, hour: 6 };
         const timeStr = tDate.hour !== undefined ? ` • ${formatTamrielicTime(tDate.hour)}` : "";
-        dateEl.textContent = `${tDate.day || 1} ${tDate.month || 'Morning Star'}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}${timeStr}`;
+        dateEl.textContent = `${tDate.day || 1} ${tDate.month || 'Hearthfire'}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}${timeStr}`;
     }
 
 
@@ -2454,7 +2641,25 @@ function renderCharacterStatusModal(data) {
         } else {
             spells.forEach(spell => {
                 const badge = document.createElement('span');
-                badge.style.cssText = 'font-size: 0.8rem; padding: 4px 6px 4px 10px; border-radius: 8px; background: hsla(218, 90%, 60%, 0.1); color: hsl(218, 90%, 60%); border: 1px solid hsla(218, 90%, 60%, 0.25); display: inline-flex; align-items: center; gap: 6px;';
+                badge.style.cssText = 'font-size: 0.8rem; padding: 4px 6px 4px 10px; border-radius: 8px; background: hsla(218, 90%, 60%, 0.1); color: hsl(218, 90%, 60%); border: 1px solid hsla(218, 90%, 60%, 0.25); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s ease;';
+                badge.title = `Click to cast ${spell.name} (${spell.mp_cost || spell.sp_cost || 4} MP)`;
+                badge.onmouseover = () => {
+                    badge.style.background = 'hsla(218, 90%, 60%, 0.2)';
+                    badge.style.borderColor = 'hsla(218, 90%, 60%, 0.45)';
+                };
+                badge.onmouseout = () => {
+                    badge.style.background = 'hsla(218, 90%, 60%, 0.1)';
+                    badge.style.borderColor = 'hsla(218, 90%, 60%, 0.25)';
+                };
+                badge.onclick = () => {
+                    closeCharacterStatusModal();
+                    if (userInput) {
+                        userInput.value = `*I focus my magicka and cast ${spell.name}...*`;
+                        userInput.style.height = 'auto';
+                        userInput.style.height = (userInput.scrollHeight) + 'px';
+                        userInput.focus();
+                    }
+                };
                 
                 const spellText = document.createElement('span');
                 spellText.textContent = `${spell.name} (${spell.school || 'Magic'}) • ${spell.mp_cost || spell.sp_cost || 4} MP`;
@@ -4922,7 +5127,7 @@ function formatMessageTimestamp(timestamp, msg = null) {
         if (typeof msg.tamrielic_date === 'object') {
             const t = msg.tamrielic_date;
             const timeStr = t.hour !== undefined ? ` • ${formatTamrielicTime(t.hour)}` : '';
-            return `${t.day || 1} ${t.month || 'Morning Star'}, ${t.year ? `3E ${t.year}` : '3E 389'}${timeStr}`;
+            return `${t.day || 1} ${t.month || 'Hearthfire'}, ${t.year ? `3E ${t.year}` : '3E 389'}${timeStr}`;
         }
     }
 
@@ -4936,12 +5141,12 @@ function formatMessageTimestamp(timestamp, msg = null) {
 
     const world = currentCharacterData?.world;
     if (world) {
-        const tDate = world.date || world.tamrielic_date || { day: 1, month: "Morning Star", year: 389, hour: 6 };
+        const tDate = world.date || world.tamrielic_date || { day: 1, month: "Hearthfire", year: 389, hour: 6 };
         const timeStr = tDate.hour !== undefined ? ` • ${formatTamrielicTime(tDate.hour)}` : '';
-        return `${tDate.day || 1} ${tDate.month || 'Morning Star'}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}${timeStr}`;
+        return `${tDate.day || 1} ${tDate.month || 'Hearthfire'}, ${tDate.year ? `3E ${tDate.year}` : '3E 389'}${timeStr}`;
     }
 
-    return "1 Morning Star, 3E 389 • 6:00 AM";
+    return "1 Hearthfire, 3E 389 • 6:00 AM";
 }
 
 // --- Tool Metadata & Human Labels ---
@@ -7529,7 +7734,7 @@ async function generateCustomImage(type = 'follower') {
         const loc = world.current_location || "Imperial Dungeon";
         const prov = world.current_province || "Cyrodiil";
         const dateObj = world.tamrielic_date || world.date || {};
-        const timeStr = typeof dateObj === 'object' ? `${dateObj.day || 1} ${dateObj.month || 'Morning Star'}, 3E ${dateObj.year || 389}` : (dateObj || "");
+        const timeStr = typeof dateObj === 'object' ? `${dateObj.day || 1} ${dateObj.month || 'Hearthfire'}, 3E ${dateObj.year || 389}` : (dateObj || "");
         const envDetails = `${loc} in ${prov}${timeStr ? ', ' + timeStr : ''}`;
 
         if (useImagenMode) {
@@ -7876,10 +8081,11 @@ async function resolvePlayerSkillCheck() {
             userInput.style.height = 'auto';
             userInput.style.height = (userInput.scrollHeight) + 'px';
 
-            // Keep text area locked until pressing send so player cannot edit roll result before sending
-            userInput.disabled = true;
-            userInput.classList.add('user-input-frozen');
-            userInput.placeholder = "Roll action generated — Click Send to submit";
+            // Allow player to review and edit the action sentence before sending
+            userInput.disabled = false;
+            userInput.classList.remove('user-input-frozen');
+            userInput.placeholder = "Review or edit action, then click Send";
+            userInput.focus();
 
             // Lock dice button so player cannot reroll outcome before sending
             if (diceBtn) {

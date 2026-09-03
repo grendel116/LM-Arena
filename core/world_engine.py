@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import math
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
@@ -94,6 +95,139 @@ TAMRIEL_GEOGRAPHY = {
     }
 }
 
+CANONICAL_ANCHOR_LOCATIONS = {
+    "Cyrodiil": {
+        "Imperial City": {"pinX": 565.0, "pinY": 368.0, "type": "capital"},
+        "Imperial Dungeon": {"pinX": 565.0, "pinY": 368.0, "type": "dungeon"},
+        "Chorrol": {"pinX": 465.0, "pinY": 310.0, "type": "city"},
+        "Bruma": {"pinX": 545.0, "pinY": 268.0, "type": "city"},
+        "Cheydinhal": {"pinX": 648.0, "pinY": 325.0, "type": "city"},
+        "Skingrad": {"pinX": 455.0, "pinY": 415.0, "type": "city"},
+        "Anvil": {"pinX": 358.0, "pinY": 425.0, "type": "city"},
+        "Bravil": {"pinX": 590.0, "pinY": 455.0, "type": "city"},
+        "Leyawiin": {"pinX": 635.0, "pinY": 565.0, "type": "city"},
+    },
+    "Skyrim": {
+        "Solitude": {"pinX": 525.0, "pinY": 95.0, "type": "capital"},
+        "Whiterun": {"pinX": 570.0, "pinY": 155.0, "type": "city"},
+        "Windhelm": {"pinX": 650.0, "pinY": 140.0, "type": "city"},
+        "Riften": {"pinX": 665.0, "pinY": 215.0, "type": "city"},
+        "Markarth": {"pinX": 455.0, "pinY": 145.0, "type": "city"},
+        "Winterhold": {"pinX": 610.0, "pinY": 100.0, "type": "city"},
+        "Dawnstar": {"pinX": 560.0, "pinY": 95.0, "type": "city"},
+        "Falkreath": {"pinX": 535.0, "pinY": 195.0, "type": "city"},
+        "Labyrinthian": {"pinX": 550.0, "pinY": 135.0, "type": "dungeon"},
+    },
+    "High Rock": {
+        "Daggerfall": {"pinX": 144.0, "pinY": 255.0, "type": "capital"},
+        "Wayrest": {"pinX": 255.0, "pinY": 180.0, "type": "city"},
+        "Crypt of Hearts": {"pinX": 290.0, "pinY": 140.0, "type": "dungeon"},
+    },
+    "Hammerfell": {
+        "Sentinel": {"pinX": 210.0, "pinY": 275.0, "type": "capital"},
+        "Rihad": {"pinX": 275.0, "pinY": 415.0, "type": "city"},
+        "Taneth": {"pinX": 345.0, "pinY": 395.0, "type": "city"},
+        "Fang Lair": {"pinX": 385.0, "pinY": 230.0, "type": "dungeon"},
+    },
+    "Morrowind": {
+        "Mournhold": {"pinX": 835.0, "pinY": 360.0, "type": "capital"},
+        "Vivec": {"pinX": 810.0, "pinY": 340.0, "type": "city"},
+        "Balmora": {"pinX": 795.0, "pinY": 305.0, "type": "city"},
+        "Dagoth Ur": {"pinX": 805.0, "pinY": 260.0, "type": "dungeon"},
+    },
+    "Valenwood": {
+        "Falinesti": {"pinX": 420.0, "pinY": 530.0, "type": "capital"},
+        "Silvenar": {"pinX": 410.0, "pinY": 570.0, "type": "city"},
+        "Haven": {"pinX": 450.0, "pinY": 645.0, "type": "city"},
+        "Woodhearth": {"pinX": 335.0, "pinY": 565.0, "type": "city"},
+        "Elden Grove": {"pinX": 445.0, "pinY": 615.0, "type": "dungeon"},
+    },
+    "Elsweyr": {
+        "Torval": {"pinX": 550.0, "pinY": 600.0, "type": "capital"},
+        "Corinthe": {"pinX": 575.0, "pinY": 625.0, "type": "city"},
+        "Rimmen": {"pinX": 615.0, "pinY": 550.0, "type": "city"},
+        "Dune": {"pinX": 505.0, "pinY": 580.0, "type": "city"},
+        "Halls of Colossus": {"pinX": 580.0, "pinY": 630.0, "type": "dungeon"},
+    },
+    "Summerset Isle": {
+        "Alinor": {"pinX": 150.0, "pinY": 615.0, "type": "capital"},
+        "Cloudrest": {"pinX": 180.0, "pinY": 540.0, "type": "city"},
+        "Lillandril": {"pinX": 100.0, "pinY": 575.0, "type": "city"},
+        "Crystal Tower": {"pinX": 170.0, "pinY": 560.0, "type": "dungeon"},
+    },
+    "Black Marsh": {
+        "Stormhold": {"pinX": 770.0, "pinY": 520.0, "type": "capital"},
+        "Gideon": {"pinX": 730.0, "pinY": 560.0, "type": "city"},
+        "Soulrest": {"pinX": 740.0, "pinY": 660.0, "type": "city"},
+        "Murkwood": {"pinX": 810.0, "pinY": 610.0, "type": "dungeon"},
+    }
+}
+
+def procedural_hash(s: str) -> int:
+    """32-bit FNV-1a hash for deterministic procedural positioning."""
+    h = 2166136261
+    for b in s.strip().lower().encode("utf-8"):
+        h = (h ^ b) * 16777619 & 0xFFFFFFFF
+    return h
+
+def resolve_location_anchor(province_name: str, location_name: str, known_city: str = None) -> dict:
+    """
+    Procedurally translates any narrative location to its nearest canonical base anchor
+    (city or dungeon) using deterministic mathematical offsets and cardinal orientation.
+    """
+    prov = province_name or "Cyrodiil"
+    anchors = CANONICAL_ANCHOR_LOCATIONS.get(prov, CANONICAL_ANCHOR_LOCATIONS["Cyrodiil"])
+    loc_clean = (location_name or "Imperial Dungeon").strip()
+    loc_lower = loc_clean.lower()
+    
+    # 1. Direct match with a canonical base location
+    for name, data in anchors.items():
+        if loc_lower == name.lower():
+            return {
+                "location_name": loc_clean,
+                "anchor_name": name,
+                "anchor_type": data["type"],
+                "coords": {"pinX": data["pinX"], "pinY": data["pinY"]},
+                "orientation": name,
+                "narrative_orientation": f"within {name}"
+            }
+            
+    # 2. Determine nearest canonical base anchor
+    anchor_name = None
+    for name in anchors:
+        if name.lower() in loc_lower:
+            anchor_name = name
+            break
+            
+    if not anchor_name and known_city and known_city in anchors:
+        anchor_name = known_city
+        
+    if not anchor_name:
+        # Default to the province's primary anchor/capital
+        anchor_name = list(anchors.keys())[0]
+
+    anchor_data = anchors[anchor_name]
+
+    # 3. Procedural mathematical offset using deterministic trigonometry
+    h = procedural_hash(loc_clean)
+    angle_rad = math.radians(h % 360)
+    radius = 22.0 + (h % 18)
+    dx = round(radius * math.cos(angle_rad), 1)
+    dy = round(radius * math.sin(angle_rad), 1)
+
+    deg = (math.degrees(math.atan2(dy, dx)) + 360) % 360
+    directions = ["east", "southeast", "south", "southwest", "west", "northwest", "north", "northeast"]
+    direction = directions[int((deg + 22.5) // 45) % 8]
+
+    return {
+        "location_name": loc_clean,
+        "anchor_name": anchor_name,
+        "anchor_type": anchor_data["type"],
+        "coords": {"pinX": anchor_data["pinX"] + dx, "pinY": anchor_data["pinY"] + dy},
+        "orientation": f"{loc_clean} (near {anchor_name})",
+        "narrative_orientation": f"in the wilderness {direction} of {anchor_name}"
+    }
+
 def get_location_context(state: dict, provinces_data: list, cities_data: list, dungeons_data: list) -> str:
     """Builds a rich geographic and environmental context string for the LLM DM."""
     current_province = state.get("current_province", "Cyrodiil")
@@ -111,23 +245,27 @@ def get_location_context(state: dict, provinces_data: list, cities_data: list, d
             dominant_culture = c.get("culture", "Imperial")
             break
             
-    date = state.get("tamrielic_date") or state.get("date") or {"day": 1, "month": "Morning Star", "year": 389}
+    date = state.get("tamrielic_date") or state.get("date") or {"day": 1, "month": "Hearthfire", "year": 389}
     
     geo = TAMRIEL_GEOGRAPHY.get(current_province, {
         "region": "Tamriel Realm",
         "borders": "Adjacent Provinces",
         "routes": "Roads and trails"
     })
+
+    loc_info = resolve_location_anchor(current_province, current_location)
     
     return (
-        f"Current Location: {current_location}, {current_province}\n"
+        f"Current Location: {loc_info['orientation']}, {current_province}\n"
+        f"Regional Orientation: Currently situated {loc_info['narrative_orientation']}.\n"
+        f"Nearest Major Landmark/Hub: {loc_info['anchor_name']} ({loc_info['anchor_type'].capitalize()})\n"
         f"Geographic Region: {geo['region']}\n"
         f"Bordering Lands: {geo['borders']}\n"
         f"Major Travel Routes: {geo['routes']}\n"
         f"Province Climate: {province_climate}\n"
         f"Dominant Culture: {dominant_culture}\n"
         f"Local Weather: {state.get('weather', 'clear')}\n"
-        f"Tamrielic Date: {date.get('day', 1)} {date.get('month', 'Morning Star')}, Third Era {date.get('year', 389)}"
+        f"Tamrielic Date: {date.get('day', 1)} {date.get('month', 'Hearthfire')}, Third Era {date.get('year', 389)}"
     )
 
 def travel(state: dict, destination_province: str, destination_city: str) -> dict:
@@ -349,7 +487,7 @@ import copy
 
 def create_state_snapshot(world_state: dict, character_sheet: dict = None) -> dict:
     """Creates a compact snapshot of location, date/time, quest, vitals, inventory, and spells."""
-    date = world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+    date = world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
     derived = (character_sheet or {}).get("derived", {})
     inventory = copy.deepcopy((character_sheet or {}).get("inventory", []))
     spells = copy.deepcopy((character_sheet or {}).get("spells", []))
@@ -358,7 +496,7 @@ def create_state_snapshot(world_state: dict, character_sheet: dict = None) -> di
         "location": world_state.get("current_location", "Imperial Dungeon"),
         "date": {
             "day": date.get("day", 1),
-            "month": date.get("month", "Morning Star"),
+            "month": date.get("month", "Hearthfire"),
             "year": date.get("year", 389),
             "hour": date.get("hour", 6),
             "era": date.get("era", "Third Era")

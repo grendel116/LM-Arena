@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import random
+import re
 from typing import Any
 
 # In-memory vector cache keyed by entry content hash: {hash: np.ndarray}
@@ -87,7 +88,17 @@ def _parse_lorebook(book: dict) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def _matches_keys(keys: list[str], scan_text: str) -> bool:
-    return any(k and k in scan_text for k in keys)
+    for k in keys:
+        if not k:
+            continue
+        # Use word boundaries for keyword tokens to avoid false matches (e.g. 'ring' matching 'shimmering')
+        if " " in k:
+            if k in scan_text:
+                return True
+        else:
+            if re.search(r'\b' + re.escape(k) + r'\b', scan_text):
+                return True
+    return False
 
 
 def _entry_keyword_triggers(entry: dict, scan_text: str) -> bool:

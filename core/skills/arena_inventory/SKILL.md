@@ -3,6 +3,7 @@ name: arena_inventory
 description: "Manages player inventory, finding/looting items, equipment slots, shop trading, currency/gold, and item consumption."
 summary: "Add looted/found items with [arena_add_item], remove used/sold items with [arena_remove_item], award gold with [arena_add_gold], and spend coins with [arena_spend_gold]."
 retrieval: vector
+triggers: inventory, item, loot, take, pick up, grab, equip, unequip, buy, sell, gold, shop, merchant, potion, ring
 ---
 
 # INVENTORY & ECONOMY PROTOCOLS
