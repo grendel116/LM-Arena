@@ -58,9 +58,13 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 Double-click `run_local.bat` (or run `./run_local.ps1` in PowerShell, or `./run_local.sh` on Linux/macOS).
 This launches **LM-Arena** directly as a native standalone desktop application with EdgeChromium / WebView2 audio support and integrated local in-process engines.
 
+### Recommended Model:
+* **Recommended LLM**: [**Equinox-31B-i1-GGUF**](https://huggingface.co/mradermacher/Equinox-31B-i1-GGUF) (e.g. `Equinox-31B.i1-Q4_K_M.gguf`)
+  * *High-fidelity Tamriel roleplay, nuanced dialogue, and autonomous D20/inventory tool calling.*
+
 ### Model Placement:
 Place your model files in the designated subdirectories under `models/`:
-* **Chat LLM (GGUF)**: `models/llm/`
+* **Chat LLM (GGUF)**: `models/llm/` (e.g. `models/llm/Equinox-31B.i1-Q4_K_M.gguf`)
 * **Portraits / Checkpoints (SDXL / SD 1.5)**: `models/checkpoints/`
 * **LoRAs**: `models/loras/`
 * **VAE**: `models/vae/`

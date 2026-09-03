@@ -22,6 +22,16 @@ VECTOR_TOP_K = 7
 VECTOR_SCORE_THRESHOLD = 0.25
 VECTOR_TOKEN_BUDGET = 2048
 
+def atomic_save_json(path: str | Path, data: object, indent: int = 2):
+    """Atomically writes JSON to disk using a unique temporary file and replacement."""
+    target_path = str(path)
+    os.makedirs(os.path.dirname(os.path.abspath(target_path)), exist_ok=True)
+    temp_path = f"{target_path}.tmp_{uuid.uuid4().hex[:6]}"
+    with open(temp_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=indent, ensure_ascii=False)
+    os.replace(temp_path, target_path)
+
+
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG DIRECTIVES\n"
     "Tools:\n"
@@ -49,7 +59,9 @@ _ARENA_DIRECTIVE_PROMPT = (
 
 
 TOOL_ALIASES = {
-    "generate_follower_portrait": "generate_local_image",
+    "generate_follower_portrait": "generate_follower_portrait",
+    "generate_player_portrait": "generate_player_portrait",
+    "generate_environment_image": "generate_environment_image",
     "dalle.text2im": "generate_local_image",
     "dalle:text2im": "generate_local_image",
     "text2im": "generate_local_image",

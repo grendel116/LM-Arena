@@ -34,6 +34,7 @@ def resolve_checkpoint_path(checkpoint_name: Optional[str] = None) -> str:
         candidates.append(os.path.join(CHECKPOINTS_DIR, checkpoint_name))
         candidates.append(os.path.join(MODELS_DIR, checkpoint_name))
 
+    candidates.append(os.path.join(CHECKPOINTS_DIR, "olivkaIllustrious_v10.safetensors"))
     candidates.append(os.path.join(CHECKPOINTS_DIR, "WAI_illustrious-SDXL_16.safetensors"))
     candidates.append(os.path.join(CHECKPOINTS_DIR, "sd_xl_base_1.0.safetensors"))
 
@@ -47,6 +48,12 @@ def resolve_checkpoint_path(checkpoint_name: Optional[str] = None) -> str:
                 return os.path.join(CHECKPOINTS_DIR, f)
 
     raise FileNotFoundError(f"No checkpoint models found in {CHECKPOINTS_DIR}.")
+
+
+def resolve_checkpoint_name(checkpoint_name: Optional[str] = None) -> str:
+    """Resolves the filename of the requested or default checkpoint model."""
+    path = resolve_checkpoint_path(checkpoint_name)
+    return os.path.basename(path)
 
 
 def resolve_lora_path(lora_name: str) -> Optional[str]:
@@ -518,7 +525,7 @@ def _generate_portrait_image_inprocess(
     if not os.path.isabs(wf_file):
         wf_file = os.path.normpath(os.path.join(root_dir, wf_file))
 
-    selected_checkpoint = checkpoint or "WAI_illustrious-SDXL_16.safetensors"
+    selected_checkpoint = checkpoint or resolve_checkpoint_name()
 
     if os.path.exists(wf_file):
         print(f"[engine_diffusion] Adapting dynamically to workflow: {wf_file}")
@@ -645,12 +652,19 @@ def generate_portrait_image(
         method="POST"
     )
 
-    with urllib.request.urlopen(req, timeout=300) as resp:
-        res_json = json.loads(resp.read().decode("utf-8"))
-        if res_json.get("status") == "ok":
-            return res_json.get("path", "")
-        else:
-            raise RuntimeError(res_json.get("error", "Unknown diffusion error"))
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            res_json = json.loads(resp.read().decode("utf-8"))
+            if res_json.get("status") == "ok":
+                return res_json.get("path", "")
+            else:
+                raise RuntimeError(res_json.get("error", "Unknown diffusion error"))
+    except urllib.error.HTTPError as he:
+        try:
+            err_body = json.loads(he.read().decode("utf-8"))
+            raise RuntimeError(err_body.get("error", str(he)))
+        except Exception:
+            raise he
 
 
 if __name__ == "__main__":
@@ -688,6 +702,8 @@ if __name__ == "__main__":
                         self.end_headers()
                         self.wfile.write(json.dumps({"status": "ok", "path": out_path}).encode("utf-8"))
                     except Exception as ex:
+                        import traceback
+                        traceback.print_exc()
                         self.send_response(500)
                         self.send_header("Content-Type", "application/json")
                         self.end_headers()

@@ -4980,8 +4980,10 @@ const hiddenPassiveTools = new Set([
     'arena_get_character_context',
     'arena_get_location',
     'generate_local_image',
-    'generate_imagen',
     'generate_follower_portrait',
+    'generate_player_portrait',
+    'generate_environment_image',
+    'generate_imagen',
     'generate_general_image',
     'apply_comfy_workflow',
     'generate_video_from_image'
@@ -5252,12 +5254,30 @@ function normalizeChatResponse(data) {
     }
     cleanText = text.replace(imgRegex, '').trim();
 
+    // Extract markdown images from tool calls responses
+    const toolCalls = data.tool_calls || [];
+    toolCalls.forEach(tc => {
+        const outStr = (typeof tc.response === 'string' ? tc.response : '') || (typeof tc.output === 'string' ? tc.output : '');
+        if (outStr) {
+            let tcMatch;
+            const tcImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+            while ((tcMatch = tcImgRegex.exec(outStr)) !== null) {
+                const tcUrl = tcMatch[2];
+                if (!media.some(m => m.url === tcUrl)) {
+                    media.push({
+                        url: tcUrl,
+                        type: tcUrl.toLowerCase().endsWith('.mp4') ? 'video' : 'image'
+                    });
+                }
+            }
+        }
+    });
+
     // Determine portrait/image prompt from tool calls
     let imagePrompt = null;
-    const toolCalls = data.tool_calls || [];
     const imgCall = toolCalls.find(tc => tc.type === 'call' && [
-        'generate_follower_portrait', 'generate_local_image',
-        'generate_imagen', 'generate_general_image'
+        'generate_follower_portrait', 'generate_player_portrait', 'generate_environment_image',
+        'generate_local_image', 'generate_imagen', 'generate_general_image'
     ].includes(tc.name));
     if (imgCall && imgCall.args && imgCall.args.prompt) {
         imagePrompt = imgCall.args.prompt;
@@ -5411,8 +5431,50 @@ function renderMessage(msg, isLive = false) {
     }
 
     const role = msg.role;
-    const text = msg.text || '';
+    let text = msg.text || '';
     const msgId = msg.id || generateMessageId(text, role);
+
+    // If media is not already initialized, extract media from text, image_url, and tool_calls
+    if (!msg.media) {
+        msg.media = [];
+        if (msg.image_url) {
+            msg.media.push({
+                url: msg.image_url,
+                type: msg.image_url.toLowerCase().endsWith('.mp4') ? 'video' : 'image'
+            });
+        }
+        const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+        let match;
+        while ((match = imgRegex.exec(text)) !== null) {
+            const url = match[2];
+            if (!msg.media.some(m => m.url === url)) {
+                msg.media.push({
+                    url: url,
+                    type: url.toLowerCase().endsWith('.mp4') ? 'video' : 'image'
+                });
+            }
+        }
+        text = text.replace(imgRegex, '').trim();
+
+        // Extract markdown images from tool calls responses
+        const toolCalls = msg.tool_calls || [];
+        toolCalls.forEach(tc => {
+            const outStr = (typeof tc.response === 'string' ? tc.response : '') || (typeof tc.output === 'string' ? tc.output : '');
+            if (outStr) {
+                let tcMatch;
+                const tcImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+                while ((tcMatch = tcImgRegex.exec(outStr)) !== null) {
+                    const tcUrl = tcMatch[2];
+                    if (!msg.media.some(m => m.url === tcUrl)) {
+                        msg.media.push({
+                            url: tcUrl,
+                            type: tcUrl.toLowerCase().endsWith('.mp4') ? 'video' : 'image'
+                        });
+                    }
+                }
+            }
+        });
+    }
 
     // Client-side hidden prefix check
     const _hiddenPrefixes = ['port_', 'quest_', 'tool_'];
@@ -5435,6 +5497,8 @@ function renderMessage(msg, isLive = false) {
     if (msg.tool_calls && msg.tool_calls.length > 0) {
         const call = msg.tool_calls.find(tc => tc.type === 'call' && (
             tc.name === 'generate_follower_portrait' ||
+            tc.name === 'generate_player_portrait' ||
+            tc.name === 'generate_environment_image' ||
             tc.name === 'generate_local_image' ||
             tc.name === 'generate_imagen' ||
             tc.name === 'generate_general_image'
@@ -5495,7 +5559,11 @@ function renderMessage(msg, isLive = false) {
                 if (reason) fallbackText = `*${reason}*`;
             }
         }
-        bubblesToCreate.push({ type: 'text', content: fallbackText || '*(Empty message)*' });
+        if (fallbackText && fallbackText.trim()) {
+            bubblesToCreate.push({ type: 'text', content: fallbackText });
+        } else {
+            return null;
+        }
     }
 
     bubblesToCreate.forEach((item, idx) => {
@@ -5788,6 +5856,25 @@ function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = f
             }
         }
         cleanText = cleanText.replace(imgRegex, '').trim();
+    }
+
+    if (toolCalls && Array.isArray(toolCalls)) {
+        toolCalls.forEach(tc => {
+            const outStr = (typeof tc.response === 'string' ? tc.response : '') || (typeof tc.output === 'string' ? tc.output : '');
+            if (outStr) {
+                let tcMatch;
+                const tcImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+                while ((tcMatch = tcImgRegex.exec(outStr)) !== null) {
+                    const tcUrl = tcMatch[2];
+                    if (!media.some(m => m.url === tcUrl)) {
+                        media.push({
+                            url: tcUrl,
+                            type: tcUrl.toLowerCase().endsWith('.mp4') ? 'video' : 'image'
+                        });
+                    }
+                }
+            }
+        });
     }
 
     const activeWorldDate = currentCharacterData?.world?.date || currentCharacterData?.world?.tamrielic_date || null;
@@ -6871,6 +6958,10 @@ async function searchComfyHFCheckpoints() {
     }
 }
 
+let serverImages = [];
+let galleryImages = [];
+let currentGalleryIndex = -1;
+
 // --- loadServerImages ---
 async function loadServerImages() {
     try {
@@ -6887,17 +6978,25 @@ async function loadServerImages() {
     }
 }
 
+function isProfileImage(path) {
+    if (!path) return false;
+    const p = String(path).toLowerCase();
+    return p.includes('profile.svg') || p.includes('profile.png') || p.includes('default_avatar');
+}
+
 // --- getGalleryImages ---
 function getGalleryImages() {
     const imgs = [];
     
     // Add server-side generated portraits
-    serverImages.forEach(img => {
-        const rel = getRelativePath(img);
-        if (!rel.includes('profile.svg') && !imgs.includes(rel)) {
-            imgs.push(rel);
-        }
-    });
+    if (Array.isArray(serverImages)) {
+        serverImages.forEach(img => {
+            const rel = getRelativePath(img);
+            if (!isProfileImage(rel) && !imgs.includes(rel)) {
+                imgs.push(rel);
+            }
+        });
+    }
     
     // Collect any additional message images and videos currently in the DOM
     const rows = document.querySelectorAll('.message-row');
@@ -6906,10 +7005,10 @@ function getGalleryImages() {
         if (bubble) {
             const messageImgs = bubble.querySelectorAll('img');
             messageImgs.forEach(img => {
-                if (img.src && !img.classList.contains('avatar')) {
+                if (img.src && !img.classList.contains('avatar') && !img.classList.contains('follower-avatar')) {
                     const src = img.getAttribute('src') || img.src;
                     const rel = getRelativePath(src);
-                    if (!rel.includes('profile.svg') && !imgs.includes(rel)) {
+                    if (!isProfileImage(rel) && !imgs.includes(rel)) {
                         imgs.push(rel);
                     }
                 }
@@ -6935,17 +7034,13 @@ function expandImage(src) {
     const pathOnly = getRelativePath(src);
     
     // If the user clicked a profile avatar picture, show the first available portrait/media image
-    const isProfile = pathOnly.includes('profile.png') || pathOnly.includes('profile.svg') || pathOnly.startsWith('/followers/');
+    const isProfile = isProfileImage(pathOnly) || pathOnly.startsWith('/followers/');
     if (isProfile) {
-        const profileIndex = galleryImages.findIndex(img => img.includes('profile.png'));
-        if (profileIndex !== -1) {
-            currentGalleryIndex = profileIndex;
-        } else if (galleryImages.length === 0) {
+        if (galleryImages.length === 0) {
             showCustomAlert("No Media", "No portraits or generated images exist in this arena yet.");
             return;
-        } else {
-            currentGalleryIndex = 0;
         }
+        currentGalleryIndex = 0;
     } else {
         currentGalleryIndex = galleryImages.indexOf(pathOnly);
         if (currentGalleryIndex === -1) {
@@ -6966,6 +7061,7 @@ function updateModalImage() {
     const modalImg = document.getElementById('modal-img');
     const modalVideo = document.getElementById('modal-video');
     const currentSrc = galleryImages[currentGalleryIndex];
+    if (!currentSrc) return;
     
     const isVideo = currentSrc.toLowerCase().endsWith('.mp4') || currentSrc.toLowerCase().endsWith('.webm');
     if (isVideo) {
@@ -6986,9 +7082,13 @@ function updateModalImage() {
         }
     }
     
+    const galleryNavBar = document.querySelector('.gallery-nav-bar');
+    if (galleryNavBar) {
+        galleryNavBar.style.display = galleryImages.length <= 1 ? 'none' : 'flex';
+    }
+    
     const prevBtn = document.querySelector('.prev-btn');
     const nextBtn = document.querySelector('.next-btn');
-    
     if (galleryImages.length <= 1) {
         if (prevBtn) prevBtn.style.display = 'none';
         if (nextBtn) nextBtn.style.display = 'none';
@@ -6999,20 +7099,12 @@ function updateModalImage() {
     
     const deleteBtn = document.getElementById('delete-gallery-btn');
     if (deleteBtn) {
-        if (currentSrc.includes('profile.svg') || currentSrc.includes('profile.png')) {
-            deleteBtn.style.display = 'none';
-        } else {
-            deleteBtn.style.display = 'flex';
-        }
+        deleteBtn.style.display = isProfileImage(currentSrc) ? 'none' : 'flex';
     }
     
     const setProfileBtn = document.getElementById('set-profile-btn');
     if (setProfileBtn) {
-        if (currentSrc.includes('profile.svg') || currentSrc.includes('profile.png') || isVideo) {
-            setProfileBtn.style.display = 'none';
-        } else {
-            setProfileBtn.style.display = 'flex';
-        }
+        setProfileBtn.style.display = (isProfileImage(currentSrc) || isVideo) ? 'none' : 'flex';
     }
 }
 
@@ -7048,7 +7140,7 @@ function nextGalleryImage(event) {
 async function deleteCurrentImage(event) {
     if (event) event.stopPropagation();
     const currentSrc = galleryImages[currentGalleryIndex];
-    if (currentSrc.includes('profile.svg') || currentSrc.includes('profile.png')) return;
+    if (isProfileImage(currentSrc)) return;
     
     showCustomConfirm("Delete Image", "Are you sure you want to permanently delete this image from this conversation and the server?", async () => {
         try {
@@ -7133,7 +7225,7 @@ async function deleteCurrentImage(event) {
 // --- deleteSpecificImage (from chat bubble action) ---
 async function deleteSpecificImage(imageSrc, bubbleElement) {
     if (!imageSrc) return;
-    if (imageSrc.includes('profile.svg') || imageSrc.includes('profile.png')) return;
+    if (isProfileImage(imageSrc)) return;
     
     showCustomConfirm("Delete Image", "Are you sure you want to permanently delete this image from this conversation and the server?", async () => {
         try {
@@ -7196,7 +7288,7 @@ let cropSourcePath = '';
 function setCurrentImageAsProfile(event) {
     if (event) event.stopPropagation();
     const currentSrc = galleryImages[currentGalleryIndex];
-    if (currentSrc.includes('profile.png') || currentSrc.includes('profile.svg')) return;
+    if (isProfileImage(currentSrc)) return;
 
     closeModal();
     cropSourcePath = currentSrc;
@@ -7335,41 +7427,130 @@ async function saveCroppedProfile(event) {
     }
 }
 
-// --- handleTouchStart ---
+// --- Touch Swipe Navigation ---
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
 function handleTouchStart(event) {
+    if (!event.changedTouches || event.changedTouches.length === 0) return;
     touchStartX = event.changedTouches[0].screenX;
+    touchStartY = event.changedTouches[0].screenY;
 }
 
-// --- handleTouchEnd ---
 function handleTouchEnd(event) {
+    if (!event.changedTouches || event.changedTouches.length === 0) return;
     touchEndX = event.changedTouches[0].screenX;
+    touchEndY = event.changedTouches[0].screenY;
     handleSwipeGesture();
 }
 
-// --- handleSwipeGesture ---
 function handleSwipeGesture() {
-    const swipeThreshold = 50;
-    if (touchEndX < touchStartX - swipeThreshold) {
-        nextGalleryImage();
-    } else if (touchEndX > touchStartX + swipeThreshold) {
-        prevGalleryImage();
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+        if (diffX < 0) {
+            nextGalleryImage();
+        } else {
+            prevGalleryImage();
+        }
     }
 }
 
-// --- generatePortraitPrompt ---
-async function generatePortraitPrompt() {
+// --- Image Generation Menu & Prompt Generators ---
+function togglePortraitMenu(event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    const menu = document.getElementById('portrait-dropdown-menu');
+    const btn = document.getElementById('generate-portrait-btn');
+    if (!menu) return;
+    const isVisible = menu.style.display === 'flex';
+    menu.style.display = isVisible ? 'none' : 'flex';
+    if (btn) {
+        btn.setAttribute('aria-expanded', !isVisible);
+    }
+}
+
+function closePortraitMenu() {
+    const menu = document.getElementById('portrait-dropdown-menu');
+    const btn = document.getElementById('generate-portrait-btn');
+    if (menu) menu.style.display = 'none';
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+// Close portrait dropdown on click outside
+document.addEventListener('click', function (e) {
+    const wrapper = document.querySelector('.portrait-menu-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        closePortraitMenu();
+    }
+});
+
+async function selectImageGenerationType(type) {
+    closePortraitMenu();
+    await generateCustomImage(type);
+}
+
+async function generateCustomImage(type = 'follower') {
     if (isGenerating) return;
     if (chatContainer) {
         const allRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)'));
         const lastRow = allRows[allRows.length - 1];
         if (lastRow && lastRow.classList.contains('user-row')) return;
     }
-    if (useImagenMode) {
-        userInput.value = "[GENERATE_IMAGEN: Render an image of the active companion using Google Imagen. Do not narrate new story events or call mechanics tools.]";
+
+    if (type === 'player') {
+        const char = (currentCharacterData && currentCharacterData.character) ? currentCharacterData.character : {};
+        const charName = char.name || activePlayerName || "Hero";
+        const charRace = char.race || "Nord";
+        const charGender = char.gender || "Male";
+        const charClass = char.class || "Warrior";
+
+        let profileDesc = "";
+        const activeProf = (userProfiles || []).find(p => p.id === activeUserProfile);
+        if (activeProf && activeProf.content) {
+            profileDesc = activeProf.content.replace(/^#\s+[^\n]+\n?/, '').trim();
+        }
+
+        let descSummary = `a ${charGender} ${charRace} ${charClass} named ${charName}`;
+        if (profileDesc) {
+            descSummary += `. Appearance details: ${profileDesc}`;
+        }
+
+        if (useImagenMode) {
+            userInput.value = `[GENERATE_IMAGEN: Render a detailed character portrait of the player character: ${descSummary}. Do not narrate new story events or call mechanics tools.]`;
+        } else {
+            userInput.value = `[GENERATE_IMAGE: Render a detailed character portrait of the player character: ${descSummary}. Do not narrate new story events or call mechanics tools.]`;
+        }
+    } else if (type === 'environment') {
+        const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
+        const loc = world.current_location || "Imperial Dungeon";
+        const prov = world.current_province || "Cyrodiil";
+        const dateObj = world.tamrielic_date || world.date || {};
+        const timeStr = typeof dateObj === 'object' ? `${dateObj.day || 1} ${dateObj.month || 'Morning Star'}, 3E ${dateObj.year || 389}` : (dateObj || "");
+        const envDetails = `${loc} in ${prov}${timeStr ? ', ' + timeStr : ''}`;
+
+        if (useImagenMode) {
+            userInput.value = `[GENERATE_IMAGEN: Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters. Do not narrate new story events or call mechanics tools.]`;
+        } else {
+            userInput.value = `[GENERATE_IMAGE: Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters. Do not narrate new story events or call mechanics tools.]`;
+        }
     } else {
-        userInput.value = "[GENERATE_IMAGE: Render an image of the active companion. Do not narrate new story events or call mechanics tools.]";
+        // Follower / companion portrait
+        if (useImagenMode) {
+            userInput.value = "[GENERATE_IMAGEN: Render an image of the active companion using Google Imagen. Do not narrate new story events or call mechanics tools.]";
+        } else {
+            userInput.value = "[GENERATE_IMAGE: Render an image of the active companion. Do not narrate new story events or call mechanics tools.]";
+        }
     }
+
     await sendMessage();
+}
+
+async function generatePortraitPrompt() {
+    return selectImageGenerationType('follower');
 }
 
 // --- autoGenerateUserMessage ---
@@ -9704,15 +9885,6 @@ function startSSE() {
     });
 }
 
-let serverImages = [];
-
-let galleryImages = [];
-let currentGalleryIndex = -1;
-
-// Swipe gestures detection
-let touchStartX = 0;
-let touchEndX = 0;
-
 // Bind keyboard navigation globally
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
@@ -9732,12 +9904,71 @@ document.addEventListener('keydown', (event) => {
 });
 
 // Initialize swipe event listeners once the modal exists in DOM
+function initModalBackdropPressListeners() {
+    const handleModalPress = (e) => {
+        if (!e.target || !e.target.classList) return;
+
+        // Modal backdrop dismissals on fast pointerdown
+        if (e.target.classList.contains('modal')) {
+            const modalId = e.target.id;
+            switch (modalId) {
+                case 'image-modal':
+                    closeModal();
+                    break;
+                case 'crop-modal':
+                    closeCropModal();
+                    break;
+                case 'status-modal':
+                    closeStatusModal();
+                    break;
+                case 'inventory-modal':
+                    closeInventoryModal();
+                    break;
+                case 'new-item-modal':
+                    closeNewItemModal();
+                    break;
+                case 'databank-modal':
+                    closeDataBank();
+                    break;
+                case 'quest-modal':
+                    closeQuestLog();
+                    break;
+                case 'assistant-modal':
+                    closeAssistantModal();
+                    break;
+                case 'import-follower-modal':
+                    closeImportfollowerModal();
+                    break;
+                case 'connection-modal':
+                    closeConnectionModal();
+                    break;
+                case 'follower-profile-modal':
+                    closefollowerProfileModal();
+                    break;
+                case 'custom-dialog-modal':
+                    closeCustomDialog(false);
+                    break;
+            }
+        }
+    };
+
+    document.addEventListener('pointerdown', handleModalPress);
+
+    // Prevent click release on modal backdrop from propagating to underlying elements
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.classList && e.target.classList.contains('modal')) {
+            e.stopPropagation();
+        }
+    }, true);
+}
+
 function initModalListeners() {
     const modal = document.getElementById('image-modal');
     if (modal) {
         modal.addEventListener('touchstart', handleTouchStart, { passive: true });
         modal.addEventListener('touchend', handleTouchEnd, { passive: true });
     }
+    initModalBackdropPressListeners();
     // Init TTS toggle button state
     const ttsBtn = document.getElementById('tts-toggle-btn');
     if (ttsBtn && ttsAutoSpeak) {
@@ -9855,38 +10086,12 @@ setInterval(async () => {
     }
 }, 5000);
 
-
-
-let sseEventSource = null;
-
-function initSessionSync() {
-    if (sseEventSource) {
-        sseEventSource.close();
-        sseEventSource = null;
-    }
-    if (typeof sessionId === 'undefined' || !sessionId) return;
-    try {
-        sseEventSource = new EventSource(`/api/stream_events?session_id=${encodeURIComponent(sessionId)}`);
-        sseEventSource.addEventListener('session_updated', (e) => {
-            if (typeof isGenerating === 'undefined' || !isGenerating) {
-                console.log("[SYNC] Session updated remotely, syncing history...");
-                loadHistory();
-            }
-        });
-        sseEventSource.onerror = (err) => {
-            console.warn("[SYNC] SSE connection issue, retrying...", err);
-        };
-    } catch (e) {
-        console.error("[SYNC] Could not start EventSource:", e);
-    }
-}
-
 // Load previous chat history on DOM ready
 function initMainApp() {
     updateProfileImages();
     loadHistory();
     fetchCharacterStatus();
-    initSessionSync();
+    loadServerImages();
 }
 if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', initMainApp);
@@ -10695,6 +10900,12 @@ document.addEventListener('error', function (event) {
         if (src && src.includes('/images/portraits/')) {
             const parent = event.target.parentElement;
             if (parent && parent.classList.contains('message-image-container')) {
+                const row = parent.closest('.message-row');
+                const rawText = (row && row.dataset && row.dataset.rawText ? row.dataset.rawText : '').trim();
+                if (row && !rawText) {
+                    row.remove();
+                    return;
+                }
                 const placeholder = document.createElement('div');
                 placeholder.className = 'deleted-image-placeholder';
                 placeholder.innerHTML = `
