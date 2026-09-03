@@ -2,6 +2,7 @@ import json
 import os
 import re
 import shutil
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +10,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.parent
 SAVES_DIR = BASE_DIR / "variables" / "saves"
 ACTIVE_SAVE_FILE = BASE_DIR / "variables" / "active_save.json"
+
+_save_lock = threading.Lock()
 
 DEFAULT_GREETING = (
     "A spectral vision coalesces before your eyes in the damp dark of your cell. "
@@ -84,7 +87,7 @@ def sync_save_meta(save_id: str) -> dict:
         meta["quest_stage"] = world.get("quest_stage", 10)
         t_date = world.get("tamrielic_date", {})
         if t_date:
-            meta["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Morning Star')}, 3E {t_date.get('year', 389)}"
+            meta["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Hearthfire')}, 3E {t_date.get('year', 389)}"
     meta["updated_at"] = datetime.now().isoformat()
     write_save(save_id, bundle)
     return meta
@@ -214,56 +217,57 @@ import time
 
 def write_save(save_id: str, bundle: dict) -> None:
     """Write complete save bundle atomically to single-file JSON."""
-    if not save_id or save_id == "default":
-        save_id = get_active_save_id()
+    with _save_lock:
+        if not save_id or save_id == "default":
+            save_id = get_active_save_id()
+            
+        SAVES_DIR.mkdir(parents=True, exist_ok=True)
+        json_path = SAVES_DIR / f"{save_id}.json"
         
-    SAVES_DIR.mkdir(parents=True, exist_ok=True)
-    json_path = SAVES_DIR / f"{save_id}.json"
-    
-    bundle.setdefault("meta", {})
-    bundle["meta"]["id"] = save_id
-    bundle["meta"]["updated_at"] = datetime.now().isoformat()
-    
-    # Keep character info in meta in sync
-    char = bundle.get("character", {})
-    if char:
-        bundle["meta"]["character_name"] = char.get("name", bundle["meta"].get("character_name", "Hero"))
-        bundle["meta"]["race"] = char.get("race", "Nord")
-        bundle["meta"]["gender"] = char.get("gender", "Male")
-        bundle["meta"]["class"] = char.get("class", "Mage")
-        bundle["meta"]["level"] = char.get("level", 1)
-        bundle["meta"]["gold"] = char.get("gold", 0)
+        bundle.setdefault("meta", {})
+        bundle["meta"]["id"] = save_id
+        bundle["meta"]["updated_at"] = datetime.now().isoformat()
         
-    world = bundle.get("world", {})
-    if world:
-        bundle["meta"]["current_province"] = world.get("current_province", "Cyrodiil")
-        bundle["meta"]["current_location"] = world.get("current_location", "Imperial Dungeon")
-        bundle["meta"]["quest_stage"] = world.get("quest_stage", 10)
-        t_date = world.get("tamrielic_date", {})
-        if t_date:
-            bundle["meta"]["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Morning Star')}, 3E {t_date.get('year', 389)}"
+        # Keep character info in meta in sync
+        char = bundle.get("character", {})
+        if char:
+            bundle["meta"]["character_name"] = char.get("name", bundle["meta"].get("character_name", "Hero"))
+            bundle["meta"]["race"] = char.get("race", "Nord")
+            bundle["meta"]["gender"] = char.get("gender", "Male")
+            bundle["meta"]["class"] = char.get("class", "Mage")
+            bundle["meta"]["level"] = char.get("level", 1)
+            bundle["meta"]["gold"] = char.get("gold", 0)
+            
+        world = bundle.get("world", {})
+        if world:
+            bundle["meta"]["current_province"] = world.get("current_province", "Cyrodiil")
+            bundle["meta"]["current_location"] = world.get("current_location", "Imperial Dungeon")
+            bundle["meta"]["quest_stage"] = world.get("quest_stage", 10)
+            t_date = world.get("tamrielic_date", {})
+            if t_date:
+                bundle["meta"]["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Hearthfire')}, 3E {t_date.get('year', 389)}"
 
-    tmp_path = SAVES_DIR / f"{save_id}.json.tmp"
-    
-    # Ensure file is completely written and closed inside the 'with' block
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(bundle, f, indent=2, ensure_ascii=False)
-        f.flush()
-        os.fsync(f.fileno())
+        tmp_path = SAVES_DIR / f"{save_id}.json.tmp"
+        
+        # Ensure file is completely written and closed inside the 'with' block
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(bundle, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
 
-    # Windows-safe replacement with a retry buffer for active file handles
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            if json_path.exists():
-                json_path.unlink() # Explicitly remove destination on Windows if locked
-            tmp_path.replace(json_path)
-            break
-        except (PermissionError, OSError) as e:
-            if attempt < max_retries - 1:
-                time.sleep(0.05) # Wait 50ms for the OS to release the handle
-            else:
-                raise e
+        # Windows-safe replacement with a retry buffer for active file handles
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                if json_path.exists():
+                    json_path.unlink() # Explicitly remove destination on Windows if locked
+                tmp_path.replace(json_path)
+                break
+            except (PermissionError, OSError) as e:
+                if attempt < max_retries - 1:
+                    time.sleep(0.05) # Wait 50ms for the OS to release the handle
+                else:
+                    raise e
 
 
 def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage") -> dict:
@@ -287,7 +291,7 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
         
     if not world_state:
         world_state = {
-            "tamrielic_date": {"day": 1, "month": "Morning Star", "year": 389, "era": "Third Era"},
+            "tamrielic_date": {"day": 1, "month": "Hearthfire", "year": 389, "era": "Third Era"},
             "current_province": "Cyrodiil",
             "current_location": "Imperial Dungeon",
             "quest_stage": 10,
@@ -336,7 +340,7 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
             "current_province": world_state.get("current_province", "Cyrodiil"),
             "current_location": world_state.get("current_location", "Imperial Dungeon"),
             "quest_stage": world_state.get("quest_stage", 10),
-            "tamrielic_date": "1 Morning Star, 3E 389",
+            "tamrielic_date": "1 Hearthfire, 3E 389",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         },

@@ -1117,11 +1117,14 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
     except Exception as e:
         print(f"Error getting character context for skill check: {e}")
 
+    action_intent = reason.strip() if reason else f"{skill_name} check"
+
     system_instruction = (
-        "Generate {{user}}'s immediate reaction in FIRST PERSON PRESENT TENSE.\n"
-        f"- FORMAT: 1 concise *italicized* narrative sentence in present tense (e.g. 'I slip on the damp stone...', 'I catch my balance...') matching the {roll_res['degree']} outcome. Spoken dialogue as plain text without quotation marks.\n"
-        "- PERSPECTIVE: Write in FIRST PERSON ('I', 'my') as {{user}}.\n"
-        "- RESTRAINT: Focus purely on {{user}}'s immediate reaction."
+        "Generate {{user}}'s action in FIRST PERSON PRESENT TENSE (*italicized*).\n"
+        f"- SPECIFIC ACTION: The action MUST directly perform the specific attempt: '{action_intent}' using the {skill_name} skill.\n"
+        f"- OUTCOME: Reflect the {roll_res['degree'].upper()} ({'Success' if roll_res['success'] else 'Failure'}) result of the roll.\n"
+        "- FAITHFULNESS: Never substitute an unrelated physical action (e.g. never kick, punch, or swing a weapon when casting a spell or picking a lock). Stay strictly faithful to the stated attempt.\n"
+        "- FORMAT: Exactly 1 concise *italicized* sentence in present tense (e.g. '*I thrust my palm forward, channeling raw magicka into a crackling burst of sparks.*'). No spoken dialogue."
     )
     try:
         from core.banned_words import get_banned_words_directive, sanitize_text
@@ -1139,22 +1142,20 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
             f"- Flat d20 Roll: {roll_res['roll']} (Outcome: {roll_res['degree'].upper()})\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{history_text}\n\n"
-            f"NO dialogue! Generate ONLY a single sentence of narration describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
+            f"Generate ONLY 1 concise *italicized* sentence describing {{user}}'s action reflecting this {roll_res['degree']} outcome:"
         )
     else:
         prompt = (
             f"### CHARACTER CONTEXT\n"
             f"{char_context}\n\n"
-            f"### SKILL CHECK CONTEXT\n"
-            f"- Skill: {skill_name}\n"
-            f"- Attribute: {attribute_name} (Value: {attr_val}, Modifier: {'+' if roll_res['modifier'] >= 0 else ''}{roll_res['modifier']})\n"
+            f"### REQUIRED ACTION TO NARRATE\n"
+            f"- Stated Attempt: {action_intent}\n"
+            f"- Skill Used: {skill_name} ({attribute_name})\n"
             f"- Difficulty Class: DC {dc_val}\n"
-            f"- Roll Result: d20 rolled {roll_res['roll']} + {roll_res['modifier']} = {roll_res['total']} vs DC {dc_val}\n"
-            f"- Degree: {roll_res['degree'].upper()} ({'Success' if roll_res['success'] else 'Failure'})\n"
-            f"- Context: {reason}\n\n"
+            f"- Roll Result: d20 rolled {roll_res['roll']} + {roll_res['modifier']} = {roll_res['total']} vs DC {dc_val} -> {roll_res['degree'].upper()} ({'Success' if roll_res['success'] else 'Failure'})\n\n"
             f"### RECENT CHAT HISTORY\n"
             f"{history_text}\n\n"
-            f"NO dialogue! Generate ONLY a single sentence of narration describing {{user}}'s immediate action reflecting this {roll_res['degree']} outcome:"
+            f"Generate ONLY 1 concise *italicized* sentence describing {{user}} executing this specific attempt ('{action_intent}') reflecting the {roll_res['degree']} outcome. Do NOT substitute an unrelated action like kicking or punching:"
         )
 
     action_text = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model, temperature))
@@ -3292,10 +3293,6 @@ def delete_existing_save():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id: str = None):
-    """No-op: Single save state is authoritative; individual message state snapshots are deprecated."""
-    pass
 
 
 @app.route('/api/character/equip', methods=['POST'])

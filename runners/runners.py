@@ -40,6 +40,17 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOL_TAG_RE = re.compile(r"\[(\w+)\(([\s\S]*?)\)\]")
 TOOL_TAG_STRIP_RE = re.compile(r"\[\w+\([\s\S]*?\n?\)\]", flags=re.DOTALL)
 
+# Tools that provide dice/lookup information requiring follow-up narrative generation
+QUERY_TOOLS = {
+    "arena_roll_combat",
+    "arena_roll_check",
+    "arena_roll_initiative",
+    "arena_roll_skill",
+    "arena_sorcerer_absorb",
+    "arena_get_location",
+    "arena_get_character_context",
+}
+
 _http_client: httpx.AsyncClient | None = None
 _http_client_loop: asyncio.AbstractEventLoop | None = None
 
@@ -358,10 +369,11 @@ class BaseProgramRunner:
         rag_context: str,
         new_message_text: str,
         invocation_id: str,
+        existing_tool_calls: list = None,
     ) -> tuple[str, list]:
         max_iterations = 5
         iteration = 0
-        all_tool_calls = []
+        all_tool_calls = list(existing_tool_calls) if existing_tool_calls else []
         final_response_text = ""
         target_model = model if (model and model != "local-llm") else os.getenv("LOCAL_MODEL_NAME")
 
@@ -423,46 +435,40 @@ class BaseProgramRunner:
             bot_response_text = self._sanitize_thinking_tags(bot_response_text)
             bot_response_text = _convert_json_tool_calls_to_tags(bot_response_text)
 
+            existing_tool_names = {tc.get("name") for tc in all_tool_calls if tc.get("type") == "call"}
             matches = list(TOOL_TAG_RE.finditer(bot_response_text))
+            new_matches = [m for m in matches if _normalize_tool_name(m.group(1)) not in existing_tool_names]
 
             if matches:
                 if session_id in cancelled_sessions:
                     raise asyncio.CancelledError("Session cancelled by user request.")
 
-                loop = asyncio.get_running_loop()
-                tasks = [
-                    loop.run_in_executor(None, _execute_emulated_tool, m.group(1), m.group(2))
-                    for m in matches
-                ]
-                raw_results = await asyncio.gather(*tasks)
+                if new_matches:
+                    raw_results = []
+                    for m in new_matches:
+                        res = await asyncio.to_thread(_execute_emulated_tool, m.group(1), m.group(2))
+                        raw_results.append(res)
 
-                results = [
-                    (_normalize_tool_name(m.group(1)), parsed_args["kwargs"], output)
-                    for m, (parsed_args, output) in zip(matches, raw_results)
-                ]
+                    results = [
+                        (_normalize_tool_name(m.group(1)), parsed_args["kwargs"], output)
+                        for m, (parsed_args, output) in zip(new_matches, raw_results)
+                    ]
 
-                tool_calls = []
-                for idx, (t_name, t_args, t_output) in enumerate(results):
-                    tool_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, len(all_tool_calls) + idx))
-                all_tool_calls.extend(tool_calls)
+                    tool_calls = []
+                    for idx, (t_name, t_args, t_output) in enumerate(results):
+                        tool_calls.extend(_build_tool_calls_pair(t_name, t_args, t_output, len(all_tool_calls) + idx))
+                    all_tool_calls.extend(tool_calls)
+                else:
+                    results = []
+                    tool_calls = []
 
                 clean_text = TOOL_TAG_STRIP_RE.sub("", bot_response_text).strip()
 
-                # Terminal / side-effect tools that do not require continued LLM turn
-                terminal_tools = {
-                    "add_journal_entry",
-                    "add_quest",
-                    "generate_local_image",
-                    "generate_follower_portrait",
-                    "generate_player_portrait",
-                    "generate_environment_image",
-                    "generate_program_portrait",
-                    "generate_general_image",
-                    "generate_imagen",
-                    "apply_comfy_workflow",
-                    "generate_video_from_image",
-                }
-                if all(t_name in terminal_tools for t_name, _, _ in results):
+                active_tool_names = {tc.get("name") for tc in all_tool_calls if tc.get("type") == "call"}
+                has_query_tool = any(t_name in QUERY_TOOLS for t_name, _, _ in results)
+                needs_continuation = has_query_tool and "arena_request_skill_check" not in active_tool_names
+
+                if not results or not needs_continuation:
                     final_response_text = clean_text
                     image_tools = {
                         "generate_local_image",
@@ -474,7 +480,7 @@ class BaseProgramRunner:
                         "generate_imagen",
                         "apply_comfy_workflow",
                     }
-                    if any(t_name in image_tools for t_name, _, _ in results):
+                    if any(t_name in image_tools for t_name in active_tool_names):
                         msg_lower = new_message_text.lower()
                         is_portrait_turn = any(k in msg_lower for k in ("portrait", "draw", "picture", "image", "photo", "selfie", "generate_program_portrait", "generate_local_image", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"))
                         if is_portrait_turn:
@@ -523,7 +529,7 @@ class BaseProgramRunner:
     async def get_history(self, session_id: str) -> list:
         raise NotImplementedError()
 
-    async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None) -> tuple:
+    async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None, existing_tool_calls: list = None) -> tuple:
         raise NotImplementedError()
 
     async def edit_turn(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False) -> tuple:
@@ -974,6 +980,7 @@ class OpenSourceRunner(BaseProgramRunner):
         model: str = None,
         media_path: str = None,
         msg_id: str = None,
+        existing_tool_calls: list = None,
     ) -> tuple:
         with self._lock:
             self._load_session_from_disk(session_id)
@@ -988,6 +995,7 @@ class OpenSourceRunner(BaseProgramRunner):
                     model=model,
                     media_path=media_path,
                     msg_id=msg_id,
+                    existing_tool_calls=existing_tool_calls,
                 )
             finally:
                 self._save_session_to_disk(session_id)
@@ -1001,6 +1009,7 @@ class OpenSourceRunner(BaseProgramRunner):
         model: str = None,
         media_path: str = None,
         msg_id: str = None,
+        existing_tool_calls: list = None,
     ) -> tuple:
         if session_id not in self.sessions_history:
             self._load_session_from_disk(session_id)
@@ -1058,6 +1067,7 @@ class OpenSourceRunner(BaseProgramRunner):
             rag_context=rag_context,
             new_message_text=new_message_text,
             invocation_id="",
+            existing_tool_calls=existing_tool_calls,
         )
 
         bot_response_text, tool_calls = res
@@ -1107,12 +1117,36 @@ class OpenSourceRunner(BaseProgramRunner):
             else:
                 media_path = url_str
 
+        # Collect prior tool calls from subsequent messages in the turn being rerolled
+        prior_tool_calls = []
+        if new_text is None:
+            for subsequent_msg in history[user_idx + 1:]:
+                if subsequent_msg.get("tool_calls"):
+                    prior_tool_calls.extend(subsequent_msg["tool_calls"])
+
+        seen_tc_ids = set()
+        deduped_prior_tools = []
+        for tc in prior_tool_calls:
+            cid = tc.get("id")
+            if cid:
+                if cid in seen_tc_ids:
+                    continue
+                seen_tc_ids.add(cid)
+            deduped_prior_tools.append(tc)
+
         self.sessions_history[session_id] = history[:user_idx]
         self._save_session_to_disk(session_id)
 
         new_input = new_text if new_text is not None else orig_msg.get("text", "")
         res = await self.run_async(
-            session_id, new_input, image_data=img_data, image_mime=img_mime, model=model, media_path=media_path, msg_id=msg_id
+            session_id,
+            new_input,
+            image_data=img_data,
+            image_mime=img_mime,
+            model=model,
+            media_path=media_path,
+            msg_id=msg_id,
+            existing_tool_calls=deduped_prior_tools,
         )
 
         self._save_session_to_disk(session_id)
@@ -1355,7 +1389,7 @@ class OpenSourceRunner(BaseProgramRunner):
             from core.world_engine import load_world_state
             active_user = get_active_user()
             world = load_world_state(active_user)
-            t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Morning Star", "year": 389, "hour": 6}
+            t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
 
             history = self.sessions_history[session_id]
             new_msg = {

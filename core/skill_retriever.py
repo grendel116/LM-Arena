@@ -95,7 +95,7 @@ def _get_skill_registry() -> list:
                     "name": metadata.get("name", os.path.basename(root)),
                     "description": metadata.get("description", ""),
                     "summary": metadata.get("summary", ""),
-                    "retrieval": metadata.get("retrieval", "always"),
+                    "retrieval": metadata.get("retrieval", "vector"),
                     "triggers": triggers,
                     "instruction_body": body,
                     "vector": None,
@@ -119,11 +119,7 @@ def _get_skill_registry() -> list:
                 records[embed_indices[i]]["vector"] = vec
             print(f"[skill_retriever] Embedded {len(descriptions_to_embed)} skill descriptions for vector retrieval.")
         except Exception as e:
-            print(f"[skill_retriever] Embedding error (skills will fall back to always inject): {e}")
-            # On embedding failure, promote all vector skills to always
-            for record in records:
-                if record["retrieval"] == "vector":
-                    record["retrieval"] = "always"
+            print(f"[skill_retriever] Embedding unavailable (using keyword trigger matching): {e}")
 
     _skill_cache = records
     return _skill_cache

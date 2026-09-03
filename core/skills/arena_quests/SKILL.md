@@ -3,6 +3,7 @@ name: arena_quests
 description: "Tracks main quest chapter progression, Staff of Chaos fragments, province-to-province travel, and dungeon milestones in The Elder Scrolls: Arena."
 summary: "Advance main quest stages with [arena_advance_stage], travel across Tamriel with [arena_travel], and retrieve location data with [arena_get_location]."
 retrieval: vector
+triggers: quest, stage, advance, staff of chaos, shift gate, portal, province, fast travel
 ---
 
 # QUEST & WORLD TRAVEL PROTOCOLS

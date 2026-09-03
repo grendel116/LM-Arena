@@ -759,24 +759,55 @@ def arena_roll_check(attribute_name, attribute_value, dc, advantage=False, disad
 
 
 @track_tool_activity
-def arena_roll_combat(attacker_name, attacker_strength, attacker_agility, attacker_class_archetype, weapon_name, weapon_damage_tier, weapon_attribute, target_name, target_agility):
-    """Resolve a combat attack roll. Results are shown in the collapsible tool call log."""
+def arena_roll_combat(
+    attacker_name="Attacker",
+    target_name="{{user}}",
+    weapon_name="Attack",
+    attacker_strength=None,
+    attacker_agility=None,
+    attacker_class_archetype="Warrior",
+    weapon_damage_tier=1,
+    weapon_attribute="strength",
+    target_agility=None,
+    **kwargs
+):
+    """Resolve a combat attack roll between an attacker and target."""
+    from core.mechanics import get_monster, roll_combat
+
+    save_id, sheet = _get_active_sheet(kwargs)
+
+    # Resolve monster stats if attacker is in bestiary
+    monster = get_monster(attacker_name) if attacker_name else {}
+    str_val = attacker_strength if attacker_strength is not None else monster.get("strength", 50)
+    agi_val = attacker_agility if attacker_agility is not None else monster.get("agility", 50)
+
+    # Resolve target agility
+    is_target_player = str(target_name).lower() in ("{{user}}", "player", "hero", sheet.get("name", "").lower(), "eternal champion")
+    if target_agility is None:
+        if is_target_player:
+            target_agility = sheet.get("agility", 50)
+        else:
+            target_monster = get_monster(target_name)
+            target_agility = target_monster.get("agility", 50)
+
     attacker = {
         "name": attacker_name,
-        "strength": attacker_strength,
-        "agility": attacker_agility,
+        "strength": int(str_val),
+        "agility": int(agi_val),
         "class_archetype": attacker_class_archetype
     }
     target = {
         "name": target_name,
-        "agility": target_agility
+        "agility": int(target_agility),
+        "is_player": is_target_player
     }
     weapon = {
         "name": weapon_name,
-        "damage_tier": weapon_damage_tier,
-        "attribute": weapon_attribute
+        "damage_tier": int(weapon_damage_tier or 1),
+        "attribute": weapon_attribute,
+        "attribute_used": weapon_attribute
     }
-    return roll_combat(attacker, target, weapon)
+    return roll_combat(attacker, weapon, target)
 
 @track_tool_activity
 def arena_roll_initiative(combatants_json):
@@ -884,21 +915,15 @@ from core.character import (
     add_experience, get_attribute, is_dead, tick_effects
 )
 
-def _get_active_sheet(kwargs: dict) -> tuple[str, dict]:
+def _get_active_sheet(kwargs: dict = None) -> tuple[str, dict]:
     """Helper to fetch active save_id and load the corresponding sheet."""
-    save_id = kwargs.get("session_id") or current_session_id.get() or get_active_save_id()
+    save_id = get_active_save_id()
     sheet = load_character(save_id)
     return save_id, sheet
 
-def _commit_and_sync(save_id: str, sheet: dict, kwargs: dict):
-    """Helper to save character sheet and sync snapshot to history/frontend UI."""
+def _commit_and_sync(save_id: str, sheet: dict, kwargs: dict = None):
+    """Helper to persist updated character sheet to active save."""
     save_character(sheet, save_id)
-    try:
-        from app import _sync_active_character_snapshot_to_history
-        session_id = kwargs.get("session_id") or current_session_id.get() or save_id
-        _sync_active_character_snapshot_to_history(sheet, session_id)
-    except Exception as e:
-        print(f"[TOOL SYNC WARN] Failed to sync character snapshot: {e}", flush=True)
 
 @track_tool_activity
 def arena_take_damage(amount=0, damage_amount=None, damage=None, **kwargs):
@@ -1146,7 +1171,14 @@ def arena_add_experience(amount=0, xp_amount=None, **kwargs):
     sheet, leveled_up = add_experience(sheet, int(actual_amount))
     _commit_and_sync(save_id, sheet, kwargs)
     
-    return {"experience": sheet["experience"], "level": sheet["level"], "leveled_up": leveled_up}
+    d = sheet.get("derived", {})
+    return {
+        "experience": sheet["experience"],
+        "level": sheet["level"],
+        "leveled_up": leveled_up,
+        "hp_max": d.get("hp_max", 32),
+        "mp_max": d.get("mp_max", 162)
+    }
 
 @track_tool_activity
 def arena_get_character_context(**kwargs):
