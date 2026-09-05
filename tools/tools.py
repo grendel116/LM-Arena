@@ -293,9 +293,9 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
 
     prompt_lower = prompt.lower()
     if subject_type == "auto":
-        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "dungeon corridor", "exterior", "architectural")):
+        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "dungeon corridor", "exterior", "architectural", "generate_environment")):
             mode = "environment"
-        elif any(w in prompt_lower for w in ("player character", "player portrait", "the hero", "adventurer", "named ")) and not any(w in prompt_lower for w in ("ria silmane", "spectral", "ghost woman")):
+        elif any(w in prompt_lower for w in ("player character", "player portrait", "the hero", "adventurer", "portrait of the player", "generate_player_portrait")) and not any(w in prompt_lower for w in ("ria silmane", "spectral", "ghost woman")):
             mode = "player"
         else:
             mode = "follower"
@@ -379,7 +379,7 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
         json_path = os.path.join(portraits_dir, f"portrait_{timestamp}.json")
         try:
             with open(json_path, "w", encoding="utf-8") as jf:
-                json.dump({"prompt": prompt, "full_prompt": final_prompt, "mode": mode, "engine": "in_process_gpu"}, jf, indent=4)
+                json.dump({"prompt": prompt, "full_prompt": final_prompt, "mode": mode, "subject_type": mode, "engine": "in_process_gpu"}, jf, indent=4)
         except Exception:
             pass
         return f"![Portrait](/images/portraits/{local_filename}?v={timestamp})"
@@ -404,6 +404,12 @@ def generate_player_portrait(prompt: str) -> str:
 def generate_environment_image(prompt: str) -> str:
     """Generates an atmospheric scene depiction of the current environment and location."""
     return generate_local_image(prompt, subject_type="environment")
+
+
+@track_tool_activity
+def generate_imagen(prompt: str, subject_type: str = "auto") -> str:
+    """Generates an image using Google Imagen or local diffusion engine."""
+    return generate_local_image(prompt, subject_type=subject_type)
 
 
 
