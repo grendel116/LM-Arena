@@ -3,22 +3,27 @@ name: arena_checks
 description: "Resolves D20 attribute checks, skill tests, Sorcerer spell absorption, and custom spellmaking."
 summary: "Prompt player checks with [arena_request_skill_check], roll NPC checks with [arena_roll_check], and resolve spells."
 retrieval: vector
-triggers: check, roll, dc, attempt, climb, jump, lockpick, pick lock, lock, inspect, investigate, disarm
+triggers: check, roll, dc, attempt, climb, jump, lockpick, pick lock, lock, inspect, investigate, disarm, spell, cast, magic, attack, strike, shoot
 ---
 
 # ATTRIBUTE & SKILL CHECK PROTOCOLS
 
-## 1. Player Skill Checks
-- Prompt player D20 tests for uncertain or risky actions:
-  `[arena_request_skill_check(skill_name="...", attribute_name="...", dc=..., reason="...")]`
-- **Suspense & Timing**: Describe the setup and initiation of the attempt. Conclude your turn immediately at the moment of action.
-- **Resolution**: Do not narrate the outcome in the prompt message. Resolve success or failure in the following response once the player rolls.
-- When casting spells during checks, deduct Magicka in the same turn: `[arena_spend_magicka(amount=...)]`.
+## 1. Player Checks & Adjudication Sequence
+- **Sequence**: Request (DM) -> Check (User) -> Spend & Narrate (DM).
+- **Phase 1: Request (DM)**:
+  - When {{user}} casts a spell, attacks, or attempts an action with an uncertain outcome:
+    `[arena_request_skill_check(skill_name="...", attribute_name="...", dc=..., reason="...")]`
+  - Conclude your turn immediately at the moment of action. Do not pre-spend Magicka or Stamina, and do not narrate the outcome.
+- **Phase 2: Check (User)**:
+  - {{user}} rolls the D20 via the game interface.
+- **Phase 3: Spend & Narrate (DM)**:
+  - In the subsequent response, deduct required resources:
+    - Spells: `[arena_spend_magicka(amount=...)]`
+    - Physical exertion: `[arena_spend_stamina(amount=...)]`
+  - Narrate the physical consequences reflecting the roll outcome.
 - **Difficulty Classes**:
-  - Easy: DC 10
-  - Standard: DC 15
-  - Challenging: DC 20
-  - Legendary: DC 25
+  - Spellcasting: Minor (DC 8), Apprentice (DC 11), Journeyman (DC 14), Expert (DC 17), Master (DC 20)
+  - Physical Tasks: Easy (DC 10), Standard (DC 15), Challenging (DC 20), Legendary (DC 25)
 
 ## 2. NPC & Monster Checks
 - Resolve NPC actions, creature attacks, and saving throws immediately:

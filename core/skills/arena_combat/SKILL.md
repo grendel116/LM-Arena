@@ -10,21 +10,23 @@ triggers: attack, combat, fight, strike, slash, weapon, damage, defend, parry, c
 
 When hostilities, ambushes, or physical confrontations occur between the player and creatures/NPCs:
 
-## 1. Attack Resolution & Stamina Checks
-- For attacks made by either the player or an adversary:
-  `[arena_roll_combat(attacker_name="...", attacker_strength=..., attacker_agility=..., attacker_class_archetype="...", weapon_name="...", weapon_damage_tier=..., weapon_attribute="...", target_name="...", target_agility=...)]`
+## 1. Attack & Combat Resolution
+- **Player Attacks & Spells**: When {{user}} attacks, casts a spell, or takes an offensive action:
+  - Prompt {{user}} with: `[arena_request_skill_check(skill_name="...", attribute_name="...", dc=..., reason="...")]`
+  - STOP your turn immediately. Never roll `arena_roll_combat` with {{user}} as the attacker, and do not pre-spend resources or narrate the outcome.
+- **NPC & Creature Attacks**: When adversaries attack {{user}}, resolve the attack immediately with:
+  `[arena_roll_combat(attacker_name="...", attacker_strength=..., attacker_agility=..., attacker_class_archetype="...", weapon_name="...", weapon_damage_tier=..., weapon_attribute="...", target_name="{{user}}", target_agility=...)]`
 - **Stamina Impact on Combat**:
   - When the attacker's Stamina drops below 25% (or 0), they suffer **Low Stamina / Exhaustion** (-3 penalty / disadvantage to hit).
-  - Heavy power strikes, dodging, and prolonged sprinting spend Stamina: `[arena_spend_stamina(amount=...)]`.
+  - Heavy power strikes, dodging, and prolonged sprinting spend Stamina: `[arena_spend_stamina(amount=...)]` (applied during resolution).
   - Catching breath or drinking stamina potions restores Stamina: `[arena_restore_stamina(amount=...)]`.
 
-## 2. Damage & Healing Application
-- When an attack connects against the player:
-  `[arena_take_damage(amount=...)]`
-- When healed via potion or Restoration spell:
-  `[arena_heal(amount=...)]`
-- When casting spells, spend Magicka (MP):
-  `[arena_spend_magicka(amount=...)]`
+## 2. Damage, Healing & Resource Expenditure
+- Resource deduction occurs in the resolution turn after the player rolls:
+  - When casting spells, spend Magicka (MP): `[arena_spend_magicka(amount=...)]`
+  - When executing heavy physical maneuvers, spend Stamina: `[arena_spend_stamina(amount=...)]`
+- When an enemy attack connects against {{user}}: `[arena_take_damage(amount=...)]`
+- When healed via potion or Restoration spell: `[arena_heal(amount=...)]`
 
 ## 3. Resource Restoration & Resting
 - **Resting at an Inn or Safe Camp** (6–8 hours):
@@ -41,9 +43,11 @@ When hostilities, ambushes, or physical confrontations occur between the player 
 - Ethereal undead (**Ghosts, Wraiths**), **Vampires**, and **Liches** are immune to mundane iron/steel weapons and require **Silver**, **Elven**, **Dwarven**, **Mithril**, **Ebony**, or **Spells**.
 - **Regional Ecology**: Generate creatures whose natural habitat matches the current province's biome, culture, and historical inhabitants. Do not introduce creatures endemic to other provinces unless the narrative explicitly provides a reason for their presence.
 
-## 5. Narrative Style
-- Output the tool calls alongside your narrative text in a single turn.
-- Interpret the outcomes into visceral sensory detail without reciting numbers.
+## 5. Narrative Style & Turn Structure
+- **Sequence**: Request (DM) -> Check (User) -> Spend & Narrate (DM).
+- For player attacks and spells, conclude your turn immediately at `[arena_request_skill_check]` to allow {{user}} to roll their D20.
+- In the subsequent response after {{user}} rolls, spend resources (`[arena_spend_magicka]` / `[arena_spend_stamina]`), resolve any adversary counter-attacks (`[arena_roll_combat]`), and narrate the sensory consequences.
+- Interpret outcomes into visceral sensory detail without reciting numbers.
 - Threaten {{user}} with difficult encounters.
 
 ## 6. Death & Game Over Protocol

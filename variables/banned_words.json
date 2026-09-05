@@ -1,19 +1,18 @@
 {
-  "banned_words": {
-    "dismantle": "break",
-    "ozone": "voltage",
-    "possess": "have",
-    "musk": "aroma",
-    "musky": "musty",
-    "ghost": "spirit",
-    "hoard": "gather",
-    "noise": "sound",
-    "machine": "device",
-    "bosses": "leaders",
-    "very": "quite",
-    "seek": "look for",
-    "tool": "implement",
-    "slickens": "smooths",
-    "slick": "smooth"
-  }
+  "banned_words": [
+    "dismantle",
+    "ozone",
+    "possess",
+    "musk",
+    "musky",
+    "ghost",
+    "hoard",
+    "noise",
+    "machine",
+    "very",
+    "seek",
+    "tool",
+    "slickens",
+    "slick"
+]
 }

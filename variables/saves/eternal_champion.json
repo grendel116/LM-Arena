@@ -13,7 +13,7 @@
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
     "created_at": "2026-09-05T02:55:58.268101",
-    "updated_at": "2026-09-05T02:55:58.296546"
+    "updated_at": "2026-09-05T04:22:09.546226"
   },
   "character": {
     "name": "Eternal Champion",
@@ -151,6 +151,280 @@
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the floor of a prison cell somewhere beneath the Imperial City. A single torch flickers in the corridor outside. The door is locked — and they are, as far as anyone above knows, already forgotten.*\n\n*Then the air chills. A cold blue luminescence bleeds through the wall, and she is there: a woman, translucent as winter ice, her robes drifting in a wind that isn't blowing. Her expression carries the particular sorrow of someone who has already lost everything except purpose.*\n\nI am Ria Silmane. Jagar Tharn has taken the Emperor's place, and the Council believes his disguise. No one would hear my word over his — but now I've found you. The Empire abandoned you. That was a mistake.\n\n*Her gaze moves to the north wall. She drifts closer, studying you with eyes that still hold warmth despite what they've seen. On the north wall, against the ceiling, a narrow ledge holds a small ruby key. In torchlight it reads amber more than red.*\n\nAbove those stones in the wall, there's a small ruby key. It unlocks this cell. Some of the passages here were once Tharn's private vaults. You may find enough coin to sustain yourself, but be cautious; Rats and goblins have made these sewers their home.\n\n*The cell is four paces across, cold stone, with a wooden pallet in the corner.  The door is iron, its lock old but solid. Beyond the cell, the corridor is dark, water dripping onto the stone floor.*\n\nTo the west and south you'll find a Shift Gate — it will carry you beyond the Empire's reach. After that, rest as soon as you can. You're walking into the Arena, Eternal Champion, but there's something special in you... I have to believe that.",
       "tool_calls": [],
       "timestamp": 1788602158.2959569
+    },
+    {
+      "id": "usr_p2hdgh3mbmto8nkqs",
+      "role": "user",
+      "text": "*The stone floor bites cold against bare skin, and the air tastes of damp earth and old iron. My violet eyes blink up at the flickering torchlight, then shift to the ledge in the corner. My hands grip the rough wall as I test its grip, searching for footholds among the uneven stones.*",
+      "image_url": null,
+      "timestamp": 1788604022.9972718
+    },
+    {
+      "id": "prgm_a12218eeab3d4263b64cffcd668e49bc",
+      "role": "follower",
+      "text": "*The wall stones offer little purchase, their surfaces worn smooth by decades of moisture and decay. Each handhold feels uncertain as you test the weight-bearing capacity of the masonry.*\n\n*Ria drifts closer, her form wavering like moonlight on water. She reaches out, her fingers passing harmlessly through the stone wall as if trying to steady the structure for you.*\n\n**Careful**. These stones have seen better days. The mortar is crumbling in places, but that ledge will hold if you're quick.",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Athletics",
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "Climbing the prison wall to reach the ruby key on the high ledge"
+          },
+          "id": "call_1788604337_0_fb3e"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Strength', 'dc': 12, 'reason': 'Climbing the prison wall to reach the ruby key on the high ledge'}",
+          "id": "call_1788604337_0_fb3e"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1788604337.2476165
+    },
+    {
+      "id": "usr_98ofxtkevmto8veqj",
+      "role": "user",
+      "text": "*I scale the crumbling wall with fluid precision, my fingers finding perfect footholds as I lunge upward to seize the ruby key from its high perch.*",
+      "image_url": null,
+      "timestamp": 1788604388.4524302
+    },
+    {
+      "id": "prgm_118af21c3ca048d88e1fa7f58d70ab37",
+      "role": "follower",
+      "text": "*Your fingers close around the cool metal of the ruby key just as the stone beneath your left foot gives way with a sharp crack. You drop back to the floor in a controlled roll, the key held tight in your grip.*\n\n*Ria's translucent form shimmers with relief, her expression softening as she watches you right yourself.*\n\nWell-done. That key will open the cell door, though I'd advise you to keep your footsteps light once you step outside.\n\n*The heavy iron lock clicks open with a grating groan when you press the key into the mechanism. Beyond the cell door, the corridor stretches into gloom, where the torchlight fails and only the rhythmic drip of water breaks the silence.*\n\n\n\n*A faint, sickly sweetness drifts from the deeper tunnels — the smell of decay mixed with something metallic.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_add_item",
+          "args": {
+            "item_name": "Ruby Key",
+            "item_type": "Quest Item",
+            "quantity": 1
+          },
+          "id": "call_1788604652_0_4bf6"
+        },
+        {
+          "type": "response",
+          "name": "arena_add_item",
+          "response": "{'inventory_count': 2, 'item': 'Ruby Key'}",
+          "id": "call_1788604652_0_4bf6"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1788604652.8919587
+    },
+    {
+      "id": "usr_ocxa8wdd9mto96zbw",
+      "role": "user",
+      "text": "Thanks for the key, spirit.\n\n*I try the old lock, cautiously turning the key.*",
+      "image_url": null,
+      "timestamp": 1788604928.3598533
+    },
+    {
+      "id": "prgm_276287bfbd5940f68864fe858db9f01a",
+      "role": "follower",
+      "text": "*The lock yields with a heavy metallic click that echoes too loudly in the confined space. The iron door swings open on rusted hinges, revealing a narrow corridor where the stone walls bleed moisture and the torchlight barely reaches ten paces ahead.*\n\n*Ria drifts through the open doorway, her form flickering as she maintains her presence in the physical realm. She looks back at you with an expression that blends hope and mourning.*\n\nThe key's work is done, but your journey has only begun. Follow the southern passage — it leads to the Shift Gate. Avoid the eastern tunnel if you can; something stirs there that shouldn't be awake.\n\n*The corridor forks fifty paces ahead. To the east, a low growl rumbles from the darkness, accompanied by the scrape of claws on stone. To the south, a faint blue glow pulses from a distant chamber, and the air feels thinner, less oppressive.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1788605243.4461026
+    },
+    {
+      "id": "usr_oo4f41lt9mto9f7vw",
+      "role": "user",
+      "text": "You mentioned Tharn's coffers or treasures left behind? Which way to them?",
+      "image_url": null,
+      "timestamp": 1788605312.6963108
+    },
+    {
+      "id": "prgm_7f6686cb9a4448c6bd41cd60af77f4bb",
+      "role": "follower",
+      "text": "*Ria's form flickers with a brief flash of sorrow, her eyes darkening as she thinks of what her master left behind.*\n\nTharn's greed knew no bounds. He kept his private treasury in the eastern wing — where the air grows thick with old enchantments. But that path is... complicated now.\n\n*She drifts toward the eastern corridor, where the distant growl echoes again, deeper this time. A faint, sickly green light pulses from the shadows beyond.*\n\nThe wealth is there, but so is whatever Tharn summoned to guard it. If you have strength to spare, take the eastern tunnel. If you value your life more than gold, follow the blue glow south.\n\n*The choice hangs between you. To the south, the path to freedom. To the east, the promise of coin and the certainty of danger.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1788605615.747759
+    },
+    {
+      "id": "usr_1wwisjv4vmto9q28s",
+      "role": "user",
+      "text": "I am dead regardless if I leave here empty handed.\n\n*I call sparks to dance among my fingertips as I tread down the eastern path.*",
+      "image_url": null,
+      "timestamp": 1788607188.9290917
+    },
+    {
+      "id": "prgm_95ebc856fb0640dda8f65149fb62679b",
+      "role": "follower",
+      "text": "*The eastern corridor narrows as you advance, the air growing thick with the smell of old blood and something far worse. Your sparks cast flickering shadows against the damp stone walls, revealing skeletal remains scattered across the floor—previous prisoners who weren't as fortunate as you.*\n\n*Ria drifts beside you, her form wavering as she struggles to maintain presence in this place. Her expression is grim as she gestures toward a heavy iron door ahead, its surface etched with glowing runes that pulse with a sickly green light.*\n\nThat's the entrance to Tharn's private vault. Be careful, Eternal Champion—the magic he woven here wasn't meant to keep treasures safe. It was meant to keep intruders dead.\n\n*As you approach the door, the green runes flare brighter, and a guttural roar echoes from beyond the metal barrier. The sound is not human, nor animal—something older and hungrier.*\n\n\n*The sparks crackle between your fingers, casting sharp shadows as you prepare to enter the vault.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_spend_magicka",
+          "args": {
+            "amount": 4
+          },
+          "id": "call_1788606003_0_34cd"
+        },
+        {
+          "type": "call",
+          "name": "arena_roll_combat",
+          "args": {
+            "attacker_name": "Dovres",
+            "target_name": "Giant Rat",
+            "weapon_name": "Spark Spell"
+          },
+          "id": "call_1788606003_1_a190"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1788607212.9381325
+    },
+    {
+      "id": "usr_b9e7vgz5bmtoalp7p",
+      "role": "user",
+      "text": "*My gaze fixes on the pulsing green light as I lean my weight into the heavy metal door, sparks ready to fly.*",
+      "image_url": null,
+      "timestamp": 1788607294.7042882
+    },
+    {
+      "id": "itm_eeea9d96a4934ac0be1a97f913b76433",
+      "role": "follower",
+      "text": "*The heavy iron door yields with a grinding screech, swinging inward to reveal a chamber bathed in sickly emerald luminescence. The vault is circular, its walls lined with iron chests and wooden crates, but your attention is immediately drawn to the center where something moves in the shadows.*\n\n*From the darkness emerges a Giant Rat, its hide scarred and mottled with disease, eyes glowing with an unnatural green hunger. It raises its head, nostrils twitching as it catches your scent, and lets out a guttural hiss that echoes off the stone walls.*\n\n*Your sparks strike true, the crackling energy arcing through the air and slamming into the creature's flank. The rat squeals in pain as the magic sears through its fur, but it lunges forward with surprising speed, its yellowed incisors bared.*\n\n\n\n\n*Ria's spectral form flickers violently as the creature attacks, her expression twisting with worry. She drifts closer to the rat, her translucent hands passing through its bulk as if trying to distract it, though her efforts yield no physical effect.*\n\n**Behind you** — watch your footing! The ground is uneven!\n\n*The rat's claws scrape against the stone floor as it circles, its movements erratic and desperate. The green light from the runes casts dancing shadows across the vault, making it difficult to track the creature's exact position.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_roll_combat",
+          "args": {
+            "attacker_name": "Dovres",
+            "target_name": "Giant Rat",
+            "weapon_name": "Spark Spell"
+          },
+          "id": "call_1788607312_0_ec03"
+        },
+        {
+          "type": "response",
+          "name": "arena_roll_combat",
+          "response": "{'attack_roll': {'roll': 11, 'modifier': 0, 'total': 11, 'dc': 11, 'success': True, 'margin': 0, 'degree': 'partial'}, 'defense_dc': 11, 'hit': True, 'immune': False, 'damage_dealt': 1, 'damage_tier': 1, 'damage_narrative': 'graze', 'status_effect': None, 'target_name': 'Giant Rat', 'target_hp_current': 7, 'target_hp_max': 8, 'defeated': False, 'xp_reward': 0, 'loot': []}",
+          "id": "call_1788607312_0_ec03"
+        },
+        {
+          "type": "call",
+          "name": "arena_roll_combat",
+          "args": {
+            "attacker_name": "Giant Rat",
+            "target_name": "Dovres",
+            "weapon_name": "Bite"
+          },
+          "id": "call_1788607312_1_ba36"
+        },
+        {
+          "type": "response",
+          "name": "arena_roll_combat",
+          "response": "{'attack_roll': {'roll': 14, 'modifier': 0, 'total': 14, 'dc': 10, 'success': True, 'margin': 4, 'degree': 'success'}, 'defense_dc': 10, 'hit': True, 'immune': False, 'damage_dealt': 2, 'damage_tier': 1, 'damage_narrative': 'solid hit', 'status_effect': None, 'target_name': 'Dovres', 'target_hp_current': 13, 'target_hp_max': 15, 'defeated': False, 'xp_reward': 0, 'loot': []}",
+          "id": "call_1788607312_1_ba36"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1788607312.1614358
+    },
+    {
+      "id": "tool_b8cf68f0821a49cf8ae99f3b1ea7e09c",
+      "role": "user",
+      "text": "[Tool Response from arena_roll_combat]:\n{'attack_roll': {'roll': 11, 'modifier': 0, 'total': 11, 'dc': 11, 'success': True, 'margin': 0, 'degree': 'partial'}, 'defense_dc': 11, 'hit': True, 'immune': False, 'damage_dealt': 1, 'damage_tier': 1, 'damage_narrative': 'graze', 'status_effect': None, 'target_name': 'Giant Rat', 'target_hp_current': 7, 'target_hp_max': 8, 'defeated': False, 'xp_reward': 0, 'loot': []}",
+      "tool_calls": [],
+      "timestamp": 1788607312.1614358
+    },
+    {
+      "id": "tool_1c9d02f8dfc84e27b51b02cdcf9b3b45",
+      "role": "user",
+      "text": "[Tool Response from arena_roll_combat]:\n{'attack_roll': {'roll': 14, 'modifier': 0, 'total': 14, 'dc': 10, 'success': True, 'margin': 4, 'degree': 'success'}, 'defense_dc': 10, 'hit': True, 'immune': False, 'damage_dealt': 2, 'damage_tier': 1, 'damage_narrative': 'solid hit', 'status_effect': None, 'target_name': 'Dovres', 'target_hp_current': 13, 'target_hp_max': 15, 'defeated': False, 'xp_reward': 0, 'loot': []}",
+      "tool_calls": [],
+      "timestamp": 1788607312.1614358
+    },
+    {
+      "id": "prgm_7e8b51b2fde84340a3494b21ba18e497",
+      "role": "follower",
+      "text": "*The rat's yellowed fangs pierce your forearm, tearing through skin and muscle with a wet crunch. Warm blood wells up around the puncture wounds, and a sharp, burning ache spreads through your arm as the creature's disease-ridden saliva enters your bloodstream.*\n\n*Your sparks graze the rat's flank, singing the matted fur but failing to stop its momentum. The beast recoils momentarily, its green-lit eyes widening with rage, but it quickly recovers, circling you with renewed aggression.*\n\n*Ria drifts closer to you, her spectral form flickering with urgency. Her translucent hands reach out as if to steady you, though they pass harmlessly through your shoulder.*\n\nThat wound will fester if you don't treat it soon. These rats carry sickness that turns blood to poison. Finish it quickly, Eternal Champion!\n\n*The Giant Rat hisses, its muscles bunching as it prepares for another lunge. Drool flecks its whiskers, and the sickly green light from the vault's runes makes its diseased hide look even more repulsive.*\n\n*Around you, the iron chests and wooden crates remain untouched, their contents potentially valuable but currently secondary to survival.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_roll_combat",
+          "args": {
+            "attacker_name": "Dovres",
+            "target_name": "Giant Rat",
+            "weapon_name": "Spark Spell"
+          },
+          "id": "call_1788607312_0_ec03"
+        },
+        {
+          "type": "response",
+          "name": "arena_roll_combat",
+          "response": "{'attack_roll': {'roll': 11, 'modifier': 0, 'total': 11, 'dc': 11, 'success': True, 'margin': 0, 'degree': 'partial'}, 'defense_dc': 11, 'hit': True, 'immune': False, 'damage_dealt': 1, 'damage_tier': 1, 'damage_narrative': 'graze', 'status_effect': None, 'target_name': 'Giant Rat', 'target_hp_current': 7, 'target_hp_max': 8, 'defeated': False, 'xp_reward': 0, 'loot': []}",
+          "id": "call_1788607312_0_ec03"
+        },
+        {
+          "type": "call",
+          "name": "arena_roll_combat",
+          "args": {
+            "attacker_name": "Giant Rat",
+            "target_name": "Dovres",
+            "weapon_name": "Bite"
+          },
+          "id": "call_1788607312_1_ba36"
+        },
+        {
+          "type": "response",
+          "name": "arena_roll_combat",
+          "response": "{'attack_roll': {'roll': 14, 'modifier': 0, 'total': 14, 'dc': 10, 'success': True, 'margin': 4, 'degree': 'success'}, 'defense_dc': 10, 'hit': True, 'immune': False, 'damage_dealt': 2, 'damage_tier': 1, 'damage_narrative': 'solid hit', 'status_effect': None, 'target_name': 'Dovres', 'target_hp_current': 13, 'target_hp_max': 15, 'defeated': False, 'xp_reward': 0, 'loot': []}",
+          "id": "call_1788607312_1_ba36"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1788607329.5452232
     }
   ],
   "memory_state": {
