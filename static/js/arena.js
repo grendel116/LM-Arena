@@ -228,7 +228,7 @@ function showMapWaypointTooltip(e, name) {
     const tooltip = document.getElementById('map-cursor-tooltip');
     if (!tooltip) return;
     tooltip.innerHTML = `
-        <div style="font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; color: var(--gold-warm);">${name}</div>
+        <div style="font-family: var(--font-heading, 'Cinzel', serif); font-size: 0.88rem; font-weight: 700; color: var(--gold-bright); text-transform: uppercase; letter-spacing: 0.8px;">${name}</div>
     `;
     tooltip.style.opacity = '1';
     tooltip.style.transform = 'scale(1)';
