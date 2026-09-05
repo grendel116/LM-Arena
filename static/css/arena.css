@@ -84,6 +84,10 @@ Theme overrides (Jinja) remain inline in the HTML template.
     --danger-vivid:     hsl(var(--red-h), 85%, 60%);
 
     --backdrop-blur:    blur(16px);
+
+    /* Typography */
+    --font-heading:     'Outfit', sans-serif;
+    --font-sans:        'Outfit', sans-serif;
 }
 
 .avatar-fallback {
