@@ -502,9 +502,10 @@ def get_image_prompt():
             with open(json_path, 'r', encoding='utf-8') as f:
                 meta = json.load(f)
                 prompt = meta.get('prompt', '')
-                return jsonify({'status': 'success', 'prompt': prompt})
+                mode = meta.get('mode') or meta.get('subject_type') or 'auto'
+                return jsonify({'status': 'success', 'prompt': prompt, 'mode': mode, 'subject_type': mode})
         else:
-            return jsonify({'status': 'success', 'prompt': ''})
+            return jsonify({'status': 'success', 'prompt': '', 'mode': 'auto', 'subject_type': 'auto'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1278,6 +1279,7 @@ def regenerate_image():
     
     old_image_url = request.json.get('old_image_url')
     prompt = request.json.get('prompt')
+    subject_type = request.json.get('subject_type') or request.json.get('mode')
     
     if not old_image_url:
         return jsonify({'error': 'Missing old_image_url'}), 400
@@ -1287,56 +1289,71 @@ def regenerate_image():
         from urllib.parse import urlparse
         old_image_url = urlparse(old_image_url).path
 
-    if not prompt:
-        import os
-        filename = os.path.basename(old_image_url)
-        # 1. Try to find the prompt in the follower sidecar JSON file (most reliable and clean)
-        try:
-            from runners.follower import get_active_follower
-            active_follower = get_active_follower()
-            filename_only = os.path.basename(old_image_url)
-            json_path = find_image_sidecar_json(filename_only, active_follower)
+    import os
+    filename = os.path.basename(old_image_url)
 
-            if json_path and os.path.exists(json_path):
-                with open(json_path, 'r', encoding='utf-8') as f:
-                    meta = json.load(f)
+    # 1. Try to find prompt and image type (mode/subject_type) in sidecar JSON
+    try:
+        from runners.follower import get_active_follower
+        active_follower = get_active_follower()
+        filename_only = os.path.basename(old_image_url)
+        json_path = find_image_sidecar_json(filename_only, active_follower)
+
+        if json_path and os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                meta = json.load(f)
+                if not prompt:
                     prompt = meta.get('prompt')
-                    if prompt:
-                        print(f"[DEBUG REROLL] Found prompt in sidecar JSON: {prompt}")
-        except Exception as je:
-            print(f"Error reading sidecar JSON: {je}")
+                if not subject_type:
+                    subject_type = meta.get('mode') or meta.get('subject_type')
+                print(f"[DEBUG REROLL] Sidecar JSON metadata: prompt={prompt}, subject_type={subject_type}")
+    except Exception as je:
+        print(f"Error reading sidecar JSON: {je}")
 
-        # 2. Try to find the prompt in session history (fallback)
-        if not prompt:
-            try:
-                chat_history = asyncio.run(runner.get_history(session_id))
-                for msg in chat_history:
-                    tool_calls = msg.get('tool_calls', [])
-                    if not tool_calls:
-                        continue
-                    calls = {}
-                    for tc in tool_calls:
-                        if tc.get('type') == 'call' and tc.get('name') == 'generate_follower_portrait':
-                            call_id = tc.get('id')
-                            args = tc.get('args', {})
-                            p = args.get('prompt')
-                            if call_id and p:
-                                calls[call_id] = p
-                    for tc in tool_calls:
-                        if tc.get('type') == 'response' and tc.get('name') == 'generate_follower_portrait':
-                            call_id = tc.get('id')
-                            response_val = tc.get('response', '')
-                            if call_id in calls and filename in response_val:
-                                prompt = calls[call_id]
-                                print(f"[DEBUG REROLL] Found prompt in history matching filename '{filename}': {prompt}")
-                                break
-                    if prompt:
-                        break
-            except Exception as he:
-                print(f"Error scanning session history for prompt: {he}")
+    # 2. Try to find prompt / image type in session history (fallback)
+    if not prompt or not subject_type:
+        try:
+            chat_history = asyncio.run(runner.get_history(session_id))
+            for msg in chat_history:
+                tool_calls = msg.get('tool_calls', [])
+                if not tool_calls:
+                    continue
+                calls = {}
+                for tc in tool_calls:
+                    tc_name = tc.get('name')
+                    if tc.get('type') == 'call' and tc_name in ('generate_follower_portrait', 'generate_player_portrait', 'generate_environment_image', 'generate_local_image', 'generate_imagen'):
+                        call_id = tc.get('id')
+                        args = tc.get('args', {})
+                        p = args.get('prompt')
+                        st = args.get('subject_type') or args.get('mode')
+                        if not st:
+                            if tc_name == 'generate_player_portrait':
+                                st = 'player'
+                            elif tc_name == 'generate_environment_image':
+                                st = 'environment'
+                            elif tc_name == 'generate_follower_portrait':
+                                st = 'follower'
+                        if call_id:
+                            calls[call_id] = (p, st)
+                for tc in tool_calls:
+                    if tc.get('type') == 'response' and tc.get('name') in ('generate_follower_portrait', 'generate_player_portrait', 'generate_environment_image', 'generate_local_image', 'generate_imagen'):
+                        call_id = tc.get('id')
+                        response_val = tc.get('response', '')
+                        if call_id in calls and filename in response_val:
+                            p_found, st_found = calls[call_id]
+                            if not prompt and p_found:
+                                prompt = p_found
+                            if not subject_type and st_found:
+                                subject_type = st_found
+                            print(f"[DEBUG REROLL] Found in session history: prompt={prompt}, subject_type={subject_type}")
+                            break
+                if prompt and subject_type:
+                    break
+        except Exception as he:
+            print(f"Error scanning session history for prompt/type: {he}")
 
-        if not prompt:
-            return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
+    if not prompt:
+        return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
 
     if session_id in cancelled_sessions:
         return jsonify({'error': 'Image regeneration cancelled by user.'}), 400
@@ -1347,11 +1364,11 @@ def regenerate_image():
         with tools.session_tool_calls_lock:
             tools.session_tool_calls[session_id] = []
         use_imagen = request.json.get('use_imagen', False)
-        # Generate new portrait
-        if use_imagen:
-            new_markdown = tools.generate_imagen(prompt)
+        # Generate new portrait preserving image subject type (player, follower, environment)
+        if use_imagen and hasattr(tools, 'generate_imagen'):
+            new_markdown = tools.generate_imagen(prompt, subject_type=subject_type or "auto")
         else:
-            new_markdown = tools.generate_local_image(prompt)
+            new_markdown = tools.generate_local_image(prompt, subject_type=subject_type or "auto")
         if new_markdown.startswith("Error"):
             return jsonify({'error': new_markdown}), 500
             

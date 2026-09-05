@@ -10,7 +10,9 @@ def load_world_state(save_id: str = None) -> dict:
     """Loads the world state for the active save slot."""
     try:
         from core.save_manager import get_active_save_id, read_save
-        slot = save_id or get_active_save_id()
+        from tools.tools import current_session_id
+        active_sess = current_session_id.get(None)
+        slot = save_id or (active_sess if active_sess and active_sess != "default" else None) or get_active_save_id()
         bundle = read_save(slot)
         state = bundle.get("world", {})
         if state:
@@ -34,11 +36,14 @@ def save_world_state(arg1=None, arg2=None) -> None:
     """Saves the world state dict to the active save file."""
     try:
         from core.save_manager import get_active_save_id, read_save, write_save
+        from tools.tools import current_session_id
+        active_sess = current_session_id.get(None)
+        fallback_slot = (active_sess if active_sess and active_sess != "default" else None) or get_active_save_id()
         if isinstance(arg1, dict):
             state = arg1
-            slot = arg2 or get_active_save_id()
+            slot = arg2 or fallback_slot
         else:
-            slot = arg1 or get_active_save_id()
+            slot = arg1 or fallback_slot
             state = arg2 or {}
 
         bundle = read_save(slot)

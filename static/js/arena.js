@@ -224,12 +224,12 @@ function resolveLocationAnchor(provinceName, locationName, knownCity = null) {
     };
 }
 
-function showMapWaypointTooltip(e, name) {
+function showMapWaypointTooltip(e, name, sub = 'Discovered Landmark') {
     const tooltip = document.getElementById('map-cursor-tooltip');
     if (!tooltip) return;
     tooltip.innerHTML = `
         <div style="font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; color: var(--gold-warm); margin-bottom: 2px;">📍 ${name}</div>
-        <div style="font-size: 11px; color: #94a3b8;">Discovered Landmark</div>
+        <div style="font-size: 11px; color: #94a3b8;">${sub}</div>
     `;
     tooltip.style.opacity = '1';
     tooltip.style.transform = 'scale(1)';
@@ -298,7 +298,6 @@ async function renderTamrielMap() {
                 <g class="map-waypoint" transform="translate(${wp.pinX}, ${wp.pinY})" style="cursor: pointer;" pointer-events="all" onmousemove="showMapWaypointTooltip(event, '${safeLoc}')" onmouseleave="hideMapProvinceTooltip()">
                     <circle cx="0" cy="0" r="5" fill="#facc15" stroke="#0f172a" stroke-width="1.8" />
                     <circle cx="0" cy="0" r="2" fill="#ffffff" />
-                    <text x="8" y="4" fill="#cbd5e1" font-size="10" font-family="'Cinzel', serif" font-weight="600" style="text-shadow: 0 1px 4px rgba(0,0,0,0.95); pointer-events: none;">${loc}</text>
                 </g>
             `;
         }
@@ -316,7 +315,7 @@ async function renderTamrielMap() {
 
     // High resolution Map SVG with floating cursor tooltip
     const badgeText = activeLocation.locationName || curLocation;
-    const badgeWidth = Math.max(100, badgeText.length * 8.5 + 20);
+    const safeBadgeText = badgeText.replace(/'/g, "\\'");
 
     container.innerHTML = `
         <svg viewBox="0 0 1024 768" onmouseleave="hideMapProvinceTooltip()" style="width: 100%; height: auto; display: block; background: #000; border-radius: 8px; user-select: none;">
@@ -340,21 +339,16 @@ async function renderTamrielMap() {
             <!-- Discovered Landmarks / Waypoints -->
             ${waypointsSvg}
 
-            <!-- Real-time Location Pin 📍 (Glowing concentric marker with current location badge) -->
-            <g transform="translate(${activeLocation.pinX}, ${activeLocation.pinY})" filter="url(#pinGlow)" pointer-events="none" style="transition: transform 0.5s ease-out;">
+            <!-- Real-time Location Pin 📍 (Glowing concentric marker with hover tooltip) -->
+            <g transform="translate(${activeLocation.pinX}, ${activeLocation.pinY})" filter="url(#pinGlow)" pointer-events="all" style="cursor: pointer; transition: transform 0.5s ease-out;" onmousemove="showMapWaypointTooltip(event, '${safeBadgeText}', 'Current Location')" onmouseleave="hideMapProvinceTooltip()">
                 <!-- Pulse animation rings -->
-                <circle cx="0" cy="0" r="18" fill="none" stroke-width="2.2" opacity="0.85" style="stroke: var(--gold-warm)">
+                <circle cx="0" cy="0" r="18" fill="none" stroke-width="2.2" opacity="0.85" style="stroke: var(--gold-warm); pointer-events: none;">
                     <animate attributeName="r" values="8;30" dur="2s" repeatCount="indefinite" />
                     <animate attributeName="opacity" values="0.9;0" dur="2s" repeatCount="indefinite" />
                 </circle>
                 <!-- Center Pin Marker -->
                 <circle cx="0" cy="0" r="8" stroke-width="2" style="fill: var(--danger-vivid); stroke: #ffffff" />
                 <circle cx="0" cy="0" r="3" fill="#ffffff" />
-                <!-- Current Location Badge -->
-                <g transform="translate(14, -14)">
-                    <rect x="0" y="0" width="${badgeWidth}" height="24" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="hsl(45, 80%, 55%)" stroke-width="1.2" />
-                    <text x="10" y="16" fill="#fef08a" font-size="11.5" font-family="'Cinzel', serif" font-weight="700" letter-spacing="0.5">${badgeText}</text>
-                </g>
             </g>
         </svg>
 
@@ -3599,6 +3593,8 @@ async function activateUserProfile(profileId) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
+        sessionId = profileId;
+        safeLocalStorage.setItem('follower_session_id', profileId);
         closeAssistantModal();
         window.location.reload();
     } catch (e) {
@@ -3678,6 +3674,8 @@ async function saveActiveUserProfile() {
             });
             const selData = await selRes.json();
             if (selData.error) throw new Error(selData.error);
+            sessionId = profileId;
+            safeLocalStorage.setItem('follower_session_id', profileId);
         } else {
             // Already active profile, sync the display attributes
             await fetchCharacterStatus();
@@ -3711,6 +3709,9 @@ async function createNewUserProfile() {
 
         const newId = data.save ? data.save.id : 'eternal_champion_001';
         selectedEditingProfileId = newId;
+        activeUserProfile = newId;
+        sessionId = newId;
+        safeLocalStorage.setItem('follower_session_id', newId);
 
         const messagesList = document.getElementById('messages-list');
         if (messagesList) {
@@ -5945,11 +5946,13 @@ function renderMessage(msg, isLive = false) {
                     editPromptBtn.onclick = async (e) => {
                         e.stopPropagation();
                         let activePrompt = mediaItem.prompt || portraitPrompt;
+                        let activeSubjectType = mediaItem.subject_type || mediaItem.mode || null;
                         try {
                             const response = await fetch(`/api/get_image_prompt?image_url=${encodeURIComponent(img.src)}`);
                             const data = await response.json();
-                            if (data.status === 'success' && data.prompt) {
-                                activePrompt = data.prompt;
+                            if (data.status === 'success') {
+                                if (data.prompt) activePrompt = data.prompt;
+                                if (data.subject_type || data.mode) activeSubjectType = data.subject_type || data.mode;
                             }
                         } catch (err) {
                             console.error("Failed to fetch prompt from server:", err);
@@ -5961,7 +5964,8 @@ function renderMessage(msg, isLive = false) {
                             (newPrompt) => {
                                 if (newPrompt !== null) {
                                     mediaItem.prompt = newPrompt;
-                                    regenerateImage(editPromptBtn, img.src, newPrompt);
+                                    if (activeSubjectType) mediaItem.subject_type = activeSubjectType;
+                                    regenerateImage(editPromptBtn, img.src, newPrompt, activeSubjectType);
                                 }
                             }
                         );
@@ -5978,10 +5982,22 @@ function renderMessage(msg, isLive = false) {
                             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                         </svg>
                     `;
-                    recycleBtn.onclick = (e) => {
+                    recycleBtn.onclick = async (e) => {
                         e.stopPropagation();
                         try {
-                            regenerateImage(recycleBtn, img.src, mediaItem.prompt || portraitPrompt);
+                            let activePrompt = mediaItem.prompt || portraitPrompt;
+                            let activeSubjectType = mediaItem.subject_type || mediaItem.mode || null;
+                            if (!activeSubjectType) {
+                                try {
+                                    const response = await fetch(`/api/get_image_prompt?image_url=${encodeURIComponent(img.src)}`);
+                                    const data = await response.json();
+                                    if (data.status === 'success') {
+                                        if (data.prompt && !activePrompt) activePrompt = data.prompt;
+                                        if (data.subject_type || data.mode) activeSubjectType = data.subject_type || data.mode;
+                                    }
+                                } catch (err) {}
+                            }
+                            regenerateImage(recycleBtn, img.src, activePrompt, activeSubjectType);
                         } catch (err) {
                             showCustomAlert("Error", "Click handler error: " + err.message);
                         }
@@ -8153,7 +8169,7 @@ async function resolvePlayerSkillCheck() {
 
 
 // --- regenerateImage ---
-async function regenerateImage(buttonElement, oldImageUrl, prompt) {
+async function regenerateImage(buttonElement, oldImageUrl, prompt, subjectType = null) {
 
     try {
         const container = buttonElement.closest('.message-image-container');
@@ -8193,6 +8209,7 @@ async function regenerateImage(buttonElement, oldImageUrl, prompt) {
                 session_id: sessionId,
                 old_image_url: getRelativePath(oldImageUrl),
                 prompt: prompt,
+                subject_type: subjectType,
                 use_imagen: useImagenMode
             })
         });
