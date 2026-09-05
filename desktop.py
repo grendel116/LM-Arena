@@ -10,11 +10,9 @@ import threading
 import urllib.request
 import webview
 
-# Configure WebView2 arguments for audio/mic capabilities
+# Configure WebView2 arguments for audio playback capabilities
 os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
-    "--use-fake-ui-for-media-stream "
     "--autoplay-policy=no-user-gesture-required "
-    "--enable-features=SpeechRecognition,MediaStream "
     "--unsafely-treat-insecure-origin-as-secure=http://127.0.0.1:5000,http://localhost:5000"
 )
 

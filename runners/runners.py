@@ -101,11 +101,11 @@ def _trim_context_messages(messages: list[dict], max_chars: int = 26000) -> list
     return sys_msgs + kept
 
 
-class BaseProgramRunner:
+class BaseRunner:
     def __init__(self, app_name: str = "Arena"):
         self.app_name = app_name
         self.sessions_history: dict = {}
-        self.sessions_memory_state: dict = {}  # Tracks buffers, chapters, and epic chronicles[cite: 4]
+        self.sessions_memory_state: dict = {}
 
     def _get_memory_meta(self, session_id: str) -> dict:
         """Helper to ensure session memory state exists."""
@@ -295,7 +295,7 @@ class BaseProgramRunner:
         # Filter to user and follower/assistant messages only
         dialogue_messages = [
             msg for msg in history 
-            if msg.get("role") in ("user", "assistant", "follower", "program")
+            if msg.get("role") in ("user", "assistant", "follower")
         ]
         
         turn_count = len(dialogue_messages) // 2
@@ -762,7 +762,10 @@ class BaseProgramRunner:
         return instructions
 
 
-class OpenSourceRunner(BaseProgramRunner):
+BaseProgramRunner = BaseRunner
+
+
+class OpenSourceRunner(BaseRunner):
     """Operates independently of cloud infrastructure, reading character settings
     directly from the follower's JSON profile.
     """

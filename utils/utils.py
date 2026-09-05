@@ -119,7 +119,7 @@ def _merge_consecutive_messages(messages: list[dict]) -> list[dict]:
 
 def _build_vector_query(history: list[dict], max_messages: int = VECTOR_QUERY_MESSAGES) -> str:
     """Constructs a vector search query from the last N non-system conversation messages."""
-    valid_roles = {"user", "program", "assistant"}
+    valid_roles = {"user", "follower", "assistant"}
     messages = []
 
     for msg in reversed(history):

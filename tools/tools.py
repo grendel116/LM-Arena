@@ -427,8 +427,8 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
     import requests
     
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    from runners.follower import get_active_follower as get_active_program
-    active_program = get_active_program()
+    from runners.follower import get_active_follower
+    active_follower = get_active_follower()
     
     workflow_env_path = os.getenv("COMFYUI_VIDEO_WORKFLOW", "core/skills/portrait_generation/VideoWorkflow.json")
     workflow_path = os.path.normpath(os.path.join(base_dir, workflow_env_path))
@@ -722,7 +722,7 @@ def arena_complete_side_quest(quest_id: str = None, *args, **kwargs) -> dict:
 
 @track_tool_activity
 def add_journal_entry(keyphrases: str, content: str) -> str:
-    """Saves a memory journal entry for the active program.
+    """Saves a memory journal entry for the active follower.
     
     Args:
         keyphrases: Comma separated keywords or phrases that trigger this memory.
@@ -730,9 +730,9 @@ def add_journal_entry(keyphrases: str, content: str) -> str:
     """
     try:
         from core.journals import add_journal_entry as add_entry
-        from runners.follower import get_active_follower as get_active_program
-        active_prog = get_active_program()
-        entry = add_entry(keyphrases, content, active_prog)
+        from runners.follower import get_active_follower
+        active_follower = get_active_follower()
+        entry = add_entry(keyphrases, content, active_follower)
         return f"Successfully saved memory journal entry: {entry.get('content')}"
     except Exception as e:
         return f"Error saving memory journal entry: {e}"
