@@ -773,6 +773,7 @@ def chat():
     image_mime = request.json.get('image_mime')
     media_path = request.json.get('media_path')
     session_id = request.json.get('session_id', 'default')
+    selected_model = request.json.get('model')
     import tools.tools as tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
