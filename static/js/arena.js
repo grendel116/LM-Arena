@@ -224,12 +224,11 @@ function resolveLocationAnchor(provinceName, locationName, knownCity = null) {
     };
 }
 
-function showMapWaypointTooltip(e, name, sub = 'Discovered Landmark') {
+function showMapWaypointTooltip(e, name) {
     const tooltip = document.getElementById('map-cursor-tooltip');
     if (!tooltip) return;
     tooltip.innerHTML = `
-        <div style="font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; color: var(--gold-warm); margin-bottom: 2px;">📍 ${name}</div>
-        <div style="font-size: 11px; color: #94a3b8;">${sub}</div>
+        <div style="font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; color: var(--gold-warm);">📍 ${name}</div>
     `;
     tooltip.style.opacity = '1';
     tooltip.style.transform = 'scale(1)';
@@ -340,7 +339,7 @@ async function renderTamrielMap() {
             ${waypointsSvg}
 
             <!-- Real-time Location Pin 📍 (Glowing concentric marker with hover tooltip) -->
-            <g transform="translate(${activeLocation.pinX}, ${activeLocation.pinY})" filter="url(#pinGlow)" pointer-events="all" style="cursor: pointer; transition: transform 0.5s ease-out;" onmousemove="showMapWaypointTooltip(event, '${safeBadgeText}', 'Current Location')" onmouseleave="hideMapProvinceTooltip()">
+            <g transform="translate(${activeLocation.pinX}, ${activeLocation.pinY})" filter="url(#pinGlow)" pointer-events="all" style="cursor: pointer; transition: transform 0.5s ease-out;" onmousemove="showMapWaypointTooltip(event, '${safeBadgeText}')" onmouseleave="hideMapProvinceTooltip()">
                 <!-- Pulse animation rings -->
                 <circle cx="0" cy="0" r="18" fill="none" stroke-width="2.2" opacity="0.85" style="stroke: var(--gold-warm); pointer-events: none;">
                     <animate attributeName="r" values="8;30" dur="2s" repeatCount="indefinite" />
