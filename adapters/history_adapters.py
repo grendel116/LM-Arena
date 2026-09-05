@@ -215,16 +215,12 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         chat_turns = [m for m in raw_messages if m.get("role") != "system"]
         latest_user_turn = chat_turns.pop() if chat_turns else None
 
-        if latest_user_turn and post_injection:
-            if isinstance(latest_user_turn["content"], str):
-                latest_user_turn["content"] += f"\n\n{post_injection}"
-            elif isinstance(latest_user_turn["content"], list):
-                latest_user_turn["content"].append({"type": "text", "text": f"\n\n{post_injection}"})
-
         latest_user_len = sum(
             len(item.get("text", "")) if isinstance(item, dict) else len(item)
             for item in (latest_user_turn["content"] if isinstance(latest_user_turn["content"], list) else [latest_user_turn["content"]])
         ) if latest_user_turn else 0
+        if post_injection:
+            latest_user_len += len(post_injection)
 
         tier1_len = len(core_system) + latest_user_len
         budget_after_tier1 = max(0, CHAR_BUDGET - tier1_len)
@@ -261,17 +257,32 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 accumulated_aux_chars += block_len
 
         # 4. Assemble system prompt and message array
+        # Keep full_system 100% static across turns for prompt/KV cache reuse
         full_system = core_system
-        if included_aux:
-            full_system += "\n\n" + "\n\n".join(included_aux)
+
+        # Attach per-turn dynamic auxiliary context (lore, journals, skills) to the latest user turn
+        aux_text = "\n\n".join(included_aux) if included_aux else ""
+        tail_parts = []
+        if aux_text:
+            tail_parts.append(aux_text)
+        if post_injection:
+            tail_parts.append(post_injection)
+        tail_injection = "\n\n".join(tail_parts)
+
+        if latest_user_turn and tail_injection:
+            if isinstance(latest_user_turn["content"], str):
+                latest_user_turn["content"] += f"\n\n{tail_injection}"
+            elif isinstance(latest_user_turn["content"], list):
+                latest_user_turn["content"].append({"type": "text", "text": f"\n\n{tail_injection}"})
+        elif not latest_user_turn and tail_injection:
+            # If no user turn exists yet, keep in system
+            full_system += f"\n\n{tail_injection}"
 
         final_messages = [{"role": "system", "content": full_system}]
         final_messages.extend(trimmed_chat_turns)
 
         if latest_user_turn:
             final_messages.append(latest_user_turn)
-        elif post_injection:
-            final_messages.append({"role": "user", "content": post_injection})
 
         return _merge_consecutive_messages(final_messages)
 
@@ -301,7 +312,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             filtered_history = [latest_user] if latest_user else []
 
         if not filtered_history:
-            return [{"role": "system", "content": f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"}]
+            return [{"role": "system", "content": sys_inst if _ARENA_DIRECTIVE_PROMPT in sys_inst else f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"}]
 
         latest_img_idx = -1
         has_new_image = bool((self.image_data and self.image_mime) or self.file_path_resolved)
@@ -358,7 +369,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             raw_messages.append({"role": role, "content": content_text})
 
         # Base System instructions and Directives (Tier 1 Core)
-        core_system = f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"
+        core_system = sys_inst if _ARENA_DIRECTIVE_PROMPT in sys_inst else f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"
             
         try:
             from core.banned_words import get_banned_words_directive

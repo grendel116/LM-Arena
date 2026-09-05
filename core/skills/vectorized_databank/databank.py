@@ -7,15 +7,22 @@ from bs4 import BeautifulSoup
 
 # Lazy-loaded embedding model to speed up server boot and reload times
 _embedding_model = None
+_embedding_model_unavailable = False
 
 def get_embedding_model():
-    global _embedding_model
+    global _embedding_model, _embedding_model_unavailable
+    if _embedding_model_unavailable:
+        raise RuntimeError("SentenceTransformer model is unavailable in the current environment.")
     if _embedding_model is None:
-        print(">>> Initializing SentenceTransformer model ('all-MiniLM-L6-v2')...")
-        from sentence_transformers import SentenceTransformer
-        # This will download the ~90MB model on first execution
-        _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        print(">>> SentenceTransformer model loaded successfully.")
+        try:
+            print(">>> Initializing SentenceTransformer model ('all-MiniLM-L6-v2')...")
+            from sentence_transformers import SentenceTransformer
+            _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+            print(">>> SentenceTransformer model loaded successfully.")
+        except Exception as e:
+            _embedding_model_unavailable = True
+            print(f">>> SentenceTransformer unavailable: {e}")
+            raise e
     return _embedding_model
 
 

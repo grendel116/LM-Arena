@@ -145,23 +145,13 @@ def load_static_instructions(follower_id: str = None) -> str:
 
 
 def load_dynamic_runtime_context() -> str:
-    """Compiles dynamic time and environment parameters for runtime grounding."""
-    now = datetime.datetime.now()
-    temporal_block = (
-        "### SYSTEM TEMPORAL CONTEXT\n"
-        f"- Local Time: {now.strftime('%Y-%m-%d %I:%M %p')}\n"
-        f"- Local Day: {now.strftime('%A, %B %d, %Y')}\n"
-    )
+    """Compiles environment parameters for runtime grounding without minute-level cache invalidation."""
     env_block = (
         "### SYSTEM ENVIRONMENT CONTEXT\n"
         "- Active Engine: LM-Arena Local LLM Runner\n"
         "- Host OS: Windows\n"
     )
-    return (
-        "\n\n# DYNAMIC RUNTIME CONTEXT\n"
-        f"{temporal_block}\n"
-        f"{env_block}"
-    )
+    return f"\n\n# DYNAMIC RUNTIME CONTEXT\n{env_block}"
 
 
 def load_user_instructions() -> str:
