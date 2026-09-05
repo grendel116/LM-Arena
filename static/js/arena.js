@@ -228,7 +228,7 @@ function showMapWaypointTooltip(e, name) {
     const tooltip = document.getElementById('map-cursor-tooltip');
     if (!tooltip) return;
     tooltip.innerHTML = `
-        <div style="font-family: var(--font-heading, 'Cinzel', serif); font-size: 0.88rem; font-weight: 700; color: var(--gold-bright); text-transform: uppercase; letter-spacing: 0.8px;">${name}</div>
+        <div style="font-family: var(--font-sans, 'Outfit', sans-serif); font-size: 0.75rem; color: var(--text-main); font-weight: 500; line-height: 1.35;">${name}</div>
     `;
     tooltip.style.opacity = '1';
     tooltip.style.transform = 'scale(1)';
@@ -383,7 +383,7 @@ function getProvinceInfoHtml(pName) {
 
     return `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <h4 style="margin: 0; font-size: 0.92rem; color: var(--gold-bright); font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 0.8px;">
+            <h4 style="margin: 0; font-size: 0.92rem; color: var(--gold-bright); font-family: var(--font-heading, 'Outfit', sans-serif); text-transform: uppercase; letter-spacing: 0.8px;">
                 ${prov.name}
             </h4>
             ${isCurrent ? '<span style="font-size: 0.58rem; padding: 1px 6px; border-radius: 3px; background: hsla(var(--green-h), 70%, 45%, 0.2); color: var(--success-bright); border: 1px solid hsla(var(--green-h), 70%, 45%, 0.4); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Current</span>' : ''}
