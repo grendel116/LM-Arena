@@ -773,18 +773,13 @@ def chat():
     image_mime = request.json.get('image_mime')
     media_path = request.json.get('media_path')
     session_id = request.json.get('session_id', 'default')
-    selected_model = request.json.get('model')
-    is_voice_call = request.json.get('is_voice_call', False)
-
     import tools.tools as tools
     tools.current_session_id.set(session_id)
     with tools.session_tool_calls_lock:
         tools.session_tool_calls[session_id] = []
 
-    from runners.runners import cancelled_sessions, voice_call_sessions
+    from runners.runners import cancelled_sessions
     cancelled_sessions.discard(session_id)
-    if is_voice_call:
-        voice_call_sessions.add(session_id)
         
     start_time = time.time()
 
@@ -836,9 +831,8 @@ def chat():
         print(f"Error occurred in chat: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
-        from runners.runners import cancelled_sessions, voice_call_sessions
+        from runners.runners import cancelled_sessions
         cancelled_sessions.discard(session_id)
-        voice_call_sessions.discard(session_id)
 
 @app.route('/edit', methods=['POST'])
 @requires_auth
@@ -2000,54 +1994,6 @@ def api_tts():
             return jsonify({'success': False, 'error': 'Speech generation failed'}), 500
     except Exception as e:
         print(f"Error in /api/tts: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/voice_call/start', methods=['POST'])
-@requires_auth
-def start_voice_call_api():
-    try:
-        data = request.get_json() or {}
-        session_id = data.get('session_id', 'default')
-        voice_session_id = f"{session_id}_voice"
-        
-        # 1. Reset/Clear any existing voice session
-        asyncio.run(runner.reset_session(voice_session_id))
-        
-        # 2. Clone context from main session to voice session
-        asyncio.run(runner.clone_history(session_id, voice_session_id, []))
-        
-        print(f"[VOICE CALL] Initialized voice session: {voice_session_id} cloned from {session_id}")
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error in /api/voice_call/start: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/voice_call/save', methods=['POST'])
-@requires_auth
-def save_voice_call():
-    try:
-        data = request.get_json() or {}
-        session_id = data.get('session_id', 'default')
-        transcript = data.get('transcript')
-        voice_session_id = f"{session_id}_voice"
-        
-        if not transcript:
-            return jsonify({'error': 'Missing transcript'}), 400
-            
-        # 1. Save consolidated transcript message to main session history
-        success = asyncio.run(runner.append_voice_call(session_id, transcript))
-        
-        # 2. Reset/Clean up temporary voice session from memory/disk
-        asyncio.run(runner.reset_session(voice_session_id))
-        
-        print(f"[VOICE CALL] Saved transcript to main session {session_id} and cleared temporary voice session {voice_session_id}")
-        
-        if success:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': False, 'error': 'Failed to append voice call to session'}), 500
-    except Exception as e:
-        print(f"Error in /api/voice_call/save: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # --- VECTORIZED DATA BANK API ENDPOINTS ---
@@ -3906,7 +3852,7 @@ Output a single JSON object with EXACTLY these keys:
         except Exception as e:
             print(f"Failed to parse card JSON: {e}. Raw: {raw_response}")
 
-    # Build a chara_card_v3 dict. Helper keys _inversion and _colors are
+    # Build a chara_card_v3 dict. Helper key _colors is
     # popped by finalize_imported_follower before writing to disk.
     card = {
         "spec": "chara_card_v3",
@@ -3935,22 +3881,14 @@ Output a single JSON object with EXACTLY these keys:
                 }
             }
         },
-        # Helper keys consumed by finalize_imported_follower
-        "_inversion": parsed.get("inversion") or {
-            "intimate": f"{name} is now deeply affectionate and tender.",
-            "excited": f"{name} is now playful and energetic.",
-            "intense": f"{name} is now focused and direct.",
-            "sad": f"{name} is now empathetic and gentle."
-        },
         "_colors": {"main_color": parsed.get("main_color") or "#38bdf8"},
     }
     return card
 
 
 def finalize_imported_follower(follower_path, follower_id, card_json):
-    """Write inversion, theme, portraits dir, and chara_card_v3 JSON for a new follower."""
-    
-
+    """Write theme, portraits dir, and chara_card_v3 JSON for a new follower."""
+    colors = card_json.pop("_colors", {})
     main_color = colors.get("main_color", "#38bdf8")
     theme_data = generate_character_theme(main_color)
     with open(os.path.join(follower_path, 'theme.json'), "w", encoding="utf-8") as tf:
