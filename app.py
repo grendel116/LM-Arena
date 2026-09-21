@@ -861,21 +861,27 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
     from core.follower_config import get_follower_name
     import re
 
-    # 1. Direct addressing: check if any follower name, first name, or ID is mentioned anywhere in the message
+    # 1. Explicit @mention of a follower (e.g. @Brea)
     for fol_id in active_followers:
         fname = get_follower_name(fol_id).lower()
         first_name = fname.split()[0]
         if (f"@{fname}" in user_msg_lower 
             or f"@{first_name}" in user_msg_lower 
-            or f"@{fol_id.lower()}" in user_msg_lower
-            or re.search(rf"\b{re.escape(fname)}\b", user_msg_lower)
+            or f"@{fol_id.lower()}" in user_msg_lower):
+            return fol_id
+
+    # 2. World actions containing any asterisks -> The Game
+    if "*" in user_msg_clean:
+        return "game"
+
+    # 3. Follower name mentioned in spoken dialogue
+    for fol_id in active_followers:
+        fname = get_follower_name(fol_id).lower()
+        first_name = fname.split()[0]
+        if (re.search(rf"\b{re.escape(fname)}\b", user_msg_lower)
             or re.search(rf"\b{re.escape(first_name)}\b", user_msg_lower)
             or re.search(rf"\b{re.escape(fol_id.lower())}\b", user_msg_lower)):
             return fol_id
-
-    # 2. Explicit world action in asterisks -> The Game
-    if user_msg_clean.startswith("*") and user_msg_clean.endswith("*"):
-        return "game"
 
     # 3. If the user was in an ongoing exchange with a follower in the last turn
     for m in reversed(prior_history):

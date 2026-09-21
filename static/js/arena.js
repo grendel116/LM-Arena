@@ -6575,7 +6575,21 @@ function determineClientSpeaker(rawText, lastSpeaker) {
     const textClean = (rawText || '').trim();
     const textLower = textClean.toLowerCase();
 
-    // 1. Direct addressing / follower name mentioned
+    // 1. Explicit @mention of a follower (e.g. @Brea)
+    for (const fid of activePartyFollowers) {
+        const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
+        const firstName = fname.split(' ')[0];
+        if (textLower.includes(`@${fname}`) || textLower.includes(`@${firstName}`) || textLower.includes(`@${fid}`)) {
+            return fid;
+        }
+    }
+
+    // 2. World action containing any asterisks -> The Game
+    if (textClean.includes('*')) {
+        return 'game';
+    }
+
+    // 3. Follower name mentioned in spoken dialogue
     for (const fid of activePartyFollowers) {
         const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
         const firstName = fname.split(' ')[0];
@@ -6583,17 +6597,12 @@ function determineClientSpeaker(rawText, lastSpeaker) {
         const escFirst = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const escFid = fid.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const re = new RegExp(`\\b(${escFname}|${escFirst}|${escFid})\\b`, 'i');
-        if (textLower.includes(`@${fname}`) || textLower.includes(`@${firstName}`) || textLower.includes(`@${fid}`) || re.test(textLower)) {
+        if (re.test(textLower)) {
             return fid;
         }
     }
 
-    // 2. Explicit world action in asterisks -> The Game
-    if (textClean.startsWith('*') && textClean.endsWith('*')) {
-        return 'game';
-    }
-
-    // 3. Continuing an ongoing conversation with a follower
+    // 4. Continuing an ongoing conversation with a follower
     if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
         return lastSpeaker;
     }
