@@ -2192,8 +2192,8 @@ body::-webkit-scrollbar-thumb:hover,
 .message-row.user-row .message-actions,
 .message.user .message-actions {
     bottom: 0;
-    left: 14px;
-    right: auto;
+    right: 14px;
+    left: auto;
     top: auto;
     transform: translateY(50%);
     flex-direction: row-reverse;
