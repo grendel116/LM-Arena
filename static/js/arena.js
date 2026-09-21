@@ -6596,6 +6596,50 @@ function handleToolReloadOrRecovery() {
     }
 }
 
+// --- determineClientSpeaker ---
+function determineClientSpeaker(rawText, lastSpeaker) {
+    if (typeof activePartyFollowers === 'undefined' || !Array.isArray(activePartyFollowers) || activePartyFollowers.length === 0) {
+        return 'game';
+    }
+
+    const textClean = (rawText || '').trim();
+    const textLower = textClean.toLowerCase();
+
+    // 1. Direct addressing / follower name mentioned
+    for (const fid of activePartyFollowers) {
+        const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
+        const firstName = fname.split(' ')[0];
+        const escFname = fname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escFirst = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escFid = fid.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`\\b(${escFname}|${escFirst}|${escFid})\\b`, 'i');
+        if (textLower.includes(`@${fname}`) || textLower.includes(`@${firstName}`) || textLower.includes(`@${fid}`) || re.test(textLower)) {
+            return fid;
+        }
+    }
+
+    // 2. Check message nature: pure world action vs dialogue / interpersonal interaction
+    const unasterisked = textClean.replace(/\*.*?\*/gs, '').trim();
+    const hasSecondPerson = /\b(you|your|yours|yourself|wench|lass|girl|lad|friend)\b/i.test(textLower);
+    const isPureWorldAction = textClean.startsWith('*') && textClean.endsWith('*') && unasterisked === '' && !hasSecondPerson;
+    const isGameCommand = ['search', 'look', 'inventory', 'rest', 'wait', 'look around', 'examine', 'take key', 'open door'].includes(textLower);
+
+    if (isPureWorldAction || isGameCommand) {
+        return 'game';
+    }
+
+    // 3. Dialogue or interpersonal address -> follower speaks!
+    if (unasterisked.length > 0 || hasSecondPerson) {
+        return (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) ? lastSpeaker : activePartyFollowers[0];
+    }
+
+    if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
+        return lastSpeaker;
+    }
+
+    return 'game';
+}
+
 // --- sendMessage ---
 async function sendMessage() {
     hideThoughtBubbleOverlay();
@@ -6735,56 +6779,8 @@ async function sendMessage() {
     clearAttachment();
     updateInputGlow();
 
-function determineClientSpeaker(rawText, lastSpeaker) {
-    if (typeof activePartyFollowers === 'undefined' || !Array.isArray(activePartyFollowers) || activePartyFollowers.length === 0) {
-        return 'game';
-    }
-
-    const textClean = (rawText || '').trim();
-    const textLower = textClean.toLowerCase();
-
-    // 1. Direct addressing / follower name mentioned
-    for (const fid of activePartyFollowers) {
-        const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
-        const firstName = fname.split(' ')[0];
-        const escFname = fname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const escFirst = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const escFid = fid.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const re = new RegExp(`\\b(${escFname}|${escFirst}|${escFid})\\b`, 'i');
-        if (textLower.includes(`@${fname}`) || textLower.includes(`@${firstName}`) || textLower.includes(`@${fid}`) || re.test(textLower)) {
-            return fid;
-        }
-    }
-
-    // 2. Check message nature: pure world action vs dialogue / interpersonal interaction
-    const unasterisked = textClean.replace(/\*.*?\*/gs, '').trim();
-    const hasSecondPerson = /\b(you|your|yours|yourself|wench|lass|girl|lad|friend)\b/i.test(textLower);
-    const isPureWorldAction = textClean.startsWith('*') && textClean.endsWith('*') && unasterisked === '' && !hasSecondPerson;
-    const isGameCommand = ['search', 'look', 'inventory', 'rest', 'wait', 'look around', 'examine', 'take key', 'open door'].includes(textLower);
-
-    if (isPureWorldAction || isGameCommand) {
-        return 'game';
-    }
-
-    // 3. Dialogue or interpersonal address -> follower speaks!
-    if (unasterisked.length > 0 || hasSecondPerson) {
-        return (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) ? lastSpeaker : activePartyFollowers[0];
-    }
-
-    if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
-        return lastSpeaker;
-    }
-
-    return 'game';
-}
-
-async function sendMessage() {
-    if (isGenerating || isSubmitting) return;
-
-    const text = userInput.value.trim();
-    if (!text && !attachedBase64 && !attachedMediaPath) {
-        return;
-    }
+    const typingIndicatorRow = document.createElement('div');
+    typingIndicatorRow.className = 'message-row follower-row';
 
     const previousFollowerRows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'));
     const lastFollowerRow = previousFollowerRows.length > 0 ? previousFollowerRows[previousFollowerRows.length - 1] : null;
