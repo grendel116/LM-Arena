@@ -12,8 +12,8 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-09-21T07:49:46.164459",
-    "updated_at": "2026-09-21T07:54:47.125054",
+    "created_at": "2026-09-21T07:57:58.790906",
+    "updated_at": "2026-09-21T07:57:58.814884",
     "active_follower": "riasilmane",
     "active_followers": [
       "riasilmane"
@@ -45,7 +45,7 @@
       "stamina_max": 72,
       "armor_rating": 0,
       "encumbrance_max": 120.0,
-      "encumbrance_current": 1.1,
+      "encumbrance_current": 1.0,
       "is_encumbered": false
     },
     "skills": {
@@ -69,14 +69,6 @@
         "equipped_slot": "body",
         "weight": 1.0,
         "quantity": 1
-      },
-      {
-        "name": "Prison Key",
-        "type": "misc",
-        "weight": 0.1,
-        "quantity": 1,
-        "equipped": false,
-        "description": ""
       }
     ],
     "spells": [
@@ -95,7 +87,6 @@
       "day": 1,
       "month": "Hearthfire",
       "year": 389,
-      "hour": 6,
       "era": "Third Era"
     },
     "current_province": "Cyrodiil",
@@ -105,9 +96,7 @@
     "provinces_visited": [
       "Cyrodiil"
     ],
-    "cities_discovered": [
-      "Imperial Dungeon"
-    ],
+    "cities_discovered": [],
     "dungeons_cleared": [],
     "followers": [],
     "world_flags": {
@@ -138,20 +127,13 @@
       "temple_of_dibella": 0,
       "temple_of_stendarr": 0,
       "noble_courts": 0
-    },
-    "date": {
-      "day": 1,
-      "month": "Hearthfire",
-      "year": 389,
-      "hour": 6,
-      "era": "Third Era"
     }
   },
   "history": [
     {
-      "id": "first_mes_f3cd4696ff3c",
+      "id": "first_mes_2dc9827b6023",
       "role": "follower",
-      "timestamp": 1790002186.1644595
+      "timestamp": 1790002678.7909067
     }
   ],
   "memories": {
@@ -168,20 +150,13 @@
   "profile": "A Nord from Skyrim.",
   "messages": [
     {
-      "id": "first_mes_f3ea0d85153341bc8e7ae6a96cd68369",
+      "id": "first_mes_f99cff6a7fcb459a9541e7dcf1ec2974",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
-      "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a small brass key resting on a narrow ledge. Further down the corridor, unseen vermin skitter across stone.*",
+      "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1790002186.185689
-    },
-    {
-      "id": "usr_lm4zj94l7mubd3bj2",
-      "role": "user",
-      "text": "*I grab the key.*",
-      "image_url": null,
-      "timestamp": 1790002198.0580578
+      "timestamp": 1790002678.813883
     }
   ],
   "memory_state": {

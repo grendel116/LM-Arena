@@ -792,6 +792,49 @@ def upload_media():
 
     return jsonify({'file_path': f'/images/uploads/{unique_name}'})
 
+def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls: list = None) -> tuple[bool, str | None]:
+    """Determines the next speaker in the alternating turn chain.
+    If the turn started with The Game: The Game -> Follower(s).
+    If the turn started with a Follower: Follower(s) -> The Game.
+    """
+    if tool_calls or not active_followers:
+        return False, None
+
+    # Find the most recent user turn
+    user_idx = -1
+    for i in range(len(chat_history) - 1, -1, -1):
+        if chat_history[i].get("role") == "user":
+            user_idx = i
+            break
+
+    current_turn_msgs = chat_history[user_idx + 1:] if user_idx != -1 else chat_history
+    spoken_senders = []
+    for m in current_turn_msgs:
+        if m.get("role") in ("follower", "assistant"):
+            sid = m.get("sender_id") or ("game" if m.get("role") == "follower" else None)
+            if sid and sid not in spoken_senders:
+                spoken_senders.append(sid)
+
+    if not spoken_senders:
+        return False, None
+
+    first_turn_speaker = spoken_senders[0]
+    unspoken_followers = [f for f in active_followers if f not in spoken_senders]
+
+    if first_turn_speaker == "game":
+        # Game spoke first: Game -> Follower(s)
+        if unspoken_followers:
+            return True, unspoken_followers[0]
+        return False, None
+    else:
+        # Follower spoke first: Follower(s) -> Game
+        if unspoken_followers:
+            return True, unspoken_followers[0]
+        if "game" not in spoken_senders:
+            return True, "game"
+        return False, None
+
+
 @app.route('/chat', methods=['POST'])
 @requires_auth
 def chat():
@@ -812,11 +855,16 @@ def chat():
     start_time = time.time()
 
     try:
-        # Turn order: The Game resolves player actions and world outcomes first.
-        # Followers then speak in sequence to react and converse.
         from core.save_manager import get_active_followers
         from core.follower_config import get_follower_name
         active_followers = get_active_followers(session_id)
+
+        prior_history = asyncio.run(runner.get_history(session_id))
+        last_speaker = None
+        for msg in reversed(prior_history):
+            if msg.get('role') in ('follower', 'assistant'):
+                last_speaker = msg.get('sender_id') or 'game'
+                break
 
         user_msg_lower = (user_message or "").lower()
         is_image_request = any(k in user_msg_lower for k in (
@@ -833,19 +881,16 @@ def chat():
                 addressed_follower = fol_id
                 break
 
-        first_speaker = "game"
+        # If user speaks after a follower or addresses a follower: Follower speaks first
+        # If user speaks after The Game: The Game speaks first
         if is_image_request:
-            chain_continue = False
-            next_speaker = None
+            first_speaker = "game"
         elif addressed_follower:
-            chain_continue = True
-            next_speaker = addressed_follower
-        elif active_followers:
-            chain_continue = True
-            next_speaker = active_followers[0]
+            first_speaker = addressed_follower
+        elif last_speaker and last_speaker in active_followers:
+            first_speaker = last_speaker
         else:
-            chain_continue = False
-            next_speaker = None
+            first_speaker = "game"
 
         msg_id = request.json.get('msg_id')
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
@@ -880,8 +925,8 @@ def chat():
         if not sender_name:
             sender_name = get_follower_name(first_speaker)
 
-        # Restrict followers from speaking after tool calls
-        if tool_calls:
+        chain_continue, next_speaker = compute_chain_speaker(chat_history, active_followers, tool_calls)
+        if is_image_request:
             chain_continue = False
             next_speaker = None
 
@@ -959,21 +1004,7 @@ def continue_turn():
             from core.follower_config import get_follower_name
             sender_name = get_follower_name(speaker_id)
 
-        # Compute next speaker in group turn chain
-        chain_continue = False
-        next_speaker = None
-        if speaker_id == "game":
-            if active_followers:
-                next_speaker = active_followers[0]
-                chain_continue = True
-        elif speaker_id in active_followers:
-            idx = active_followers.index(speaker_id)
-            if idx + 1 < len(active_followers):
-                next_speaker = active_followers[idx + 1]
-                chain_continue = True
-            else:
-                chain_continue = False
-                next_speaker = None
+        chain_continue, next_speaker = compute_chain_speaker(chat_history, active_followers, tool_calls)
 
         return jsonify({
             'response': response_text,
@@ -1049,11 +1080,7 @@ def edit():
 
         from core.save_manager import get_active_followers
         active_followers = get_active_followers(session_id)
-        chain_continue = False
-        next_speaker = None
-        if (sender_id or speaker_id or 'game') == 'game' and active_followers and not tool_calls:
-            chain_continue = True
-            next_speaker = active_followers[0]
+        chain_continue, next_speaker = compute_chain_speaker(chat_history, active_followers, tool_calls)
 
         return jsonify({
             'response': response_text,

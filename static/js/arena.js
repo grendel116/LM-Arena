@@ -6693,9 +6693,32 @@ async function sendMessage() {
 
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
-    const activeSpeaker = 'game';
+
+    const previousFollowerRows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'));
+    const lastRow = previousFollowerRows.length > 0 ? previousFollowerRows[previousFollowerRows.length - 1] : null;
+    const lastSpeaker = lastRow ? (lastRow.dataset.senderId || 'game') : 'game';
+
+    const textLower = text.toLowerCase();
+    let addressed = null;
+    if (typeof activePartyFollowers !== 'undefined' && Array.isArray(activePartyFollowers)) {
+        for (const fid of activePartyFollowers) {
+            const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
+            if (textLower.includes(`@${fname}`) || textLower.includes(`@${fid}`) || textLower.startsWith(`${fname},`) || textLower.startsWith(`${fname}:`)) {
+                addressed = fid;
+                break;
+            }
+        }
+    }
+
+    let activeSpeaker = 'game';
+    if (addressed) {
+        activeSpeaker = addressed;
+    } else if (lastSpeaker && lastSpeaker !== 'game') {
+        activeSpeaker = lastSpeaker;
+    }
+
     const profileUrl = getProfileUrl(activeSpeaker);
-    const displayName = 'The Game';
+    const displayName = (activeSpeaker === 'game') ? 'The Game' : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[activeSpeaker]) || activefollowerName || 'Follower');
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
             <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
@@ -7089,9 +7112,38 @@ async function resendUserMessage(bubble) {
         heartElement.classList.add('jiggling');
     }
 
-    const activeSpeaker = 'game';
+    let prev = row.previousElementSibling;
+    let lastSpeaker = 'game';
+    while (prev) {
+        if (prev.classList.contains('follower-row')) {
+            lastSpeaker = prev.dataset.senderId || 'game';
+            break;
+        }
+        prev = prev.previousElementSibling;
+    }
+
+    const userText = bubble.dataset.rawText || '';
+    const textLower = userText.toLowerCase();
+    let addressed = null;
+    if (typeof activePartyFollowers !== 'undefined' && Array.isArray(activePartyFollowers)) {
+        for (const fid of activePartyFollowers) {
+            const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
+            if (textLower.includes(`@${fname}`) || textLower.includes(`@${fid}`) || textLower.startsWith(`${fname},`) || textLower.startsWith(`${fname}:`)) {
+                addressed = fid;
+                break;
+            }
+        }
+    }
+
+    let activeSpeaker = 'game';
+    if (addressed) {
+        activeSpeaker = addressed;
+    } else if (lastSpeaker && lastSpeaker !== 'game') {
+        activeSpeaker = lastSpeaker;
+    }
+
     const profileUrl = getProfileUrl(activeSpeaker);
-    const displayName = 'The Game';
+    const displayName = (activeSpeaker === 'game') ? 'The Game' : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[activeSpeaker]) || activefollowerName || 'Follower');
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
     typingIndicatorRow.innerHTML = `
@@ -7125,7 +7177,8 @@ async function resendUserMessage(bubble) {
                 session_id: sessionId,
                 msg_id: msgId,
                 new_text: bubble.dataset.rawText || '',
-                model: selectedModel
+                model: selectedModel,
+                speaker_id: activeSpeaker
             }),
             signal: chatAbortController.signal
         });
