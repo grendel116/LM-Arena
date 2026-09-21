@@ -13,4 +13,4 @@ Record important details about the user or follower:
 3. **Keywords**: Extract two to five keywords. Separate the keywords with commas.
 4. **Log Memory**: Always call the emulated tool:
    `[add_journal_entry(keyphrases="...", content="...")]`
-   *Note: Choose a concise content string of up to 300 characters written in the third person present tense. Always use `{{user}}` to refer to the player. Refer to companions and NPCs by their explicit names and do NOT use `{{char}}` because journals persist across different companions (e.g. 'Ria Silmane learned that {{user}} prefers stealth over combat.').*
+   *Note: Choose a concise content string of up to 300 characters written in the third person present tense. Always use `{{user}}` to refer to the player. Refer to followers and NPCs by their explicit names and do NOT use `{{char}}` because journals persist across different followers (e.g. 'Ria Silmane learned that {{user}} prefers stealth over combat.').*

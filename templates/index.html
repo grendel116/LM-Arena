@@ -478,7 +478,7 @@
             
             <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
-                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Follower Lore</button>
+                <button onclick="switchDataBankTab('upload')" id="tab-btn-upload" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Game Lore</button>
                 <button onclick="switchDataBankTab('memories')" id="tab-btn-memories" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">Journals</button>
                 <button onclick="switchDataBankTab('lorebooks')" id="tab-btn-lorebooks" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">World Lore</button>
             </div>
@@ -628,7 +628,7 @@
             <!-- Tabs -->
             <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid hsla(215, 5%, 100%, 0.05); padding-bottom: 10px;">
                 <button onclick="switchAssistantModalTab('follower')" id="assistant-tab-btn-follower" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.08); color: var(--primary-accent); border: 1px solid var(--primary-accent); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
-                    Follower
+                    Party Follower
                 </button>
                 <button onclick="switchAssistantModalTab('user')" id="assistant-tab-btn-user" class="edit-btn" style="flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: center; text-align: center; background: hsla(215, 5%, 100%, 0.05); color: var(--text-muted); border: 1px solid hsla(215, 5%, 100%, 0.1); padding: 6px 8px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">
                     Saves
@@ -638,7 +638,7 @@
             <!-- Select follower Tab Content -->
             <div id="assistant-tab-content-follower" style="display: block;">
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                    Select your active follower.
+                    Select the active follower traveling with your party. The Game hosts and adjudicates your adventure, while your follower travels alongside you.
                 </p>
                 
                 <div id="assistants-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
@@ -647,7 +647,7 @@
                 
                 <div style="margin-top: 15px; border-top: 1px solid hsla(215, 5%, 100%, 0.08); padding-top: 12px; display: flex; justify-content: flex-end;">
                     <button onclick="openImportfollowerModal()" class="onboarding-btn" style="padding: 8px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; min-width: auto; width: auto; height: auto; margin: 0;">
-                        <span>+ Recruit follower</span>
+                        <span>+ Recruit Follower</span>
                     </button>
                 </div>
             </div>

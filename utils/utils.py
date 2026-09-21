@@ -34,7 +34,7 @@ def atomic_save_json(path: str | Path, data: object, indent: int = 2):
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG DIRECTIVES\n"
-    "Role: Act as the Dungeon Master (narrator and referee) and follower companion in The Elder Scrolls: Arena.\n\n"
+    "Role: Act as the Dungeon Master (narrator and referee) and follower in The Elder Scrolls: Arena.\n\n"
     "Tools:\n"
     "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]`: Prompt {{user}} for a D20 check. Stop turn immediately for player roll.\n"
     "- `[arena_roll_combat(attacker_name=\"...\", target_name=\"...\", weapon_name=\"...\", ...)]`: Resolve NPC/creature attacks against {{user}}.\n"

@@ -326,17 +326,21 @@ def favicon_ico():
 
 @app.route('/profile.png')
 def profile_png():
-    from runners.follower import get_active_follower
+    from core.save_manager import get_active_follower
     active_follower = get_active_follower()
-    path_png = os.path.join('core', 'followers', active_follower, 'portraits', 'profile.png')
+    if not active_follower or active_follower in ("none", "solo", "game"):
+        path_png = os.path.join('core', 'followers', 'game', 'portraits', 'profile.png')
+    else:
+        path_png = os.path.join('core', 'followers', active_follower, 'portraits', 'profile.png')
+    if not os.path.exists(path_png):
+        path_png = os.path.join('static', 'img', 'app_icon.png')
     if os.path.exists(path_png):
         response = send_file(path_png)
         from flask import make_response
         res = make_response(response)
         res.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return res
-    else:
-        return "Profile image not found", 404
+    return "Profile image not found", 404
 
 
 @app.route('/followers/<follower_id>/profile.png')
@@ -579,7 +583,7 @@ def proactive_action():
                 
         # Define LLM prompt for Gameplay Tip / Lore Note
         prompt = f"""You are the game master and lore assistant for The Elder Scrolls: Arena (LM-Arena).
-Active Companion: {name}
+Active Follower: {name}
 Scenario: {scenario}
 
 Recent Conversation History:
@@ -704,20 +708,22 @@ def history():
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
         
-        from runners.follower import get_active_follower, get_player_name
+        from runners.follower import get_player_name
         from core.follower_config import get_follower_greeting, get_follower_name, replace_placeholders
+        from core.save_manager import get_active_companion
         user_name = get_player_name()
-        active_follower = get_active_follower()
-        welcome_message = replace_placeholders(get_follower_greeting(active_follower), user_name=user_name)
-        char_name = get_follower_name(active_follower)
+        active_companion = get_active_companion(session_id)
+        welcome_message = replace_placeholders(get_follower_greeting("game"), user_name=user_name)
+        char_name = "The Game"
         
-        theme = load_theme(active_follower)
+        theme = load_theme(active_companion or "game")
 
         return jsonify({
             'history': chat_history,
             'character_name': char_name,
             'user_name': user_name,
-            'active_follower': active_follower,
+            'active_follower': active_companion or 'none',
+            'active_companion': active_companion or 'none',
             'theme': theme,
             'welcome_message': welcome_message
         })
@@ -786,6 +792,16 @@ def chat():
     start_time = time.time()
 
     try:
+        # Determine turn order: Follower speaks first, The Game resolves second
+        from core.save_manager import get_active_follower
+        from core.follower_config import get_follower_name
+        active_follower = get_active_follower(session_id)
+        has_follower = bool(active_follower and active_follower not in ("game", "none", "solo"))
+
+        first_speaker = active_follower if has_follower else "game"
+        chain_continue = True if has_follower else False
+        next_speaker = "game" if has_follower else None
+
         msg_id = request.json.get('msg_id')
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
             runner.run_async(
@@ -795,7 +811,8 @@ def chat():
                 image_mime=image_mime,
                 model=selected_model,
                 media_path=media_path,
-                msg_id=msg_id
+                msg_id=msg_id,
+                speaker_id=first_speaker,
             )
         )
         duration = round(time.time() - start_time, 1)
@@ -805,21 +822,30 @@ def chat():
 
         chat_history = asyncio.run(runner.get_history(session_id))
         
-        # Align timestamp with stored follower message
+        # Align timestamp and sender metadata with stored follower message
         follower_timestamp = None
+        sender_name = None
         if follower_msg_id:
             for msg in reversed(chat_history):
                 if msg.get('id') == follower_msg_id:
                     follower_timestamp = msg.get('timestamp')
+                    sender_name = msg.get('sender_name')
                     break
-            
+
+        if not sender_name:
+            sender_name = get_follower_name(first_speaker)
+
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
             'timestamp': follower_timestamp or time.time(),
             'duration': duration,
             'user_msg_id': user_msg_id,
-            'follower_msg_id': follower_msg_id
+            'follower_msg_id': follower_msg_id,
+            'sender_id': first_speaker,
+            'sender_name': sender_name,
+            'chain_continue': chain_continue,
+            'next_speaker': next_speaker,
         })
     except asyncio.CancelledError:
         print(f"[CANCEL] Chat generation cancelled for session {session_id}")
@@ -831,6 +857,73 @@ def chat():
         import traceback
         traceback.print_exc()
         print(f"Error occurred in chat: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        from runners.runners import cancelled_sessions
+        cancelled_sessions.discard(session_id)
+
+
+@app.route('/continue', methods=['POST'])
+@requires_auth
+def continue_turn():
+    session_id = request.json.get('session_id', 'default')
+    selected_model = request.json.get('model')
+    speaker_id = request.json.get('speaker_id')
+    if not speaker_id:
+        from core.save_manager import get_active_companion
+        speaker_id = get_active_companion(session_id) or "game"
+
+    import tools.tools as tools
+    tools.current_session_id.set(session_id)
+    with tools.session_tool_calls_lock:
+        tools.session_tool_calls[session_id] = []
+
+    from runners.runners import cancelled_sessions
+    cancelled_sessions.discard(session_id)
+
+    start_time = time.time()
+    try:
+        response_text, tool_calls, _, follower_msg_id = asyncio.run(
+            runner.run_async(
+                session_id=session_id,
+                new_message_text=None,
+                model=selected_model,
+                speaker_id=speaker_id,
+            )
+        )
+        duration = round(time.time() - start_time, 1)
+        response_text = sanitize_response(response_text, session_id, follower_msg_id)
+
+        chat_history = asyncio.run(runner.get_history(session_id))
+        follower_timestamp = None
+        sender_name = None
+        if follower_msg_id:
+            for msg in reversed(chat_history):
+                if msg.get('id') == follower_msg_id:
+                    follower_timestamp = msg.get('timestamp')
+                    sender_name = msg.get('sender_name')
+                    break
+
+        if not sender_name:
+            from core.follower_config import get_follower_name
+            sender_name = get_follower_name(speaker_id)
+
+        return jsonify({
+            'response': response_text,
+            'tool_calls': tool_calls,
+            'timestamp': follower_timestamp or time.time(),
+            'duration': duration,
+            'follower_msg_id': follower_msg_id,
+            'sender_id': speaker_id,
+            'sender_name': sender_name,
+            'chain_continue': False,
+            'next_speaker': None,
+        })
+    except asyncio.CancelledError:
+        return jsonify({'cancelled': True, 'status': 'cancelled'})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
     finally:
         from runners.runners import cancelled_sessions
@@ -856,13 +949,15 @@ def edit():
     start_time = time.time()
 
     try:
+        speaker_id = request.json.get('speaker_id')
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
             runner.edit_turn(
                 session_id=session_id,
                 msg_id=msg_id,
                 new_text=new_text,
                 model=selected_model,
-                force_offload=force_offload
+                force_offload=force_offload,
+                speaker_id=speaker_id,
             )
         )
         duration = round(time.time() - start_time, 1)
@@ -873,12 +968,16 @@ def edit():
 
         chat_history = asyncio.run(runner.get_history(session_id))
 
-        # Align timestamp with stored follower message
+        # Align timestamp and sender metadata with stored follower message
         follower_timestamp = None
+        sender_name = None
+        sender_id = None
         if follower_msg_id:
             for msg in reversed(chat_history):
                 if msg.get('id') == follower_msg_id:
                     follower_timestamp = msg.get('timestamp')
+                    sender_name = msg.get('sender_name')
+                    sender_id = msg.get('sender_id')
                     break
 
         return jsonify({
@@ -887,7 +986,9 @@ def edit():
             'timestamp': follower_timestamp or time.time(),
             'duration': duration,
             'user_msg_id': user_msg_id,
-            'follower_msg_id': follower_msg_id
+            'follower_msg_id': follower_msg_id,
+            'sender_id': sender_id or speaker_id or 'game',
+            'sender_name': sender_name or 'The Game',
         })
     except asyncio.CancelledError:
         print(f"[CANCEL] Edit generation cancelled for session {session_id}")
@@ -923,14 +1024,34 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
     else:
         history_slice = chat_history[-6:] if len(chat_history) > 6 else chat_history
 
+    from core.save_manager import get_active_follower
+    from core.follower_config import (
+        GLOBAL_USER_FORMATTING,
+        load_user_instructions,
+        replace_placeholders,
+        get_follower_greeting,
+        get_follower_name,
+    )
+    from runners.follower import get_active_user, get_player_name
+    from core.character import load_character, get_character_context
+
+    active_follower = get_active_follower(session_id)
+    player_name = get_player_name()
+    if active_follower and active_follower not in ("game", "none", "solo"):
+        comp_name = get_follower_name(active_follower)
+        party_context = f"- Party: {player_name} (Player) is accompanied by follower {comp_name}."
+    else:
+        party_context = f"- Party: {player_name} is traveling completely ALONE. There are NO followers in the party. Do NOT speak to, look at, mention, or invent followers."
+
     history_text = ""
     for msg in history_slice:
-        role = "User" if msg.get('role') == 'user' else "follower"
-        history_text += f"{role}: {msg.get('text', '')}\n"
-    
-    from core.follower_config import GLOBAL_USER_FORMATTING, load_user_instructions, replace_placeholders
-    from runners.follower import get_active_user
-    from core.character import load_character, get_character_context
+        sender_id = msg.get('sender_id') or ('game' if msg.get('role') != 'user' else 'user')
+        sender_name = msg.get('sender_name') or ('The Game' if sender_id == 'game' else 'User')
+        raw_text = msg.get('text', '')
+        if msg.get('id', '').startswith('first_mes'):
+            if 'Ria Silmane' in raw_text or not raw_text.strip():
+                raw_text = get_follower_greeting("game")
+        history_text += f"[{sender_name}]: {raw_text}\n"
 
     char_context = ""
     try:
@@ -951,7 +1072,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
     except Exception as e:
         print(f"Error loading user profile context for suggestion: {e}")
 
-    full_profile_block = ""
+    full_profile_block = f"### ROSTER & STATUS\n{party_context}\n\n"
     if user_profile and user_profile.strip():
         full_profile_block += f"Custom Input Profile:\n{user_profile.strip()}\n\n"
     if char_context:
@@ -959,12 +1080,10 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
     if user_rel_context:
         full_profile_block += f"{user_rel_context}\n"
 
-    if not full_profile_block.strip():
-        full_profile_block = "Character: Eternal Champion, Adventurer in Tamriel."
-
     if is_reroll and target_text:
         system_instruction = (
             "Rephrase {{user}}'s existing action/dialogue in the Elder Scrolls roleplay.\n"
+            f"{party_context}\n"
             "- Core Requirement: Rephrase the provided user message with fresh alternative wording and phrasing while preserving the exact same intent, choices, and meaning.\n"
             f"{GLOBAL_USER_FORMATTING}"
         )
@@ -981,6 +1100,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
         seed_text = (user_input or "").strip()
         system_instruction = (
             "Generate {{user}}'s next action in the Elder Scrolls roleplay.\n"
+            f"{party_context}\n"
             f"{GLOBAL_USER_FORMATTING}"
         )
         
@@ -2364,7 +2484,7 @@ def list_quests():
             if q.get("is_main_quest"):
                 q["location"] = f"{world_state.get('current_location', 'Imperial Dungeon')}, {world_state.get('current_province', 'Cyrodiil')}"
 
-        # 3 & 4. Companion / Local Side Quests (Active & Archived)
+        # 3 & 4. Follower / Local Side Quests (Active & Archived)
         from core.side_quests import get_side_quest_display_data
         side_active, side_archived = get_side_quest_display_data()
         quests.extend(side_active)
@@ -2564,13 +2684,17 @@ def list_sessions():
 @requires_auth
 def list_followers():
     try:
-        active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+        from core.save_manager import get_active_companion
+        active_companion = get_active_companion()
+        active_follower = active_companion if active_companion is not None else 'none'
         from variables.settings import FOLLOWERS_DIR
         followers_dir = FOLLOWERS_DIR
         
         followers = []
         if os.path.exists(followers_dir):
             for folder in os.listdir(followers_dir):
+                if folder == "game":
+                    continue
                 folder_path = os.path.join(followers_dir, folder)
                 if os.path.isdir(folder_path):
                     follower_name = folder.title()
@@ -2579,10 +2703,8 @@ def list_followers():
                         try:
                             with open(json_path, "r", encoding="utf-8") as jf:
                                 jdata = json.load(jf)
-                                # Unwrap v3 data block
                                 card = jdata.get("data", jdata)
-                                if card.get("name"):
-                                    follower_name = card["name"]
+                                follower_name = card.get("name") or follower_name
                         except Exception:
                             pass
                     else:
@@ -2590,19 +2712,16 @@ def list_followers():
                             if file.lower().endswith('.md') and not file.lower().startswith('user'):
                                 follower_name = os.path.splitext(file)[0].title()
                                 break
-                    # Read theme color from theme.json
                     theme_color = "#38bdf8"
                     tdata = load_theme(folder)
                     if tdata:
                         theme_color = tdata.get("primary_accent") or tdata.get("main_color") or theme_color
                             
-                    # Check if portraits/profile.png exists
                     has_profile = False
                     profile_path = os.path.join(folder_path, "portraits", "profile.png")
                     if os.path.exists(profile_path):
                         has_profile = True
                         
-                    # Read recruited flag from card extensions
                     recruited = False
                     json_path2 = os.path.join(folder_path, f"{folder}.json")
                     if os.path.exists(json_path2):
@@ -2612,7 +2731,6 @@ def list_followers():
                                 card2 = jdata2.get("data", jdata2)
                                 exts2 = card2.get("extensions", {})
                                 san2 = exts2.get("arena", exts2.get("sanctuary", {}))
-                                # ria_silmane is always recruited (spectral guide, always present)
                                 if folder == "ria_silmane":
                                     recruited = True
                                 else:
@@ -2630,39 +2748,60 @@ def list_followers():
                         'has_profile': has_profile,
                         'recruited': recruited
                     })
-        return jsonify({'followers': followers, 'followers': followers, 'active': active_follower})
+        return jsonify({'followers': followers, 'active': active_follower})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 list_followers = list_followers
 
 @app.route('/api/followers/select', methods=['POST'])
+@app.route('/api/companion/select', methods=['POST'])
 @requires_auth
 def select_follower():
     try:
         data = request.get_json(silent=True) or {}
-        follower_id = data.get('follower_id') or data.get('follower_id')
-        if not follower_id:
-            return jsonify({'error': 'Missing follower_id'}), 400
+        follower_id = data.get('follower_id') or data.get('companion_id')
+        if not follower_id or follower_id in ('none', 'solo'):
+            try:
+                from core.save_manager import set_active_companion
+                set_active_companion(None)
+            except Exception as e:
+                print(f"Error persisting active_companion to save: {e}")
+            os.environ["ACTIVE_FOLLOWER"] = "game"
+            os.environ["ACTIVE_follower"] = "game"
+            try:
+                from runners.follower import set_active_follower
+                set_active_follower("game")
+            except Exception:
+                pass
+            reload_follower_state()
+            return jsonify({
+                'status': 'success',
+                'active': 'none',
+                'character_name': 'The Game',
+                'theme': load_theme('game'),
+                'has_profile': True
+            })
             
         follower_path = os.path.join(base_dir, 'core', 'followers', follower_id)
         if not os.path.exists(follower_path):
-            follower_path = os.path.join(base_dir, 'core', 'followers', follower_id)
-        if not os.path.exists(follower_path):
             return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
             
-        # Update environment variable
         os.environ["ACTIVE_FOLLOWER"] = follower_id
         os.environ["ACTIVE_follower"] = follower_id
         
-        # Update active follower settings
         try:
             from runners.follower import set_active_follower
             set_active_follower(follower_id)
         except Exception as e:
             print(f"Error persisting ACTIVE_FOLLOWER: {e}")
-        
 
+        try:
+            from core.save_manager import set_active_companion
+            set_active_companion(follower_id)
+        except Exception as e:
+            print(f"Error persisting active_companion to save: {e}")
+        
         reload_follower_state()
             
         theme = load_theme(follower_id)
@@ -3685,6 +3824,13 @@ def delete_user_profile():
         active_user = get_active_user()
                 
         if profile_id == active_user:
+            # Clear in-memory session data for the deleted profile
+            if hasattr(runner, 'sessions_history'):
+                runner.sessions_history.pop(profile_id, None)
+                runner.sessions_history.pop('default', None)
+            if hasattr(runner, 'sessions_memory_state'):
+                runner.sessions_memory_state.pop(profile_id, None)
+                runner.sessions_memory_state.pop('default', None)
             set_active_user("eternal_champion")
             set_active_save_id("eternal_champion")
             reload_follower_state()

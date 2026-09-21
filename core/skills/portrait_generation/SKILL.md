@@ -1,11 +1,11 @@
 ---
 name: portrait_generation
-description: Render companion portraits using ComfyUI.
+description: Render follower portraits using ComfyUI.
 summary: "Generate character portraits using [generate_local_image(prompt=\"...\")]"
 retrieval: vector
 triggers: portrait, picture, image, selfie, photo, render, appearance, outfit, generate_imagen, generate_local_image, sketch
 ---
-# SKILL: Companion Portrait Generation
+# SKILL: Follower Portrait Generation
 When generating a portrait, construct a detailed comma-separated prompt of visual tags capturing the full scene context, and output ONLY the tool call.
 
 ### Prompt Tag Directives:

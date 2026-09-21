@@ -711,7 +711,7 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
         cleaned_text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.DOTALL).rstrip()
         return cleaned_text, snapshot
 
-    return text, snapshot
+    return text.rstrip(), snapshot
 
 
 def sync_world_state_from_history(character_name: str, history: list) -> dict:

@@ -29,6 +29,17 @@ window.addEventListener('unhandledrejection', function(event) {
     }
 });
 
+// Delegate external link clicks to default browser (prevents WebView navigation)
+document.addEventListener('click', function (e) {
+    const link = e.target.closest('a');
+    if (!link) return;
+    const href = link.getAttribute('href') || link.href;
+    if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+        e.preventDefault();
+        window.open(href, '_blank', 'noopener,noreferrer');
+    }
+});
+
 // ── Arena: Tamriel Map Modal ──────────────────────────────────────────────
 let cachedProvincesData = null;
 let selectedProvinceName = null;
@@ -612,6 +623,8 @@ async function softReloadApp() {
         }
         
         if (data.active_follower) {
+            activefollower = data.active_follower;
+            currentAssistantId = data.active_follower;
             applyTheme(data.active_follower, data.theme);
         }
         if (data.character_name) {
@@ -3007,8 +3020,21 @@ function getLogIconSvg(name) {
 }
 
 // --- getProfileUrl ---
-function getProfileUrl() {
-    return `/profile.png?t=${profileCacheBuster}`;
+function getProfileUrl(speakerId = null) {
+    let target = speakerId;
+    if (!target) {
+        if (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo') {
+            target = activefollower;
+        } else if (typeof currentAssistantId !== 'undefined' && currentAssistantId && currentAssistantId !== 'none' && currentAssistantId !== 'solo') {
+            target = currentAssistantId;
+        } else {
+            target = 'game';
+        }
+    }
+    if (target === 'game' || target === 'none' || target === 'solo') {
+        return '/static/img/app_icon.png';
+    }
+    return `/followers/${target}/profile.png?t=${profileCacheBuster}`;
 }
 
 // Helper to update profile/list avatars, automatically restoring from fallback DIVs to IMGs
@@ -3046,9 +3072,16 @@ function updateAvatarElement(el, newSrc) {
 
 // --- updateProfileImages ---
 function updateProfileImages() {
-    const url = getProfileUrl();
+    profileCacheBuster = Date.now();
     document.querySelectorAll('.follower-avatar').forEach(img => {
-        updateAvatarElement(img, url);
+        const row = img.closest('.message-row');
+        if (row && row.dataset.senderId) {
+            const sid = row.dataset.senderId;
+            const url = (sid === 'game') ? '/static/img/app_icon.png' : `/followers/${sid}/profile.png?t=${profileCacheBuster}`;
+            updateAvatarElement(img, url);
+        } else {
+            updateAvatarElement(img, getProfileUrl());
+        }
     });
 }
 
@@ -3750,6 +3783,8 @@ async function deleteUserProfileById(targetProfileId) {
 
             if (data.status === 'success') {
                 if (profileId === activeUserProfile || isEternal) {
+                    sessionId = 'eternal_champion';
+                    safeLocalStorage.setItem('follower_session_id', 'eternal_champion');
                     window.location.reload();
                 } else {
                     const successTitle = "Character Deleted";
@@ -3788,8 +3823,11 @@ async function deleteSelectedUserProfile() {
    VII. 6. follower / follower SELECTION
    ========================================================================== */
 
+let followerSelectionChanged = false;
+
 // --- openAssistantModal ---
 async function openAssistantModal(defaultTab = 'follower') {
+    followerSelectionChanged = false;
     document.getElementById('assistant-modal').style.display = 'flex';
     switchAssistantModalTab(defaultTab);
     try {
@@ -3809,6 +3847,40 @@ async function openAssistantModal(defaultTab = 'follower') {
 // --- closeAssistantModal ---
 function closeAssistantModal() {
     document.getElementById('assistant-modal').style.display = 'none';
+    if (followerSelectionChanged) {
+        followerSelectionChanged = false;
+        
+        // Reset heart animation class and state to default calm baseline
+        const heartElement = document.getElementById('header-heart-pulse') || document.querySelector('.heart-pulse');
+        if (heartElement) {
+            heartElement.classList.remove('jiggling', 'burst');
+            fetchCharacterStatus();
+        }
+        
+        // Reset the chat container and reload history for new party state
+        const chatContainer = document.getElementById('chat-container');
+        if (chatContainer) chatContainer.innerHTML = '';
+        
+        // Dynamically update UI text properties
+        document.title = "LM Arena";
+        const h1Element = document.querySelector('header h1');
+        if (h1Element) {
+            h1Element.innerText = "LM Arena";
+        }
+        const textarea = document.getElementById('user-input');
+        if (textarea) {
+            textarea.placeholder = "What do you do?";
+        }
+        
+        // Update profile cache buster and switch avatars instantly
+        profileCacheBuster = Date.now();
+        updateProfileImages();
+        
+        // Re-request history and dynamic configuration
+        modelInitPromise = initializeModelSelect();
+        loadHistory();
+        loadServerImages();
+    }
 }
 
 // --- switchAssistantModalTab ---
@@ -4000,7 +4072,7 @@ function renderfollowersList(assistants, activeId) {
 
     visible.forEach(assistant => {
         const isRia = assistant.id === 'ria_silmane';
-        const isActive = (assistant.id === activeId) || assistant.active || (typeof currentAssistantId !== 'undefined' && assistant.id === currentAssistantId) || (typeof activeAssistant !== 'undefined' && activeAssistant && assistant.id === activeAssistant.id);
+        const isActive = Boolean(activeId && activeId !== 'none' && activeId !== 'solo' && (assistant.id === activeId || assistant.active));
 
         const div = document.createElement('div');
         div.style.cssText = `
@@ -4015,6 +4087,7 @@ function renderfollowersList(assistants, activeId) {
             cursor: pointer;
             transition: all 0.2s ease;
         `;
+        div.title = isActive ? 'Click to deselect' : 'Click to select';
         div.onmouseover = () => {
             if (!isActive) {
                 div.style.background = 'hsla(215, 5%, 100%, 0.07)';
@@ -4027,7 +4100,7 @@ function renderfollowersList(assistants, activeId) {
                 div.style.borderColor = 'var(--border-color)';
             }
         };
-        div.onclick = () => selectAssistant(assistant.id);
+        div.onclick = () => selectAssistant(isActive ? 'none' : assistant.id);
 
         const leftArea = document.createElement('div');
         leftArea.style.cssText = 'display: flex; align-items: center; gap: 12px;';
@@ -4074,6 +4147,9 @@ function renderfollowersList(assistants, activeId) {
         leftArea.appendChild(info);
         div.appendChild(leftArea);
 
+        // Action buttons
+        const actionArea = document.createElement('div');
+        actionArea.style.cssText = 'display: flex; align-items: center; gap: 6px;';
 
 
         // Edit button
@@ -4089,13 +4165,12 @@ function renderfollowersList(assistants, activeId) {
         editBtn.style.width = '26px';
         editBtn.style.height = '26px';
         editBtn.style.borderRadius = '6px';
-        editBtn.style.marginLeft = '8px';
         editBtn.style.flexShrink = '0';
         editBtn.onclick = (e) => {
             e.stopPropagation();
             openfollowerProfileModal(assistant.id);
         };
-        div.appendChild(editBtn);
+        actionArea.appendChild(editBtn);
 
         // Ria is immortal — no delete button.
         // Mortal followers get a skull button (permadeath).
@@ -4107,7 +4182,7 @@ function renderfollowersList(assistants, activeId) {
                 <line x1="9" y1="14" x2="9" y2="14"/><line x1="15" y1="14" x2="15" y2="14"/>
             </svg>`;
             skullBtn.title = 'Kill Follower (Permadeath)';
-            skullBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;margin-left:10px;flex-shrink:0;color:var(--danger-color,var(--danger-color));';
+            skullBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;flex-shrink:0;color:var(--danger-color,var(--danger-color));';
             skullBtn.onclick = (e) => {
                 e.stopPropagation();
                 showCustomConfirm(
@@ -4116,9 +4191,10 @@ function renderfollowersList(assistants, activeId) {
                     () => deleteAssistant(assistant.id, assistant.name)
                 );
             };
-            div.appendChild(skullBtn);
+            actionArea.appendChild(skullBtn);
         }
 
+        div.appendChild(actionArea);
         container.appendChild(div);
     });
 }
@@ -4138,39 +4214,25 @@ async function selectAssistant(assistantId) {
         }
         const data = await res.json();
         if (data.status === 'success') {
-            closeAssistantModal();
-            
-            // Reset heart animation class and state to default calm baseline
-            const heartElement = document.getElementById('header-heart-pulse') || document.querySelector('.heart-pulse');
-            if (heartElement) {
-                heartElement.classList.remove('jiggling', 'burst');
-                fetchCharacterStatus();
+            followerSelectionChanged = true;
+            currentAssistantId = data.active;
+            activefollower = data.active;
+            if (typeof activeAssistant !== 'undefined' && activeAssistant) {
+                activeAssistant.id = data.active;
             }
-            
-            // Reset the chat container and reload history for new assistant
-            const chatContainer = document.getElementById('chat-container');
-            chatContainer.innerHTML = '';
-            
-            // Dynamically update UI text properties
-            document.title = "LM Arena";
-            const h1Element = document.querySelector('header h1');
-            if (h1Element) {
-                h1Element.innerText = "LM Arena";
+
+            // Immediately re-render list in the open modal to reflect toggled state
+            try {
+                let listRes = await fetch('/api/followers');
+                if (listRes.ok) {
+                    const listData = await listRes.json();
+                    if (listData.followers) {
+                        renderfollowersList(listData.followers, listData.active);
+                    }
+                }
+            } catch (err) {
+                console.error("Error refreshing followers list in modal:", err);
             }
-            const textarea = document.getElementById('user-input');
-            if (textarea) {
-                textarea.placeholder = "What do you do?";
-            }
-            
-            // Update profile cache buster and switch avatars instantly
-            profileCacheBuster = Date.now();
-            updateProfileImages();
-            applyTheme(data.active, data.theme);
-            
-            // Re-request history and dynamic configuration
-            modelInitPromise = initializeModelSelect();
-            loadHistory();
-            loadServerImages();
         } else {
             showCustomAlert("Switch Failed", `Could not select follower: ${data.error}`);
         }
@@ -4696,10 +4758,11 @@ function showWelcomeMessage() {
         welcome = document.createElement('div');
         welcome.className = 'message-row follower-row';
         welcome.id = 'welcome-message';
-        const profileUrl = getProfileUrl();
+        welcome.dataset.senderId = 'game';
+        const profileUrl = getProfileUrl('game');
         welcome.innerHTML = `
             <div class="avatar-container">
-                <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
+                <img class="avatar follower-avatar game-avatar" src="${profileUrl}" alt="The Game" onclick="expandImage('${profileUrl}')">
             </div>
             <div class="message follower">
                 <div class="message-text">
@@ -4852,6 +4915,8 @@ async function loadHistory() {
             activePlayerName = data.user_name;
         }
         if (data.active_follower) {
+            activefollower = data.active_follower;
+            currentAssistantId = data.active_follower;
             applyTheme(data.active_follower, data.theme);
         }
         if (data.character_name) {
@@ -5285,7 +5350,7 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
         case 'arena_remove_effect':
             return `Removed: ${a.effect_name || 'Effect'}`;
         case 'arena_recruit_follower':
-            return `Follower: ${a.follower_name || 'Companion'}`;
+            return `Follower: ${a.follower_name || 'Follower'}`;
         case 'arena_sorcerer_absorb':
             return `Sorcerer Absorb`;
         default:
@@ -5727,15 +5792,21 @@ function renderMessage(msg, isLive = false) {
     row.dataset.contentHash = computeContentHash(msg);
 
     if (role === 'follower') {
+        const speakerId = msg.sender_id || 'game';
+        const speakerName = msg.sender_name || (speakerId === 'game' ? 'The Game' : 'Follower');
+        row.dataset.senderId = speakerId;
+
         const avatarContainer = document.createElement('div');
         avatarContainer.className = 'avatar-container';
 
         const avatar = document.createElement('img');
-        avatar.className = 'avatar follower-avatar';
-        const profileUrl = getProfileUrl();
+        avatar.className = `avatar follower-avatar ${speakerId}-avatar`;
+        const profileUrl = (speakerId === 'game')
+            ? '/static/img/app_icon.png'
+            : `/followers/${speakerId}/profile.png?t=${profileCacheBuster}`;
         avatar.src = profileUrl;
-        avatar.alt = 'follower';
-        avatar.title = 'Click to expand profile';
+        avatar.alt = speakerName;
+        avatar.title = `${speakerName} (Click to expand)`;
         avatar.onclick = () => expandImage(profileUrl);
         avatarContainer.appendChild(avatar);
         row.appendChild(avatarContainer);
@@ -6054,7 +6125,7 @@ function renderMessage(msg, isLive = false) {
 }
 
 // --- appendMessage ---
-function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = false, timestamp = null, duration = null, isTransient = false, msgId = null, vitals = null) {
+function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = false, timestamp = null, duration = null, isTransient = false, msgId = null, vitals = null, senderId = null, senderName = null) {
     const media = [];
     if (imageUrl) {
         media.push({
@@ -6109,6 +6180,8 @@ function appendMessage(role, text, imageUrl = null, toolCalls = null, isLive = f
         tamrielic_date: activeWorldDate ? JSON.parse(JSON.stringify(activeWorldDate)) : null,
         isTransient: isTransient,
         vitals: vitals,
+        sender_id: senderId,
+        sender_name: senderName,
         editable: false,
         deletable: true
     };
@@ -6300,10 +6373,10 @@ async function sendMessage() {
         // Render typing indicator row in chat container for a moment before sending first message
         const typingRow = document.createElement('div');
         typingRow.className = 'message-row follower-row';
-        const profileUrl = getProfileUrl();
+        const profileUrl = getProfileUrl('game');
         typingRow.innerHTML = `
             <div class="avatar-container">
-                <img class="avatar follower-avatar" src="${profileUrl}" alt="follower">
+                <img class="avatar follower-avatar game-avatar" src="${profileUrl}" alt="The Game">
             </div>
             <div class="message follower">
                 <div class="typing-indicator">
@@ -6431,10 +6504,12 @@ async function sendMessage() {
 
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
-    const profileUrl = getProfileUrl();
+    const activeSpeaker = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo' && activefollower !== 'game') ? activefollower : 'game';
+    const profileUrl = getProfileUrl(activeSpeaker);
+    const displayName = (activeSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
-            <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
+            <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
         </div>
         <div class="message follower">
             <div class="typing-indicator">
@@ -6485,16 +6560,20 @@ async function sendMessage() {
         }
         
         if (data.response !== undefined) {
-            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id);
+            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id, null, data.sender_id || 'game', data.sender_name || 'The Game');
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
-                errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
+                errMsg = "The Arena is momentarily overwhelmed (Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try again in 15 seconds.";
             }
             appendMessage('follower', errMsg);
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
+
+        if (data.chain_continue && data.next_speaker && !(chatAbortController && chatAbortController.signal.aborted)) {
+            await executeGroupChainTurn(data.next_speaker);
+        }
     } catch (error) {
         if (chatContainer.contains(typingIndicatorRow)) {
             chatContainer.removeChild(typingIndicatorRow);
@@ -6514,6 +6593,71 @@ async function sendMessage() {
             heartElement.classList.remove('jiggling');
         }
         await initializeModelSelect();
+    }
+}
+
+async function executeGroupChainTurn(targetSpeaker) {
+    if (!targetSpeaker || (chatAbortController && chatAbortController.signal.aborted)) {
+        return;
+    }
+
+    setGenerating(true);
+    const typingIndicatorRow = document.createElement('div');
+    typingIndicatorRow.className = 'message-row follower-row';
+    const profileUrl = getProfileUrl(targetSpeaker);
+    const displayName = (targetSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
+    typingIndicatorRow.innerHTML = `
+        <div class="avatar-container">
+            <img class="avatar follower-avatar ${targetSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
+        </div>
+        <div class="message follower">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    `;
+    chatContainer.appendChild(typingIndicatorRow);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    try {
+        const response = await fetch('/continue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: sessionId,
+                model: selectedModel,
+                speaker_id: targetSpeaker
+            }),
+            signal: chatAbortController ? chatAbortController.signal : null
+        });
+
+        if (chatContainer.contains(typingIndicatorRow)) {
+            chatContainer.removeChild(typingIndicatorRow);
+        }
+
+        const data = await response.json();
+        if (data.cancelled) return;
+
+        if (data.response !== undefined) {
+            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id, null, data.sender_id || targetSpeaker, data.sender_name);
+        } else if (data.error) {
+            appendMessage('follower', `*Error: ${data.error}*`);
+        }
+        fetchCharacterStatus();
+        handleSuccessReload(data);
+    } catch (error) {
+        if (chatContainer.contains(typingIndicatorRow)) {
+            chatContainer.removeChild(typingIndicatorRow);
+        }
+        if (error.name !== 'AbortError') {
+            appendMessage('follower', `*Connection error: ${error.message || 'Follower was unreachable'}*`);
+        }
+    } finally {
+        setGenerating(false);
+        evaluateLatestMessageForSkillCheck();
+        updateInputGlow();
     }
 }
 
@@ -6752,10 +6896,12 @@ async function resendUserMessage(bubble) {
 
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
-    const profileUrl = getProfileUrl();
+    const activeSpeaker = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo' && activefollower !== 'game') ? activefollower : 'game';
+    const profileUrl = getProfileUrl(activeSpeaker);
+    const displayName = (activeSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
-            <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
+            <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
         </div>
         <div class="message follower">
             <div class="typing-indicator">
@@ -6942,10 +7088,12 @@ async function rerollFromMessage(button) {
 
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
-    const profileUrl = getProfileUrl();
+    const activeSpeaker = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo' && activefollower !== 'game') ? activefollower : 'game';
+    const profileUrl = getProfileUrl(activeSpeaker);
+    const displayName = (activeSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
-            <img class="avatar follower-avatar" src="${profileUrl}" alt="follower" onclick="expandImage('${profileUrl}')">
+            <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
         </div>
         <div class="message follower">
             <div class="typing-indicator">
@@ -7758,11 +7906,11 @@ async function generateCustomImage(type = 'follower') {
             userInput.value = `[GENERATE_IMAGE: Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters. Do not narrate new story events or call mechanics tools.]`;
         }
     } else {
-        // Follower / companion portrait
+        // Follower portrait
         if (useImagenMode) {
-            userInput.value = "[GENERATE_IMAGEN: Render an image of the active companion using Google Imagen. Do not narrate new story events or call mechanics tools.]";
+            userInput.value = "[GENERATE_IMAGEN: Render an image of the active follower using Google Imagen. Do not narrate new story events or call mechanics tools.]";
         } else {
-            userInput.value = "[GENERATE_IMAGE: Render an image of the active companion. Do not narrate new story events or call mechanics tools.]";
+            userInput.value = "[GENERATE_IMAGE: Render an image of the active follower. Do not narrate new story events or call mechanics tools.]";
         }
     }
 
@@ -9098,7 +9246,7 @@ async function deleteQuest(questId) {
 async function abandonQuest(questId) {
     showCustomConfirm(
         "Abandon Quest",
-        "Are you sure you want to abandon this quest? It will be marked as failed and your companion will be notified.",
+        "Are you sure you want to abandon this quest? It will be marked as failed and your follower will be notified.",
         async () => {
             try {
                 const response = await fetch(`/api/quests/${questId}/abandon`, {
@@ -9113,7 +9261,7 @@ async function abandonQuest(questId) {
                 const systemMessage = `[SYSTEM: Player has abandoned and failed the side quest: "${title}"]`;
                 const questMsgId = 'quest_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
                 
-                // Append hidden user message to notify companion
+                // Append hidden user message to notify follower
                 appendMessage('user', systemMessage, null, null, false, Date.now() / 1000, null, false, questMsgId);
                 
                 // Reload quest list UI
@@ -9139,7 +9287,7 @@ function switchDataBankTab(tab) {
     const descriptor = document.getElementById('databank-descriptor');
 
     const descriptors = {
-        upload: "Companion backstory, documents, and personal lore (Follower-linked).",
+        upload: "Follower backstory, documents, and personal lore (Follower-linked).",
         memories: "Keyword-triggered journals and compacted memories linked to this game save.",
         lorebooks: "Global world info, game setting lore, and mechanics encyclopedia shared across saves."
     };
@@ -10265,7 +10413,7 @@ function showThoughtBubbleOverlay(text) {
     
     row.innerHTML = `
         <div class="avatar-container" style="opacity: 0.5;">
-            <img class="avatar follower-avatar thinking-glow" src="${profileUrl}" alt="Companion">
+            <img class="avatar follower-avatar thinking-glow" src="${profileUrl}" alt="Follower">
         </div>
         <div class="message follower thought-bubble">
             <div class="thought-badge">

@@ -76,6 +76,91 @@ def get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 
+def detect_addressed_speaker(text: str, candidate_ids: list[str], exclude_id: str = None) -> str | None:
+    """Detects if text explicitly addresses one of the candidate follower IDs or names."""
+    if not text or not candidate_ids:
+        return None
+    from core.follower_config import _load_card_data
+    lower_text = text.lower()
+    matches = []
+
+    for pid in candidate_ids:
+        if exclude_id and pid == exclude_id:
+            continue
+        c = _load_card_data(pid)
+        name = (c.get("name") or pid).lower()
+        parts = [name, pid.lower()]
+        first_name = name.split()[0] if name else ""
+        if len(first_name) >= 3 and first_name not in parts:
+            parts.append(first_name)
+
+        matched = False
+        for p in parts:
+            for pattern in (
+                rf"@{re.escape(p)}\b",
+                rf"\b{re.escape(p)}\b",
+            ):
+                m = re.search(pattern, lower_text)
+                if m:
+                    matches.append((m.start(), pid))
+                    matched = True
+                    break
+            if matched:
+                break
+
+    if matches:
+        matches.sort(key=lambda x: x[0])
+        return matches[0][1]
+    return None
+
+
+def clean_speaker_response(text: str, speaker_id: str = "game", follower_id: str = None, companion_id: str = None) -> str:
+    """Sanitizes LLM output:
+    - Strips leading speaker tags for the active speaker (e.g. [Game]: or [Ria Silmane]:).
+    - Truncates at the boundary where the LLM attempts to puppet another speaker or the player.
+    """
+    if not text:
+        return text
+
+    from core.follower_config import _load_card_data
+    from runners.follower import get_player_name
+
+    sp_card = _load_card_data(speaker_id)
+    sp_name = (sp_card.get("name") if sp_card else speaker_id).strip()
+    active_follower_id = follower_id or companion_id
+
+    # 1. Strip leading active speaker tag if present
+    for name_candidate in [sp_name, speaker_id, "The Game", "Game", "Dungeon Master", "DM"]:
+        if name_candidate:
+            text = re.sub(rf"^(?:\[?{re.escape(name_candidate)}\]?:?\s*)", "", text, flags=re.IGNORECASE).strip()
+
+    # 2. Gather names of other participants to prevent puppeting
+    other_names = []
+    player_name = get_player_name()
+    if player_name:
+        other_names.append(player_name)
+    other_names.append("User")
+
+    if speaker_id == "game":
+        if active_follower_id and active_follower_id != "game":
+            c = _load_card_data(active_follower_id)
+            c_name = (c.get("name") if c else active_follower_id).strip()
+            if c_name:
+                other_names.append(c_name)
+    else:
+        other_names.extend(["The Game", "Game", "Dungeon Master", "DM"])
+
+    # 3. Truncate at any point where another room member is puppeted
+    if other_names:
+        escaped_others = [re.escape(n) for n in other_names if n]
+        if escaped_others:
+            leading_puppet_regex = rf"^(?:\[?(?:{'|'.join(escaped_others)})\]?:?\s*)"
+            text = re.sub(leading_puppet_regex, "", text, flags=re.IGNORECASE).strip()
+            puppet_regex = rf"\n+\s*(?:\[(?:{'|'.join(escaped_others)})\]:?|(?:{'|'.join(escaped_others)}):\s*)"
+            text = re.split(puppet_regex, text, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+    return text
+
+
 def _trim_context_messages(messages: list[dict], max_chars: int = 26000) -> list[dict]:
     """Trims oldest non-system chat messages from context if payload exceeds character budget."""
     if not messages:
@@ -109,10 +194,14 @@ class BaseRunner:
 
     def _get_memory_meta(self, session_id: str) -> dict:
         """Helper to ensure session memory state exists."""
-        return self.sessions_memory_state.setdefault(
+        meta = self.sessions_memory_state.setdefault(
             session_id,
-            {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""}
+            {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0}
         )
+        meta.setdefault("last_summarized_turn", 0)
+        if len(meta.get("recent_chapters", [])) > 2:
+            meta["recent_chapters"] = meta["recent_chapters"][-2:]
+        return meta
 
     async def _post_llm_request(
         self,
@@ -262,7 +351,7 @@ class BaseRunner:
             err_msg="Memory compaction summary generation failed due to connection error.",
         )
 
-    async def _distill_epic_chronicle(self, text_to_distill: str, active_model: str) -> str:
+    async def _distill_epic_chronicle(self, text_to_distill: str, active_model: str, prior_epic: str = "") -> str:
         from runners.follower import get_active_user
         from core.follower_config import get_follower_name
 
@@ -272,17 +361,23 @@ class BaseRunner:
         except Exception:
             follower_name = "Follower"
 
-        prompt = (
-            f"You are the memory chronicler for the ongoing interaction between {user_name} and {follower_name}.\n"
-            "The following text is the accumulated chronicle of earlier conversation chapters.\n"
-            "Condense these events into a single cohesive general summary (2 concise paragraphs, max 600 characters).\n" # Capped at 600 chars (~150 tokens)
-            "Retain major milestones, key user preferences, shared history, project decisions, and relationship dynamics.\n\n"
-            f"ACCUMULATED CHRONICLE TO DISTILL:\n{text_to_distill}\n\n"
+        prompt_parts = [
+            f"You are the memory chronicler for the ongoing interaction between {user_name} and {follower_name}.",
+        ]
+
+        if prior_epic:
+            prompt_parts.append(f"EXISTING CHRONICLE:\n{prior_epic}\n")
+            prompt_parts.append("The following is a new chapter to integrate into the chronicle above.")
+
+        prompt_parts.extend([
+            "Condense these events into a single cohesive general summary (2 concise paragraphs, max 600 characters).",
+            "Retain major milestones, key user preferences, shared history, project decisions, and relationship dynamics.\n",
+            f"NEW CHAPTER TO DISTILL:\n{text_to_distill}\n",
             "DISTILLED GENERAL SUMMARY:"
-        )
+        ])
 
         return await self._run_llm_summary_task(
-            prompt=prompt,
+            prompt="\n".join(prompt_parts),
             active_model=active_model,
             err_msg="Distillation failed due to connection error.",
         )
@@ -292,23 +387,36 @@ class BaseRunner:
         meta = self._get_memory_meta(session_id)
         history = self.sessions_history.get(session_id, [])
 
-        # Filter to user and follower/assistant messages only
+        # Filter to genuine dialogue only — exclude tool events, system injections, and quest/item notifications
+        hidden_prefixes = ("tool_", "port_", "quest_", "sys_", "itm_")
         dialogue_messages = [
-            msg for msg in history 
+            msg for msg in history
             if msg.get("role") in ("user", "assistant", "follower")
+            and not msg.get("id", "").startswith(hidden_prefixes)
+            and not (msg.get("text") or "").startswith(("[SYSTEM:", "[Tool Response from"))
         ]
-        
-        turn_count = len(dialogue_messages) // 2
 
-        # Trigger summary every 12 full turns using trimmed history
-        if turn_count > 0 and turn_count % 12 == 0:
-            # Take the last 24 dialogue entries (12 full turns)
-            recent_turns = dialogue_messages[-24:]
-            
-            # Format and truncate long messages if needed to fit context limits
+        # Pair dialogue into sequential (user, follower) conversation turns
+        turns = []
+        start_idx = 1 if (dialogue_messages and dialogue_messages[0].get("role") in ("assistant", "follower")) else 0
+        for i in range(start_idx, len(dialogue_messages) - 1, 2):
+            turns.append((dialogue_messages[i], dialogue_messages[i + 1]))
+
+        total_turns = len(turns)
+        last_turn = meta.get("last_summarized_turn", 0)
+
+        # Reset pointer if history was rewound or cleared
+        if last_turn > total_turns:
+            last_turn = 0
+            meta["last_summarized_turn"] = 0
+
+        # Process all unsummarized 12-turn chapters
+        while total_turns - last_turn >= 12:
+            chapter_turns = turns[last_turn : last_turn + 12]
+
             formatted_turns = "\n".join(
-                f"{('User' if msg.get('role') == 'user' else 'Follower')}: {(msg.get('text') or msg.get('content') or '')[:1000]}" 
-                for msg in recent_turns
+                f"{'User' if msg.get('role') == 'user' else 'Follower'}: {(msg.get('text') or msg.get('content') or '')[:1000]}"
+                for pair in chapter_turns for msg in pair
             )
 
             chapter_summary = await self._generate_local_summary(
@@ -320,32 +428,21 @@ class BaseRunner:
             if chapter_summary and not chapter_summary.startswith("Memory compaction summary generation failed"):
                 meta.setdefault("recent_chapters", []).append(chapter_summary)
 
-                # STEP 3 TRIGGER: Every 5 chapters, distill Epic Chronicle & offload to Vector DB
-                if len(meta["recent_chapters"]) >= 5:
-                    all_chapters_text = "\n\n".join(meta["recent_chapters"])
-                    
-                    epic_summary = await self._distill_epic_chronicle(
-                        text_to_distill=all_chapters_text,
-                        active_model=active_model
-                    )
-                    if epic_summary and not epic_summary.startswith("Distillation failed"):
-                        meta["epic_chronicle"] = epic_summary
+            meta["last_summarized_turn"] = last_turn + 12
+            last_turn = meta["last_summarized_turn"]
 
-                    try:
-                        from core.skills.vectorized_databank.databank import DataBankManager
-                        db = DataBankManager()
-                        for idx, ch in enumerate(meta["recent_chapters"]):
-                            db.add_document(
-                                text=ch,
-                                source_type="chapter_memory",
-                                metadata={"session_id": session_id, "chapter_index": idx}
-                            )
-                    except Exception as e:
-                        print(f"[MEMORY PIPELINE] Error offloading chapters to Vector DB: {e}", flush=True)
+        # Maintain at most 2 recent chapters; distill older chapters into the running epic chronicle
+        while len(meta.get("recent_chapters", [])) > 2:
+            oldest_chapter = meta["recent_chapters"].pop(0)
+            epic_summary = await self._distill_epic_chronicle(
+                text_to_distill=oldest_chapter,
+                active_model=active_model,
+                prior_epic=meta.get("epic_chronicle", "")
+            )
+            if epic_summary and not epic_summary.startswith("Distillation failed"):
+                meta["epic_chronicle"] = epic_summary
 
-                    meta["recent_chapters"].clear()
-
-                self._save_session_to_disk(session_id)
+        self._save_session_to_disk(session_id)
 
 
     def _load_temperature_setting(self, default_temp: float = 0.75) -> float:
@@ -370,7 +467,10 @@ class BaseRunner:
         new_message_text: str,
         invocation_id: str,
         existing_tool_calls: list = None,
+        speaker_id: str = "game",
     ) -> tuple[str, list]:
+        from core.save_manager import get_active_companion
+        companion_id = get_active_companion(session_id)
         max_iterations = 5
         iteration = 0
         all_tool_calls = list(existing_tool_calls) if existing_tool_calls else []
@@ -381,8 +481,8 @@ class BaseRunner:
             iteration += 1
 
             # --- STAGE 1: LOCAL PREPROCESSING ---
-            sys_instructions = self._get_system_instructions(session_id, user_message=new_message_text)
-            messages = adapter.get_openai_messages(sys_instructions, rag_context)
+            sys_instructions = self._get_system_instructions(session_id, user_message=new_message_text, speaker_id=speaker_id)
+            messages = adapter.get_openai_messages(sys_instructions, rag_context, speaker_id=speaker_id)
             messages = _trim_context_messages(messages, max_chars=26000)
 
             # --- STAGE 2: LOCAL PROCESSING PASS ---
@@ -469,7 +569,7 @@ class BaseRunner:
                 needs_continuation = has_query_tool and "arena_request_skill_check" not in active_tool_names
 
                 if not results or not needs_continuation:
-                    final_response_text = clean_text
+                    final_response_text = clean_speaker_response(clean_text, speaker_id=speaker_id, companion_id=companion_id)
                     image_tools = {
                         "generate_local_image",
                         "generate_follower_portrait",
@@ -481,14 +581,15 @@ class BaseRunner:
                         "apply_comfy_workflow",
                     }
                     if any(t_name in image_tools for t_name in active_tool_names):
-                        msg_lower = new_message_text.lower()
+                        msg_lower = (new_message_text or "").lower()
                         is_portrait_turn = any(k in msg_lower for k in ("portrait", "draw", "picture", "image", "photo", "selfie", "generate_program_portrait", "generate_local_image", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"))
                         if is_portrait_turn:
                             final_response_text = ""
-                    adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id)
+                    adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id, speaker_id=speaker_id)
                     break
 
-                adapter.append_assistant_message(clean_text, tool_calls, invocation_id, intermediate=True)
+                clean_text = clean_speaker_response(clean_text, speaker_id=speaker_id, companion_id=companion_id)
+                adapter.append_assistant_message(clean_text, tool_calls, invocation_id, intermediate=True, speaker_id=speaker_id)
                 adapter.append_tool_events(results, invocation_id)
 
                 if clean_text:
@@ -496,13 +597,14 @@ class BaseRunner:
 
                 continue
             else:
-                clean_text = bot_response_text.strip()
+                clean_text = clean_speaker_response(bot_response_text.strip(), speaker_id=speaker_id, companion_id=companion_id)
                 final_response_text = clean_text if clean_text else final_response_text
 
-                adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id)
+                adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id, speaker_id=speaker_id)
                 break
 
         adapter.post_process_thoughts(invocation_id)
+        final_response_text = clean_speaker_response(final_response_text, speaker_id=speaker_id, companion_id=companion_id)
         final_response_text = self._ensure_images_are_embedded(final_response_text)
 
         if isinstance(session_id, str) and session_id.endswith("_voice"):
@@ -532,7 +634,7 @@ class BaseRunner:
     async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None, existing_tool_calls: list = None) -> tuple:
         raise NotImplementedError()
 
-    async def edit_turn(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False) -> tuple:
+    async def edit_turn(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False, speaker_id: str = None) -> tuple:
         raise NotImplementedError()
 
     async def reset_session(self, session_id: str):
@@ -707,30 +809,14 @@ class BaseRunner:
 
         return instructions
 
-    def _get_system_instructions(self, session_id: str, user_message: str = None) -> str:
-        from core.follower_config import get_follower_name
-        from utils.utils import _ARENA_DIRECTIVE_PROMPT
+    def _get_system_instructions(self, session_id: str, user_message: str = None, speaker_id: str = "game") -> str:
+        from core.follower_config import compile_speaker_instructions
+        from core.save_manager import get_active_follower
         import re
 
-        try:
-            follower_name = get_follower_name()
-        except Exception:
-            follower_name = "Follower"
-
-        is_voice = isinstance(session_id, str) and session_id.endswith("_voice")
-
-        if is_voice:
-            instructions = self._build_voice_prompt(session_id, follower_name)
-        else:
-            import importlib
-            from core import follower_config
-            importlib.reload(follower_config)
-
-            instructions = follower_config.get_compiled_instructions()
-
+        follower_id = get_active_follower(session_id)
+        instructions = compile_speaker_instructions(speaker_id=speaker_id, follower_id=follower_id)
         instructions = self._inject_system_memories(instructions, session_id)
-
-        instructions += _ARENA_DIRECTIVE_PROMPT
 
         # Image and portrait generation directives
         if user_message and any(k in user_message for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:", "[GENERATE_PLAYER_PORTRAIT:", "[GENERATE_ENVIRONMENT:", "[GENERATE_FOLLOWER_PORTRAIT:", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image")):
@@ -753,7 +839,7 @@ class BaseRunner:
                 )
             else:
                 instructions += (
-                    "\n\n# IMMEDIATE COMPANION PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
+                    "\n\n# IMMEDIATE FOLLOWER PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
                     "The user requested an image generation of {{char}}. You MUST output ONLY the tool call tag "
                     "`[generate_follower_portrait(prompt=\"...\")]`. Do NOT write dialogue, story progression, "
                     "or narrative descriptions. Output NOTHING except the tool call."
@@ -823,7 +909,7 @@ class OpenSourceRunner(BaseRunner):
                 target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
                 bundle = read_save(target_id)
                 bundle["messages"] = self.sessions_history.get(session_id, [])
-                bundle["memory_state"] = self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
+                bundle["memory_state"] = self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0})
                 write_save(target_id, bundle)
             except Exception as e:
                 print(f"Error saving OS session {session_id} to disk: {e}")
@@ -835,7 +921,20 @@ class OpenSourceRunner(BaseRunner):
                 target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
                 bundle = read_save(target_id)
                 self.sessions_history[session_id] = bundle.get("messages", [])
-                self.sessions_memory_state[session_id] = bundle.get("memory_state", {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": ""})
+                memory_state = bundle.get("memory_state", {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0})
+
+                # For saves created before the watermark was added, default to current turn count
+                # so the pipeline doesn't re-summarize already-seen history
+                if "last_summarized_turn" not in memory_state:
+                    history = self.sessions_history.get(session_id, [])
+                    dialogue_count = sum(1 for m in history if m.get("role") in ("user", "assistant", "follower"))
+                    memory_state["last_summarized_turn"] = dialogue_count // 2
+
+                # Enforce 2-chapter cap on load
+                if len(memory_state.get("recent_chapters", [])) > 2:
+                    memory_state["recent_chapters"] = memory_state["recent_chapters"][-2:]
+
+                self.sessions_memory_state[session_id] = memory_state
                 self._ensure_first_message(session_id)
                 return True
             except Exception as e:
@@ -854,10 +953,12 @@ class OpenSourceRunner(BaseRunner):
             try:
                 from core.follower_config import get_follower_greeting, replace_placeholders
 
-                if greeting := replace_placeholders(get_follower_greeting()).strip():
+                if greeting := replace_placeholders(get_follower_greeting("game")).strip():
                     starting_msg = {
                         "id": f"first_mes_{uuid.uuid4().hex}",
                         "role": "follower",
+                        "sender_id": "game",
+                        "sender_name": "The Game",
                         "text": greeting,
                         "tool_calls": [],
                         "timestamp": time.time(),
@@ -869,10 +970,24 @@ class OpenSourceRunner(BaseRunner):
 
         updated = False
         for idx, msg in enumerate(history):
+            if msg.get("id", "").startswith("first_mes"):
+                if not msg.get("sender_id"):
+                    msg["sender_id"] = "game"
+                    msg["sender_name"] = "The Game"
+                    updated = True
+                if not msg.get("text") or "I am Ria Silmane" in msg.get("text", ""):
+                    from core.follower_config import get_follower_greeting, replace_placeholders
+                    msg["text"] = replace_placeholders(get_follower_greeting("game")).strip()
+                    msg["sender_id"] = "game"
+                    msg["sender_name"] = "The Game"
+                    updated = True
             if not msg.get("id"):
                 role = msg.get("role", "msg")
                 prefix = "first_mes" if role == "follower" and idx == 0 else role
                 msg["id"] = f"{prefix}_{uuid.uuid4().hex}"
+                if prefix == "first_mes":
+                    msg["sender_id"] = "game"
+                    msg["sender_name"] = "The Game"
                 updated = True
 
         if updated:
@@ -977,13 +1092,14 @@ class OpenSourceRunner(BaseRunner):
     async def run_async(
         self,
         session_id: str,
-        new_message_text: str,
+        new_message_text: str = None,
         image_data: str = None,
         image_mime: str = None,
         model: str = None,
         media_path: str = None,
         msg_id: str = None,
         existing_tool_calls: list = None,
+        speaker_id: str = "game",
     ) -> tuple:
         with self._lock:
             self._load_session_from_disk(session_id)
@@ -999,6 +1115,7 @@ class OpenSourceRunner(BaseRunner):
                     media_path=media_path,
                     msg_id=msg_id,
                     existing_tool_calls=existing_tool_calls,
+                    speaker_id=speaker_id,
                 )
             finally:
                 self._save_session_to_disk(session_id)
@@ -1006,13 +1123,14 @@ class OpenSourceRunner(BaseRunner):
     async def _run_async_internal(
         self,
         session_id: str,
-        new_message_text: str,
+        new_message_text: str = None,
         image_data: str = None,
         image_mime: str = None,
         model: str = None,
         media_path: str = None,
         msg_id: str = None,
         existing_tool_calls: list = None,
+        speaker_id: str = "game",
     ) -> tuple:
         if session_id not in self.sessions_history:
             self._load_session_from_disk(session_id)
@@ -1031,29 +1149,32 @@ class OpenSourceRunner(BaseRunner):
             except Exception as e:
                 print(f"Error handling media_path in OpenSourceRunner: {e}")
 
-        if not msg_id:
-            if new_message_text.startswith("[SYSTEM: User has completed"):
-                prefix = "quest_"
-            elif any(k in new_message_text for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:", "generate_follower_portrait")):
-                prefix = "port_"
-            elif new_message_text.startswith("[Tool Response from"):
-                prefix = "tool_"
-            elif (media_path or image_data) and not new_message_text.strip():
-                prefix = "img_"
+        user_msg_id = None
+        if new_message_text or image_data or media_path:
+            if not msg_id:
+                raw_text = new_message_text or ""
+                if raw_text.startswith("[SYSTEM: User has completed"):
+                    prefix = "quest_"
+                elif any(k in raw_text for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:", "generate_follower_portrait")):
+                    prefix = "port_"
+                elif raw_text.startswith("[Tool Response from"):
+                    prefix = "tool_"
+                elif (media_path or image_data) and not raw_text.strip():
+                    prefix = "img_"
+                else:
+                    prefix = "usr_"
+                user_msg_id = f"{prefix}{uuid.uuid4().hex}"
             else:
-                prefix = "usr_"
-            user_msg_id = f"{prefix}{uuid.uuid4().hex}"
-        else:
-            user_msg_id = msg_id
+                user_msg_id = msg_id
 
-        user_msg = {
-            "id": user_msg_id,
-            "role": "user",
-            "text": new_message_text,
-            "image_url": media_path if media_path else (f"data:{image_mime};base64,{image_data}" if image_data else None),
-            "timestamp": time.time(),
-        }
-        self.sessions_history[session_id].append(user_msg)
+            user_msg = {
+                "id": user_msg_id,
+                "role": "user",
+                "text": new_message_text or "",
+                "image_url": media_path if media_path else (f"data:{image_mime};base64,{image_data}" if image_data else None),
+                "timestamp": time.time(),
+            }
+            self.sessions_history[session_id].append(user_msg)
 
         history = self.sessions_history.get(session_id, [])
         vector_query = _build_vector_query(history)
@@ -1068,9 +1189,10 @@ class OpenSourceRunner(BaseRunner):
             adapter=adapter,
             model=model,
             rag_context=rag_context,
-            new_message_text=new_message_text,
+            new_message_text=new_message_text or "",
             invocation_id="",
             existing_tool_calls=existing_tool_calls,
+            speaker_id=speaker_id,
         )
 
         bot_response_text, tool_calls = res
@@ -1096,7 +1218,7 @@ class OpenSourceRunner(BaseRunner):
         return bot_response_text, tool_calls, user_msg_id, follower_msg_id
 
     async def edit_turn(
-        self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False
+        self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False, speaker_id: str = None
     ) -> tuple:
         if session_id not in self.sessions_history:
             self._load_session_from_disk(session_id)
@@ -1140,6 +1262,11 @@ class OpenSourceRunner(BaseRunner):
         self.sessions_history[session_id] = history[:user_idx]
         self._save_session_to_disk(session_id)
 
+        if not speaker_id:
+            from core.save_manager import get_active_companion
+            comp = get_active_companion(session_id)
+            speaker_id = comp if (comp and comp not in ("game", "none", "solo")) else "game"
+
         new_input = new_text if new_text is not None else orig_msg.get("text", "")
         res = await self.run_async(
             session_id,
@@ -1150,6 +1277,7 @@ class OpenSourceRunner(BaseRunner):
             media_path=media_path,
             msg_id=msg_id,
             existing_tool_calls=deduped_prior_tools,
+            speaker_id=speaker_id,
         )
 
         self._save_session_to_disk(session_id)

@@ -61,8 +61,43 @@ def get_active_save_id() -> str:
 def set_active_save_id(save_id: str) -> None:
     """Set the active save ID."""
     ACTIVE_SAVE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(ACTIVE_SAVE_FILE, "w", encoding="utf-8") as f:
+    tmp_path = ACTIVE_SAVE_FILE.with_suffix(".json.tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump({"active_save_id": save_id}, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    tmp_path.replace(ACTIVE_SAVE_FILE)
+
+
+def get_active_follower(save_id: str = None) -> str | None:
+    """Return the active party follower ID for the save slot, or None if solo."""
+    try:
+        bundle = read_save(save_id)
+        meta = bundle.get("meta", {})
+        for key in ("active_follower", "active_companion"):
+            if key in meta:
+                val = meta.get(key)
+                return None if val in (None, "none", "solo", "") else val
+        return "ria_silmane"
+    except Exception:
+        return "ria_silmane"
+
+
+get_active_companion = get_active_follower
+
+
+def set_active_follower(follower_id: str | None, save_id: str = None) -> None:
+    """Sets the active party follower for the given save slot."""
+    active_id = save_id or get_active_save_id()
+    bundle = read_save(active_id)
+    clean_id = None if follower_id in (None, "none", "solo", "") else follower_id
+    meta = bundle.setdefault("meta", {})
+    meta["active_follower"] = clean_id
+    meta["active_companion"] = clean_id
+    write_save(active_id, bundle)
+
+
+set_active_companion = set_active_follower
 
 
 def sync_save_meta(save_id: str) -> dict:
@@ -342,7 +377,8 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
             "quest_stage": world_state.get("quest_stage", 10),
             "tamrielic_date": "1 Hearthfire, 3E 389",
             "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
+            "active_companion": "ria_silmane"
         },
         "character": sheet,
         "world": world_state,
@@ -544,8 +580,11 @@ def delete_save(save_id: str, force_delete: bool = True) -> bool:
     """Delete a single save JSON file or directory."""
     json_path = SAVES_DIR / f"{save_id}.json"
     dir_path = SAVES_DIR / save_id
-    deleted = False
 
+    # Check if this is the active save BEFORE deleting the file
+    was_active = get_active_save_id() == save_id
+
+    deleted = False
     if json_path.exists():
         json_path.unlink()
         deleted = True
@@ -558,7 +597,7 @@ def delete_save(save_id: str, force_delete: bool = True) -> bool:
         return False
 
     # If the active save was deleted, switch to the latest remaining save
-    if get_active_save_id() == save_id:
+    if was_active:
         remaining = list_saves()
         if remaining:
             set_active_save_id(remaining[0]["id"])

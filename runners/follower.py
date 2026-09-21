@@ -47,6 +47,16 @@ def _save_settings(settings: dict):
 
 
 def get_active_follower() -> str:
+    try:
+        from core.save_manager import get_active_follower as sm_get_active_follower
+        fol = sm_get_active_follower()
+        if fol and fol not in ("game", "none", "solo"):
+            return fol
+        elif fol in ("none", "solo"):
+            return "game"
+    except Exception:
+        pass
+
     settings = _load_settings()
     active_fol = settings.get("active_follower") or os.getenv("ACTIVE_FOLLOWER") or "ria_silmane"
 
@@ -56,28 +66,21 @@ def get_active_follower() -> str:
         target_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', active_fol))
 
     os.environ["ACTIVE_FOLLOWER"] = active_fol
-
-    current_folders = settings.get("folders", [])
-    current_active = settings.get("active_follower")
-
-    needs_update = False
-    if current_active != active_fol:
-        needs_update = True
-    if not current_folders or os.path.normpath(current_folders[0]) != target_folder:
-        needs_update = True
-
-    if needs_update:
-        settings["active_follower"] = active_fol
-        settings["folders"] = [target_folder]
-        _save_settings(settings)
-
     return active_fol
 
 def set_active_follower(follower_id: str):
+    clean_id = None if follower_id in ("game", "none", "solo", "") else follower_id
+    try:
+        from core.save_manager import set_active_follower as sm_set_active_follower
+        sm_set_active_follower(clean_id)
+    except Exception:
+        pass
+
     os.environ["ACTIVE_FOLLOWER"] = follower_id
     settings = _load_settings()
     settings["active_follower"] = follower_id
-    default_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', follower_id))
+    target_id = follower_id if (clean_id and os.path.isdir(os.path.join(PARENT_DIR, 'core', 'followers', follower_id))) else 'game'
+    default_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', target_id))
     settings["folders"] = [default_folder]
     _save_settings(settings)
 
