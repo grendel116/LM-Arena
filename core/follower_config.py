@@ -204,7 +204,10 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
             f_card = _load_card_data(active_follower_id)
             follower_name = f_card.get("name") if f_card else active_follower_id.replace("_", " ").title()
             party_members.append(f"{follower_name} (Follower)")
-            follower_note = f"- Party Follower traveling with player: {follower_name}. Do NOT speak or choose actions for {follower_name}; they respond for themselves."
+            follower_note = (
+                f"- Active Party Follower: {follower_name}. {follower_name} is already present in the party and speaks and acts entirely for themselves.\n"
+                f"- ABSOLUTE RESTRICTION: NEVER narrate dialogue, spoken words, internal thoughts, physical actions, or reactions for {follower_name}. Never introduce {follower_name} as an NPC or narrate '{follower_name} says...' or 'The prisoner shifts...'. Focus purely on describing the physical environment, dungeon events, monsters, other non-party NPCs, and rule adjudications."
+            )
         else:
             follower_note = "- No followers currently in the traveling party. The player journeys alone through Tamriel."
 

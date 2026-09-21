@@ -332,8 +332,6 @@ def profile_png():
         path_png = os.path.join('core', 'followers', 'game', 'portraits', 'profile.png')
     else:
         path_png = os.path.join('core', 'followers', active_follower, 'portraits', 'profile.png')
-    if not os.path.exists(path_png):
-        path_png = os.path.join('static', 'img', 'app_icon.png')
     if os.path.exists(path_png):
         response = send_file(path_png)
         from flask import make_response
@@ -356,8 +354,7 @@ def follower_profile_png(follower_id=None):
         res = make_response(response)
         res.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return res
-    else:
-        return "Profile image not found", 404
+    return "Profile image not found", 404
 
 follower_profile_png = follower_profile_png
 
@@ -376,7 +373,10 @@ def save_profile_picture():
         if not cropped_image_base64:
             return jsonify({'error': 'No cropped_image data provided'}), 400
             
-        follower_id = data.get('follower_id') or data.get('follower_id') or get_active_follower()
+        from core.save_manager import get_active_follower
+        follower_id = data.get('follower_id') or get_active_follower()
+        if not follower_id or follower_id in ('game', 'none', 'solo'):
+            follower_id = 'ria_silmane'
         portraits_dir = os.path.join(FOLLOWERS_DIR, follower_id, 'portraits')
         os.makedirs(portraits_dir, exist_ok=True)
         dest_path = os.path.join(portraits_dir, 'profile.png')
@@ -403,7 +403,7 @@ def crop_profile_picture():
     """Server-side crop: receives source image path and crop coordinates, uses PIL to crop and resize."""
     try:
         from variables.settings import FOLLOWERS_DIR
-        from runners.follower import get_active_follower
+        from core.save_manager import get_active_follower
         from PIL import Image
         
         data = request.get_json(silent=True) or {}
@@ -416,18 +416,23 @@ def crop_profile_picture():
         if not source_image or w <= 0 or h <= 0:
             return jsonify({'error': 'Invalid crop parameters'}), 400
         
-        follower_id = data.get('follower_id') or data.get('follower_id') or get_active_follower()
+        follower_id = data.get('follower_id') or get_active_follower()
+        if not follower_id or follower_id in ('game', 'none', 'solo'):
+            follower_id = 'ria_silmane'
         follower_dir = os.path.join(FOLLOWERS_DIR, follower_id)
         
-        if source_image.startswith('/images/'):
-            relative_path = source_image[len('/images/'):]
-            source_path = os.path.normpath(os.path.join(follower_dir, relative_path))
-        elif source_image.startswith('/profile.png'):
-            source_path = os.path.normpath(os.path.join(follower_dir, 'portraits', 'profile.png'))
-        else:
-            return jsonify({'error': 'Unsupported image path'}), 400
+        from utils.utils import _get_safe_local_path
+        source_path = _get_safe_local_path(source_image)
+        if not source_path or not os.path.exists(source_path):
+            if source_image.startswith('/images/'):
+                relative_path = source_image[len('/images/'):]
+                source_path = os.path.normpath(os.path.join(follower_dir, relative_path))
+            elif source_image.startswith('/profile.png'):
+                source_path = os.path.normpath(os.path.join(follower_dir, 'portraits', 'profile.png'))
+            else:
+                return jsonify({'error': 'Unsupported image path'}), 400
         
-        if not os.path.exists(source_path):
+        if not source_path or not os.path.exists(source_path):
             return jsonify({'error': f'Source image not found: {source_image}'}), 404
         
         with Image.open(source_path) as img:
@@ -466,14 +471,28 @@ def serve_image(filename):
     if os.path.exists(os.path.join(static_img_dir, filename)):
         return send_from_directory(static_img_dir, filename)
 
-    try:
-        from runners.follower import get_active_follower
-        active_follower = get_active_follower()
-    except Exception:
-        active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
-    follower_dir = os.path.join('core', 'followers', active_follower)
-    if os.path.exists(os.path.join(follower_dir, filename)):
-        return send_from_directory(follower_dir, filename)
+    from variables.settings import FOLLOWERS_DIR
+    from core.save_manager import get_active_follower
+    active_follower = get_active_follower()
+    
+    # 1. Check active follower directory
+    if active_follower:
+        fdir = os.path.join(FOLLOWERS_DIR, active_follower)
+        if os.path.exists(os.path.join(fdir, filename)):
+            return send_from_directory(fdir, filename)
+
+    # 2. Check game directory (environment & DM portraits)
+    game_dir = os.path.join(FOLLOWERS_DIR, 'game')
+    if os.path.exists(os.path.join(game_dir, filename)):
+        return send_from_directory(game_dir, filename)
+
+    # 3. Check all other follower directories
+    if os.path.exists(FOLLOWERS_DIR):
+        for fol in os.listdir(FOLLOWERS_DIR):
+            fdir = os.path.join(FOLLOWERS_DIR, fol)
+            if os.path.exists(os.path.join(fdir, filename)):
+                return send_from_directory(fdir, filename)
+
     return send_from_directory(static_img_dir, filename)
 
 
@@ -1089,10 +1108,11 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
 
     if is_reroll and target_text:
         system_instruction = (
-            "Rephrase {{user}}'s existing action/dialogue in the Elder Scrolls roleplay.\n"
+            "Rephrase {{user}}'s action in the Elder Scrolls roleplay.\n"
             f"{party_context}\n"
-            "- Core Requirement: Rephrase the provided user message with fresh alternative wording and phrasing while preserving the exact same intent, choices, and meaning.\n"
-            f"{GLOBAL_USER_FORMATTING}"
+            "- Length & Format: Generate ONLY 1-2 sentences of narration for {{user}} in FIRST PERSON PRESENT TENSE (*italicized*).\n"
+            "- Core Requirement: Rephrase the provided user message with fresh alternative wording while preserving the exact same intent.\n"
+            "- Restrictions: Narration ONLY. Do not output spoken dialogue, quotes, or outcome narration."
         )
         prompt = (
             f"### USER CHARACTER PROFILE & STATUS\n"
@@ -1101,14 +1121,15 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
             f"{replace_placeholders(history_text)}\n\n"
             f"### ORIGINAL USER MESSAGE TO REPHRASE\n"
             f"{replace_placeholders(target_text)}\n\n"
-            f"Rephrase {{user}}'s original message above into an alternative phrasing with the same core intent and action (avoid narrating outcomes):"
+            f"Rephrase {{user}}'s original action into ONLY 1-2 sentences of *italicized* first-person narration (avoid narrating outcomes):"
         )
     else:
         seed_text = (user_input or "").strip()
         system_instruction = (
             "Generate {{user}}'s next action in the Elder Scrolls roleplay.\n"
             f"{party_context}\n"
-            f"{GLOBAL_USER_FORMATTING}"
+            "- Length & Format: Generate ONLY 1-2 sentences of narration for {{user}} in FIRST PERSON PRESENT TENSE (*italicized*).\n"
+            "- Restrictions: Narration ONLY. Do not output spoken dialogue, quotes, or outcome narration."
         )
         
         if seed_text and len(seed_text.split()) <= 15:
@@ -1120,7 +1141,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
                 f"{replace_placeholders(history_text)}\n\n"
                 f"### PLAYER INTENT\n"
                 f"{replace_placeholders(seed_text)}\n\n"
-                f"Generate a natural first-person present-tense action for {{user}} carrying out this intent (avoid narrating outcomes):"
+                f"Generate ONLY 1-2 sentences of *italicized* first-person narration for {{user}} carrying out this intent (avoid narrating outcomes):"
             )
         else:
             # Fresh action
@@ -1129,7 +1150,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
                 f"{replace_placeholders(full_profile_block)}\n\n"
                 f"### RECENT CHAT HISTORY\n"
                 f"{replace_placeholders(history_text)}\n\n"
-                f"Generate a fresh, natural first-person present-tense action for {{user}} responding to the current situation (avoid narrating outcomes):"
+                f"Generate ONLY 1-2 sentences of *italicized* first-person narration for {{user}} responding to the current situation (avoid narrating outcomes):"
             )
     
     try:
@@ -1247,7 +1268,8 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
         f"- SPECIFIC ACTION: The action MUST directly perform the specific attempt: '{action_intent}' using the {skill_name} skill.\n"
         f"- OUTCOME: Reflect the {roll_res['degree'].upper()} ({'Success' if roll_res['success'] else 'Failure'}) result of the roll.\n"
         "- FAITHFULNESS: Never substitute an unrelated physical action (e.g. never kick, punch, or swing a weapon when casting a spell or picking a lock). Stay strictly faithful to the stated attempt.\n"
-        "- FORMAT: Exactly 1 concise *italicized* sentence in present tense (e.g. '*I thrust my palm forward, channeling raw magicka into a crackling burst of sparks.*'). No spoken dialogue."
+        "- Length & Format: Exactly 1 concise *italicized* sentence in present tense (e.g. '*I thrust my palm forward, channeling raw magicka into a crackling burst of sparks.*').\n"
+        "- Restrictions: Narration ONLY. Do not output spoken dialogue, quotes, or conversational text."
     )
     try:
         from core.banned_words import get_banned_words_directive, sanitize_text
@@ -1758,19 +1780,41 @@ def list_generations():
 @requires_auth
 def list_images():
     try:
-        active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
-        follower_dir = os.path.join('core', 'followers', active_follower)
-        image_urls = []
+        from variables.settings import FOLLOWERS_DIR
+        from core.save_manager import get_active_follower
         
-        for subdir, url_prefix in [('portraits', '/images/portraits'), ('media', '/images/media')]:
-            scan_dir = os.path.join(follower_dir, subdir)
-            if not os.path.exists(scan_dir):
-                continue
-            files = os.listdir(scan_dir)
-            media_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.mp4', '.webm')) and f.lower() != 'profile.png']
-            for f in media_files:
-                mtime = os.path.getmtime(os.path.join(scan_dir, f))
-                image_urls.append({'url': f"{url_prefix}/{f}", 'mtime': mtime})
+        active_follower = get_active_follower() or os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+        image_urls = []
+        seen_filenames = set()
+        
+        folders_to_scan = []
+        if os.path.exists(FOLLOWERS_DIR):
+            for entry in os.listdir(FOLLOWERS_DIR):
+                full_path = os.path.join(FOLLOWERS_DIR, entry)
+                if os.path.isdir(full_path):
+                    if entry == active_follower:
+                        folders_to_scan.insert(0, (entry, full_path))
+                    elif entry == 'game':
+                        folders_to_scan.append((entry, full_path))
+                    else:
+                        folders_to_scan.append((entry, full_path))
+        
+        for f_name, f_dir in folders_to_scan:
+            for subdir, url_prefix in [('portraits', '/images/portraits'), ('media', '/images/media')]:
+                scan_dir = os.path.join(f_dir, subdir)
+                if not os.path.exists(scan_dir):
+                    continue
+                files = os.listdir(scan_dir)
+                media_files = [
+                    f for f in files 
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.mp4', '.webm')) 
+                    and f.lower() not in ('profile.png', 'app_icon.png')
+                ]
+                for f in media_files:
+                    if f not in seen_filenames:
+                        seen_filenames.add(f)
+                        mtime = os.path.getmtime(os.path.join(scan_dir, f))
+                        image_urls.append({'url': f"{url_prefix}/{f}", 'mtime': mtime})
         
         image_urls.sort(key=lambda x: x['mtime'], reverse=True)
         return jsonify({'images': [item['url'] for item in image_urls]})
@@ -2728,32 +2772,13 @@ def list_followers():
                     profile_path = os.path.join(folder_path, "portraits", "profile.png")
                     if os.path.exists(profile_path):
                         has_profile = True
-                        
-                    recruited = False
-                    json_path2 = os.path.join(folder_path, f"{folder}.json")
-                    if os.path.exists(json_path2):
-                        try:
-                            with open(json_path2, "r", encoding="utf-8") as jf2:
-                                jdata2 = json.load(jf2)
-                                card2 = jdata2.get("data", jdata2)
-                                exts2 = card2.get("extensions", {})
-                                san2 = exts2.get("arena", exts2.get("sanctuary", {}))
-                                if folder == "ria_silmane":
-                                    recruited = True
-                                else:
-                                    recruited = bool(san2.get("recruited", False))
-                        except Exception:
-                            recruited = folder == "ria_silmane"
-                    else:
-                        recruited = folder == "ria_silmane"
 
                     followers.append({
                         'id': folder,
                         'name': follower_name,
                         'active': folder == active_follower,
                         'theme_color': theme_color,
-                        'has_profile': has_profile,
-                        'recruited': recruited
+                        'has_profile': has_profile
                     })
         return jsonify({'followers': followers, 'active': active_follower})
     except Exception as e:
@@ -4051,25 +4076,20 @@ Output a single JSON object with EXACTLY these keys:
                     }
                 }
             }
-        },
-        "_colors": {"main_color": parsed.get("main_color") or "#38bdf8"},
+        }
     }
     return card
 
 
 def finalize_imported_follower(follower_path, follower_id, card_json):
-    """Write theme, portraits dir, and chara_card_v3 JSON for a new follower."""
-    colors = card_json.pop("_colors", {})
-    main_color = colors.get("main_color", "#38bdf8")
-    theme_data = generate_character_theme(main_color)
-    with open(os.path.join(follower_path, 'theme.json'), "w", encoding="utf-8") as tf:
-        json.dump(theme_data, tf, indent=2, ensure_ascii=False)
-
+    """Write portraits dir and chara_card_v3 JSON for a new follower."""
+    card_json.pop("_colors", None)
     os.makedirs(os.path.join(follower_path, 'portraits'), exist_ok=True)
 
     if card_json.get("data"):
         exts = card_json["data"].setdefault("extensions", {})
-        exts.setdefault("arena", {})["follower_id"] = follower_id
+        arena_ext = exts.setdefault("arena", {})
+        arena_ext["follower_id"] = follower_id
     else:
         card_json["follower_id"] = follower_id
 

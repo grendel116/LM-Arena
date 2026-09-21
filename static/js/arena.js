@@ -4067,10 +4067,7 @@ function renderfollowersList(assistants, activeId) {
     const container = document.getElementById('assistants-list-container');
     container.innerHTML = '';
 
-    // Only show followers who are narratively present (recruited)
-    const visible = assistants.filter(a => a.recruited !== false);
-
-    visible.forEach(assistant => {
+    assistants.forEach(assistant => {
         const isRia = assistant.id === 'ria_silmane';
         const isActive = Boolean(activeId && activeId !== 'none' && activeId !== 'solo' && (assistant.id === activeId || assistant.active));
 
@@ -4105,24 +4102,64 @@ function renderfollowersList(assistants, activeId) {
         const leftArea = document.createElement('div');
         leftArea.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
-        // Custom follower icon image
-        const img = document.createElement('img');
-        img.className = 'follower-list-avatar';
-        img.src = `/followers/${assistant.id}/profile.png?t=${profileCacheBuster}`;
-        img.alt = assistant.name;
-        img.setAttribute('data-name', assistant.name);
-        img.setAttribute('data-color', assistant.theme_color || '#4a3520');
-        img.style.cssText = `
-            width: 44px;
-            height: 44px;
-            object-fit: cover;
-            background: hsla(215, 5%, 100%, 0.05);
-            border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            flex-shrink: 0;
-        `;
-        leftArea.appendChild(img);
+        if (assistant.has_profile) {
+            const img = document.createElement('img');
+            img.className = 'follower-list-avatar';
+            img.src = `/followers/${assistant.id}/profile.png?t=${profileCacheBuster}`;
+            img.alt = assistant.name;
+            img.setAttribute('data-name', assistant.name);
+            img.setAttribute('data-color', assistant.theme_color || '#4a3520');
+            img.style.cssText = `
+                width: 44px;
+                height: 44px;
+                object-fit: cover;
+                background: hsla(215, 5%, 100%, 0.05);
+                border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                flex-shrink: 0;
+            `;
+            img.onerror = () => {
+                const circle = document.createElement('div');
+                circle.className = 'follower-list-avatar follower-list-avatar-empty';
+                circle.style.cssText = `
+                    width: 44px;
+                    height: 44px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: hsla(215, 5%, 100%, 0.05);
+                    border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+                    border-radius: 50%;
+                    color: var(--text-muted);
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                    flex-shrink: 0;
+                `;
+                circle.innerText = assistant.name ? assistant.name.charAt(0).toUpperCase() : '?';
+                img.replaceWith(circle);
+            };
+            leftArea.appendChild(img);
+        } else {
+            const circle = document.createElement('div');
+            circle.className = 'follower-list-avatar follower-list-avatar-empty';
+            circle.style.cssText = `
+                width: 44px;
+                height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: hsla(215, 5%, 100%, 0.05);
+                border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+                border-radius: 50%;
+                color: var(--text-muted);
+                font-weight: 600;
+                font-size: 1.1rem;
+                flex-shrink: 0;
+            `;
+            circle.innerText = assistant.name ? assistant.name.charAt(0).toUpperCase() : '?';
+            leftArea.appendChild(circle);
+        }
 
         const info = document.createElement('div');
         info.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
@@ -4172,26 +4209,26 @@ function renderfollowersList(assistants, activeId) {
         };
         actionArea.appendChild(editBtn);
 
-        // Ria is immortal — no delete button.
-        // Mortal followers get a skull button (permadeath).
+        // Ria is default — no delete button. Other followers get a delete button.
         if (!isRia) {
-            const skullBtn = document.createElement('button');
-            skullBtn.className = 'action-icon-btn';
-            skullBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block">
-                <path d="M9 18h6M10 22h4M12 2C7.03 2 3 6.03 3 11c0 2.97 1.42 5.6 3.6 7.2V20a1 1 0 0 0 1 1h8.8a1 1 0 0 0 1-1v-1.8C19.58 16.6 21 13.97 21 11c0-4.97-4.03-9-9-9z"/>
-                <line x1="9" y1="14" x2="9" y2="14"/><line x1="15" y1="14" x2="15" y2="14"/>
-            </svg>`;
-            skullBtn.title = 'Kill Follower (Permadeath)';
-            skullBtn.style.cssText = 'width:26px;height:26px;border-radius:6px;flex-shrink:0;color:var(--danger-color,var(--danger-color));';
-            skullBtn.onclick = (e) => {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'action-icon-btn';
+            deleteBtn.innerHTML = `
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+            `;
+            deleteBtn.title = 'Delete Follower';
+            deleteBtn.style.width = '26px';
+            deleteBtn.style.height = '26px';
+            deleteBtn.style.borderRadius = '6px';
+            deleteBtn.style.flexShrink = '0';
+            deleteBtn.onclick = (e) => {
                 e.stopPropagation();
-                showCustomConfirm(
-                    "Permadeath",
-                    `<strong>${assistant.name}</strong> will be permanently removed from your party. This cannot be undone.`,
-                    () => deleteAssistant(assistant.id, assistant.name)
-                );
+                deleteAssistant(assistant.id, assistant.name);
             };
-            actionArea.appendChild(skullBtn);
+            actionArea.appendChild(deleteBtn);
         }
 
         div.appendChild(actionArea);
@@ -4245,8 +4282,8 @@ async function selectAssistant(assistantId) {
 // --- deleteAssistant ---
 async function deleteAssistant(assistantId, name) {
     showCustomConfirm(
-        "Delete follower",
-        `Are you sure you want to permanently delete follower <strong>${name}</strong>? This will remove all their configs, databank documents, and portraits.`,
+        "Delete Follower",
+        `Are you sure you want to delete follower <strong>${name}</strong>? This cannot be undone.`,
         async () => {
             try {
                 const res = await fetch('/api/followers/delete', {
@@ -4256,13 +4293,13 @@ async function deleteAssistant(assistantId, name) {
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    showCustomAlert("Deleted", `follower <strong>${name}</strong> has been deleted.`);
+                    showCustomAlert("Deleted", `Follower <strong>${name}</strong> has been deleted.`);
                     if (data.switched_to === 'ria_silmane' || (typeof activefollower !== 'undefined' && activefollower === assistantId)) {
                         selectAssistant('ria_silmane');
                     } else {
                         const listRes = await fetch('/api/followers');
                         const listData = await listRes.json();
-                        const list = listData.followers || listData.followers;
+                        const list = listData.followers;
                         if (list) {
                             renderfollowersList(list, listData.active);
                         }
@@ -4271,7 +4308,7 @@ async function deleteAssistant(assistantId, name) {
                     showCustomAlert("Error", `Could not delete follower: ${data.error}`);
                 }
             } catch (e) {
-                console.error("Error deleting assistant:", e);
+                console.error("Error deleting follower:", e);
                 showCustomAlert("Error", "Could not connect to server to delete follower.");
             }
         }
@@ -4871,6 +4908,37 @@ function unlockControlsFromNewGame() {
     }
 }
 
+// --- waitForModelLoad ---
+async function waitForModelLoad(maxSeconds = 180) {
+    const statusTextEl = document.getElementById('loading-overlay-status');
+    const startTime = Date.now();
+    
+    while ((Date.now() - startTime) < maxSeconds * 1000) {
+        try {
+            const res = await fetch(`/api/local_llm/status?t=${Date.now()}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === true || (data.running && data.status !== 'starting')) {
+                    if (statusTextEl) statusTextEl.textContent = "Model ready. Entering arena...";
+                    await initializeModelSelect();
+                    return true;
+                } else if (data.status === 'starting') {
+                    const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+                    if (statusTextEl) {
+                        statusTextEl.textContent = `Loading language model into memory... (${elapsedSec}s)`;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        } catch (e) {
+            // Transient network retry
+        }
+        await new Promise(r => setTimeout(r, 1000));
+    }
+    return false;
+}
+
 // --- loadHistory ---
 async function loadHistory() {
     try {
@@ -4959,11 +5027,7 @@ async function loadHistory() {
             // History has no user actions yet (new/unstarted game)! Wait for model initialization if needed
             if (modelInitPromise) {
                 try {
-                    // Wait at most 2 seconds for model initialization status
-                    await Promise.race([
-                        modelInitPromise,
-                        new Promise(resolve => setTimeout(resolve, 2000))
-                    ]);
+                    await modelInitPromise;
                 } catch (e) {
                     console.error("Error waiting for modelInitPromise in empty history block:", e);
                 }
@@ -4998,18 +5062,26 @@ async function loadHistory() {
                 }
             }
         }
-    } catch (error) {
-        console.error("Error loading chat history:", error);
-        // Ensure modelInitPromise finishes so connectionStatus is populated (max 1.5 seconds)
+
         if (modelInitPromise) {
             try {
-                await Promise.race([
-                    modelInitPromise,
-                    new Promise(resolve => setTimeout(resolve, 1500))
-                ]);
+                await modelInitPromise;
             } catch (e) {}
         }
-        if (!connectionStatus.remote_configured  && !connectionStatus.local_online) {
+        if (connectionStatus && connectionStatus.local_online === 'starting') {
+            await waitForModelLoad();
+        }
+    } catch (error) {
+        console.error("Error loading chat history:", error);
+        if (modelInitPromise) {
+            try {
+                await modelInitPromise;
+            } catch (e) {}
+        }
+        if (connectionStatus && connectionStatus.local_online === 'starting') {
+            await waitForModelLoad();
+        }
+        if (!connectionStatus.remote_configured && !connectionStatus.local_online) {
             showWelcomeMessage();
         } else {
             showWelcomeMessage();
@@ -5799,16 +5871,42 @@ function renderMessage(msg, isLive = false) {
         const avatarContainer = document.createElement('div');
         avatarContainer.className = 'avatar-container';
 
-        const avatar = document.createElement('img');
-        avatar.className = `avatar follower-avatar ${speakerId}-avatar`;
-        const profileUrl = (speakerId === 'game')
-            ? '/static/img/app_icon.png'
-            : `/followers/${speakerId}/profile.png?t=${profileCacheBuster}`;
-        avatar.src = profileUrl;
-        avatar.alt = speakerName;
-        avatar.title = `${speakerName} (Click to expand)`;
-        avatar.onclick = () => expandImage(profileUrl);
-        avatarContainer.appendChild(avatar);
+        if (speakerId === 'game') {
+            const avatar = document.createElement('img');
+            avatar.className = `avatar follower-avatar ${speakerId}-avatar`;
+            avatar.src = '/static/img/app_icon.png';
+            avatar.alt = speakerName;
+            avatar.title = `${speakerName}`;
+            avatarContainer.appendChild(avatar);
+        } else {
+            const profileUrl = `/followers/${speakerId}/profile.png?t=${profileCacheBuster}`;
+            const avatar = document.createElement('img');
+            avatar.className = `avatar follower-avatar ${speakerId}-avatar`;
+            avatar.src = profileUrl;
+            avatar.alt = speakerName;
+            avatar.title = `${speakerName}`;
+            avatar.onerror = () => {
+                const emptyCircle = document.createElement('div');
+                emptyCircle.className = `avatar follower-avatar ${speakerId}-avatar empty-avatar`;
+                emptyCircle.style.cssText = `
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    background: hsla(215, 5%, 100%, 0.06);
+                    border: 1px solid var(--border-color);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--text-muted);
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                `;
+                emptyCircle.innerText = speakerName ? speakerName.charAt(0).toUpperCase() : '?';
+                avatar.replaceWith(emptyCircle);
+            };
+            avatar.onclick = () => expandImage(profileUrl);
+            avatarContainer.appendChild(avatar);
+        }
         row.appendChild(avatarContainer);
     }
 
@@ -7349,7 +7447,7 @@ async function loadServerImages() {
 function isProfileImage(path) {
     if (!path) return false;
     const p = String(path).toLowerCase();
-    return p.includes('profile.svg') || p.includes('profile.png') || p.includes('default_avatar');
+    return p.includes('profile.svg') || p.includes('profile.png') || p.includes('default_avatar') || p.includes('app_icon.png');
 }
 
 // --- getGalleryImages ---
@@ -7397,7 +7495,8 @@ function getGalleryImages() {
 }
 
 // --- expandImage ---
-function expandImage(src) {
+async function expandImage(src) {
+    await loadServerImages();
     galleryImages = getGalleryImages();
     const pathOnly = getRelativePath(src);
     
@@ -7634,6 +7733,9 @@ async function deleteSpecificImage(imageSrc, bubbleElement) {
                     const act = bubbleElement.querySelector('.message-actions');
                     if (act) act.style.display = 'none';
                 }
+                if (Array.isArray(serverImages)) {
+                    serverImages = serverImages.filter(img => getRelativePath(img) !== imageSrc && !img.includes(imageSrc));
+                }
             } else {
                 let errMsg = "Unknown error";
                 try {
@@ -7763,16 +7865,20 @@ async function saveCroppedProfile(event) {
     closeCropModal();
     
     try {
+        const payload = {
+            source_image: cropSourcePath,
+            x: cropData.x,
+            y: cropData.y,
+            width: cropData.width,
+            height: cropData.height
+        };
+        if (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'game') {
+            payload.follower_id = activefollower;
+        }
         const response = await fetch('/api/followers/profile_picture/crop', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                source_image: cropSourcePath,
-                x: cropData.x,
-                y: cropData.y,
-                width: cropData.width,
-                height: cropData.height
-            })
+            body: JSON.stringify(payload)
         });
         
         if (response.ok) {
@@ -10457,9 +10563,10 @@ setInterval(async () => {
 }, 5000);
 
 // Load previous chat history on DOM ready
-function initMainApp() {
+async function initMainApp() {
     updateProfileImages();
-    loadHistory();
+    modelInitPromise = initializeModelSelect();
+    await loadHistory();
     fetchCharacterStatus();
     loadServerImages();
 }

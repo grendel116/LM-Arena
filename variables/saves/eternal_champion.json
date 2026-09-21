@@ -12,9 +12,10 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-09-20T23:10:47.899870",
-    "updated_at": "2026-09-20T23:36:18.056553",
-    "active_companion": "ria_silmane"
+    "created_at": "2026-09-21T01:09:12.214124",
+    "updated_at": "2026-09-21T01:11:05.758383",
+    "active_companion": "misty",
+    "active_follower": "misty"
   },
   "character": {
     "name": "Eternal Champion",
@@ -22,7 +23,7 @@
     "gender": "Male",
     "class": "Mage",
     "level": 1,
-    "experience": 10,
+    "experience": 0,
     "attributes": {
       "strength": 60,
       "intelligence": 65,
@@ -36,7 +37,7 @@
     "derived": {
       "hp_current": 32,
       "hp_max": 32,
-      "mp_current": 158,
+      "mp_current": 162,
       "mp_max": 162,
       "stamina_current": 72,
       "stamina_max": 72,
@@ -138,9 +139,9 @@
   },
   "history": [
     {
-      "id": "first_mes_9b2c49044b6c",
+      "id": "first_mes_2c0ebcf1fb91",
       "role": "follower",
-      "timestamp": 1789971047.8998706
+      "timestamp": 1789978152.2141242
     }
   ],
   "memories": {
@@ -157,25 +158,25 @@
   "profile": "A Nord from Skyrim.",
   "messages": [
     {
-      "id": "first_mes_0409d019c02841f8a5dee3679e2cc969",
+      "id": "first_mes_ea39eb04463941968a5be596e83bc812",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a small brass key resting on a narrow ledge. Further down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1789971047.9188044
+      "timestamp": 1789978152.2322445
     },
     {
-      "id": "usr_9mb949uo8muauk3z4",
+      "id": "usr_lkzl6pzzymuaytptz",
       "role": "user",
-      "text": "*I push myself up from the cold floor and stare at the glinting key high above. I reach for the loosened stone and try to pull myself up the wall.*",
+      "text": "*I sit up slowly, feeling the cold bite of the stone against my bare skin. The damp chill clings to my rags as I survey the cramped cell. I look up at the glinting key high on the wall, then glance around for anything I can use to reach it.*",
       "image_url": null,
-      "timestamp": 1789971068.718517
+      "timestamp": 1789978235.4143295
     },
     {
-      "id": "prgm_7e3ab835d84441b0b04f30088d84dbbb",
+      "id": "prgm_accfca1af74f41e4ad4e4dd30c9fb13d",
       "role": "follower",
-      "text": "*The walls are rough with damp moss and centuries of grime. My translucent hands pass through the stone as I drift closer to you, my form flickering like candle flame in a draft.*\n\n**Be careful.**\n\n*I float upward, my ectoplasmic gown trailing wisps of blue light. I hover beside the loose stone, peering at the narrow ledge where the key rests.*\n\nThe stone is loose enough that a strong pull might bring it down, but the ledge is narrow. You'll need a steady hand to catch that key before it falls to the floor.",
+      "text": "*Shifting weight causes the chains to rattle against the wall, and a soft giggle echoes in the dim cell.*\n\nOhhh wow, **finally** someone interesting shows up! Thought I'd been rotting here forever with just the rats for company.\n\n*Tipping head back to look up at the Nord, letting the chains clink as one arm lifts to brush hair from her face.*\n\nYou look kinda lost, big guy. But hey, at least you're cute. That key's way too high for me to reach, though. My arms aren't exactly built for climbing walls.\n\n*Biting lower lip while glancing between the key and the Nord's bare chest.*\n\nThink you could get it down? Maybe if you're a real strong hero type? I could make it worth your while once we get these chains off me...",
       "tool_calls": [],
       "tamrielic_date": {
         "day": 1,
@@ -184,55 +185,14 @@
         "hour": 6,
         "era": "Third Era"
       },
-      "timestamp": 1789971074.7556543,
-      "sender_id": "ria_silmane",
-      "sender_name": "Ria Silmane"
+      "timestamp": 1789978249.055917,
+      "sender_id": "misty",
+      "sender_name": "Misty"
     },
     {
-      "id": "prgm_aea1f7169cab4625b7f035599f466946",
+      "id": "prgm_4d7d64b15241419e9951c5c9eb6b5d42",
       "role": "follower",
-      "text": "*The damp stone wall provides little purchase as you strain upward. Your fingers scrape against the rough surface, and water trickles down from the cracks above. The brass key balances precariously on the narrow ledge, its metal surface catching the faint torchlight from the corridor.*",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "arena_request_skill_check",
-          "args": {
-            "skill_name": "Acrobatics",
-            "attribute_name": "Agility",
-            "dc": 10,
-            "reason": "Climbing the cell wall to retrieve the hidden key from a narrow ledge."
-          },
-          "id": "call_1789971086_0_cdc1"
-        },
-        {
-          "type": "response",
-          "name": "arena_request_skill_check",
-          "response": "{'status': 'skill_check_required', 'skill_name': 'Acrobatics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Climbing the cell wall to retrieve the hidden key from a narrow ledge.'}",
-          "id": "call_1789971086_0_cdc1"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789971086.6729214,
-      "sender_id": "game",
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_7zn1aduedmuaule3m",
-      "role": "user",
-      "text": "*I lunge upward for the key, but my grip slips on the damp stone and I tumble backward to the floor.*",
-      "image_url": null,
-      "timestamp": 1789971128.4937727
-    },
-    {
-      "id": "prgm_bb96d9832ba54011b3a2ddc3b865518e",
-      "role": "follower",
-      "text": "*My form wavers with concern as you strike the stone. I drift lower, my sorrowful eyes fixed on the key still balanced high above.*\n\n**Are you hurt?**\n\n*I float toward the wall again, scanning the gaps between stones. My fingers pass through the rock as I trace the path where the key might fall if you try again.*\n\nThere's a small crack beneath the ledge. If you can angle your approach differently, the stone might slide rather than crumble. But the surface is treacherous with moisture.",
+      "text": "*The damp cell remains quiet save for the dripping water and the distant scuttling of vermin. The brass key glints tantalizingly on its narrow ledge, nearly ten feet above the stone floor. The wall beneath it is smooth, offering no handholds or footholds for climbing.*\n\n*A rusted bed frame sits in the corner, its thin iron bars bent and brittle. Nearby, a loose plank of rotted wood has splintered off the wall, lying forgotten in the straw-covered corner.*\n\n*The torchlight outside the cell wavers, casting long, dancing shadows across the flagstones. The air grows colder as the torch burns lower, and the distant dripping grows louder in the stillness.*",
       "tool_calls": [],
       "tamrielic_date": {
         "day": 1,
@@ -241,315 +201,7 @@
         "hour": 6,
         "era": "Third Era"
       },
-      "timestamp": 1789971138.8319657,
-      "sender_id": "ria_silmane",
-      "sender_name": "Ria Silmane"
-    },
-    {
-      "id": "prgm_a699dd3c15f046379fff4c96a78c4a54",
-      "role": "follower",
-      "text": "*Your impact with the stone floor echoes sharply through the cell as you land hard on your back. Dust motes drift through the torchlight from the corridor, and a dull ache throbs in your shoulder where it struck the ground. The brass key remains perched high above, undisturbed by your fall.*\n\n*A soft scratching sound draws your attention to the corner of the cell. A large rat with mangy fur and yellowed teeth emerges from the shadows, sniffing the air. Its beady eyes fix on you, and it begins to creep forward across the damp stones, chattering with hunger.*",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789971150.0364647,
-      "sender_id": "game",
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_fn0n5dn4wmuaumqxe",
-      "role": "user",
-      "text": "*I roll onto my side and push myself back up, wincing at the ache in my shoulder. The rat's chattering grows louder as it creeps closer, its claws clicking against the stone floor. I glance toward the key above, then back to the approaching creature.*\n\nGet!\n\n*I raise my hand, focusing on the spark of magic within me. I aim my fingers at the rat and prepare to cast a bolt of lightning.*",
-      "image_url": null,
-      "timestamp": 1789971191.7759078
-    },
-    {
-      "id": "prgm_db27b80b41e94eeb9ee571ae8377fb99",
-      "role": "follower",
-      "text": "*My ectoplasmic form flickers with sudden anxiety as the creature advances. I drift closer to you, my luminous hair swirling around my shoulders.*\n\n**Focus your will.**\n\n*I hover just behind your raised hand, watching the rat's hungry approach. My translucent fingers twitch as if trying to steady your aim, though I cannot touch you.*\n\nThe beast is quick, but your magic is stronger. Direct the current precisely, or it will scatter and hide in the shadows.",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789971202.7976274,
-      "sender_id": "ria_silmane",
-      "sender_name": "Ria Silmane"
-    },
-    {
-      "id": "prgm_47f082448c6749fca81d9a5b2fe020de",
-      "role": "follower",
-      "text": "*The rat pauses momentarily, whiskers twitching as it senses the gathering static in the air. Its black eyes reflect the faint blue sparks beginning to dance between your fingertips while it tenses its hind legs, ready to spring or flee at the first sign of danger.*",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "arena_request_skill_check",
-          "args": {
-            "skill_name": "Spark",
-            "attribute_name": "Magicka",
-            "dc": 12,
-            "reason": "Casting a bolt of lightning to drive off or kill the approaching rat."
-          },
-          "id": "call_1789971213_0_c316"
-        },
-        {
-          "type": "response",
-          "name": "arena_request_skill_check",
-          "response": "{'status': 'skill_check_required', 'skill_name': 'Spark', 'attribute_name': 'Magicka', 'dc': 12, 'reason': 'Casting a bolt of lightning to drive off or kill the approaching rat.'}",
-          "id": "call_1789971213_0_c316"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789971213.956859,
-      "sender_id": "game",
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_wgoi7aqvamuaunwyw",
-      "role": "user",
-      "text": "*I thrust my palm forward, unleashing a blinding bolt of lightning that incinerates the rat in a sudden burst of electrical energy.*",
-      "image_url": null,
-      "timestamp": 1789971246.2611933
-    },
-    {
-      "id": "prgm_b94a0ca7fc8648d1af21c9cb2f84bcb2",
-      "role": "follower",
-      "text": "*The smell of scorched fur fills the cell as the rat collapses into a smoking heap. I drift backward, my form brightened by the flare of your magic. My luminous eyes widen as I gaze at the charred remains.*\n\n**Well cast.**\n\n*I float closer to you, my sorrowful expression softening. My translucent hand hovers near your shoulder as if to offer comfort, though it passes through you like mist.*\n\nThe rat is gone, but the stench will draw more of them soon. We must get you out of this place before the vermin return in greater numbers.",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789971257.0999384,
-      "sender_id": "ria_silmane",
-      "sender_name": "Ria Silmane"
-    },
-    {
-      "id": "prgm_779087c73fca4b538e3b858baadc3406",
-      "role": "follower",
-      "text": "*The rat's body lies smoking on the damp stones, its mangy fur singed black by the electrical discharge. A faint acrid odor of burnt hair and flesh drifts through the cell, mixing with the musty scent of stone and moisture. Your hand still crackles with the remnants of arcane energy.*\n\n\n\n\n*The charred corpse begins to attract flies from the shadows, their buzzing growing louder in the enclosed space. From deeper in the corridor beyond the bars, more scratching sounds echo against the walls as other vermin react to the disturbance.*",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "arena_spend_magicka",
-          "args": {
-            "amount": 4
-          },
-          "id": "call_1789971269_0_e9a8"
-        },
-        {
-          "type": "response",
-          "name": "arena_spend_magicka",
-          "response": "{'success': True, 'mp_current': 158, 'mp_max': 162}",
-          "id": "call_1789971269_0_e9a8"
-        },
-        {
-          "type": "call",
-          "name": "arena_add_experience",
-          "args": {
-            "amount": 10
-          },
-          "id": "call_1789971269_1_20f3"
-        },
-        {
-          "type": "response",
-          "name": "arena_add_experience",
-          "response": "{'experience': 10, 'level': 1, 'leveled_up': False, 'hp_max': 32, 'mp_max': 162}",
-          "id": "call_1789971269_1_20f3"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789971269.4103186,
-      "sender_id": "game",
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_hz2ty7yfcmuav8vou",
-      "role": "user",
-      "text": "*I lower my hand, feeling the last tingle of magic fade from my fingertips. My gaze shifts from the smoking rat carcass to the iron bars and the key hanging just beyond my reach. The buzzing of flies makes my skin crawl, and the distant scratching from the corridor sends a chill down my spine.*\n\nYou know the way out of here?",
-      "image_url": null,
-      "timestamp": 1789972224.3801594
-    },
-    {
-      "id": "prgm_a18f3fa15be540a8abd5830e52c031c5",
-      "role": "follower",
-      "text": "*My form wavers as the buzzing grows louder, and I drift upward toward the key again. My sorrowful eyes scan the corridor beyond the bars, searching for movement in the torchlight.*\n\n**I do not know these dungeons.**\n\n*I float closer to the bars, my ectoplasmic gown trailing wisps of blue light. I gesture toward the key high above, then toward the dark corridor where the scratching echoes.*\n\nBut the key opens the cell door, and the corridor leads to the outer halls. Once you are free, we must find a way up to the surface. The air feels heavy with old magic down here.",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789972239.8433797,
-      "sender_id": "ria_silmane",
-      "sender_name": "Ria Silmane"
-    },
-    {
-      "id": "prgm_a359335b8088488db97ceda3b174f7f5",
-      "role": "follower",
-      "text": "*The buzzing of flies intensifies around the charred rat carcass as more insects emerge from the cracks in the damp stone walls. Your stomach churns at the sight of black bodies crawling over the singed fur. The scratching sounds from the corridor grow closer, accompanied by the soft pitter-patter of many small feet.*\n\n*The brass key continues to glint from its hidden ledge, mocking you with its proximity. Beyond the bars, the torchlight flickers against the wet stone, casting elongated shadows that seem to shift and writhe as more vermin approach the cell.*\n\n*A large, scarred rat with a missing ear appears in the corridor, sniffing the air hungrily before its yellow eyes lock onto you through the iron bars. Behind it, several smaller rats emerge from the darkness, their chattering growing into a chorus of hungry whispers.*",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789972259.128382,
-      "sender_id": "game",
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_0vwsr2eosmuave8nb",
-      "role": "user",
-      "text": "*I lunge again for the key, ignoring the curious beasts outside.*",
-      "image_url": null,
-      "timestamp": 1789972474.4536228
-    },
-    {
-      "id": "prgm_450bac8926b443fb81337d08564cbacc",
-      "role": "follower",
-      "text": "*My luminous form wavers with alarm as the scarred rat presses closer to the bars. I drift upward beside you, my translucent hair swirling in agitation as I watch your desperate leap.*\n\n**The key is within reach!**\n\n*I hover just above the ledge, my sorrowful eyes tracking the brass surface as it shifts under your straining fingers. My ectoplasmic gown billows like smoke as I urge you onward, though I cannot physically aid your climb.*\n\nOne more effort and you'll have it. The rats are gathering, but they cannot reach you behind the bars. Focus only on the metal, not the hunger in their eyes.",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789972495.7040946,
-      "sender_id": "ria_silmane",
-      "sender_name": "Ria Silmane"
-    },
-    {
-      "id": "prgm_6bd3442c1ecc4c4d99e32fea38587877",
-      "role": "follower",
-      "text": "*Your fingers brush the cold brass of the key as you strain upward, muscles burning with effort. The metal surface is slippery with condensation, threatening to slide from your grasp even as your fingertips close around its narrow shaft. Below, the scarred rat begins gnawing at the iron bars, its yellow teeth scraping against the metal as it tries to reach you.*\n\n*The loosened stone beneath the ledge shifts slightly under your weight, sending a trickle of dust and grit cascading down the wall. Your footing remains precarious on the damp surface, but the key is firmly in your hand now.*",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "arena_request_skill_check",
-          "args": {
-            "skill_name": "Acrobatics",
-            "attribute_name": "Agility",
-            "dc": 10,
-            "reason": "Maintaining balance while retrieving the key from the wall ledge."
-          },
-          "id": "call_1789972516_0_b13b"
-        },
-        {
-          "type": "response",
-          "name": "arena_request_skill_check",
-          "response": "{'status': 'skill_check_required', 'skill_name': 'Acrobatics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Maintaining balance while retrieving the key from the wall ledge.'}",
-          "id": "call_1789972516_0_b13b"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789972516.3032484,
-      "sender_id": "game",
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_9zno6sd49muavfnmi",
-      "role": "user",
-      "text": "*I shift my weight carefully along the narrow ledge, keeping my balance steady as I reach out to secure the key in my palm.*",
-      "image_url": null,
-      "timestamp": 1789972540.5188458
-    },
-    {
-      "id": "prgm_0c5765a498524f56bdc683813b5d6e74",
-      "role": "follower",
-      "text": "*My translucent form wavers with relief as you secure the metal in your hand. I drift downward beside you, my glowing eyes fixed on the key now safely clutched in your palm.*\n\n**You have it!**\n\n*I hover near the iron bars, glancing nervously at the scarred rat as its teeth scrape against the metal. My ectoplasmic gown flickers with agitation as more scratching echoes from the corridor.*\n\nNow use it quickly. The rats are growing bold, and they'll not stop until they find a way inside. The lock should turn easily with that key.",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789972557.0999608,
-      "sender_id": "ria_silmane",
-      "sender_name": "Ria Silmane"
-    },
-    {
-      "id": "prgm_07d6aae2b0cb49fc87e6b5ac383db237",
-      "role": "follower",
-      "text": "*You drop from the ledge and land heavily on the damp stone floor, the brass key pressed tight in your palm. Its surface is cold and slightly pitted with age. Behind the bars, the scarred rat's chattering grows frantic as it senses your proximity to the lock, its claws scraping against the iron in desperate hunger.*\n\n*The key fits snugly into the rusted lock mechanism. As you turn it, the ancient metal groans and the lock mechanism yields with a heavy click. The cell door swings open on its hinges, revealing the torch-lit corridor beyond. Immediately, the scarred rat and its smaller companions scurry back into the shadows, their yellow eyes still visible in the darkness as they retreat.*",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "arena_add_item",
-          "args": {
-            "item_name": "Dungeon Key",
-            "item_type": "Key",
-            "quantity": 1
-          },
-          "id": "call_1789972578_0_b47d"
-        },
-        {
-          "type": "response",
-          "name": "arena_add_item",
-          "response": "{'inventory_count': 2, 'item': 'Dungeon Key'}",
-          "id": "call_1789972578_0_b47d"
-        },
-        {
-          "type": "call",
-          "name": "arena_remove_item",
-          "args": {
-            "item_name": "Dungeon Key",
-            "quantity": 1
-          },
-          "id": "call_1789972578_1_4f6b"
-        },
-        {
-          "type": "response",
-          "name": "arena_remove_item",
-          "response": "{'success': True, 'item': 'Dungeon Key'}",
-          "id": "call_1789972578_1_4f6b"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789972578.043991,
+      "timestamp": 1789978265.7449126,
       "sender_id": "game",
       "sender_name": "The Game"
     }

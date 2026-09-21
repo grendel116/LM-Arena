@@ -894,14 +894,30 @@ def arena_recruit_follower(follower_name, follower_race="Imperial", follower_cla
             os.makedirs(follower_path, exist_ok=True)
             desc = persona_description or f"A loyal {follower_race} {follower_class} following the Eternal Champion into combat."
             profile_data = {
-                "name": follower_name,
-                "operation": {
+                "spec": "chara_card_v3",
+                "spec_version": "3.0",
+                "data": {
+                    "name": follower_name,
                     "description": desc,
                     "personality": "Loyal, vigilant",
-                    "scenario": f"Traveling alongside {{user}} through Tamriel as a {follower_race} companion."
+                    "scenario": f"Traveling alongside {{user}} through Tamriel as a {follower_race} follower.",
+                    "first_mes": "I stand with you, Champion. Let us face whatever dangers await.",
+                    "mes_example": "",
+                    "system_prompt": "",
+                    "post_history_instructions": "",
+                    "creator_notes": "",
+                    "tags": [follower_race.lower(), follower_class.lower()],
+                    "creator": "LM-Arena",
+                    "character_version": "1.0",
+                    "alternate_greetings": [],
+                    "extensions": {
+                        "arena": {
+                            "follower_id": follower_id
+                        }
+                    }
                 }
             }
-            json_path = os.path.join(program_path, f"{program_id}.json")
+            json_path = os.path.join(follower_path, f"{follower_id}.json")
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(profile_data, f, indent=2, ensure_ascii=False)
                 

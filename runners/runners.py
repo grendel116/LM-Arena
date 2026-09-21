@@ -158,6 +158,14 @@ def clean_speaker_response(text: str, speaker_id: str = "game", follower_id: str
             text = re.sub(leading_puppet_regex, "", text, flags=re.IGNORECASE).strip()
             puppet_regex = rf"\n+\s*(?:\[(?:{'|'.join(escaped_others)})\]:?|(?:{'|'.join(escaped_others)}):\s*)"
             text = re.split(puppet_regex, text, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+
+    # 4. If Game attempts to introduce itself as or speak as the active follower
+    if speaker_id == "game" and active_follower_id and active_follower_id != "game":
+        c = _load_card_data(active_follower_id)
+        c_name = (c.get("name") if c else active_follower_id).strip()
+        if c_name:
+            intro_pattern = rf"\n+\s*.*?\b(?:my name(?:'s|\s+is)|i am|i'm)\s+{re.escape(c_name)}\b.*"
+            text = re.split(intro_pattern, text, maxsplit=1, flags=re.IGNORECASE)[0].strip()
     return text
 
 

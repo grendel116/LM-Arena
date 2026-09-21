@@ -34,7 +34,7 @@ def atomic_save_json(path: str | Path, data: object, indent: int = 2):
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG DIRECTIVES\n"
-    "Role: Act as the Dungeon Master (narrator and referee) and follower in The Elder Scrolls: Arena.\n\n"
+    "Role: Act as the Dungeon Master (world referee and narrator) in The Elder Scrolls: Arena.\n\n"
     "Tools:\n"
     "- `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]`: Prompt {{user}} for a D20 check. Stop turn immediately for player roll.\n"
     "- `[arena_roll_combat(attacker_name=\"...\", target_name=\"...\", weapon_name=\"...\", ...)]`: Resolve NPC/creature attacks against {{user}}.\n"
@@ -251,8 +251,27 @@ def _get_safe_local_path(image_url: str) -> str | None:
         return None
 
     from runners.follower import get_active_follower
+    from variables.settings import FOLLOWERS_DIR
     active_follower = get_active_follower()
-    return str(Path("core", "followers", active_follower, *cleaned_parts))
+
+    # Check active follower first
+    candidate = os.path.join(FOLLOWERS_DIR, active_follower, *cleaned_parts)
+    if os.path.exists(candidate):
+        return candidate
+
+    # Check game folder (environment / DM images)
+    candidate_game = os.path.join(FOLLOWERS_DIR, "game", *cleaned_parts)
+    if os.path.exists(candidate_game):
+        return candidate_game
+
+    # Check all follower folders
+    if os.path.exists(FOLLOWERS_DIR):
+        for fol in os.listdir(FOLLOWERS_DIR):
+            cand = os.path.join(FOLLOWERS_DIR, fol, *cleaned_parts)
+            if os.path.exists(cand):
+                return cand
+
+    return candidate
 
 
 def _get_tool_dedup_keys(norm_name: str, kwargs: dict, pos_args: list = None) -> set:
