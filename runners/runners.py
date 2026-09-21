@@ -1287,17 +1287,12 @@ class OpenSourceRunner(BaseRunner):
         self.sessions_history[session_id] = history[:user_idx]
         self._save_session_to_disk(session_id)
 
+        new_input = new_text if new_text is not None else orig_msg.get("text", "")
         if not speaker_id:
             from core.save_manager import get_active_followers
+            from app import determine_first_speaker
             active_fols = get_active_followers(session_id)
-            last_spk = None
-            for m in reversed(history[:user_idx]):
-                if m.get("role") in ("follower", "assistant"):
-                    last_spk = m.get("sender_id") or "game"
-                    break
-            speaker_id = last_spk if (last_spk and last_spk in active_fols) else "game"
-
-        new_input = new_text if new_text is not None else orig_msg.get("text", "")
+            speaker_id = determine_first_speaker(new_input, history[:user_idx], active_fols)
         res = await self.run_async(
             session_id,
             new_input,

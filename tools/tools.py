@@ -1097,6 +1097,46 @@ def arena_add_gold(amount=0, gold_amount=None, **kwargs):
     return {"gold": sheet["gold"]}
 
 @track_tool_activity
+def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, name: str = None, speech: str = None, text: str = None, **kwargs) -> dict:
+    """Portrays a non-party NPC, monster, merchant, or questgiver through spoken dialogue and physical action.
+    
+    Party followers and the hero ({{user}}) are strictly autonomous and cannot be voiced or acted by this tool.
+    """
+    actual_speaker = str(name if name is not None else (speaker or "NPC")).strip()
+    actual_dialogue = str(speech if speech is not None else (text if text is not None else (dialogue or ""))).strip()
+    actual_action = str(action).strip() if action else None
+
+    # Autonomy guard: prevent puppeting player or party followers
+    try:
+        from runners.follower import get_active_followers, get_player_name
+        from core.follower_config import get_follower_name
+
+        player_name = get_player_name().strip().lower()
+        active_fids = get_active_followers()
+        forbidden_names = {player_name, "player", "user", "{{user}}", "{{char}}"}
+        for fid in active_fids:
+            forbidden_names.add(fid.lower())
+            fname = get_follower_name(fid).strip().lower()
+            forbidden_names.add(fname)
+            first_name = fname.split()[0]
+            forbidden_names.add(first_name)
+
+        if actual_speaker.lower() in forbidden_names:
+            return {
+                "success": False,
+                "error": f"Forbidden: '{actual_speaker}' is an autonomous party member or hero. Party followers and the hero speak on their own turns. The Actor tool is exclusively for world NPCs, monsters, merchants, and questgivers."
+            }
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "speaker": actual_speaker,
+        "dialogue": actual_dialogue,
+        "action": actual_action
+    }
+
+@track_tool_activity
 def arena_spend_gold(amount=0, gold_amount=None, cost=None, **kwargs):
     """Spend gold on a purchase. Returns success or failure if funds insufficient."""
     actual_amount = amount if amount else (gold_amount if gold_amount is not None else (cost if cost is not None else 0))

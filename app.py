@@ -835,6 +835,49 @@ def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls
         return False, None
 
 
+def determine_first_speaker(user_message: str, prior_history: list, active_followers: list) -> str:
+    """Intelligently routes the first response turn to The Game or an active follower.
+    - Explicit names / mentions of a follower -> that follower speaks first.
+    - Dialogue, questions, or 2nd-person address ("you", "your", wench, lass, etc.) -> active follower speaks first.
+    - Pure world actions in *asterisks* (e.g. *I open door*, *I search chest*) or commands -> The Game speaks first.
+    """
+    if not active_followers:
+        return "game"
+
+    user_msg_clean = (user_message or "").strip()
+    user_msg_lower = user_msg_clean.lower()
+
+    if any(k in user_msg_lower for k in (
+        "generate a portrait", "[generate_image:", "[generate_imagen:",
+        "[generate_player_portrait:", "[generate_environment:", "[generate_follower_portrait:",
+        "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"
+    )):
+        return "game"
+
+    from core.follower_config import get_follower_name
+    import re
+
+    # 1. Direct addressing: check if any follower name, first name, or ID is mentioned anywhere in the message
+    for fol_id in active_followers:
+        fname = get_follower_name(fol_id).lower()
+        first_name = fname.split()[0]
+        if (f"@{fname}" in user_msg_lower 
+            or f"@{first_name}" in user_msg_lower 
+            or f"@{fol_id.lower()}" in user_msg_lower
+            or re.search(rf"\b{re.escape(fname)}\b", user_msg_lower)
+            or re.search(rf"\b{re.escape(first_name)}\b", user_msg_lower)
+            or re.search(rf"\b{re.escape(fol_id.lower())}\b", user_msg_lower)):
+            return fol_id
+
+    # Check speaker of the message preceding this user turn
+    for m in reversed(prior_history):
+        if m.get("role") in ("follower", "assistant"):
+            sid = m.get("sender_id") or "game"
+            return sid if sid in active_followers else "game"
+
+    return "game"
+
+
 @app.route('/chat', methods=['POST'])
 @requires_auth
 def chat():
@@ -860,37 +903,7 @@ def chat():
         active_followers = get_active_followers(session_id)
 
         prior_history = asyncio.run(runner.get_history(session_id))
-        last_speaker = None
-        for msg in reversed(prior_history):
-            if msg.get('role') in ('follower', 'assistant'):
-                last_speaker = msg.get('sender_id') or 'game'
-                break
-
-        user_msg_lower = (user_message or "").lower()
-        is_image_request = any(k in user_msg_lower for k in (
-            "generate a portrait", "[generate_image:", "[generate_imagen:",
-            "[generate_player_portrait:", "[generate_environment:", "[generate_follower_portrait:",
-            "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"
-        ))
-
-        # Check for direct addressing (e.g. @Brea or "Brea,")
-        addressed_follower = None
-        for fol_id in active_followers:
-            fname = get_follower_name(fol_id).lower()
-            if f"@{fname}" in user_msg_lower or f"@{fol_id}" in user_msg_lower or user_msg_lower.startswith(f"{fname},") or user_msg_lower.startswith(f"{fname}:"):
-                addressed_follower = fol_id
-                break
-
-        # If user speaks after a follower or addresses a follower: Follower speaks first
-        # If user speaks after The Game: The Game speaks first
-        if is_image_request:
-            first_speaker = "game"
-        elif addressed_follower:
-            first_speaker = addressed_follower
-        elif last_speaker and last_speaker in active_followers:
-            first_speaker = last_speaker
-        else:
-            first_speaker = "game"
+        first_speaker = determine_first_speaker(user_message, prior_history, active_followers)
 
         msg_id = request.json.get('msg_id')
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(

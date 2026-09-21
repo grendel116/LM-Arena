@@ -8,7 +8,7 @@ triggers: check, roll, dc, attempt, climb, jump, lockpick, pick lock, lock, insp
 
 # ATTRIBUTE & SKILL CHECK PROTOCOLS
 
-## 1. Player Checks & Adjudication Sequence
+## 1. Player Checks & Resolution Sequence
 - **Sequence**: Request (DM) -> Check (User) -> Spend & Narrate (DM).
 - **Phase 1: Request (DM)**:
   - When {{user}} casts a spell, attacks, or attempts an action with an uncertain outcome:

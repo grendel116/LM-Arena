@@ -1181,6 +1181,38 @@ body::-webkit-scrollbar-thumb:hover,
 .dialogue-quote {
     color: var(--arena-dialogue);
 }
+.arena-actor-card {
+    margin: 10px 0 4px 0;
+    padding: 10px 14px;
+    background: hsla(var(--gold-h), var(--gold-s), 50%, 0.06);
+    border-left: 3px solid hsla(var(--gold-h), var(--gold-s), 55%, 0.75);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.96em;
+    line-height: 1.5;
+}
+.arena-actor-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82em;
+    font-weight: 700;
+    color: hsl(var(--gold-h), var(--gold-s), 65%);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+}
+.arena-actor-icon {
+    font-size: 1.05em;
+}
+.arena-actor-action {
+    font-style: italic;
+    color: hsla(var(--slate-h), 12%, 68%, 0.85);
+    margin-bottom: 5px;
+}
+.arena-actor-dialogue {
+    color: var(--arena-dialogue, hsl(var(--gold-h), 80%, 94%));
+    font-size: 1.02em;
+}
 .message-text p {
     margin: 0 0 12px 0;
 }

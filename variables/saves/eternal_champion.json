@@ -12,11 +12,11 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-09-21T07:57:58.790906",
-    "updated_at": "2026-09-21T07:57:58.814884",
-    "active_follower": "riasilmane",
+    "created_at": "2026-09-21T08:16:51.095051",
+    "updated_at": "2026-09-21T08:16:54.705397",
+    "active_follower": "breamaccius",
     "active_followers": [
-      "riasilmane"
+      "breamaccius"
     ]
   },
   "character": {
@@ -131,9 +131,9 @@
   },
   "history": [
     {
-      "id": "first_mes_2dc9827b6023",
+      "id": "first_mes_6f9a295dcb0e",
       "role": "follower",
-      "timestamp": 1790002678.7909067
+      "timestamp": 1790003811.095051
     }
   ],
   "memories": {
@@ -150,13 +150,13 @@
   "profile": "A Nord from Skyrim.",
   "messages": [
     {
-      "id": "first_mes_f99cff6a7fcb459a9541e7dcf1ec2974",
+      "id": "first_mes_159d79add8704da1935023ce07f879e1",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1790002678.813883
+      "timestamp": 1790003811.114639
     }
   ],
   "memory_state": {

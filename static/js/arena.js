@@ -5389,10 +5389,14 @@ const arenaToolMetaMap = {
     'arena_add_effect': { label: 'Add Effect', icon: 'droplet', category: 'vitals' },
     'arena_remove_effect': { label: 'Remove Effect', icon: 'droplet', category: 'vitals' },
     'arena_add_experience': { label: 'Experience', icon: 'sparkle', category: 'loot' },
-    'arena_recruit_follower': { label: 'Recruit Follower', icon: 'users', category: 'info' }
+    'arena_recruit_follower': { label: 'Recruit Follower', icon: 'users', category: 'info' },
+    'arena_actor': { label: 'Actor', icon: 'message-square', category: 'dialogue' },
+    'actor': { label: 'Actor', icon: 'message-square', category: 'dialogue' }
 };
 
 const hiddenPassiveTools = new Set([
+    'arena_actor',
+    'actor',
     'arena_get_character_context',
     'arena_get_location',
     'generate_local_image',
@@ -5499,6 +5503,13 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
             return `Follower: ${a.follower_name || 'Follower'}`;
         case 'arena_sorcerer_absorb':
             return `Sorcerer Absorb`;
+        case 'arena_actor':
+        case 'actor': {
+            const spk = a.speaker || a.name || a.npc || 'NPC';
+            const dlg = a.dialogue || a.speech || a.text || '';
+            const preview = dlg.length > 32 ? dlg.substring(0, 29) + '...' : dlg;
+            return `${spk}: "${preview}"`;
+        }
         default:
             if (a.path || a.AbsolutePath || a.TargetFile) {
                 const p = a.path || a.AbsolutePath || a.TargetFile;
@@ -5514,6 +5525,32 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
             }
             return toolName;
     }
+}
+
+// --- renderActorDialogueCards ---
+function renderActorDialogueCards(bubble, toolCalls) {
+    if (!bubble || !toolCalls || toolCalls.length === 0) return;
+    bubble.querySelectorAll('.arena-actor-card').forEach(el => el.remove());
+    const actorCalls = toolCalls.filter(tc => tc.type === 'call' && (tc.name === 'arena_actor' || tc.name === 'actor') && tc.args);
+    actorCalls.forEach(tc => {
+        const a = tc.args || {};
+        const spk = a.speaker || a.name || a.npc || 'NPC';
+        const dlg = a.dialogue || a.speech || a.text || '';
+        const act = a.action || '';
+        if (dlg || act) {
+            const actorBox = document.createElement('div');
+            actorBox.className = 'arena-actor-card';
+            let innerHtml = `<div class="arena-actor-header"><span class="arena-actor-icon">🎭</span> <span class="arena-actor-name">${escapeHtml(spk)}</span></div>`;
+            if (act) {
+                innerHtml += `<div class="arena-actor-action">*${escapeHtml(act)}*</div>`;
+            }
+            if (dlg) {
+                innerHtml += `<div class="arena-actor-dialogue">${escapeHtml(dlg)}</div>`;
+            }
+            actorBox.innerHTML = innerHtml;
+            bubble.appendChild(actorBox);
+        }
+    });
 }
 
 // --- renderCompletedLogs ---
@@ -6023,9 +6060,13 @@ function renderMessage(msg, isLive = false) {
                 const reason = skillCall.args.reason || (skillCall.args.skill_name ? `${skillCall.args.skill_name} check required.` : '');
                 if (reason) fallbackText = `*${reason}*`;
             }
+            if (!fallbackText) {
+                const actorCall = msg.tool_calls.find(tc => (tc.name === 'arena_actor' || tc.name === 'actor') && tc.args);
+                if (actorCall) fallbackText = ' ';
+            }
         }
-        if (fallbackText && fallbackText.trim()) {
-            bubblesToCreate.push({ type: 'text', content: fallbackText });
+        if (fallbackText !== null && fallbackText !== undefined && (fallbackText.trim() || fallbackText === ' ')) {
+            bubblesToCreate.push({ type: 'text', content: fallbackText.trim() });
         } else {
             return null;
         }
@@ -6152,6 +6193,7 @@ function renderMessage(msg, isLive = false) {
                     textDiv.textContent = actualResponse;
                 }
                 bubble.appendChild(textDiv);
+                renderActorDialogueCards(bubble, msg.tool_calls);
                 if (role === 'follower' && isLive) {
                     const toolCtx = (msg.tool_calls || []).map(tc => `${tc.name || ''} ${JSON.stringify(tc.args || {})}`).join(' ');
                     evaluateSceneBGM(item.content || actualResponse, toolCtx);
@@ -6693,32 +6735,61 @@ async function sendMessage() {
     clearAttachment();
     updateInputGlow();
 
-    const typingIndicatorRow = document.createElement('div');
-    typingIndicatorRow.className = 'message-row follower-row';
+function determineClientSpeaker(rawText, lastSpeaker) {
+    if (typeof activePartyFollowers === 'undefined' || !Array.isArray(activePartyFollowers) || activePartyFollowers.length === 0) {
+        return 'game';
+    }
+
+    const textClean = (rawText || '').trim();
+    const textLower = textClean.toLowerCase();
+
+    // 1. Direct addressing / follower name mentioned
+    for (const fid of activePartyFollowers) {
+        const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
+        const firstName = fname.split(' ')[0];
+        const escFname = fname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escFirst = firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escFid = fid.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`\\b(${escFname}|${escFirst}|${escFid})\\b`, 'i');
+        if (textLower.includes(`@${fname}`) || textLower.includes(`@${firstName}`) || textLower.includes(`@${fid}`) || re.test(textLower)) {
+            return fid;
+        }
+    }
+
+    // 2. Check message nature: pure world action vs dialogue / interpersonal interaction
+    const unasterisked = textClean.replace(/\*.*?\*/gs, '').trim();
+    const hasSecondPerson = /\b(you|your|yours|yourself|wench|lass|girl|lad|friend)\b/i.test(textLower);
+    const isPureWorldAction = textClean.startsWith('*') && textClean.endsWith('*') && unasterisked === '' && !hasSecondPerson;
+    const isGameCommand = ['search', 'look', 'inventory', 'rest', 'wait', 'look around', 'examine', 'take key', 'open door'].includes(textLower);
+
+    if (isPureWorldAction || isGameCommand) {
+        return 'game';
+    }
+
+    // 3. Dialogue or interpersonal address -> follower speaks!
+    if (unasterisked.length > 0 || hasSecondPerson) {
+        return (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) ? lastSpeaker : activePartyFollowers[0];
+    }
+
+    if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
+        return lastSpeaker;
+    }
+
+    return 'game';
+}
+
+async function sendMessage() {
+    if (isGenerating || isSubmitting) return;
+
+    const text = userInput.value.trim();
+    if (!text && !attachedBase64 && !attachedMediaPath) {
+        return;
+    }
 
     const previousFollowerRows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'));
     const lastFollowerRow = previousFollowerRows.length > 0 ? previousFollowerRows[previousFollowerRows.length - 1] : null;
     const lastSpeaker = lastFollowerRow ? (lastFollowerRow.dataset.senderId || 'game') : 'game';
-
-    const textLower = text.toLowerCase();
-    let addressed = null;
-    if (typeof activePartyFollowers !== 'undefined' && Array.isArray(activePartyFollowers)) {
-        for (const fid of activePartyFollowers) {
-            const fname = ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || fid).toLowerCase();
-            if (textLower.includes(`@${fname}`) || textLower.includes(`@${fid}`) || textLower.startsWith(`${fname},`) || textLower.startsWith(`${fname}:`)) {
-                addressed = fid;
-                break;
-            }
-        }
-    }
-
-    let activeSpeaker = 'game';
-    if (addressed) {
-        activeSpeaker = addressed;
-    } else if (lastSpeaker && lastSpeaker !== 'game') {
-        activeSpeaker = lastSpeaker;
-    }
-
+    const activeSpeaker = determineClientSpeaker(text, lastSpeaker);
     const profileUrl = getProfileUrl(activeSpeaker);
     const displayName = (activeSpeaker === 'game') ? 'The Game' : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[activeSpeaker]) || activefollowerName || 'Follower');
     typingIndicatorRow.innerHTML = `
@@ -7404,6 +7475,7 @@ async function rerollFromMessage(button) {
                 postProcessMessageHTML(textDiv);
             }
             
+            renderActorDialogueCards(bubble, data.tool_calls);
             if (data.tool_calls && data.tool_calls.length > 0) {
                 renderCompletedLogs(bubble, data.tool_calls, data.duration);
             }

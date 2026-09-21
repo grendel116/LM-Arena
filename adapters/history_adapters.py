@@ -512,6 +512,22 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     "Conclude the narrative with their tragic perishing in Tamriel.]"
                 )
             post_blocks.append(f"# CURRENT WORLD STATE\n- Province: {prov}\n- Location: {loc}\n- Date: {day} {month}, 3E {year}\n- Time: {time_display}\n{state_tag}")
+
+            if active_speaker == "game":
+                from core.save_manager import get_active_followers
+                active_fols = get_active_followers(self.session_id)
+                if active_fols:
+                    from core.follower_config import get_follower_name
+                    fol_names = [get_follower_name(fid) for fid in active_fols]
+                    fol_names_str = ", ".join(fol_names)
+                    post_blocks.append(
+                        f"# CRITICAL FOLLOWER AUTONOMY MANDATE\n"
+                        f"Party followers traveling with the hero: {fol_names_str}.\n"
+                        f"They are independent characters who speak and act on their own turns.\n"
+                        f"You are The Game (world referee and narrator). You must NEVER generate dialogue, speech, quotes, physical actions, body movements, or expressions for {fol_names_str}.\n"
+                        f"Narrate only ambient room details, dungeon hazards, mechanics, and world enemies."
+                    )
+
             full_post_injection = "\n\n".join(post_blocks)
 
         except Exception as e:
