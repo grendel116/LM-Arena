@@ -845,7 +845,8 @@ class BaseRunner:
                     "or narrative descriptions. Output NOTHING except the tool call."
                 )
 
-        return instructions
+        from core.follower_config import replace_placeholders
+        return replace_placeholders(instructions)
 
 
 BaseProgramRunner = BaseRunner

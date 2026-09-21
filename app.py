@@ -798,9 +798,16 @@ def chat():
         active_follower = get_active_follower(session_id)
         has_follower = bool(active_follower and active_follower not in ("game", "none", "solo"))
 
+        user_msg_lower = (user_message or "").lower()
+        is_image_request = any(k in user_msg_lower for k in (
+            "generate a portrait", "[generate_image:", "[generate_imagen:",
+            "[generate_player_portrait:", "[generate_environment:", "[generate_follower_portrait:",
+            "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"
+        ))
+
         first_speaker = active_follower if has_follower else "game"
-        chain_continue = True if has_follower else False
-        next_speaker = "game" if has_follower else None
+        chain_continue = True if (has_follower and not is_image_request) else False
+        next_speaker = "game" if (has_follower and not is_image_request) else None
 
         msg_id = request.json.get('msg_id')
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
