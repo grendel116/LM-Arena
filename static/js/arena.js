@@ -6618,21 +6618,7 @@ function determineClientSpeaker(rawText, lastSpeaker) {
         }
     }
 
-    // 2. Check message nature: pure world action vs dialogue / interpersonal interaction
-    const unasterisked = textClean.replace(/\*.*?\*/gs, '').trim();
-    const hasSecondPerson = /\b(you|your|yours|yourself|wench|lass|girl|lad|friend)\b/i.test(textLower);
-    const isPureWorldAction = textClean.startsWith('*') && textClean.endsWith('*') && unasterisked === '' && !hasSecondPerson;
-    const isGameCommand = ['search', 'look', 'inventory', 'rest', 'wait', 'look around', 'examine', 'take key', 'open door'].includes(textLower);
-
-    if (isPureWorldAction || isGameCommand) {
-        return 'game';
-    }
-
-    // 3. Dialogue or interpersonal address -> follower speaks!
-    if (unasterisked.length > 0 || hasSecondPerson) {
-        return (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) ? lastSpeaker : activePartyFollowers[0];
-    }
-
+    // 2. Continuing an ongoing conversation with a follower
     if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
         return lastSpeaker;
     }

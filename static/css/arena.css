@@ -402,7 +402,7 @@ body::-webkit-scrollbar-thumb:hover,
 
 .message {
     max-width: 70%;
-    min-width: min(210px, 100%);
+    min-width: 0;
     width: fit-content;
     box-sizing: border-box;
     padding: 16px 20px;

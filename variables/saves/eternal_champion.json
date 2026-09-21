@@ -13,7 +13,7 @@
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
     "created_at": "2026-09-21T08:16:51.095051",
-    "updated_at": "2026-09-21T08:16:54.705397",
+    "updated_at": "2026-09-21T08:46:08.187481",
     "active_follower": "breamaccius",
     "active_followers": [
       "breamaccius"
@@ -87,6 +87,7 @@
       "day": 1,
       "month": "Hearthfire",
       "year": 389,
+      "hour": 6,
       "era": "Third Era"
     },
     "current_province": "Cyrodiil",
@@ -96,7 +97,9 @@
     "provinces_visited": [
       "Cyrodiil"
     ],
-    "cities_discovered": [],
+    "cities_discovered": [
+      "Imperial Dungeon"
+    ],
     "dungeons_cleared": [],
     "followers": [],
     "world_flags": {
@@ -127,6 +130,13 @@
       "temple_of_dibella": 0,
       "temple_of_stendarr": 0,
       "noble_courts": 0
+    },
+    "date": {
+      "day": 1,
+      "month": "Hearthfire",
+      "year": 389,
+      "hour": 6,
+      "era": "Third Era"
     }
   },
   "history": [
@@ -157,6 +167,48 @@
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
       "timestamp": 1790003811.114639
+    },
+    {
+      "id": "usr_6mb09e98xmubf3913",
+      "role": "user",
+      "text": "*I grab that old key.*",
+      "image_url": null,
+      "timestamp": 1790005554.0543725
+    },
+    {
+      "id": "game_d28715b503",
+      "role": "follower",
+      "text": "*The high ledge requires reaching upward from the stone floor. Your fingers brush against the cold metal surface of the key as you stretch toward the loosened stone.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Acrobatics",
+            "attribute_name": "Agility",
+            "dc": 10,
+            "reason": "Attempting to retrieve the key from the high ledge"
+          },
+          "id": "call_1790005568_0_5270"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Acrobatics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Attempting to retrieve the key from the high ledge'}",
+          "id": "call_1790005568_0_5270"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790005568.17665,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
     }
   ],
   "memory_state": {

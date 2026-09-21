@@ -869,11 +869,13 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
             or re.search(rf"\b{re.escape(fol_id.lower())}\b", user_msg_lower)):
             return fol_id
 
-    # Check speaker of the message preceding this user turn
+    # 2. If the user was in an ongoing exchange with a follower in the last turn
     for m in reversed(prior_history):
         if m.get("role") in ("follower", "assistant"):
-            sid = m.get("sender_id") or "game"
-            return sid if sid in active_followers else "game"
+            sid = m.get("sender_id")
+            if sid and sid in active_followers:
+                return sid
+            break
 
     return "game"
 
@@ -937,6 +939,13 @@ def chat():
 
         if not sender_name:
             sender_name = get_follower_name(first_speaker)
+
+        user_msg_lower = (user_message or "").lower()
+        is_image_request = any(k in user_msg_lower for k in (
+            "generate a portrait", "[generate_image:", "[generate_imagen:",
+            "[generate_player_portrait:", "[generate_environment:", "[generate_follower_portrait:",
+            "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"
+        ))
 
         chain_continue, next_speaker = compute_chain_speaker(chat_history, active_followers, tool_calls)
         if is_image_request:
