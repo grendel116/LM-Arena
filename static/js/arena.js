@@ -6058,7 +6058,9 @@ function renderMessage(msg, isLive = false) {
             if (msgTimestamp && !isImageOnly) {
                 const tsSpan = document.createElement('span');
                 tsSpan.className = 'message-timestamp';
-                tsSpan.textContent = formatMessageTimestamp(msgTimestamp, msg);
+                const formattedTs = formatMessageTimestamp(msgTimestamp, msg);
+                tsSpan.textContent = formattedTs;
+                tsSpan.title = formattedTs;
                 actions.appendChild(tsSpan);
             }
 

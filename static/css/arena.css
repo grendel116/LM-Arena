@@ -402,7 +402,7 @@ body::-webkit-scrollbar-thumb:hover,
 
 .message {
     max-width: 70%;
-    min-width: 0;
+    min-width: min(210px, 100%);
     width: fit-content;
     box-sizing: border-box;
     padding: 16px 20px;
@@ -453,19 +453,21 @@ body::-webkit-scrollbar-thumb:hover,
 .message-bubbles-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    width: fit-content;
+    gap: 6px;
     max-width: 70%;
     min-width: 0;
+    width: fit-content;
     box-sizing: border-box;
 }
+
 .message-bubbles-container .message {
     max-width: 100%;
-    width: fit-content;
 }
+
 .message-row.user-row .message-bubbles-container {
     align-items: flex-end;
 }
+
 .message-row.follower-row .message-bubbles-container {
     align-items: flex-start;
 }
@@ -475,6 +477,7 @@ body::-webkit-scrollbar-thumb:hover,
 .message:has(> p > img:only-child),
 .message:has(> .message-text > img:only-child),
 .message:has(> .message-text > p > img:only-child) {
+    min-width: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
     padding: 0 !important;
@@ -485,8 +488,11 @@ body::-webkit-scrollbar-thumb:hover,
     font-size: 0.7rem;
     color: var(--text-muted);
     user-select: none;
-    margin-right: 6px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 /* Suppress actions toolbar completely on active typing messages */
@@ -2179,15 +2185,18 @@ body::-webkit-scrollbar-thumb:hover,
     transition: opacity 0.2s ease, transform 0.2s ease;
     pointer-events: none;
     z-index: 10;
+    max-width: calc(100% - 20px);
+    box-sizing: border-box;
 }
 
 .message-row.user-row .message-actions,
 .message.user .message-actions {
-    top: 0;
-    right: 14px;
-    bottom: auto;
-    left: auto;
-    transform: translateY(-50%);
+    bottom: 0;
+    left: 14px;
+    right: auto;
+    top: auto;
+    transform: translateY(50%);
+    flex-direction: row-reverse;
 }
 
 .message-row.follower-row .message-actions,
@@ -2197,13 +2206,14 @@ body::-webkit-scrollbar-thumb:hover,
     left: auto;
     top: auto;
     transform: translateY(50%);
+    flex-direction: row;
 }
 
 .message.user:hover .message-actions,
 .message-row.user-row:hover .message-actions {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(-50%);
+    transform: translateY(50%);
 }
 
 .message.follower:hover .message-actions,
@@ -2214,6 +2224,7 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 .action-icon-btn {
+    flex-shrink: 0;
     background: hsl(var(--slate-h), var(--slate-s), 12%);
     border: 1px solid var(--border-color);
     color: var(--text-muted);
