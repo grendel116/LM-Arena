@@ -6584,9 +6584,10 @@ function determineClientSpeaker(rawText, lastSpeaker) {
         }
     }
 
-    // 2. World action containing any asterisks -> The Game
-    if (textClean.includes('*')) {
-        return 'game';
+    // 2. Continuing an ongoing conversation with a follower: Follower speaks first!
+    // follower > user > follower OR follower > user*narration* > follower > game
+    if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
+        return lastSpeaker;
     }
 
     // 3. Follower name mentioned in spoken dialogue
@@ -6600,11 +6601,6 @@ function determineClientSpeaker(rawText, lastSpeaker) {
         if (re.test(textLower)) {
             return fid;
         }
-    }
-
-    // 4. Continuing an ongoing conversation with a follower
-    if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
-        return lastSpeaker;
     }
 
     return 'game';

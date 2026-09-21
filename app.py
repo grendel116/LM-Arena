@@ -812,6 +812,9 @@ def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls
             user_idx = i
             break
 
+    user_msg = chat_history[user_idx].get("text", "") if user_idx != -1 else ""
+    user_has_narration = "*" in user_msg
+
     current_turn_msgs = chat_history[user_idx + 1:] if user_idx != -1 else chat_history
     spoken_senders = []
     for m in current_turn_msgs:
@@ -832,18 +835,24 @@ def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls
             return True, unspoken_followers[0]
         return False, None
     else:
-        # Follower spoke first: Follower(s) -> other unspoken followers if present
+        # Follower spoke first: Follower(s) -> other unspoken followers
         if unspoken_followers:
             return True, unspoken_followers[0]
+        # Follower spoke first: chain to The Game ONLY if user included *narration*!
+        # follower > user > follower (no narration: turn ends)
+        # follower > user*narration* > follower > game (narration: Game chains after follower)
+        if user_has_narration and "game" not in spoken_senders:
+            return True, "game"
         return False, None
 
 
 def determine_first_speaker(user_message: str, prior_history: list, active_followers: list) -> str:
     """Intelligently routes the first response turn to The Game or an active follower.
-    - Explicit names / mentions of a follower -> that follower speaks first.
-    - Explicit world actions in *asterisks* -> The Game speaks first.
-    - Ongoing dialogue with a follower -> that follower speaks.
-    - Otherwise -> The Game narrates.
+    - Ongoing exchange with a follower -> that follower speaks first:
+        follower > user > follower
+        follower > user*narration* > follower > game
+    - Explicit @mention -> that follower speaks first.
+    - Otherwise -> The Game speaks first.
     """
     if not active_followers:
         return "game"
@@ -870,11 +879,19 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
             or f"@{fol_id.lower()}" in user_msg_lower):
             return fol_id
 
-    # 2. World actions containing any asterisks -> The Game
-    if "*" in user_msg_clean:
-        return "game"
+    # 2. Check the most recent assistant/follower speaker
+    last_assistant_speaker = None
+    for m in reversed(prior_history):
+        if m.get("role") in ("follower", "assistant"):
+            last_assistant_speaker = m.get("sender_id") or ("game" if m.get("role") == "follower" else None)
+            break
 
-    # 3. Follower name mentioned in spoken dialogue
+    # If the user was in an ongoing exchange with a follower, that follower speaks first!
+    # Follower responds to user; then if user included *narration*, Game chains after.
+    if last_assistant_speaker and last_assistant_speaker in active_followers:
+        return last_assistant_speaker
+
+    # 3. Follower name mentioned in user message
     for fol_id in active_followers:
         fname = get_follower_name(fol_id).lower()
         first_name = fname.split()[0]
@@ -882,16 +899,6 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
             or re.search(rf"\b{re.escape(first_name)}\b", user_msg_lower)
             or re.search(rf"\b{re.escape(fol_id.lower())}\b", user_msg_lower)):
             return fol_id
-
-    # 3. If the user was in an ongoing exchange with a follower in the last turn
-    for m in reversed(prior_history):
-        if m.get("role") in ("follower", "assistant"):
-            sid = m.get("sender_id")
-            if sid and sid in active_followers:
-                return sid
-            elif sid == "game":
-                return "game"
-            break
 
     return "game"
 
