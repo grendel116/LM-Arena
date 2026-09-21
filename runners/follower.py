@@ -46,43 +46,56 @@ def _save_settings(settings: dict):
         print(f"Error saving project settings: {e}")
 
 
-def get_active_follower() -> str:
+def get_active_followers() -> list[str]:
     try:
-        from core.save_manager import get_active_follower as sm_get_active_follower
-        fol = sm_get_active_follower()
-        if fol and fol not in ("game", "none", "solo"):
-            return fol
-        elif fol in ("none", "solo"):
-            return "game"
+        from core.save_manager import get_active_followers as sm_get_active_followers
+        fols = sm_get_active_followers()
+        if fols:
+            return fols
     except Exception:
         pass
 
     settings = _load_settings()
-    active_fol = settings.get("active_follower") or os.getenv("ACTIVE_FOLLOWER") or "ria_silmane"
+    active_fols = settings.get("active_followers")
+    if isinstance(active_fols, list) and active_fols:
+        return [f for f in active_fols if f and f not in ("game", "none", "solo")][:3]
 
-    target_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', active_fol))
-    if not os.path.isdir(target_folder) and active_fol != "ria_silmane":
-        active_fol = "ria_silmane"
-        target_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', active_fol))
+    single = settings.get("active_follower") or os.getenv("ACTIVE_FOLLOWER") or "riasilmane"
+    if single and single not in ("game", "none", "solo"):
+        return [single]
+    return []
 
-    os.environ["ACTIVE_FOLLOWER"] = active_fol
-    return active_fol
+
+def get_active_follower() -> str:
+    fols = get_active_followers()
+    return fols[0] if fols else "game"
+
+
+def set_active_followers(follower_ids: list[str]):
+    clean_ids = [f for f in follower_ids if f and f not in ("game", "none", "solo")][:3]
+    try:
+        from core.save_manager import set_active_followers as sm_set_active_followers
+        sm_set_active_followers(clean_ids)
+    except Exception:
+        pass
+
+    lead_id = clean_ids[0] if clean_ids else "game"
+    os.environ["ACTIVE_FOLLOWER"] = lead_id
+    settings = _load_settings()
+    settings["active_followers"] = clean_ids
+    settings["active_follower"] = lead_id
+    folders = [os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', fid)) for fid in clean_ids if os.path.isdir(os.path.join(PARENT_DIR, 'core', 'followers', fid))]
+    if not folders:
+        folders = [os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', 'game'))]
+    settings["folders"] = folders
+    _save_settings(settings)
+
 
 def set_active_follower(follower_id: str):
-    clean_id = None if follower_id in ("game", "none", "solo", "") else follower_id
-    try:
-        from core.save_manager import set_active_follower as sm_set_active_follower
-        sm_set_active_follower(clean_id)
-    except Exception:
-        pass
-
-    os.environ["ACTIVE_FOLLOWER"] = follower_id
-    settings = _load_settings()
-    settings["active_follower"] = follower_id
-    target_id = follower_id if (clean_id and os.path.isdir(os.path.join(PARENT_DIR, 'core', 'followers', follower_id))) else 'game'
-    default_folder = os.path.normpath(os.path.join(PARENT_DIR, 'core', 'followers', target_id))
-    settings["folders"] = [default_folder]
-    _save_settings(settings)
+    if not follower_id or follower_id in ("game", "none", "solo"):
+        set_active_followers([])
+    else:
+        set_active_followers([follower_id])
 
 def get_active_user() -> str:
     settings = _load_settings()

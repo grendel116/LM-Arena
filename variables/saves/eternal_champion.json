@@ -12,10 +12,13 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-09-21T01:09:12.214124",
-    "updated_at": "2026-09-21T01:11:05.758383",
-    "active_companion": "misty",
-    "active_follower": "misty"
+    "created_at": "2026-09-21T06:05:29.333425",
+    "updated_at": "2026-09-21T06:29:07.801549",
+    "active_companion": "breamaccius",
+    "active_followers": [
+      "breamaccius"
+    ],
+    "active_follower": "breamaccius"
   },
   "character": {
     "name": "Eternal Champion",
@@ -43,7 +46,7 @@
       "stamina_max": 72,
       "armor_rating": 0,
       "encumbrance_max": 120.0,
-      "encumbrance_current": 1.0,
+      "encumbrance_current": 1.1,
       "is_encumbered": false
     },
     "skills": {
@@ -67,6 +70,14 @@
         "equipped_slot": "body",
         "weight": 1.0,
         "quantity": 1
+      },
+      {
+        "name": "Cell Key",
+        "type": "key",
+        "weight": 0.1,
+        "quantity": 1,
+        "equipped": false,
+        "description": ""
       }
     ],
     "spells": [
@@ -139,9 +150,9 @@
   },
   "history": [
     {
-      "id": "first_mes_2c0ebcf1fb91",
+      "id": "first_mes_8e2656c0e10a",
       "role": "follower",
-      "timestamp": 1789978152.2141242
+      "timestamp": 1789995929.333425
     }
   ],
   "memories": {
@@ -158,26 +169,44 @@
   "profile": "A Nord from Skyrim.",
   "messages": [
     {
-      "id": "first_mes_ea39eb04463941968a5be596e83bc812",
+      "id": "first_mes_02cb45cc419746c2b93da87ea1fff963",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a small brass key resting on a narrow ledge. Further down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1789978152.2322445
+      "timestamp": 1789995929.3563225
     },
     {
-      "id": "usr_lkzl6pzzymuaytptz",
+      "id": "usr_zaxaowoj0mub9yqyk",
       "role": "user",
-      "text": "*I sit up slowly, feeling the cold bite of the stone against my bare skin. The damp chill clings to my rags as I survey the cramped cell. I look up at the glinting key high on the wall, then glance around for anything I can use to reach it.*",
+      "text": "*I lunge for the key on the ledge, straining upward with both arms to grasp the brass object.*",
       "image_url": null,
-      "timestamp": 1789978235.4143295
+      "timestamp": 1789996945.931606
     },
     {
-      "id": "prgm_accfca1af74f41e4ad4e4dd30c9fb13d",
+      "id": "game_29e0f25d21",
       "role": "follower",
-      "text": "*Shifting weight causes the chains to rattle against the wall, and a soft giggle echoes in the dim cell.*\n\nOhhh wow, **finally** someone interesting shows up! Thought I'd been rotting here forever with just the rats for company.\n\n*Tipping head back to look up at the Nord, letting the chains clink as one arm lifts to brush hair from her face.*\n\nYou look kinda lost, big guy. But hey, at least you're cute. That key's way too high for me to reach, though. My arms aren't exactly built for climbing walls.\n\n*Biting lower lip while glancing between the key and the Nord's bare chest.*\n\nThink you could get it down? Maybe if you're a real strong hero type? I could make it worth your while once we get these chains off me...",
-      "tool_calls": [],
+      "text": "*The brass key glints just beyond reach as you lunge upward, muscles straining against the cold stone wall.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Athletics",
+            "attribute_name": "Strength",
+            "dc": 12,
+            "reason": "Reach the key on the high ledge"
+          },
+          "id": "call_1789996954_0_911e"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Strength', 'dc': 12, 'reason': 'Reach the key on the high ledge'}",
+          "id": "call_1789996954_0_911e"
+        }
+      ],
       "tamrielic_date": {
         "day": 1,
         "month": "Hearthfire",
@@ -185,25 +214,92 @@
         "hour": 6,
         "era": "Third Era"
       },
-      "timestamp": 1789978249.055917,
-      "sender_id": "misty",
-      "sender_name": "Misty"
-    },
-    {
-      "id": "prgm_4d7d64b15241419e9951c5c9eb6b5d42",
-      "role": "follower",
-      "text": "*The damp cell remains quiet save for the dripping water and the distant scuttling of vermin. The brass key glints tantalizingly on its narrow ledge, nearly ten feet above the stone floor. The wall beneath it is smooth, offering no handholds or footholds for climbing.*\n\n*A rusted bed frame sits in the corner, its thin iron bars bent and brittle. Nearby, a loose plank of rotted wood has splintered off the wall, lying forgotten in the straw-covered corner.*\n\n*The torchlight outside the cell wavers, casting long, dancing shadows across the flagstones. The air grows colder as the torch burns lower, and the distant dripping grows louder in the stillness.*",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789978265.7449126,
+      "timestamp": 1789996954.4916265,
       "sender_id": "game",
+      "follower_id": null,
       "sender_name": "The Game"
+    },
+    {
+      "id": "usr_adiun80w7mub9z4mq",
+      "role": "user",
+      "text": "*I stretch my arm high, fingers closing around the cold metal of the key as it slides from the ledge into my grasp.*",
+      "image_url": null,
+      "timestamp": 1789996963.6454904
+    },
+    {
+      "id": "game_b9e5dbd3f8",
+      "role": "follower",
+      "text": "*Cold metal presses against your palm as your fingers close around the small key. It slips from the ledge and into your grasp, the brass surface chilled from the damp stone.*\n\n\n\n*The key fits the heavy iron lock of the cell door, its tumblers turning with a rusty click. The door creaks open, revealing a narrow corridor carved into living rock. Torches flicker in wall brackets, casting dancing shadows across the passage ahead. The distant drip of water echoes through the tunnels.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_add_item",
+          "args": {
+            "item_name": "Cell Key",
+            "item_type": "Key",
+            "quantity": 1
+          },
+          "id": "call_1789996969_0_185a"
+        },
+        {
+          "type": "response",
+          "name": "arena_add_item",
+          "response": "{'inventory_count': 2, 'item': 'Cell Key'}",
+          "id": "call_1789996969_0_185a"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1789996969.773367,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
+    },
+    {
+      "id": "usr_1a9k2f67zmub9zl2f",
+      "role": "user",
+      "text": "*I pocket the key and step carefully through the open door, scanning the dimly lit corridor for any signs of movement.*",
+      "image_url": null,
+      "timestamp": 1789996984.9470725
+    },
+    {
+      "id": "game_f15885a81c",
+      "role": "follower",
+      "text": "*The heavy cell door swings shut behind you with a hollow clang that reverberates down the corridor. You step into the narrow passage, boots scraping softly against wet stone. To the left, the tunnel continues into deeper shadow. To the right, a wooden door stands slightly ajar, a sliver of yellow light spilling from within.*\n\n*Movement catches your eye at the far end of the left passage—something small and brown scurries behind a pile of discarded straw. A faint scratching sound follows, then silence.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1789996994.5198462,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
+    },
+    {
+      "id": "fol_breamaccius_21bf0947f8",
+      "role": "follower",
+      "text": "*A sharp gasp echoes from the wooden door as the light shifts. A woman's silhouette appears in the doorway, her tall form outlined by the torchlight within. She steps forward into the corridor, the chains around her wrists rattling softly as she moves. Her gaze locks onto you immediately, green eyes narrowing in assessment.*\n\nYou. You are not one of the guards.\n\n*Her voice carries a practiced confidence despite her obvious restraints. She adjusts her stance, shifting her weight onto one hip as her expression softens into something approaching curiosity. The movement causes the leather of her bikini to creak faintly.*\n\nTell me, stranger. Did you come to liberate me, or are you simply another lost soul wandering these tunnels?",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1789997347.7891726,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius"
     }
   ],
   "memory_state": {

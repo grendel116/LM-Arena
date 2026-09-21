@@ -282,7 +282,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             filtered_history = [latest_user] if latest_user else []
 
         if not filtered_history:
-            return [{"role": "system", "content": sys_inst if _ARENA_DIRECTIVE_PROMPT in sys_inst else f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"}]
+            return [{"role": "system", "content": sys_inst}]
 
         latest_img_idx = -1
         has_new_image = bool((self.image_data and self.image_mime) or self.file_path_resolved)
@@ -326,8 +326,10 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                         else:
                             from core.follower_config import get_follower_name
                             sender_name = get_follower_name(msg_sender)
-                    if sender_name and not content_text.startswith(f"[{sender_name}]") and not content_text.startswith(f"{sender_name}:"):
-                        content_text = f"[{sender_name}]: {content_text}"
+                    role_label = "Referee" if msg_sender == "game" else "Follower"
+                    tag = f"[{sender_name} ({role_label})]"
+                    if sender_name and not content_text.startswith(f"[{sender_name}") and not content_text.startswith(f"{sender_name}:"):
+                        content_text = f"{tag}: {content_text}"
 
             if msg.get("tool_calls"):
                 for tc in msg["tool_calls"]:
@@ -360,7 +362,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             raw_messages.append({"role": role, "content": content_text})
 
         # Base System instructions and Directives (Tier 1 Core)
-        core_system = sys_inst if _ARENA_DIRECTIVE_PROMPT in sys_inst else f"{sys_inst}{_ARENA_DIRECTIVE_PROMPT}"
+        core_system = sys_inst
             
         try:
             from core.banned_words import get_banned_words_directive
@@ -550,26 +552,37 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 from core.follower_config import get_follower_name
                 sender_name = get_follower_name(sender_id)
 
+        follower_id = sender_id if sender_id not in ("game", "user") else None
         if history and history[-1]["role"] == "follower" and history[-1].get("sender_id", "game") == sender_id:
             history[-1].update({
                 "text": cleaned_text,
                 "tool_calls": tool_calls_data,
                 "tamrielic_date": t_date,
                 "sender_id": sender_id,
+                "follower_id": follower_id,
                 "sender_name": sender_name,
             })
             history[-1].pop('state_snapshot', None)
             return history[-1]
 
-        prefix = "itm_" if intermediate else "img_" if cleaned_text and cleaned_text.strip().startswith("![") and cleaned_text.strip().endswith(")") else "prgm_"
+        if intermediate:
+            msg_prefix = f"itm_{sender_id}_"
+        elif cleaned_text and cleaned_text.strip().startswith("![") and cleaned_text.strip().endswith(")"):
+            msg_prefix = f"img_{sender_id}_"
+        elif sender_id == "game":
+            msg_prefix = "game_"
+        else:
+            msg_prefix = f"fol_{sender_id}_"
+
         bot_msg = {
-            "id": f"{prefix}{uuid.uuid4().hex}",
+            "id": f"{msg_prefix}{uuid.uuid4().hex[:10]}",
             "role": "follower",
             "text": cleaned_text,
             "tool_calls": tool_calls_data,
             "tamrielic_date": t_date,
             "timestamp": time.time(),
             "sender_id": sender_id,
+            "follower_id": follower_id,
             "sender_name": sender_name,
         }
         history.append(bot_msg)

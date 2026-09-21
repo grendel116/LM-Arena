@@ -489,6 +489,16 @@ body::-webkit-scrollbar-thumb:hover,
     white-space: nowrap;
 }
 
+/* Suppress actions toolbar completely on active typing messages */
+.message:has(.typing-indicator) .message-actions,
+.message-row:has(.typing-indicator) .message-actions,
+.message.is-typing .message-actions,
+.message-row.is-typing .message-actions {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 
 /* Preview area */
 #preview-area {
@@ -1676,16 +1686,7 @@ body::-webkit-scrollbar-thumb:hover,
     box-shadow: 0 0 15px hsla(var(--blue-h), 90%, 60%, 0.3);
 }
 .deleted-image-placeholder {
-    padding: 12px;
-    background: hsla(var(--slate-h), 5%, 100%, 0.03);
-    border: 1px dashed hsla(var(--slate-h), 5%, 100%, 0.1);
-    border-radius: 8px;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    display: inline-flex;
-    align-items: center;
-    margin: 8px 0;
-    font-style: italic;
+    display: none !important;
 }
 
 .message-image-container {
@@ -2192,9 +2193,9 @@ body::-webkit-scrollbar-thumb:hover,
 .message-row.follower-row .message-actions,
 .message.follower .message-actions {
     bottom: 0;
-    right: 14px;
+    left: 14px;
+    right: auto;
     top: auto;
-    left: auto;
     transform: translateY(50%);
 }
 

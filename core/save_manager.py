@@ -69,32 +69,53 @@ def set_active_save_id(save_id: str) -> None:
     tmp_path.replace(ACTIVE_SAVE_FILE)
 
 
-def get_active_follower(save_id: str = None) -> str | None:
-    """Return the active party follower ID for the save slot, or None if solo."""
+def get_active_followers(save_id: str = None) -> list[str]:
+    """Return the active party follower IDs (up to 3) for the save slot."""
     try:
         bundle = read_save(save_id)
         meta = bundle.get("meta", {})
+        if "active_followers" in meta and isinstance(meta["active_followers"], list):
+            return [f for f in meta["active_followers"] if f and f not in ("game", "none", "solo")][:3]
         for key in ("active_follower", "active_companion"):
             if key in meta:
                 val = meta.get(key)
-                return None if val in (None, "none", "solo", "") else val
-        return "ria_silmane"
+                if val and val not in (None, "none", "solo", ""):
+                    return [val]
+        return ["riasilmane"]
     except Exception:
-        return "ria_silmane"
+        return ["riasilmane"]
+
+
+def set_active_followers(follower_ids: list[str] | str | None, save_id: str = None) -> None:
+    """Sets the active party followers (up to 3) for the given save slot."""
+    active_id = save_id or get_active_save_id()
+    bundle = read_save(active_id)
+    if isinstance(follower_ids, str):
+        follower_ids = [follower_ids] if follower_ids not in (None, "none", "solo", "") else []
+    elif not follower_ids:
+        follower_ids = []
+    
+    clean_ids = [f for f in follower_ids if f and f not in ("game", "none", "solo")][:3]
+    meta = bundle.setdefault("meta", {})
+    meta["active_followers"] = clean_ids
+    meta["active_follower"] = clean_ids[0] if clean_ids else None
+    meta["active_companion"] = clean_ids[0] if clean_ids else None
+    write_save(active_id, bundle)
+
+
+def get_active_follower(save_id: str = None) -> str | None:
+    followers = get_active_followers(save_id)
+    return followers[0] if followers else None
 
 
 get_active_companion = get_active_follower
 
 
 def set_active_follower(follower_id: str | None, save_id: str = None) -> None:
-    """Sets the active party follower for the given save slot."""
-    active_id = save_id or get_active_save_id()
-    bundle = read_save(active_id)
-    clean_id = None if follower_id in (None, "none", "solo", "") else follower_id
-    meta = bundle.setdefault("meta", {})
-    meta["active_follower"] = clean_id
-    meta["active_companion"] = clean_id
-    write_save(active_id, bundle)
+    if not follower_id or follower_id in ("game", "none", "solo"):
+        set_active_followers([], save_id)
+    else:
+        set_active_followers([follower_id], save_id)
 
 
 set_active_companion = set_active_follower
@@ -378,7 +399,7 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
             "tamrielic_date": "1 Hearthfire, 3E 389",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
-            "active_companion": "ria_silmane"
+            "active_companion": "riasilmane"
         },
         "character": sheet,
         "world": world_state,

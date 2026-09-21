@@ -660,7 +660,7 @@ class BaseRunner:
     async def replace_image_with_video_in_session(self, session_id: str, old_image_url: str, new_video_url: str) -> bool:
         raise NotImplementedError()
 
-    async def append_message_to_session(self, session_id: str, role: str, text: str) -> bool:
+    async def append_message_to_session(self, session_id: str, role: str, text: str, sender_id: str | None = None, sender_name: str | None = None) -> bool:
         raise NotImplementedError()
 
     async def append_voice_call(self, session_id: str, transcript: str, timestamp: float = None, start_time: float = None) -> bool:
@@ -818,12 +818,12 @@ class BaseRunner:
         return instructions
 
     def _get_system_instructions(self, session_id: str, user_message: str = None, speaker_id: str = "game") -> str:
-        from core.follower_config import compile_speaker_instructions
-        from core.save_manager import get_active_follower
+        from core.follower_config import compile_speaker_instructions, replace_placeholders
+        from core.save_manager import get_active_followers
         import re
 
-        follower_id = get_active_follower(session_id)
-        instructions = compile_speaker_instructions(speaker_id=speaker_id, follower_id=follower_id)
+        party = get_active_followers(session_id)
+        instructions = compile_speaker_instructions(speaker_id=speaker_id, party_followers=party)
         instructions = self._inject_system_memories(instructions, session_id)
 
         # Image and portrait generation directives
@@ -835,7 +835,7 @@ class BaseRunner:
                     "The user requested a portrait of their player character. Using the active player character's name, race, gender, class, worn gear, and appearance, "
                     "construct detailed comma-separated visual tags and output ONLY the tool call tag "
                     "`[generate_player_portrait(prompt=\"1man/1girl, solo, [race], [class], [appearance tags]...\")]`. "
-                    "Do NOT depict {{char}}. Do NOT write dialogue, story progression, or narrative descriptions. Output NOTHING except the tool call."
+                    "Output the tool call tag directly."
                 )
             elif any(k in msg_lower for k in ("environment", "landscape", "scenic view", "[generate_environment:")):
                 instructions += (
@@ -843,18 +843,16 @@ class BaseRunner:
                     "The user requested a visual depiction of the current environment and surroundings. "
                     "Construct detailed comma-separated visual tags describing the scenery, architecture, lighting, dungeon/wilderness atmosphere, and materials without any people or characters, and output ONLY the tool call tag "
                     "`[generate_environment_image(prompt=\"scenery, environment, landscape, [location], [lighting], [atmosphere], no humans...\")]`. "
-                    "Do NOT depict any characters. Do NOT write dialogue, story progression, or narrative descriptions. Output NOTHING except the tool call."
+                    "Output the tool call tag directly."
                 )
             else:
                 instructions += (
                     "\n\n# IMMEDIATE FOLLOWER PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
-                    "The user requested an image generation of {{char}}. You MUST output ONLY the tool call tag "
-                    "`[generate_follower_portrait(prompt=\"...\")]`. Do NOT write dialogue, story progression, "
-                    "or narrative descriptions. Output NOTHING except the tool call."
+                    "The user requested an image generation of {{char}}. Output ONLY the tool call tag "
+                    "`[generate_follower_portrait(prompt=\"...\")]`."
                 )
 
-        from core.follower_config import replace_placeholders
-        return replace_placeholders(instructions)
+        return replace_placeholders(instructions, follower_id=speaker_id, party_followers=party)
 
 
 BaseProgramRunner = BaseRunner
@@ -872,7 +870,7 @@ class OpenSourceRunner(BaseRunner):
         self._lock = threading.RLock()
 
     async def generate_impersonation(
-        self, prompt: str, system_instruction: str, model: str = None, temperature: float = 0.7
+        self, prompt: str, system_instruction: str, model: str = None, temperature: float = 0.7, max_tokens: int = 1536
     ) -> str:
         url = LOCAL_SERVER_URL
         headers = get_local_server_headers()
@@ -886,7 +884,7 @@ class OpenSourceRunner(BaseRunner):
                 {"role": "user", "content": prompt},
             ],
             "temperature": temperature,
-            "max_tokens": 512,
+            "max_tokens": max_tokens,
         }
         if not is_thinking_enabled() and isinstance(DISABLED_THINKING, dict):
             payload.update(DISABLED_THINKING)
@@ -1061,9 +1059,42 @@ class OpenSourceRunner(BaseRunner):
                 m.setdefault("prompt", image_prompt)
 
         role = msg.get("role", "user")
+        sender_id = msg.get("sender_id")
+        msg_id = msg.get("id", "")
+        if not sender_id:
+            if role == "user":
+                sender_id = "user"
+            elif msg_id.startswith("game_") or msg_id.startswith("first_mes"):
+                sender_id = "game"
+            elif msg_id.startswith("fol_"):
+                parts = msg_id.split("_")
+                sender_id = parts[1] if len(parts) > 1 else "game"
+            else:
+                sender_id = "game"
+
+        follower_id = msg.get("follower_id")
+        if not follower_id and sender_id not in ("game", "user"):
+            follower_id = sender_id
+
+        sender_name = msg.get("sender_name")
+        if not sender_name:
+            if sender_id == "game":
+                sender_name = "The Game"
+            elif sender_id == "user":
+                sender_name = "Hero"
+            else:
+                try:
+                    from core.follower_config import get_follower_name
+                    sender_name = get_follower_name(sender_id)
+                except Exception:
+                    sender_name = "Follower"
+
         return {
-            "id": msg.get("id", ""),
+            "id": msg_id,
             "role": role,
+            "sender_id": sender_id,
+            "follower_id": follower_id,
+            "sender_name": sender_name,
             "text": clean_text,
             "media": media,
             "tool_summary": tool_summary,
@@ -1272,9 +1303,7 @@ class OpenSourceRunner(BaseRunner):
         self._save_session_to_disk(session_id)
 
         if not speaker_id:
-            from core.save_manager import get_active_companion
-            comp = get_active_companion(session_id)
-            speaker_id = comp if (comp and comp not in ("game", "none", "solo")) else "game"
+            speaker_id = "game"
 
         new_input = new_text if new_text is not None else orig_msg.get("text", "")
         res = await self.run_async(
@@ -1290,6 +1319,54 @@ class OpenSourceRunner(BaseRunner):
         )
 
         self._save_session_to_disk(session_id)
+        return res
+
+    async def reroll_message(
+        self, session_id: str, msg_id: str, model: str = None
+    ) -> tuple:
+        if session_id not in self.sessions_history:
+            self._load_session_from_disk(session_id)
+
+        history = self.sessions_history.get(session_id)
+        if not history:
+            raise ValueError("Session not found")
+
+        msg_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
+        if msg_idx == -1:
+            raise ValueError(f"Message {msg_id} not found")
+
+        target_msg = history[msg_idx]
+        speaker_id = target_msg.get("sender_id")
+        if not speaker_id:
+            mid = target_msg.get("id", "")
+            if mid.startswith("game_") or mid.startswith("first_mes"):
+                speaker_id = "game"
+            elif mid.startswith("fol_"):
+                parts = mid.split("_")
+                speaker_id = parts[1] if len(parts) > 1 else "game"
+            else:
+                from runners.follower import get_active_follower
+                speaker_id = get_active_follower() or "game"
+
+        # Preserve any messages subsequent to this one so the surrounding narrative is kept
+        subsequent_messages = list(history[msg_idx + 1:])
+
+        # Truncate to the point right before this message was created
+        self.sessions_history[session_id] = history[:msg_idx]
+        self._save_session_to_disk(session_id)
+
+        res = await self.run_async(
+            session_id=session_id,
+            new_message_text=None,
+            model=model,
+            speaker_id=speaker_id,
+        )
+
+        # Restore subsequent messages in place
+        if subsequent_messages:
+            self.sessions_history[session_id].extend(subsequent_messages)
+            self._save_session_to_disk(session_id)
+
         return res
 
     async def reset_session(self, session_id: str):
@@ -1504,7 +1581,7 @@ class OpenSourceRunner(BaseRunner):
                 return True
             return False
 
-    async def append_message_to_session(self, session_id: str, role: str, text: str) -> bool:
+    async def append_message_to_session(self, session_id: str, role: str, text: str, sender_id: str | None = None, sender_name: str | None = None) -> bool:
         with self._lock:
             if session_id not in self.sessions_history:
                 self._load_session_from_disk(session_id)
@@ -1525,11 +1602,19 @@ class OpenSourceRunner(BaseRunner):
                 if text.strip().startswith("![") and text.strip().endswith(")"):
                     prefix = "img_"
             
-            from runners.follower import get_active_user
+            from runners.follower import get_active_user, get_active_follower
+            from core.follower_config import get_follower_name
             from core.world_engine import load_world_state
             active_user = get_active_user()
             world = load_world_state(active_user)
             t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
+
+            if role != 'user':
+                resolved_sender_id = sender_id or get_active_follower() or "misty"
+                resolved_sender_name = sender_name or get_follower_name(resolved_sender_id) or "Follower"
+            else:
+                resolved_sender_id = None
+                resolved_sender_name = None
 
             history = self.sessions_history[session_id]
             new_msg = {
@@ -1540,6 +1625,10 @@ class OpenSourceRunner(BaseRunner):
                 'tamrielic_date': t_date,
                 'timestamp': time.time()
             }
+            if resolved_sender_id:
+                new_msg['sender_id'] = resolved_sender_id
+                new_msg['sender_name'] = resolved_sender_name
+
             history.append(new_msg)
             self._save_session_to_disk(session_id)
             return True

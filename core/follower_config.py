@@ -13,7 +13,18 @@ if PARENT_DIR not in sys.path:
 from variables.settings import FOLLOWERS_DIR, SAVES_DIR
 from runners.follower import get_active_follower, get_active_user, get_player_name
 
-# Global formatting rules for narrative roleplay
+# Formatting rules for The Game (World referee & narrator)
+GAME_FORMATTING = (
+    "\n\n# NARRATION STYLE RULES (MANDATORY)\n"
+    "- Narration: Wrap EVERY paragraph and sentence of environmental description, sensory detail, NPC action, and world outcomes in *asterisks*.\n"
+    "- World NPCs & Questgivers: You portray all enemies, creatures, questgivers, guards, and world NPCs. Wrap their physical actions in *asterisks* and output their spoken speech in plain text without quotation marks.\n"
+    "- Followers: Traveling party members act and speak independently on their own turns. Produce no actions, reactions, or dialogue for followers.\n"
+    "- Claims: State all claims directly and affirmatively in single assertions.\n"
+    "- Style: Use short words and precise phrasing. Write with linear progression.\n"
+    "- Be succinct, atmospheric, and faithful to Elder Scrolls lore.\n"
+)
+
+# Global formatting rules for narrative roleplay (Followers)
 GLOBAL_FORMATTING = (
     "\n\n# MESSAGE FORMAT & STYLING RULES (MANDATORY)\n"
     "- Narration: Wrap EVERY paragraph, sentence, and phrase of narration, action, expression, physical movement, and environmental detail in *asterisks* (e.g. *The wall is slick with moisture, and the ledge sits high above.*).\n"
@@ -59,18 +70,29 @@ def follower_name() -> str:
     return get_follower_name()
 
 
-def replace_placeholders(text: str, user_name: str = None, follower_id: str = None) -> str:
-    """Replaces {{user}} and {{char}} placeholders with actual names."""
+def replace_placeholders(text: str, user_name: str = None, follower_id: str = None, party_followers: list = None) -> str:
+    """Replaces {{user}}, {{char1}}, {{char2}}, {{char3}}, and {{char}} placeholders with actual names."""
     if not text:
         return text
     if not user_name:
         user_name = get_player_name()
-    try:
+
+    from runners.follower import get_active_followers
+    party = party_followers if party_followers is not None else get_active_followers()
+
+    char1_name = get_follower_name(party[0]) if len(party) > 0 else ""
+    char2_name = get_follower_name(party[1]) if len(party) > 1 else ""
+    char3_name = get_follower_name(party[2]) if len(party) > 2 else ""
+
+    if follower_id and follower_id not in ("game", "the_game"):
         char_name = get_follower_name(follower_id)
-    except Exception:
-        char_name = "Follower"
+    else:
+        char_name = char1_name or "Follower"
 
     text = re.sub(r'(?i)\{\{user\}\}', user_name, text)
+    text = re.sub(r'(?i)\{\{char1\}\}', char1_name, text)
+    text = re.sub(r'(?i)\{\{char2\}\}', char2_name, text)
+    text = re.sub(r'(?i)\{\{char3\}\}', char3_name, text)
     text = re.sub(r'(?i)\{\{char\}\}', char_name, text)
     return text
 
@@ -82,7 +104,7 @@ def get_follower_greeting(follower_id: str = None) -> str:
     card = _load_card_data(follower_id)
     first_mes = card.get("first_mes")
     if first_mes:
-        return first_mes
+        return replace_placeholders(first_mes, follower_id=follower_id)
     return f"Greetings, {get_player_name()}. I stand ready to assist you in Tamriel."
 
 
@@ -104,7 +126,7 @@ def compile_instructions_from_card(card: dict) -> str:
 
     scenario = card.get("scenario", "").strip()
     if scenario:
-        prompt_parts.append(f"## SCENARIO & CONTEXT\n{scenario}")
+        prompt_parts.append(f"## ACTIVE SCENARIO & SETTING\n{scenario}")
 
     mes_example = (card.get("mes_example") or "").strip()
     if mes_example:
@@ -112,7 +134,11 @@ def compile_instructions_from_card(card: dict) -> str:
 
     system_prompt = card.get("system_prompt", "").strip()
     if system_prompt:
-        prompt_parts.append(f"## SPECIAL INSTRUCTIONS\n{system_prompt}")
+        prompt_parts.append(f"## CORE INSTRUCTIONS\n{system_prompt}")
+
+    post_history = card.get("post_history_instructions", "").strip()
+    if post_history:
+        prompt_parts.append(f"## ROLEPLAY GUIDELINES\n{post_history}")
 
     visual = (
         card.get("extensions", {})
@@ -124,7 +150,7 @@ def compile_instructions_from_card(card: dict) -> str:
     if visual:
         prompt_parts.append(f"## APPEARANCE\n{visual}")
 
-    return replace_placeholders("\n\n".join(prompt_parts))
+    return "\n\n".join(prompt_parts)
 
 
 def compile_instructions_from_json(card_json: dict) -> str:
@@ -139,6 +165,7 @@ def load_static_instructions(follower_id: str = None) -> str:
     """
     if not follower_id:
         follower_id = get_active_follower()
+        
     card = _load_card_data(follower_id)
     if card:
         instruction_content = compile_instructions_from_card(card)
@@ -151,7 +178,7 @@ def load_static_instructions(follower_id: str = None) -> str:
         if toolbelt:
             instruction_content += "\n\n" + toolbelt
     except Exception as e:
-        logging.error(f"[follower_config] Error loading toolbelt: {e}")
+        logging.error(f"[follower_config] Error retrieving toolbelt: {e}")
 
     return instruction_content
 
@@ -167,24 +194,29 @@ def load_dynamic_runtime_context() -> str:
 
 
 def load_user_instructions() -> str:
-    """Reads the active player profile context from the save file."""
-    try:
-        from core.save_manager import read_save
-        bundle = read_save()
-        profile_content = (bundle.get("profile") or "").strip()
-        if profile_content:
-            return f"\n\n# PLAYER PROFILE\n{profile_content}\n"
-    except Exception as e:
-        logging.error(f"Error reading profile from save: {e}")
-
+    """Loads player-specific persona and directives."""
     return f"\n\n# PLAYER PROFILE\n- Hero: {get_player_name()}\n"
 
 
-def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = None, companion_id: str = None) -> str:
+def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = None, companion_id: str = None, party_followers: list = None) -> str:
     """Compiles a complete system prompt specifically for the active speaker (Game or Follower)."""
     from utils.utils import _ARENA_DIRECTIVE_PROMPT
     player_name = get_player_name()
-    active_follower_id = follower_id or companion_id
+    
+    from runners.follower import get_active_followers
+    party = party_followers if party_followers is not None else get_active_followers()
+    active_target = follower_id or companion_id
+    if active_target and active_target not in ("game", "none", "solo") and active_target not in party:
+        party = [active_target] + [p for p in party if p != active_target][:2]
+
+    party_names = [get_follower_name(fid) for fid in party]
+
+    party_follower_entries = []
+    for fid in party:
+        fname = get_follower_name(fid)
+        party_follower_entries.append(f"{fname} (ID: {fid})")
+    party_list_str = ", ".join(party_follower_entries) if party_follower_entries else "None (traveling solo)"
+    party_names_str = ", ".join(party_names) if party_names else "none"
 
     if speaker_id == "game":
         card = _load_card_data("game")
@@ -198,59 +230,48 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
         except Exception as e:
             logging.error(f"[follower_config] Error loading toolbelt for Game: {e}")
 
-        # Room / party context
-        party_members = [f"{player_name} (Player)"]
-        if active_follower_id and active_follower_id not in ("game", "none", "solo"):
-            f_card = _load_card_data(active_follower_id)
-            follower_name = f_card.get("name") if f_card else active_follower_id.replace("_", " ").title()
-            party_members.append(f"{follower_name} (Follower)")
-            follower_note = (
-                f"- Active Party Follower: {follower_name}. {follower_name} is already present in the party and speaks and acts entirely for themselves.\n"
-                f"- ABSOLUTE RESTRICTION: NEVER narrate dialogue, spoken words, internal thoughts, physical actions, or reactions for {follower_name}. Never introduce {follower_name} as an NPC or narrate '{follower_name} says...' or 'The prisoner shifts...'. Focus purely on describing the physical environment, dungeon events, monsters, other non-party NPCs, and rule adjudications."
-            )
-        else:
-            follower_note = "- No followers currently in the traveling party. The player journeys alone through Tamriel."
-
-        adjudication_block = (
-            f"\n\n# TABLETOP ADJUDICATION ROSTER\n"
-            f"- World Referee & Narrator: You (The Game).\n"
-            f"- Traveling Party: {', '.join(party_members)}.\n"
-            f"{follower_note}\n"
-            f"- IDENTITY CONSTRAINT: You are The Game. You describe the world, direct monsters/NPCs, adjudicate rules, and call for skill checks.\n"
-            f"- NEVER SPEAK FOR FOLLOWERS: Do not write dialogue, actions, reactions, or thoughts for {follower_name if active_follower_id and active_follower_id not in ('game', 'none', 'solo') else 'party followers'}. They speak for themselves.\n"
-            f"- NEVER REPEAT FOLLOWER MESSAGES: Do not echo, re-state, or quote what party followers just said.\n"
-            f"- NEVER PUPPET THE PLAYER: Do not write dialogue or decisions for {player_name}.\n"
-            f"- NO SPEAKER TAGS: Do not output prefixes like '[Game]:', '[The Game]:', or '[{follower_name if active_follower_id and active_follower_id not in ('game', 'none', 'solo') else 'Follower'}]:'. Speak directly in third-person narrative.\n"
+        referee_block = (
+            f"\n\n# REFEREE ROLE DIRECTIVE (MANDATORY)\n"
+            f"You are The Game, the world referee and narrator.\n"
+            f"- Hero: {player_name}.\n"
+            f"- Followers: {party_list_str}.\n"
+            f"- Narrate the world environment, sensory details, dungeon hazards, and results of actions.\n"
+            f"- Direct and portray all world NPCs, questgivers, dungeon creatures, enemies, and townspeople.\n"
+            f"- Followers ({party_names_str}) and {player_name} speak and act on their own turns.\n"
+            f"- Never write speech, dialogue, actions, thoughts, or movements for {player_name} or followers ({party_names_str}). Let followers speak and act for themselves."
         )
 
-        base = replace_placeholders(game_instructions + load_user_instructions())
-        base += adjudication_block
+        base = game_instructions + load_user_instructions()
+        base += referee_block
         base += _ARENA_DIRECTIVE_PROMPT
-        base += GLOBAL_FORMATTING
+        base += GAME_FORMATTING
         base += load_dynamic_runtime_context()
-        return base
+        return replace_placeholders(base, party_followers=party)
 
     else:
-        # Speaker is a Follower (e.g. ria_silmane)
+        # Speaker is a Follower (e.g. riasilmane, breamaccius)
         card = _load_card_data(speaker_id)
         follower_name = card.get("name") if card else speaker_id.replace("_", " ").title()
         follower_instructions = compile_instructions_from_card(card) if card else f"# IDENTITY: {follower_name}\n"
+
+        other_followers = [fn for fn in party_names if fn != follower_name]
+        follower_context = f"- Fellow Followers: {', '.join(other_followers)}.\n" if other_followers else ""
 
         follower_block = (
             f"\n\n# FOLLOWER ROLE DIRECTIVES (MANDATORY)\n"
             f"You are {follower_name}, a follower traveling alongside {player_name}.\n"
             f"- Active Speaker: You ({follower_name}).\n"
-            f"- FOLLOWER ROLE: You are a follower offering counsel, lore, dialogue, and guidance. Never narrate the world or arbitrate game mechanics.\n"
-            f"- IDENTITY & SCOPE CONSTRAINT: Speak and act EXCLUSIVELY as {follower_name}. Only describe your own immediate physical gestures, posture, expressions, and spoken words.\n"
-            f"- DO NOT NARRATE THE SCENE OR ENVIRONMENT: Never describe dungeon rooms, corridors, surroundings, sounds, lighting, doors, or atmosphere not pertinent to your own body. All environment and scene narration belongs exclusively to The Game.\n"
-            f"- DO NOT NARRATE THE PLAYER: Never describe {player_name}'s body movements, hands, footing, physical sensations, or attempted actions. {player_name} describes their own actions.\n"
-            f"- DO NOT INTRODUCE YOURSELF: Do not narrate your arrival or describe your appearance in third person ('A woman emerges from the gloom...'). You are already present with {player_name}.\n"
-            f"- NEVER ACT AS REFEREE: Do not resolve outcomes, do not narrate combat or consequences, and do not call for checks. The Game will adjudicate and resolve all actions immediately after your turn.\n"
-            f"- NEVER PUPPET OTHERS: Do not write dialogue, reactions, or decisions for {player_name} or The Game.\n"
-            f"- NO SPEAKER TAGS: Do not output prefixes like '[{follower_name}]:' or '{follower_name}:'. Speak directly in your own distinct character persona and voice.\n"
+            f"{follower_context}"
+            f"- Deliver only {follower_name}'s spoken dialogue, physical gestures, emotions, and personal reactions.\n"
+            f"- Speak and act strictly from {follower_name}'s perspective and character persona.\n"
+            f"- Converse directly with {player_name}{(' and ' + ', '.join(other_followers)) if other_followers else ''}.\n"
+            f"- In exploration, speak, observe, and advise. Leave physical actions on the world to {player_name}.\n"
+            f"- The Game is the sole referee and narrator of the world. The Game narrates all story progression, environmental changes, dungeon mechanics, and player action outcomes.\n"
+            f"- React to the events and outcomes already established by The Game and {player_name}.\n"
+            f"- Never narrate world outcomes, scenery changes, lock/door results, combat resolution, or the consequences of {player_name}'s actions."
         )
 
-        base = replace_placeholders(follower_instructions + load_user_instructions())
+        base = replace_placeholders(follower_instructions + load_user_instructions(), follower_id=speaker_id, party_followers=party)
         base += follower_block
         base += GLOBAL_FORMATTING
         base += load_dynamic_runtime_context()

@@ -529,14 +529,27 @@ let chatContainer = document.getElementById('chat-container');
 let userInput = document.getElementById('user-input');
 let followerWelcomeMessage = (appConfig && appConfig.welcomeMessage) || null;
 let activePlayerName = (appConfig && appConfig.userName) || "";
+let activePartyFollowers = [];
+let activePartyFollowerNames = {};
 
 function replacePlaceholders(text) {
     if (!text) return text;
     const displayUser = getUserDisplayName();
-    const displayChar = activefollowerName || "follower";
+    const char1Id = activePartyFollowers[0];
+    const char2Id = activePartyFollowers[1];
+    const char3Id = activePartyFollowers[2];
+
+    const char1Name = (char1Id && activePartyFollowerNames[char1Id]) || (activefollowerName || "Follower");
+    const char2Name = (char2Id && activePartyFollowerNames[char2Id]) || "";
+    const char3Name = (char3Id && activePartyFollowerNames[char3Id]) || "";
+    const displayChar = char1Name || "Follower";
+
     return String(text)
         .replace(/\{\{user\}\}/gi, displayUser)
         .replace(/\{user\}/gi, displayUser)
+        .replace(/\{\{char1\}\}/gi, char1Name)
+        .replace(/\{\{char2\}\}/gi, char2Name)
+        .replace(/\{\{char3\}\}/gi, char3Name)
         .replace(/\{\{char\}\}/gi, displayChar)
         .replace(/\{char\}/gi, displayChar);
 }
@@ -622,6 +635,14 @@ async function softReloadApp() {
             followerWelcomeMessage = null;
         }
         
+        if (data.active_followers && Array.isArray(data.active_followers)) {
+            activePartyFollowers = data.active_followers;
+        } else if (data.active_follower && data.active_follower !== 'none' && data.active_follower !== 'solo') {
+            activePartyFollowers = [data.active_follower];
+        } else {
+            activePartyFollowers = [];
+        }
+
         if (data.active_follower) {
             activefollower = data.active_follower;
             currentAssistantId = data.active_follower;
@@ -3032,7 +3053,7 @@ function getProfileUrl(speakerId = null) {
         }
     }
     if (target === 'game' || target === 'none' || target === 'solo') {
-        return '/static/img/app_icon.png';
+        return `/static/img/app_icon.png?t=${profileCacheBuster}`;
     }
     return `/followers/${target}/profile.png?t=${profileCacheBuster}`;
 }
@@ -4063,13 +4084,21 @@ async function submitDescriptionImport() {
 }
 
 // --- renderfollowersList ---
-function renderfollowersList(assistants, activeId) {
+function renderfollowersList(assistants, activeIds) {
     const container = document.getElementById('assistants-list-container');
     container.innerHTML = '';
 
+    const activeList = Array.isArray(activeIds) ? activeIds : (activeIds && activeIds !== 'none' && activeIds !== 'solo' ? [activeIds] : []);
+    activePartyFollowers = activeList;
+
+    // Cache names for macro expansion
+    assistants.forEach(a => {
+        if (a.id && a.name) activePartyFollowerNames[a.id] = a.name;
+    });
+
     assistants.forEach(assistant => {
-        const isRia = assistant.id === 'ria_silmane';
-        const isActive = Boolean(activeId && activeId !== 'none' && activeId !== 'solo' && (assistant.id === activeId || assistant.active));
+        const isRia = assistant.id === 'riasilmane';
+        const isInParty = activeList.includes(assistant.id) || Boolean(assistant.in_party);
 
         const div = document.createElement('div');
         div.style.cssText = `
@@ -4077,27 +4106,28 @@ function renderfollowersList(assistants, activeId) {
             align-items: center;
             justify-content: space-between;
             padding: 12px 16px;
-            background: ${isActive ? 'hsla(var(--gold-h), var(--gold-s), 45%, 0.12)' : 'hsla(215, 5%, 100%, 0.03)'};
-            border: 1px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
-            box-shadow: ${isActive ? '0 0 14px var(--primary-glow)' : 'none'};
+            background: ${isInParty ? 'hsla(var(--gold-h), var(--gold-s), 45%, 0.12)' : 'hsla(215, 5%, 100%, 0.03)'};
+            border: 1px solid ${isInParty ? 'var(--primary-accent)' : 'var(--border-color)'};
+            box-shadow: ${isInParty ? '0 0 14px var(--primary-glow)' : 'none'};
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
+            margin-bottom: 8px;
         `;
-        div.title = isActive ? 'Click to deselect' : 'Click to select';
+        div.title = isInParty ? 'Click to deselect' : 'Click to select';
         div.onmouseover = () => {
-            if (!isActive) {
+            if (!isInParty) {
                 div.style.background = 'hsla(215, 5%, 100%, 0.07)';
                 div.style.borderColor = 'hsla(215, 5%, 100%, 0.2)';
             }
         };
         div.onmouseout = () => {
-            if (!isActive) {
+            if (!isInParty) {
                 div.style.background = 'hsla(215, 5%, 100%, 0.03)';
                 div.style.borderColor = 'var(--border-color)';
             }
         };
-        div.onclick = () => selectAssistant(isActive ? 'none' : assistant.id);
+        div.onclick = () => togglePartyFollower(assistant.id);
 
         const leftArea = document.createElement('div');
         leftArea.style.cssText = 'display: flex; align-items: center; gap: 12px;';
@@ -4114,7 +4144,7 @@ function renderfollowersList(assistants, activeId) {
                 height: 44px;
                 object-fit: cover;
                 background: hsla(215, 5%, 100%, 0.05);
-                border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+                border: 2px solid ${isInParty ? 'var(--primary-accent)' : 'var(--border-color)'};
                 border-radius: 50%;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 flex-shrink: 0;
@@ -4129,7 +4159,7 @@ function renderfollowersList(assistants, activeId) {
                     align-items: center;
                     justify-content: center;
                     background: hsla(215, 5%, 100%, 0.05);
-                    border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+                    border: 2px solid ${isInParty ? 'var(--primary-accent)' : 'var(--border-color)'};
                     border-radius: 50%;
                     color: var(--text-muted);
                     font-weight: 600;
@@ -4150,7 +4180,7 @@ function renderfollowersList(assistants, activeId) {
                 align-items: center;
                 justify-content: center;
                 background: hsla(215, 5%, 100%, 0.05);
-                border: 2px solid ${isActive ? 'var(--primary-accent)' : 'var(--border-color)'};
+                border: 2px solid ${isInParty ? 'var(--primary-accent)' : 'var(--border-color)'};
                 border-radius: 50%;
                 color: var(--text-muted);
                 font-weight: 600;
@@ -4168,10 +4198,10 @@ function renderfollowersList(assistants, activeId) {
         name.style.cssText = 'font-size: 0.95rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px;';
         name.innerText = assistant.name;
 
-        if (isActive) {
+        if (isInParty) {
             const activeBadge = document.createElement('span');
             activeBadge.style.cssText = 'font-size: 0.65rem; padding: 2px 7px; border-radius: 10px; background: hsla(var(--gold-h), var(--gold-s), 45%, 0.25); color: var(--gold-bright); border: 1px solid var(--border-color); font-weight: 700; letter-spacing: 0.02em;';
-            activeBadge.innerText = 'Active Follower';
+            activeBadge.innerText = 'Active';
             name.appendChild(activeBadge);
         }
         info.appendChild(name);
@@ -4187,7 +4217,6 @@ function renderfollowersList(assistants, activeId) {
         // Action buttons
         const actionArea = document.createElement('div');
         actionArea.style.cssText = 'display: flex; align-items: center; gap: 6px;';
-
 
         // Edit button
         const editBtn = document.createElement('button');
@@ -4236,6 +4265,49 @@ function renderfollowersList(assistants, activeId) {
     });
 }
 
+// --- togglePartyFollower ---
+async function togglePartyFollower(followerId) {
+    try {
+        const res = await fetch('/api/followers/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ follower_id: followerId, action: 'toggle' })
+        });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            showCustomAlert("Party Limit", errData.error || "Could not update party.");
+            return;
+        }
+        const data = await res.json();
+        if (data.status === 'success') {
+            followerSelectionChanged = true;
+            activePartyFollowers = data.active_followers || (data.active !== 'none' ? [data.active] : []);
+            activefollower = data.active;
+            currentAssistantId = data.active;
+            activefollowerName = data.character_name;
+            if (typeof activeAssistant !== 'undefined' && activeAssistant) {
+                activeAssistant.id = data.active;
+            }
+
+            // Immediately re-render list in the open modal
+            try {
+                let listRes = await fetch('/api/followers');
+                if (listRes.ok) {
+                    const listData = await listRes.json();
+                    if (listData.followers) {
+                        renderfollowersList(listData.followers, listData.active_followers || listData.active);
+                    }
+                }
+            } catch (err) {
+                console.error("Error refreshing followers list in modal:", err);
+            }
+        }
+    } catch (e) {
+        console.error("Error toggling follower:", e);
+        showCustomAlert("Error", "Could not connect to the server to update party.");
+    }
+}
+
 // --- selectAssistant ---
 async function selectAssistant(assistantId) {
     try {
@@ -4252,8 +4324,10 @@ async function selectAssistant(assistantId) {
         const data = await res.json();
         if (data.status === 'success') {
             followerSelectionChanged = true;
+            activePartyFollowers = data.active_followers || (data.active !== 'none' ? [data.active] : []);
             currentAssistantId = data.active;
             activefollower = data.active;
+            activefollowerName = data.character_name;
             if (typeof activeAssistant !== 'undefined' && activeAssistant) {
                 activeAssistant.id = data.active;
             }
@@ -4264,7 +4338,7 @@ async function selectAssistant(assistantId) {
                 if (listRes.ok) {
                     const listData = await listRes.json();
                     if (listData.followers) {
-                        renderfollowersList(listData.followers, listData.active);
+                        renderfollowersList(listData.followers, listData.active_followers || listData.active);
                     }
                 }
             } catch (err) {
@@ -4294,8 +4368,8 @@ async function deleteAssistant(assistantId, name) {
                 const data = await res.json();
                 if (data.status === 'success') {
                     showCustomAlert("Deleted", `Follower <strong>${name}</strong> has been deleted.`);
-                    if (data.switched_to === 'ria_silmane' || (typeof activefollower !== 'undefined' && activefollower === assistantId)) {
-                        selectAssistant('ria_silmane');
+                    if (data.switched_to === 'riasilmane' || (typeof activefollower !== 'undefined' && activefollower === assistantId)) {
+                        selectAssistant('riasilmane');
                     } else {
                         const listRes = await fetch('/api/followers');
                         const listData = await listRes.json();
@@ -4483,7 +4557,7 @@ async function savefollowerProfile() {
 }
 
 async function loadfollowerJournals() {
-    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
     if (!progId) return;
     const journalsContainer = document.getElementById('follower-journals-list');
     const memoriesContainer = document.getElementById('follower-memories-list');
@@ -5864,9 +5938,26 @@ function renderMessage(msg, isLive = false) {
     row.dataset.contentHash = computeContentHash(msg);
 
     if (role === 'follower') {
-        const speakerId = msg.sender_id || 'game';
-        const speakerName = msg.sender_name || (speakerId === 'game' ? 'The Game' : 'Follower');
+        let speakerId = msg.sender_id;
+        if (!speakerId) {
+            if (msgId && (msgId.startsWith('game_') || msgId.startsWith('first_mes'))) {
+                speakerId = 'game';
+            } else if (msgId && msgId.startsWith('fol_')) {
+                const parts = msgId.split('_');
+                speakerId = parts[1] || 'game';
+            } else {
+                speakerId = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo') ? activefollower : 'game';
+            }
+        }
+        let speakerName = msg.sender_name;
+        if (!speakerName) {
+            speakerName = (speakerId === 'game') ? 'The Game' : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[speakerId]) || (typeof activefollowerName !== 'undefined' && activefollowerName) || 'Follower');
+        }
         row.dataset.senderId = speakerId;
+        row.dataset.senderName = speakerName;
+        if (speakerId !== 'game' && speakerId !== 'user') {
+            row.dataset.followerId = speakerId;
+        }
 
         const avatarContainer = document.createElement('div');
         avatarContainer.className = 'avatar-container';
@@ -5874,7 +5965,7 @@ function renderMessage(msg, isLive = false) {
         if (speakerId === 'game') {
             const avatar = document.createElement('img');
             avatar.className = `avatar follower-avatar ${speakerId}-avatar`;
-            avatar.src = '/static/img/app_icon.png';
+            avatar.src = `/static/img/app_icon.png?t=${profileCacheBuster}`;
             avatar.alt = speakerName;
             avatar.title = `${speakerName}`;
             avatarContainer.appendChild(avatar);
@@ -6602,9 +6693,9 @@ async function sendMessage() {
 
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
-    const activeSpeaker = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo' && activefollower !== 'game') ? activefollower : 'game';
+    const activeSpeaker = 'game';
     const profileUrl = getProfileUrl(activeSpeaker);
-    const displayName = (activeSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
+    const displayName = 'The Game';
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
             <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
@@ -6658,7 +6749,9 @@ async function sendMessage() {
         }
         
         if (data.response !== undefined) {
-            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id, null, data.sender_id || 'game', data.sender_name || 'The Game');
+            const fallbackSenderId = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo') ? activefollower : 'game';
+            const fallbackSenderName = (fallbackSenderId === 'game') ? 'The Game' : ((typeof activefollowerName !== 'undefined' && activefollowerName) ? activefollowerName : 'Follower');
+            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id, null, data.sender_id || fallbackSenderId, data.sender_name || fallbackSenderName);
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
@@ -6703,7 +6796,7 @@ async function executeGroupChainTurn(targetSpeaker) {
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
     const profileUrl = getProfileUrl(targetSpeaker);
-    const displayName = (targetSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
+    const displayName = (targetSpeaker === 'game') ? 'The Game' : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[targetSpeaker]) || activefollowerName || 'Follower');
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
             <img class="avatar follower-avatar ${targetSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
@@ -6745,6 +6838,10 @@ async function executeGroupChainTurn(targetSpeaker) {
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
+
+        if (data.chain_continue && data.next_speaker && !(chatAbortController && chatAbortController.signal.aborted)) {
+            await executeGroupChainTurn(data.next_speaker);
+        }
     } catch (error) {
         if (chatContainer.contains(typingIndicatorRow)) {
             chatContainer.removeChild(typingIndicatorRow);
@@ -6992,11 +7089,9 @@ async function resendUserMessage(bubble) {
         heartElement.classList.add('jiggling');
     }
 
-    const typingIndicatorRow = document.createElement('div');
-    typingIndicatorRow.className = 'message-row follower-row';
-    const activeSpeaker = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo' && activefollower !== 'game') ? activefollower : 'game';
+    const activeSpeaker = 'game';
     const profileUrl = getProfileUrl(activeSpeaker);
-    const displayName = (activeSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
+    const displayName = 'The Game';
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
             <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
@@ -7039,7 +7134,9 @@ async function resendUserMessage(bubble) {
         
         const data = await response.json();
         if (data.response !== undefined) {
-            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id);
+            const fallbackSenderId = 'game';
+            const fallbackSenderName = 'The Game';
+            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id, null, data.sender_id || fallbackSenderId, data.sender_name || fallbackSenderName);
         } else if (data.error) {
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
@@ -7049,6 +7146,10 @@ async function resendUserMessage(bubble) {
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
+
+        if (data.chain_continue && data.next_speaker && !(chatAbortController && chatAbortController.signal.aborted)) {
+            await executeGroupChainTurn(data.next_speaker);
+        }
     } catch (error) {
         if (chatContainer.contains(typingIndicatorRow)) {
             chatContainer.removeChild(typingIndicatorRow);
@@ -7156,27 +7257,31 @@ async function rerollUserMessage(button) {
 // --- rerollFromMessage ---
 async function rerollFromMessage(button) {
     const bubble = button.closest('.message');
-    const row = bubble.closest('.message-row.follower-row');
-    if (!row) return;
+    const row = bubble ? bubble.closest('.message-row.follower-row') : null;
+    if (!row || !bubble) return;
     
-    let prevRow = row.previousElementSibling;
-    while (prevRow && !prevRow.classList.contains('user-row')) {
-        prevRow = prevRow.previousElementSibling;
-    }
-    
-    if (!prevRow) {
-        showCustomAlert("Reroll Error", "Cannot find preceding user message to reroll.");
-        return;
-    }
-    
-    const prevBubble = prevRow.querySelector('.message.user');
-    const msgId = prevBubble ? prevBubble.dataset.msgId : null;
+    const msgId = bubble.dataset.msgId || row.dataset.msgId;
     if (!msgId) {
-        showCustomAlert("Reroll Error", "Cannot find preceding user message ID.");
+        showCustomAlert("Reroll Error", "Cannot find message ID to reroll.");
         return;
     }
     
-    truncateChatAfter(prevRow);
+    const senderId = row.dataset.senderId || 'game';
+    const textDiv = bubble.querySelector('.message-text');
+    const origHtml = textDiv ? textDiv.innerHTML : bubble.innerHTML;
+    
+    bubble.classList.add('is-typing');
+    row.classList.add('is-typing');
+    
+    if (textDiv) {
+        textDiv.innerHTML = `
+            <div class="typing-indicator" style="padding: 6px 0;">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+    }
     
     hasApprovedToolThisTurn = false;
     const heartElement = document.querySelector('.heart-pulse');
@@ -7184,75 +7289,86 @@ async function rerollFromMessage(button) {
         heartElement.classList.add('jiggling');
     }
 
-    const typingIndicatorRow = document.createElement('div');
-    typingIndicatorRow.className = 'message-row follower-row';
-    const activeSpeaker = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none' && activefollower !== 'solo' && activefollower !== 'game') ? activefollower : 'game';
-    const profileUrl = getProfileUrl(activeSpeaker);
-    const displayName = (activeSpeaker === 'game') ? 'The Game' : (activefollowerName || 'Follower');
-    typingIndicatorRow.innerHTML = `
-        <div class="avatar-container">
-            <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">
-        </div>
-        <div class="message follower">
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        </div>
-    `;
-    chatContainer.appendChild(typingIndicatorRow);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-    
-    userInput.disabled = true;
-    userInput.placeholder = "";
-
     setGenerating(true);
     startToolPolling();
     if (chatAbortController) {
         chatAbortController.abort();
     }
     chatAbortController = new AbortController();
+    
     try {
-        const response = await fetch('/edit', {
+        const response = await fetch('/reroll_message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: sessionId,
                 msg_id: msgId,
-                new_text: null,
                 model: selectedModel
             }),
             signal: chatAbortController.signal
         });
         
-        if (chatContainer.contains(typingIndicatorRow)) {
-            chatContainer.removeChild(typingIndicatorRow);
-        }
-        
         const data = await response.json();
         if (data.response !== undefined) {
-            appendMessage('follower', data.response, null, data.tool_calls, true, data.timestamp, data.duration, false, data.follower_msg_id);
+            bubble.dataset.rawText = data.response;
+            if (data.follower_msg_id) {
+                bubble.dataset.msgId = data.follower_msg_id;
+                row.dataset.msgId = data.follower_msg_id;
+            }
+            if (data.sender_id) {
+                row.dataset.senderId = data.sender_id;
+            }
+            if (data.sender_name) {
+                row.dataset.senderName = data.sender_name;
+            }
+            
+            let actualResponse = data.response.replace(/<think>[\s\S]*?<\/think>/gi, '')
+                                              .replace(/\[think\][\s\S]*?\[\/think\]/gi, '')
+                                              .replace(/<!--[\s\S]*?-->/g, '')
+                                              .trim();
+            actualResponse = replacePlaceholders(actualResponse);
+            
+            let parsedHtml = actualResponse;
+            if (typeof marked !== 'undefined' && marked.parse) {
+                try {
+                    parsedHtml = marked.parse(actualResponse);
+                } catch (me) {
+                    console.error("Marked parsing error:", me);
+                }
+            }
+            
+            if (textDiv) {
+                textDiv.innerHTML = parsedHtml;
+                if (typeof hljs !== 'undefined' && hljs.highlightElement) {
+                    textDiv.querySelectorAll('pre code').forEach(block => {
+                        try { hljs.highlightElement(block); } catch (he) {}
+                    });
+                }
+                postProcessMessageHTML(textDiv);
+            }
+            
+            if (data.tool_calls && data.tool_calls.length > 0) {
+                renderCompletedLogs(bubble, data.tool_calls, data.duration);
+            }
         } else if (data.error) {
+            if (textDiv) textDiv.innerHTML = origHtml;
             let errMsg = data.error;
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
                 errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
-            appendMessage('follower', errMsg);
+            showCustomAlert("Reroll Failed", errMsg);
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
     } catch (error) {
-        if (chatContainer.contains(typingIndicatorRow)) {
-            chatContainer.removeChild(typingIndicatorRow);
-        }
-        if (error.name === 'AbortError') {
-            // Cancelled cleanly
-        } else {
-            appendMessage('follower', `*Connection error: ${error.message || 'The model was unreachable'}. Please try again.*`);
+        if (textDiv) textDiv.innerHTML = origHtml;
+        if (error.name !== 'AbortError') {
+            showCustomAlert("Reroll Failed", `Connection error: ${error.message || 'The model was unreachable'}. Please try again.`);
             handleToolReloadOrRecovery();
         }
     } finally {
+        bubble.classList.remove('is-typing');
+        row.classList.remove('is-typing');
         stopToolPolling();
         setGenerating(false);
         evaluateLatestMessageForSkillCheck();
@@ -7603,6 +7719,54 @@ function nextGalleryImage(event) {
     updateModalImage();
 }
 
+// --- removeImageMessageFromChat ---
+function removeImageMessageFromChat(mediaElement) {
+    if (!mediaElement) return;
+    const bubble = mediaElement.closest ? mediaElement.closest('.message') : null;
+    const row = mediaElement.closest ? mediaElement.closest('.message-row') : null;
+
+    if (bubble) {
+        const textDiv = bubble.querySelector('.message-text');
+        const hasText = textDiv && textDiv.textContent.trim().length > 0;
+        if (bubble.classList.contains('image-message') || !hasText) {
+            bubble.remove();
+        } else {
+            const container = (mediaElement.closest && (mediaElement.closest('.message-image-container') || mediaElement.closest('.message-video-container'))) || mediaElement;
+            if (container && container.parentElement) container.remove();
+        }
+    } else {
+        const container = (mediaElement.closest && (mediaElement.closest('.message-image-container') || mediaElement.closest('.message-video-container'))) || mediaElement;
+        if (container && container.parentElement) container.remove();
+    }
+
+    if (row) {
+        const remainingBubbles = row.querySelectorAll('.message');
+        let hasContent = false;
+        remainingBubbles.forEach(b => {
+            const txt = b.querySelector('.message-text');
+            if (txt && txt.textContent.trim().length > 0) hasContent = true;
+            if (b.querySelector('img, video')) hasContent = true;
+        });
+
+        if (!hasContent) {
+            const prevRow = row.previousElementSibling;
+            if (prevRow && prevRow.classList.contains('user-row')) {
+                const prevText = (prevRow.dataset.rawText || prevRow.textContent || '').trim();
+                if (prevText.includes('Generate a portrait of yourself') || prevText.includes('[GENERATE_IMAGE:') || prevText.includes('[GENERATE_IMAGEN:')) {
+                    prevRow.remove();
+                }
+            }
+            row.remove();
+        }
+    }
+}
+
+function cleanupDeletedImagePlaceholders() {
+    document.querySelectorAll('.deleted-image-placeholder').forEach(placeholder => {
+        removeImageMessageFromChat(placeholder);
+    });
+}
+
 // --- deleteCurrentImage ---
 async function deleteCurrentImage(event) {
     if (event) event.stopPropagation();
@@ -7621,50 +7785,24 @@ async function deleteCurrentImage(event) {
             });
             
             if (response.ok) {
-                // Update DOM
+                // Update DOM: remove the image and its message from the chat
+                const targetPath = getRelativePath(currentSrc);
                 const allImgs = document.querySelectorAll('img');
                 allImgs.forEach(img => {
-                    if (img.id === 'modal-img') return; // Skip modal preview image to prevent UI crash
-                    if (getRelativePath(img.src) === currentSrc) {
-                        const parent = img.parentElement;
-                        if (parent) {
-                            const placeholder = document.createElement('div');
-                            placeholder.className = 'deleted-image-placeholder';
-                            placeholder.innerHTML = `
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; display: inline-block; vertical-align: middle;">
-                                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                                    <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34"></path>
-                                    <circle cx="12" cy="13" r="4"></circle>
-                                </svg>
-                                <span>[Portrait Deleted]</span>
-                            `;
-                            parent.replaceChild(placeholder, img);
-                        }
+                    if (img.id === 'modal-img') return;
+                    if (getRelativePath(img.src) === targetPath || (img.src && img.src.includes(currentSrc))) {
+                        removeImageMessageFromChat(img);
                     }
                 });
                 const allVideos = document.querySelectorAll('video');
                 allVideos.forEach(vid => {
                     if (vid.id === 'modal-video' || vid.id === 'preview-video') return;
-                    if (getRelativePath(vid.src) === currentSrc) {
-                        const container = vid.closest('.message-video-container') || vid;
-                        const parent = container.parentElement;
-                        if (parent) {
-                            const placeholder = document.createElement('div');
-                            placeholder.className = 'deleted-image-placeholder';
-                            placeholder.innerHTML = `
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; display: inline-block; vertical-align: middle;">
-                                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                                    <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34"></path>
-                                    <circle cx="12" cy="13" r="4"></circle>
-                                </svg>
-                                <span>[Portrait Deleted]</span>
-                            `;
-                            parent.replaceChild(placeholder, container);
-                        }
+                    if (getRelativePath(vid.src) === targetPath || (vid.src && vid.src.includes(currentSrc))) {
+                        removeImageMessageFromChat(vid);
                     }
                 });
                 
-                serverImages = serverImages.filter(img => getRelativePath(img) !== currentSrc);
+                serverImages = serverImages.filter(img => getRelativePath(img) !== targetPath && !img.includes(currentSrc));
                 galleryImages.splice(currentGalleryIndex, 1);
                 if (galleryImages.length === 0) {
                     closeModal();
@@ -7706,35 +7844,27 @@ async function deleteSpecificImage(imageSrc, bubbleElement) {
             });
             
             if (response.ok) {
-                // Replace image with placeholder in DOM
+                const targetPath = getRelativePath(imageSrc);
                 const allImgs = document.querySelectorAll('img');
                 allImgs.forEach(img => {
                     if (img.id === 'modal-img') return;
-                    if (getRelativePath(img.src) === imageSrc || img.src.includes(imageSrc)) {
-                        const parent = img.parentElement;
-                        if (parent) {
-                            const placeholder = document.createElement('div');
-                            placeholder.className = 'deleted-image-placeholder';
-                            placeholder.innerHTML = `
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; display: inline-block; vertical-align: middle;">
-                                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                                    <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34"></path>
-                                    <circle cx="12" cy="13" r="4"></circle>
-                                </svg>
-                                <span>[Portrait Deleted]</span>
-                            `;
-                            parent.replaceChild(placeholder, img);
-                        }
+                    if (getRelativePath(img.src) === targetPath || (img.src && img.src.includes(imageSrc))) {
+                        removeImageMessageFromChat(img);
+                    }
+                });
+                const allVideos = document.querySelectorAll('video');
+                allVideos.forEach(vid => {
+                    if (vid.id === 'modal-video' || vid.id === 'preview-video') return;
+                    if (getRelativePath(vid.src) === targetPath || (vid.src && vid.src.includes(imageSrc))) {
+                        removeImageMessageFromChat(vid);
                     }
                 });
                 
-                // Hide actions on deleted image bubble
                 if (bubbleElement) {
-                    const act = bubbleElement.querySelector('.message-actions');
-                    if (act) act.style.display = 'none';
+                    removeImageMessageFromChat(bubbleElement);
                 }
                 if (Array.isArray(serverImages)) {
-                    serverImages = serverImages.filter(img => getRelativePath(img) !== imageSrc && !img.includes(imageSrc));
+                    serverImages = serverImages.filter(img => getRelativePath(img) !== targetPath && !img.includes(imageSrc));
                 }
             } else {
                 let errMsg = "Unknown error";
@@ -9726,7 +9856,7 @@ async function deleteLorebook(filename, name) {
 
 // --- loadDataBankFiles ---
 async function loadDataBankFiles() {
-    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
     const container = document.getElementById('databank-files-container');
     if (!container) return;
     container.innerHTML = '<div style="padding: 15px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">Loading files...</div>';
@@ -9787,7 +9917,7 @@ async function loadDataBankFiles() {
 
 // --- uploadDataBankFile ---
 async function uploadDataBankFile(event) {
-    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
     const file = event.target.files[0];
     if (!file) return;
     
@@ -9823,7 +9953,7 @@ async function uploadDataBankFile(event) {
 
 // --- scrapeDataBankUrl ---
 async function scrapeDataBankUrl() {
-    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
     const input = document.getElementById('databank-url-input');
     const url = input.value.trim();
     if (!url) return;
@@ -9857,7 +9987,7 @@ async function scrapeDataBankUrl() {
 
 // --- deleteDataBankFile ---
 async function deleteDataBankFile(docId, event) {
-    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
     event.stopPropagation();
     try {
         const res = await fetch('/api/databank/delete', {
@@ -9878,7 +10008,7 @@ async function deleteDataBankFile(docId, event) {
 
 // --- purgeDataBank ---
 function purgeDataBank() {
-    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'ria_silmane');
+    const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
     showCustomConfirm("Purge Knowledge Base", "Are you sure you want to delete all indexed files and empty this follower's vectorized databank?", async () => {
         const loader = document.getElementById('databank-loader');
         const loaderText = document.getElementById('databank-loader-text');
@@ -10259,7 +10389,7 @@ let lastInteractionTime = Date.now();
 let hasTriggeredProactive = false;
 let proactiveAbortController = null;
 let activefollowerName = "";
-let activefollower = "ria_silmane";
+let activefollower = "riasilmane";
 let availableModels = [];
 let connectionStatus = { remote_configured: false, gemini_configured: false, local_online: false };
 let modelInitPromise = null;
@@ -11370,34 +11500,20 @@ function drawVisualizer() {
     }
 }
 
-// Global error handler to replace missing/deleted portraits with a clean placeholder
+// Global error handler: remove deleted or missing portrait messages from chat
 document.addEventListener('error', function (event) {
-    if (event.target.tagName.toLowerCase() === 'img') {
+    if (event.target && event.target.tagName && event.target.tagName.toLowerCase() === 'img') {
         const src = event.target.src;
-        if (src && src.includes('/images/portraits/')) {
-            const parent = event.target.parentElement;
-            if (parent && parent.classList.contains('message-image-container')) {
-                const row = parent.closest('.message-row');
-                const rawText = (row && row.dataset && row.dataset.rawText ? row.dataset.rawText : '').trim();
-                if (row && !rawText) {
-                    row.remove();
-                    return;
-                }
-                const placeholder = document.createElement('div');
-                placeholder.className = 'deleted-image-placeholder';
-                placeholder.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; display: inline-block; vertical-align: middle;">
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                        <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34"></path>
-                        <circle cx="12" cy="13" r="4"></circle>
-                    </svg>
-                    <span>[Portrait Deleted]</span>
-                `;
-                parent.replaceChild(placeholder, event.target);
+        if (src && (src.includes('/images/portraits/') || src.includes('/images/'))) {
+            if (event.target.closest('.message-row') || event.target.closest('.message')) {
+                removeImageMessageFromChat(event.target);
             }
         }
     }
 }, true);
+
+// Initial cleanup of any leftover placeholder elements
+cleanupDeletedImagePlaceholders();
 
 // --- Native Model Management Helpers ---
 async function openNativeModelsFolder(folderType = 'root') {

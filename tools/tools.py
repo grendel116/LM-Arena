@@ -272,12 +272,13 @@ def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, s
     except Exception as e:
         return f"Error executing ComfyUI workflow: {e}"
 @track_tool_activity
-def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
+def generate_local_image(prompt: str, subject_type: str = "auto", target_follower: str = None) -> str:
     """Generates a local image using the in-process GPU diffusion engine.
     
     Args:
         prompt: A prompt describing what you are doing or the scene/expression.
         subject_type: "follower", "player", "environment", or "auto" (detected from prompt)
+        target_follower: Follower ID to focus on (e.g. "misty", "riasilmane"). If omitted, targets last mentioned.
         
     Returns:
         A markdown link to the generated image, or an error message.
@@ -288,10 +289,12 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
     import json
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    from runners.follower import get_active_follower
-    active_follower = get_active_follower()
+    from runners.follower import get_active_followers, get_active_follower
+    from core.follower_config import get_follower_name
 
+    party = get_active_followers()
     prompt_lower = prompt.lower()
+
     if subject_type == "auto":
         if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "dungeon corridor", "exterior", "architectural", "generate_environment")):
             mode = "environment"
@@ -304,6 +307,7 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
 
     img_details_val = ""
     neg_details_val = ""
+    target_fol_id = target_follower
 
     if mode == "player":
         try:
@@ -319,6 +323,7 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
             print(f"[DEBUG] Error reading player details for image generation: {pe}", flush=True)
             img_details_val = "Elder Scrolls fantasy character art, portrait, highly detailed, dramatic lighting"
             neg_details_val = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
+        save_fol_id = party[0] if party else "game"
     elif mode == "environment":
         try:
             from core.world_engine import load_world_state
@@ -332,10 +337,40 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
             print(f"[DEBUG] Error reading environment details for image generation: {ee}", flush=True)
             img_details_val = "scenery, environment landscape art, Elder Scrolls aesthetic, atmospheric lighting, detailed architecture, empty, no humans, no people"
             neg_details_val = "worst quality, low quality, character, human, person, 1girl, 1boy, face, portrait, deformed, watermark, text"
+        save_fol_id = party[0] if party else "game"
     else:
-        # Follower mode: Load image prompt tags from active follower profile
+        # Follower mode: Resolve target follower
+        if not target_fol_id:
+            # Check if any follower is explicitly named in prompt
+            for fid in party:
+                fn = get_follower_name(fid).lower()
+                if fn in prompt_lower or fid in prompt_lower:
+                    target_fol_id = fid
+                    break
+
+        if not target_fol_id and party:
+            # Check active session history for last follower mentioned or last speaker
+            try:
+                sid = current_session_id.get("default")
+                from runners.runners import runner
+                import asyncio
+                chat_history = asyncio.run(runner.get_history(sid))
+                for msg in reversed(chat_history):
+                    sid_sender = msg.get("sender_id")
+                    if sid_sender in party:
+                        target_fol_id = sid_sender
+                        break
+            except Exception:
+                pass
+
+        if not target_fol_id:
+            target_fol_id = party[0] if party else get_active_follower()
+
+        save_fol_id = target_fol_id or "game"
+
+        # Load image prompt tags from resolved follower card
         follower_json_path = os.path.normpath(os.path.join(
-            base_dir, "core", "followers", active_follower, f"{active_follower}.json"
+            base_dir, "core", "followers", save_fol_id, f"{save_fol_id}.json"
         ))
         if os.path.exists(follower_json_path):
             try:
@@ -347,11 +382,11 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
                 img_details_val = img_details.get("positive", "")
                 neg_details_val = img_details.get("negative", "")
             except Exception as e:
-                print(f"[DEBUG] Error reading active follower JSON for image generation: {e}", flush=True)
+                print(f"[DEBUG] Error reading follower JSON for image generation: {e}", flush=True)
 
     # Combine prompt and image details
     from core.follower_config import replace_placeholders
-    final_prompt = replace_placeholders(prompt)
+    final_prompt = replace_placeholders(prompt, follower_id=save_fol_id, party_followers=party)
     if img_details_val:
         if final_prompt and not final_prompt.endswith(","):
             final_prompt += ", "
@@ -361,7 +396,7 @@ def generate_local_image(prompt: str, subject_type: str = "auto") -> str:
 
     timestamp = int(time.time())
     local_filename = f"portrait_{timestamp}.png"
-    portraits_dir = os.path.normpath(os.path.join(base_dir, "core", "followers", active_follower, "portraits"))
+    portraits_dir = os.path.normpath(os.path.join(base_dir, "core", "followers", save_fol_id, "portraits"))
     local_path = os.path.join(portraits_dir, local_filename)
     os.makedirs(portraits_dir, exist_ok=True)
 
@@ -672,7 +707,7 @@ def generate_video_from_image(image_path: str, prompt: str) -> str:
             print(f"[COMFY VIDEO] Warning: Failed to clean up temp file: {e_clean}")
             
         # Get relative public path
-        # E.g. core/followers/ria_silmane/portraits/portrait_123.mp4 -> /images/portraits/portrait_123.mp4
+        # E.g. core/followers/riasilmane/portraits/portrait_123.mp4 -> /images/portraits/portrait_123.mp4
         normalized_path = os.path.normpath(save_path)
         parts = normalized_path.split(os.sep)
         try:
@@ -885,9 +920,9 @@ def arena_recruit_follower(follower_name, follower_race="Imperial", follower_cla
     try:
         import os, re, time, json
         from variables.settings import BASE_DIR, FOLLOWERS_DIR
-        follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', follower_name).lower()
+        follower_id = re.sub(r'[^a-zA-Z0-9]', '', follower_name).lower()
         if not follower_id:
-            follower_id = f"follower_{int(time.time())}"
+            follower_id = f"follower{int(time.time())}"
             
         follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
         if not os.path.exists(follower_path):

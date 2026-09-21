@@ -108,9 +108,9 @@
     },
     {
       "uid": 7012,
-      "key": ["the blades", "blades", "emperor bodyguard"],
+      "key": ["the blades", "blades", "emperor bodyguard", "shadow resistance", "grandmaster", "blades agent", "blades cell"],
       "secondary_key": [],
-      "content": "The Blades serve as the secret intelligence agency and bodyguards of the true Septim Emperors. Under Jagar Tharn's usurpation during the Imperial Simulacrum, the Blades have been hunted, infiltrated, or driven underground.",
+      "content": "The Blades serve as the secret intelligence agency and bodyguards of the true Septim Emperors. Right after he trapped Uriel Septim VII in Oblivion, Jagar Tharn used his imperial authority to systematically dismantle, arrest, and exile the Blades. He manufactured false charges of treason or quietly sent their cells on suicide missions to get them out of the capital. The remaining Blades went deep underground across Tamriel. They refused to serve the Imperial City and instead focused on surviving, preserving their network, and operating as a shadow resistance.",
       "enabled": true,
       "priority": 10,
       "probability": 100

@@ -25,9 +25,10 @@ variables/*
 variables/saves/*
 !variables/saves/eternal_champion.json
 
-# Ignore all companion profiles under core/followers except the default Arena guide
+# Ignore all companion profiles under core/followers except default Arena guide and Host Game
 core/followers/*
-!core/followers/ria_silmane/
+!core/followers/riasilmane/
+!core/followers/game/
 
 # Ignore user-generated dynamic program sessions, databases, custom generated portraits, media, and memories
 core/followers/*/sessions/

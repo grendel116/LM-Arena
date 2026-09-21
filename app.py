@@ -273,7 +273,7 @@ def index():
     
     tts_auto_speak = os.getenv("TTS_AUTO_SPEAK", "false").lower() == "true"
     tts_provider = os.getenv("TTS_PROVIDER", "local").lower()
-    active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
+    active_follower = os.getenv("ACTIVE_follower", "riasilmane")
     theme = load_theme(active_follower)
 
     from runners.follower import get_active_user, get_player_name
@@ -376,7 +376,7 @@ def save_profile_picture():
         from core.save_manager import get_active_follower
         follower_id = data.get('follower_id') or get_active_follower()
         if not follower_id or follower_id in ('game', 'none', 'solo'):
-            follower_id = 'ria_silmane'
+            follower_id = 'riasilmane'
         portraits_dir = os.path.join(FOLLOWERS_DIR, follower_id, 'portraits')
         os.makedirs(portraits_dir, exist_ok=True)
         dest_path = os.path.join(portraits_dir, 'profile.png')
@@ -418,7 +418,7 @@ def crop_profile_picture():
         
         follower_id = data.get('follower_id') or get_active_follower()
         if not follower_id or follower_id in ('game', 'none', 'solo'):
-            follower_id = 'ria_silmane'
+            follower_id = 'riasilmane'
         follower_dir = os.path.join(FOLLOWERS_DIR, follower_id)
         
         from utils.utils import _get_safe_local_path
@@ -729,10 +729,11 @@ def history():
         
         from runners.follower import get_player_name
         from core.follower_config import get_follower_greeting, get_follower_name, replace_placeholders
-        from core.save_manager import get_active_companion
+        from core.save_manager import get_active_followers
         user_name = get_player_name()
-        active_companion = get_active_companion(session_id)
-        welcome_message = replace_placeholders(get_follower_greeting("game"), user_name=user_name)
+        active_followers = get_active_followers(session_id)
+        active_companion = active_followers[0] if active_followers else None
+        welcome_message = replace_placeholders(get_follower_greeting("game"), user_name=user_name, party_followers=active_followers)
         char_name = "The Game"
         
         theme = load_theme(active_companion or "game")
@@ -743,6 +744,7 @@ def history():
             'user_name': user_name,
             'active_follower': active_companion or 'none',
             'active_companion': active_companion or 'none',
+            'active_followers': active_followers,
             'theme': theme,
             'welcome_message': welcome_message
         })
@@ -782,7 +784,7 @@ def upload_media():
     ext = os.path.splitext(filename)[1].lower()
     unique_name = f"upload_{int(time.time())}_{uuid.uuid4().hex}{ext}"
 
-    active_follower = os.getenv("ACTIVE_follower", "ria_silmane")
+    active_follower = os.getenv("ACTIVE_follower", "riasilmane")
     uploads_dir = os.path.normpath(os.path.join('core', 'followers', active_follower, 'uploads'))
     os.makedirs(uploads_dir, exist_ok=True)
     
@@ -811,11 +813,11 @@ def chat():
     start_time = time.time()
 
     try:
-        # Determine turn order: Follower speaks first, The Game resolves second
-        from core.save_manager import get_active_follower
+        # Turn order: The Game resolves player actions and world outcomes first.
+        # Followers then speak in sequence to react and converse.
+        from core.save_manager import get_active_followers
         from core.follower_config import get_follower_name
-        active_follower = get_active_follower(session_id)
-        has_follower = bool(active_follower and active_follower not in ("game", "none", "solo"))
+        active_followers = get_active_followers(session_id)
 
         user_msg_lower = (user_message or "").lower()
         is_image_request = any(k in user_msg_lower for k in (
@@ -824,9 +826,27 @@ def chat():
             "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"
         ))
 
-        first_speaker = active_follower if has_follower else "game"
-        chain_continue = True if (has_follower and not is_image_request) else False
-        next_speaker = "game" if (has_follower and not is_image_request) else None
+        # Check for direct addressing (e.g. @Brea or "Brea,")
+        addressed_follower = None
+        for fol_id in active_followers:
+            fname = get_follower_name(fol_id).lower()
+            if f"@{fname}" in user_msg_lower or f"@{fol_id}" in user_msg_lower or user_msg_lower.startswith(f"{fname},") or user_msg_lower.startswith(f"{fname}:"):
+                addressed_follower = fol_id
+                break
+
+        first_speaker = "game"
+        if is_image_request:
+            chain_continue = False
+            next_speaker = None
+        elif addressed_follower:
+            chain_continue = True
+            next_speaker = addressed_follower
+        elif active_followers:
+            chain_continue = True
+            next_speaker = active_followers[0]
+        else:
+            chain_continue = False
+            next_speaker = None
 
         msg_id = request.json.get('msg_id')
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
@@ -860,6 +880,11 @@ def chat():
 
         if not sender_name:
             sender_name = get_follower_name(first_speaker)
+
+        # Restrict followers from speaking after tool calls
+        if tool_calls:
+            chain_continue = False
+            next_speaker = None
 
         return jsonify({
             'response': response_text,
@@ -895,9 +920,10 @@ def continue_turn():
     session_id = request.json.get('session_id', 'default')
     selected_model = request.json.get('model')
     speaker_id = request.json.get('speaker_id')
+    from core.save_manager import get_active_followers
+    active_followers = get_active_followers(session_id)
     if not speaker_id:
-        from core.save_manager import get_active_companion
-        speaker_id = get_active_companion(session_id) or "game"
+        speaker_id = active_followers[0] if active_followers else "game"
 
     import tools.tools as tools
     tools.current_session_id.set(session_id)
@@ -934,6 +960,22 @@ def continue_turn():
             from core.follower_config import get_follower_name
             sender_name = get_follower_name(speaker_id)
 
+        # Compute next speaker in group turn chain
+        chain_continue = False
+        next_speaker = None
+        if speaker_id == "game":
+            if active_followers:
+                next_speaker = active_followers[0]
+                chain_continue = True
+        elif speaker_id in active_followers:
+            idx = active_followers.index(speaker_id)
+            if idx + 1 < len(active_followers):
+                next_speaker = active_followers[idx + 1]
+                chain_continue = True
+            else:
+                chain_continue = False
+                next_speaker = None
+
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
@@ -942,8 +984,8 @@ def continue_turn():
             'follower_msg_id': follower_msg_id,
             'sender_id': speaker_id,
             'sender_name': sender_name,
-            'chain_continue': False,
-            'next_speaker': None,
+            'chain_continue': chain_continue,
+            'next_speaker': next_speaker,
         })
     except asyncio.CancelledError:
         return jsonify({'cancelled': True, 'status': 'cancelled'})
@@ -975,7 +1017,7 @@ def edit():
     start_time = time.time()
 
     try:
-        speaker_id = request.json.get('speaker_id')
+        speaker_id = request.json.get('speaker_id') or 'game'
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
             runner.edit_turn(
                 session_id=session_id,
@@ -1006,6 +1048,14 @@ def edit():
                     sender_id = msg.get('sender_id')
                     break
 
+        from core.save_manager import get_active_followers
+        active_followers = get_active_followers(session_id)
+        chain_continue = False
+        next_speaker = None
+        if (sender_id or speaker_id or 'game') == 'game' and active_followers and not tool_calls:
+            chain_continue = True
+            next_speaker = active_followers[0]
+
         return jsonify({
             'response': response_text,
             'tool_calls': tool_calls,
@@ -1015,6 +1065,8 @@ def edit():
             'follower_msg_id': follower_msg_id,
             'sender_id': sender_id or speaker_id or 'game',
             'sender_name': sender_name or 'The Game',
+            'chain_continue': chain_continue,
+            'next_speaker': next_speaker,
         })
     except asyncio.CancelledError:
         print(f"[CANCEL] Edit generation cancelled for session {session_id}")
@@ -1024,6 +1076,64 @@ def edit():
         })
     except Exception as e:
         print(f"Error occurred during edit: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        from runners.runners import cancelled_sessions
+        cancelled_sessions.discard(session_id)
+
+@app.route('/reroll_message', methods=['POST'])
+@requires_auth
+def reroll_message_route():
+    session_id = request.json.get('session_id', 'default')
+    msg_id = request.json.get('msg_id')
+    selected_model = request.json.get('model')
+
+    import tools.tools as tools
+    tools.current_session_id.set(session_id)
+    with tools.session_tool_calls_lock:
+        tools.session_tool_calls[session_id] = []
+
+    from runners.runners import cancelled_sessions
+    cancelled_sessions.discard(session_id)
+    start_time = time.time()
+
+    try:
+        response_text, tool_calls, _, follower_msg_id = asyncio.run(
+            runner.reroll_message(
+                session_id=session_id,
+                msg_id=msg_id,
+                model=selected_model,
+            )
+        )
+        duration = round(time.time() - start_time, 1)
+        response_text = sanitize_response(response_text, session_id, follower_msg_id)
+
+        chat_history = asyncio.run(runner.get_history(session_id))
+        follower_timestamp = None
+        sender_name = None
+        sender_id = None
+        if follower_msg_id:
+            for msg in reversed(chat_history):
+                if msg.get('id') == follower_msg_id:
+                    follower_timestamp = msg.get('timestamp')
+                    sender_name = msg.get('sender_name')
+                    sender_id = msg.get('sender_id')
+                    break
+
+        return jsonify({
+            'response': response_text,
+            'tool_calls': tool_calls,
+            'timestamp': follower_timestamp or time.time(),
+            'duration': duration,
+            'follower_msg_id': follower_msg_id,
+            'sender_id': sender_id or 'game',
+            'sender_name': sender_name or 'The Game',
+            'chain_continue': False,
+        })
+    except asyncio.CancelledError:
+        return jsonify({'cancelled': True, 'status': 'cancelled'})
+    except Exception as e:
+        print(f"Error in reroll_message route: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         from runners.runners import cancelled_sessions
@@ -1438,76 +1548,78 @@ def regenerate_image():
         from urllib.parse import urlparse
         old_image_url = urlparse(old_image_url).path
 
-    import os
-    filename = os.path.basename(old_image_url)
+    if not _image_mutex.acquire(blocking=True, timeout=120.0):
+        return jsonify({'error': 'Image generation engine is currently busy. Please retry in a moment.'}), 429
 
-    # 1. Try to find prompt and image type (mode/subject_type) in sidecar JSON
     try:
-        from runners.follower import get_active_follower
-        active_follower = get_active_follower()
-        filename_only = os.path.basename(old_image_url)
-        json_path = find_image_sidecar_json(filename_only, active_follower)
+        import os
+        filename = os.path.basename(old_image_url)
 
-        if json_path and os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                meta = json.load(f)
-                if not prompt:
-                    prompt = meta.get('prompt')
-                if not subject_type:
-                    subject_type = meta.get('mode') or meta.get('subject_type')
-                print(f"[DEBUG REROLL] Sidecar JSON metadata: prompt={prompt}, subject_type={subject_type}")
-    except Exception as je:
-        print(f"Error reading sidecar JSON: {je}")
-
-    # 2. Try to find prompt / image type in session history (fallback)
-    if not prompt or not subject_type:
+        # 1. Try to find prompt and image type (mode/subject_type) in sidecar JSON
         try:
-            chat_history = asyncio.run(runner.get_history(session_id))
-            for msg in chat_history:
-                tool_calls = msg.get('tool_calls', [])
-                if not tool_calls:
-                    continue
-                calls = {}
-                for tc in tool_calls:
-                    tc_name = tc.get('name')
-                    if tc.get('type') == 'call' and tc_name in ('generate_follower_portrait', 'generate_player_portrait', 'generate_environment_image', 'generate_local_image', 'generate_imagen'):
-                        call_id = tc.get('id')
-                        args = tc.get('args', {})
-                        p = args.get('prompt')
-                        st = args.get('subject_type') or args.get('mode')
-                        if not st:
-                            if tc_name == 'generate_player_portrait':
-                                st = 'player'
-                            elif tc_name == 'generate_environment_image':
-                                st = 'environment'
-                            elif tc_name == 'generate_follower_portrait':
-                                st = 'follower'
-                        if call_id:
-                            calls[call_id] = (p, st)
-                for tc in tool_calls:
-                    if tc.get('type') == 'response' and tc.get('name') in ('generate_follower_portrait', 'generate_player_portrait', 'generate_environment_image', 'generate_local_image', 'generate_imagen'):
-                        call_id = tc.get('id')
-                        response_val = tc.get('response', '')
-                        if call_id in calls and filename in response_val:
-                            p_found, st_found = calls[call_id]
-                            if not prompt and p_found:
-                                prompt = p_found
-                            if not subject_type and st_found:
-                                subject_type = st_found
-                            print(f"[DEBUG REROLL] Found in session history: prompt={prompt}, subject_type={subject_type}")
-                            break
-                if prompt and subject_type:
-                    break
-        except Exception as he:
-            print(f"Error scanning session history for prompt/type: {he}")
+            from runners.follower import get_active_follower
+            active_follower = get_active_follower()
+            json_path = find_image_sidecar_json(filename, active_follower)
 
-    if not prompt:
-        return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
+            if json_path and os.path.exists(json_path):
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    meta = json.load(f)
+                    if not prompt:
+                        prompt = meta.get('prompt')
+                    if not subject_type:
+                        subject_type = meta.get('subject_type') or meta.get('mode')
+                    print(f"[DEBUG REROLL] Found in sidecar JSON: prompt={prompt}, subject_type={subject_type}")
+        except Exception as je:
+            print(f"Error reading sidecar JSON: {je}")
 
-    if session_id in cancelled_sessions:
-        return jsonify({'error': 'Image regeneration cancelled by user.'}), 400
+        # 2. Check session history for prompt and subject_type
+        if not prompt or not subject_type:
+            try:
+                chat_history = asyncio.run(runner.get_history(session_id))
+                for msg in chat_history:
+                    tool_calls = msg.get('tool_calls', [])
+                    if not tool_calls:
+                        continue
+                    calls = {}
+                    for tc in tool_calls:
+                        if tc.get('type') == 'call' and tc.get('name') in (
+                            'generate_follower_portrait', 'generate_player_portrait', 'generate_environment_image', 'generate_local_image', 'generate_imagen'
+                        ):
+                            call_id = tc.get('id')
+                            args = tc.get('args', {})
+                            p = args.get('prompt')
+                            st = args.get('subject_type')
+                            if not st:
+                                if tc.get('name') == 'generate_follower_portrait': st = 'follower'
+                                elif tc.get('name') == 'generate_player_portrait': st = 'player'
+                                elif tc.get('name') == 'generate_environment_image': st = 'environment'
+                            if call_id and p:
+                                calls[call_id] = (p, st)
+                    for tc in tool_calls:
+                        if tc.get('type') == 'response' and tc.get('name') in (
+                            'generate_follower_portrait', 'generate_player_portrait', 'generate_environment_image', 'generate_local_image', 'generate_imagen'
+                        ):
+                            call_id = tc.get('id')
+                            response_val = tc.get('response', '')
+                            if call_id in calls and filename in response_val:
+                                p_found, st_found = calls[call_id]
+                                if not prompt and p_found:
+                                    prompt = p_found
+                                if not subject_type and st_found:
+                                    subject_type = st_found
+                                print(f"[DEBUG REROLL] Found in session history: prompt={prompt}, subject_type={subject_type}")
+                                break
+                    if prompt and subject_type:
+                        break
+            except Exception as he:
+                print(f"Error scanning session history for prompt/type: {he}")
 
-    try:
+        if not prompt:
+            return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
+
+        if session_id in cancelled_sessions:
+            return jsonify({'error': 'Image regeneration cancelled by user.'}), 400
+
         import tools.tools as tools
         tools.current_session_id.set(session_id)
         with tools.session_tool_calls_lock:
@@ -1541,22 +1653,61 @@ def regenerate_image():
     except Exception as e:
         print(f"Error regenerating image in session {session_id}: {e}")
         return jsonify({'error': str(e)}), 500
+    finally:
+        _image_mutex.release()
 
-def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "") -> str:
+def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "", target_follower: str = None) -> tuple[str, str]:
     """Extracts comma-separated visual tags from the latest conversation and follower context
     by querying the LLM (which automatically triggers start_llm()).
+    Returns a tuple of (tags, resolved_follower_id).
     """
-    if custom_prompt and custom_prompt.strip():
-        return custom_prompt.strip()
-
-    from runners.follower import get_active_follower
-    active_fol = get_active_follower()
+    from runners.follower import get_active_followers
+    from core.follower_config import get_follower_name
+    party = get_active_followers(session_id)
     
+    # Resolve target follower: check explicitly provided, or scan recent messages / prompt
+    active_fol = target_follower
+    if not active_fol and party:
+        prompt_lower = (custom_prompt or "").lower()
+        # 1. Check if follower is named in prompt
+        for fid in party:
+            fname = get_follower_name(fid).lower()
+            if fname in prompt_lower or fid in prompt_lower:
+                active_fol = fid
+                break
+        # 2. Check recent chat history for last mentioned follower
+        if not active_fol:
+            try:
+                hist = asyncio.run(runner.get_history(session_id))
+                for msg in reversed(hist[-6:]):
+                    sid = msg.get("sender_id")
+                    if sid in party:
+                        active_fol = sid
+                        break
+                    mtxt = (msg.get("text") or "").lower()
+                    for fid in party:
+                        if get_follower_name(fid).lower() in mtxt or fid in mtxt:
+                            active_fol = fid
+                            break
+                    if active_fol:
+                        break
+            except Exception:
+                pass
+        # 3. Default to party lead
+        if not active_fol:
+            active_fol = party[0]
+    
+    if not active_fol:
+        active_fol = "game"
+
+    if custom_prompt and custom_prompt.strip():
+        return custom_prompt.strip(), active_fol
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     fol_json = os.path.normpath(os.path.join(base_dir, "core", "followers", active_fol, f"{active_fol}.json"))
     description = ""
     scenario = ""
-    char_name = active_fol.replace("_", " ").title()
+    char_name = get_follower_name(active_fol) if active_fol != "game" else "Follower"
     user_name = "User"
     
     if os.path.exists(fol_json):
@@ -1579,7 +1730,7 @@ def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "")
     recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
     history_text = ""
     for msg in recent_history:
-        role = user_name if msg.get('role') == 'user' else char_name
+        role = user_name if msg.get('role') == 'user' else (msg.get('sender_name') or char_name)
         text_val = msg.get('text', '')
         if text_val and not text_val.startswith("![Portrait"):
             history_text += f"{role}: {text_val}\n"
@@ -1615,21 +1766,27 @@ def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "")
             tags = re.sub(r'<think>.*?</think>', '', tags, flags=re.DOTALL).strip()
             tags = tags.strip('`"\'').strip()
             if tags:
-                print(f"[Portrait] LLM extracted tags: {tags}", flush=True)
-                return tags
+                print(f"[Portrait] LLM extracted tags for {char_name}: {tags}", flush=True)
+                return tags, active_fol
     except Exception as e:
         print(f"[Portrait] Error querying LLM for tags: {e}", flush=True)
 
-    return custom_prompt
+    return custom_prompt, active_fol
 
+
+_image_mutex = threading.Lock()
 
 @app.route('/api/portrait/generate', methods=['POST'])
 @requires_auth
 def api_generate_portrait():
     session_id = request.json.get('session_id', 'default')
     custom_prompt = request.json.get('prompt', '')
+    target_follower = request.json.get('target_follower') or request.json.get('follower_id')
     from runners.runners import cancelled_sessions
     cancelled_sessions.discard(session_id)
+
+    if not _image_mutex.acquire(blocking=True, timeout=120.0):
+        return jsonify({'error': 'Image generation engine is currently busy. Please retry in a moment.'}), 429
 
     try:
         if session_id in cancelled_sessions:
@@ -1640,14 +1797,14 @@ def api_generate_portrait():
         with tools.session_tool_calls_lock:
             tools.session_tool_calls[session_id] = []
 
-        # 1. Decoupled tag extraction via LLM (auto-starts LLM if paused)
-        extracted_tags = extract_portrait_tags_from_context(session_id, custom_prompt)
+        # 1. Decoupled tag extraction via LLM targeting the specific follower
+        extracted_tags, fol_id = extract_portrait_tags_from_context(session_id, custom_prompt, target_follower=target_follower)
 
         if session_id in cancelled_sessions:
             return jsonify({'error': 'Portrait generation cancelled by user.'}), 400
 
         # 2. Local GPU image generation (unloads LLM before running diffusion engine)
-        new_markdown = tools.generate_local_image(extracted_tags)
+        new_markdown = tools.generate_local_image(extracted_tags, target_follower=fol_id)
 
         if session_id in cancelled_sessions:
             return jsonify({'error': 'Portrait generation cancelled by user.'}), 400
@@ -1660,17 +1817,24 @@ def api_generate_portrait():
         if new_markdown.startswith("![") and new_markdown.endswith(")"):
             new_image_url = new_markdown.split("(", 1)[1][:-1]
 
-        # Append directly to session history as an image message
-        asyncio.run(runner.append_message_to_session(session_id, "follower", new_markdown))
+        from core.follower_config import get_follower_name
+        fol_name = get_follower_name(fol_id) if fol_id != "game" else "Follower"
+
+        # Append directly to session history as an image message preserving character identity
+        asyncio.run(runner.append_message_to_session(session_id, "follower", new_markdown, sender_id=fol_id, sender_name=fol_name))
 
         return jsonify({
             'status': 'success',
             'markdown': new_markdown,
-            'image_url': new_image_url
+            'image_url': new_image_url,
+            'target_follower': fol_id,
+            'follower_name': fol_name
         })
     except Exception as e:
         print(f"Error generating direct portrait: {e}")
         return jsonify({'error': str(e)}), 500
+    finally:
+        _image_mutex.release()
 
 import threading
 import uuid
@@ -1783,7 +1947,7 @@ def list_images():
         from variables.settings import FOLLOWERS_DIR
         from core.save_manager import get_active_follower
         
-        active_follower = get_active_follower() or os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+        active_follower = get_active_follower() or os.getenv("ACTIVE_FOLLOWER", "riasilmane")
         image_urls = []
         seen_filenames = set()
         
@@ -2704,7 +2868,7 @@ END:VCALENDAR"""
 @requires_auth
 def list_sessions():
     try:
-        active_follower = os.environ.get("ACTIVE_follower", "ria_silmane")
+        active_follower = os.environ.get("ACTIVE_follower", "riasilmane")
         sessions_dir = os.path.join(base_dir, "core", "followers", active_follower, "sessions")
         
         sessions = []
@@ -2735,9 +2899,8 @@ def list_sessions():
 @requires_auth
 def list_followers():
     try:
-        from core.save_manager import get_active_companion
-        active_companion = get_active_companion()
-        active_follower = active_companion if active_companion is not None else 'none'
+        from core.save_manager import get_active_followers
+        active_followers = get_active_followers()
         from variables.settings import FOLLOWERS_DIR
         followers_dir = FOLLOWERS_DIR
         
@@ -2773,14 +2936,23 @@ def list_followers():
                     if os.path.exists(profile_path):
                         has_profile = True
 
+                    in_party = folder in active_followers
+                    party_slot = (active_followers.index(folder) + 1) if in_party else None
+
                     followers.append({
                         'id': folder,
                         'name': follower_name,
-                        'active': folder == active_follower,
+                        'active': in_party,
+                        'in_party': in_party,
+                        'party_slot': party_slot,
                         'theme_color': theme_color,
                         'has_profile': has_profile
                     })
-        return jsonify({'followers': followers, 'active': active_follower})
+        return jsonify({
+            'followers': followers,
+            'active': active_followers[0] if active_followers else 'none',
+            'active_followers': active_followers
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2793,61 +2965,50 @@ def select_follower():
     try:
         data = request.get_json(silent=True) or {}
         follower_id = data.get('follower_id') or data.get('companion_id')
-        if not follower_id or follower_id in ('none', 'solo'):
-            try:
-                from core.save_manager import set_active_companion
-                set_active_companion(None)
-            except Exception as e:
-                print(f"Error persisting active_companion to save: {e}")
-            os.environ["ACTIVE_FOLLOWER"] = "game"
-            os.environ["ACTIVE_follower"] = "game"
-            try:
-                from runners.follower import set_active_follower
-                set_active_follower("game")
-            except Exception:
-                pass
-            reload_follower_state()
-            return jsonify({
-                'status': 'success',
-                'active': 'none',
-                'character_name': 'The Game',
-                'theme': load_theme('game'),
-                'has_profile': True
-            })
-            
-        follower_path = os.path.join(base_dir, 'core', 'followers', follower_id)
-        if not os.path.exists(follower_path):
-            return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
-            
-        os.environ["ACTIVE_FOLLOWER"] = follower_id
-        os.environ["ACTIVE_follower"] = follower_id
-        
-        try:
-            from runners.follower import set_active_follower
-            set_active_follower(follower_id)
-        except Exception as e:
-            print(f"Error persisting ACTIVE_FOLLOWER: {e}")
+        follower_ids = data.get('follower_ids')
+        action = data.get('action')
 
-        try:
-            from core.save_manager import set_active_companion
-            set_active_companion(follower_id)
-        except Exception as e:
-            print(f"Error persisting active_companion to save: {e}")
-        
+        from core.save_manager import get_active_followers, set_active_followers
+        current_party = get_active_followers()
+
+        if follower_ids is not None and isinstance(follower_ids, list):
+            new_party = [f for f in follower_ids if f and f not in ('none', 'solo', 'game')][:3]
+        elif follower_id in ('none', 'solo'):
+            new_party = []
+        elif action == 'toggle' or data.get('toggle'):
+            if follower_id in current_party:
+                new_party = [f for f in current_party if f != follower_id]
+            else:
+                if len(current_party) < 3:
+                    new_party = current_party + [follower_id]
+                else:
+                    return jsonify({'error': 'Party is full. Maximum 3 followers allowed.', 'active_followers': current_party}), 400
+        else:
+            # Single select: if already active alone, toggle off to solo; if in party, make party lead; otherwise set as lead
+            if follower_id in current_party and len(current_party) == 1:
+                new_party = []
+            elif follower_id in current_party:
+                new_party = [follower_id] + [f for f in current_party if f != follower_id]
+            else:
+                new_party = (current_party + [follower_id])[:3] if len(current_party) < 3 else [follower_id]
+
+        set_active_followers(new_party)
         reload_follower_state()
-            
-        theme = load_theme(follower_id)
+
+        lead_fol = new_party[0] if new_party else 'game'
+        theme = load_theme(lead_fol)
 
         has_profile = False
-        profile_path = os.path.join(follower_path, "portraits", "profile.png")
-        if os.path.exists(profile_path):
+        lead_path = os.path.join(base_dir, 'core', 'followers', lead_fol)
+        if lead_fol == 'game' or os.path.exists(os.path.join(lead_path, "portraits", "profile.png")):
             has_profile = True
 
         from core.follower_config import get_follower_name
         return jsonify({
             'status': 'success',
-            'active': follower_id,
-            'character_name': get_follower_name(follower_id),
+            'active': lead_fol if new_party else 'none',
+            'active_followers': new_party,
+            'character_name': get_follower_name(lead_fol) if new_party else 'The Game',
             'theme': theme,
             'has_profile': has_profile
         })
@@ -2912,7 +3073,7 @@ def delete_follower():
         if not follower_id:
             return jsonify({'error': 'Missing follower_id'}), 400
             
-        if follower_id == 'ria_silmane':
+        if follower_id == 'riasilmane':
             return jsonify({'error': 'Cannot delete default follower Ria Silmane'}), 400
             
         from variables.settings import FOLLOWERS_DIR
@@ -2924,17 +3085,17 @@ def delete_follower():
         active_follower = get_active_follower()
         is_active = (follower_id == active_follower)
         if is_active:
-            os.environ["ACTIVE_FOLLOWER"] = "ria_silmane"
+            os.environ["ACTIVE_FOLLOWER"] = "riasilmane"
             try:
-                set_active_follower("ria_silmane")
+                set_active_follower("riasilmane")
             except Exception as e:
-                print(f"Error resetting active follower to ria_silmane: {e}")
+                print(f"Error resetting active follower to riasilmane: {e}")
                 
             reload_follower_state()
                  
         shutil.rmtree(follower_path)
         
-        return jsonify({'status': 'success', 'switched_to': 'ria_silmane' if is_active else None})
+        return jsonify({'status': 'success', 'switched_to': 'riasilmane' if is_active else None})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -2956,9 +3117,9 @@ def rename_follower():
         if not re.match(r'^[a-zA-Z0-9_\-]+$', follower_id):
             return jsonify({'error': 'Invalid follower_id'}), 400
             
-        new_id = re.sub(r'[^a-zA-Z0-9_]', '', new_name).lower()
+        new_id = re.sub(r'[^a-zA-Z0-9]', '', new_name).lower()
         if not new_id:
-            return jsonify({'error': 'Invalid new name (must contain letters, numbers, or underscores)'}), 400
+            return jsonify({'error': 'Invalid new name (must contain alphanumeric characters)'}), 400
             
         from variables.settings import FOLLOWERS_DIR
         old_path = os.path.normpath(os.path.join(FOLLOWERS_DIR, follower_id))
@@ -2967,8 +3128,8 @@ def rename_follower():
         if not os.path.exists(old_path):
             return jsonify({'error': f"Follower '{follower_id}' does not exist"}), 404
             
-        if follower_id == 'ria_silmane':
-            json_path = os.path.join(old_path, "ria_silmane.json")
+        if follower_id == 'riasilmane':
+            json_path = os.path.join(old_path, "riasilmane.json")
             if os.path.exists(json_path):
                 try:
                     with open(json_path, "r", encoding="utf-8") as f:
@@ -2981,11 +3142,11 @@ def rename_follower():
             
             reload_follower_state()
             
-            active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+            active_follower = os.getenv("ACTIVE_FOLLOWER", "riasilmane")
             return jsonify({
                 'status': 'success',
-                'new_id': 'ria_silmane',
-                'was_active': (active_follower == 'ria_silmane')
+                'new_id': 'riasilmane',
+                'was_active': (active_follower == 'riasilmane')
             })
             
         if new_id != follower_id:
@@ -3015,7 +3176,7 @@ def rename_follower():
                 except Exception as e:
                     print(f"Error updating JSON after rename: {e}")
                     
-            active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+            active_follower = os.getenv("ACTIVE_FOLLOWER", "riasilmane")
             was_active = (follower_id == active_follower)
             
             from runners.follower import _load_settings, _save_settings
@@ -3054,7 +3215,7 @@ def rename_follower():
                 except Exception as e:
                     print(f"Error updating JSON name: {e}")
                     
-            active_follower = os.getenv("ACTIVE_FOLLOWER", "ria_silmane")
+            active_follower = os.getenv("ACTIVE_FOLLOWER", "riasilmane")
             return jsonify({
                 'status': 'success',
                 'new_id': follower_id,
@@ -3960,123 +4121,107 @@ def generate_character_theme(main_color, accent_color_a=None, accent_color_b=Non
 
 def generate_character_json(name, description, personality, scenario, first_mes, model):
     """Ask the LLM to produce chara_card_v3-compatible fields for a new follower."""
-    import os, json
-    remote_key = os.getenv("REMOTE_API_KEY")
-    remote_cloud_url = os.getenv("REMOTE_CLOUD_URL")
-    is_remote_configured = bool(
-        remote_key and remote_key.strip() and remote_key != "your_remote_api_key_here" and
-        remote_cloud_url and remote_cloud_url.strip() and remote_cloud_url != "your_remote_cloud_url_here"
+    import os, json, re, asyncio
+
+    system_instruction = (
+        "You are an expert character designer and tabletop RPG lorekeeper. "
+        "You convert character descriptions, dossiers, or backstory notes into rich, immersive chara_card_v3 JSON profiles. "
+        "Output ONLY valid JSON matching the requested schema."
     )
 
-    prompt = f"""Design a SillyTavern chara_card_v3 character profile from the description below.
+    prompt = f"""Design a high-quality character card based on the information below.
 
-Input:
-  Name: {name}
-  Description: {description}
-  Personality hint: {personality or 'not specified'}
-  Scenario hint: {scenario or 'not specified'}
-  First message hint: {first_mes or 'not specified'}
+Input Information:
+Name: {name or 'Extract from description'}
+Description/Dossier:
+{description}
 
-Output a single JSON object with EXACTLY these keys:
+Personality Hint: {personality or 'Extract from description'}
+Scenario Hint: {scenario or 'Extract from description'}
+First Message Hint: {first_mes or 'Extract from description'}
+
+Respond with ONLY a single JSON object with these EXACT keys:
 {{
-  "description": "2-4 sentence narrative bio. No physical appearance.",
-  "personality": "One word (e.g. Devoted, Sassy, Stoic).",
-  "scenario": "Short scene-setting sentence (one sentence).",
-  "first_mes": "In-character opening message (1-2 sentences, first person).",
-  "system_prompt": "Concise response style directive (e.g. contractions, tone, length).",
-  "image_positive": "Comma-separated Stable Diffusion tags for ONLY physical appearance (e.g. silver hair, purple eyes, fair skin).",
-  "image_negative": "Comma-separated SD negative tags to exclude (e.g. extra limbs, bad anatomy).",
-  "main_color": "#RRGGBB — a hex color representing this character.",
-  "inversion": {{
-    "intimate": "How they behave when intimate/warm.",
-    "excited": "How they behave when excited/playful.",
-    "intense": "How they behave when intense/focused.",
-    "sad": "How they behave when sad/empathetic."
-  }}
+  "name": "Full character name",
+  "description": "Comprehensive narrative backstory, history, and background details.",
+  "personality": "Personality traits, mannerisms, combat mindset, and quirks.",
+  "scenario": "Current situational setting or location.",
+  "first_mes": "Atmospheric, in-character opening greeting or spoken dialogue (wrapped in *asterisks* for narration, plain text for dialogue).",
+  "system_prompt": "Roleplay directives, speech patterns, and tone instructions.",
+  "image_positive": "Comma-separated Stable Diffusion visual tags describing physical appearance, clothing, and gear.",
+  "image_negative": "Comma-separated SD negative tags to avoid (e.g. extra limbs, bad anatomy, deformed).",
+  "main_color": "#RRGGBB (a hex accent color suited for this character)"
 }}"""
 
     raw_response = None
-    from models.models import is_local_model
-    use_local = is_local_model(model)
-
-    if use_local:
-        try:
-            import httpx
-            local_url = os.getenv("REMOTE_SERVER_URL", "http://127.0.0.1:1234/v1/chat/completions")
-            local_model = model if (model and model != 'local-llm') else os.getenv("LOCAL_MODEL_NAME", "local-llm")
-            payload = {
-                "model": local_model,
-                "messages": [
-                    {"role": "system", "content": "You output valid JSON character cards."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.5,
-                "response_format": {"type": "json_object"}
-            }
-            res = httpx.post(local_url, json=payload, headers={"Content-Type": "application/json"}, timeout=60.0)
-            if res.status_code == 200:
-                raw_response = res.json()['choices'][0]['message']['content'].strip()
-        except Exception as e:
-            print(f"Error calling local model for card generation: {e}")
-    else:
-        if is_remote_configured:
-            try:
-                import requests
-                from variables.settings import DEFAULT_REMOTE_MODEL
-                target_model = model if model else DEFAULT_REMOTE_MODEL
-                headers = {"Content-Type": "application/json", "Authorization": f"Bearer {remote_key}"}
-                payload = {
-                    "model": target_model,
-                    "messages": [
-                        {"role": "system", "content": "You output valid JSON character cards."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.5,
-                    "response_format": {"type": "json_object"}
-                }
-                res = requests.post(remote_cloud_url, json=payload, headers=headers, timeout=60.0)
-                if res.status_code == 200:
-                    raw_response = res.json()['choices'][0]['message']['content'].strip()
-            except Exception as e:
-                print(f"Error calling remote model for card generation: {e}")
+    try:
+        from adapters.vram_orchestrator import start_llm
+        start_llm()
+        raw_response = asyncio.run(runner.generate_impersonation(prompt, system_instruction, model=model, temperature=0.4))
+    except Exception as e:
+        print(f"Error calling LLM for card generation: {e}")
 
     parsed = {}
     if raw_response:
         try:
-            cleaned = raw_response.strip().lstrip('```json').lstrip('```').rstrip('```').strip()
+            # Strip think tags and code blocks
+            cleaned = re.sub(r'<think>.*?</think>', '', raw_response, flags=re.DOTALL).strip()
+            cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned)
+            cleaned = re.sub(r'\s*```$', '', cleaned).strip()
+            # Extract JSON object substring if surrounded by extra text
+            match = re.search(r'(\{[\s\S]*\})', cleaned)
+            if match:
+                cleaned = match.group(1)
             parsed = json.loads(cleaned)
         except Exception as e:
             print(f"Failed to parse card JSON: {e}. Raw: {raw_response}")
 
-    # Build a chara_card_v3 dict. Helper key _colors is
-    # popped by finalize_imported_follower before writing to disk.
+    # Fallback name extraction from text if needed
+    resolved_name = parsed.get("name") or name
+    if not resolved_name or resolved_name == "Follower":
+        subj_match = re.search(r'\*\*Subject:\*\*\s*([A-Za-z\s]+?)(?:\s*\(|\n|$)', description)
+        if subj_match:
+            resolved_name = subj_match.group(1).strip()
+        else:
+            resolved_name = "Follower"
+
+    resolved_desc = parsed.get("description") or description or f"{resolved_name} is a traveling companion."
+    resolved_personality = parsed.get("personality") or personality or "Loyal and capable companion."
+    resolved_scenario = parsed.get("scenario") or scenario or "Traveling together in Tamriel."
+    resolved_first_mes = parsed.get("first_mes") or first_mes or f"Greetings. I am {resolved_name}."
+    resolved_sys_prompt = parsed.get("system_prompt") or f"You are {resolved_name}. Respond in character with distinct mannerisms."
+    resolved_img_pos = parsed.get("image_positive") or f"solo, {resolved_name}, fantasy portrait, highly detailed"
+    resolved_img_neg = parsed.get("image_negative") or "extra limbs, bad anatomy, deformed, modern clothing"
+    main_color = parsed.get("main_color") or "#d4af37"
+
     card = {
         "spec": "chara_card_v3",
         "spec_version": "3.0",
         "data": {
-            "name": name or parsed.get("name") or "follower",
-            "description": parsed.get("description") or description or f"{name} is a new follower.",
-            "personality": parsed.get("personality") or personality or "Friendly",
-            "scenario": parsed.get("scenario") or scenario or "A comfortable room.",
-            "first_mes": parsed.get("first_mes") or first_mes or f"Hello, I'm {name}.",
+            "name": resolved_name,
+            "description": resolved_desc,
+            "personality": resolved_personality,
+            "scenario": resolved_scenario,
+            "first_mes": resolved_first_mes,
             "mes_example": "",
-            "system_prompt": parsed.get("system_prompt") or "Speak naturally using contractions. Be warm and concise.",
+            "system_prompt": resolved_sys_prompt,
             "post_history_instructions": "",
             "creator_notes": "",
-            "tags": [],
+            "tags": ["Elder Scrolls", "Follower"],
             "creator": "LM-Arena",
             "character_version": "1.0",
             "alternate_greetings": [],
             "extensions": {
                 "arena": {
-                    "follower_id": "",  # filled by finalize_imported_follower
+                    "follower_id": "",
                     "image_details": {
-                        "positive": parsed.get("image_positive") or f"solo, {name}",
-                        "negative": parsed.get("image_negative") or "extra limbs, bad anatomy, deformed"
+                        "positive": resolved_img_pos,
+                        "negative": resolved_img_neg
                     }
                 }
             }
-        }
+        },
+        "_colors": {"main_color": main_color}
     }
     return card
 
@@ -4245,7 +4390,7 @@ def import_tavern_follower():
                 del card_v3["data"]["character_book"]
 
         name = card_v3["data"].get("name", "Follower").strip()
-        follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', name).lower() or ("follower_" + str(int(time.time())))
+        follower_id = re.sub(r'[^a-zA-Z0-9]', '', name).lower() or ("follower" + str(int(time.time())))
         from variables.settings import FOLLOWERS_DIR
         follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
         if os.path.exists(follower_path):
@@ -4280,25 +4425,30 @@ def import_describe_follower():
         description = data.get('description', '').strip()
         model = data.get('model', '').strip()
         
-        if not name or not description:
-            return jsonify({'error': 'Name and description are required'}), 400
-            
-        follower_id = re.sub(r'[^a-zA-Z0-9_\-]', '', name).lower()
+        if not description:
+            return jsonify({'error': 'Character description or dossier is required'}), 400
+
+        if not name:
+            subj_match = re.search(r'\*\*Subject:\*\*\s*([A-Za-z\s]+?)(?:\s*\(|\n|$)', description)
+            if subj_match:
+                name = subj_match.group(1).strip()
+            else:
+                name = "Follower"
+
+        card_json = generate_character_json(name, description, "", "", "", model)
+        resolved_name = card_json.get("data", {}).get("name") or name
+
+        follower_id = re.sub(r'[^a-zA-Z0-9]', '', resolved_name.lower())
         if not follower_id:
-            follower_id = "follower_" + str(int(time.time()))
+            follower_id = "follower" + str(int(time.time()))
             
         from variables.settings import FOLLOWERS_DIR
         follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
-        if os.path.exists(follower_path):
-            return jsonify({'error': f"Follower folder '{follower_id}' already exists"}), 400
-            
         os.makedirs(follower_path, exist_ok=True)
-        
-        card_json = generate_character_json(name, description, "", "", "", model)
         
         finalize_imported_follower(follower_path, follower_id, card_json)
             
-        return jsonify({'status': 'success', 'follower_id': follower_id, 'follower_id': follower_id, 'name': name})
+        return jsonify({'status': 'success', 'follower_id': follower_id, 'name': resolved_name})
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
