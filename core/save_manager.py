@@ -76,11 +76,9 @@ def get_active_followers(save_id: str = None) -> list[str]:
         meta = bundle.get("meta", {})
         if "active_followers" in meta and isinstance(meta["active_followers"], list):
             return [f for f in meta["active_followers"] if f and f not in ("game", "none", "solo")][:3]
-        for key in ("active_follower", "active_companion"):
-            if key in meta:
-                val = meta.get(key)
-                if val and val not in (None, "none", "solo", ""):
-                    return [val]
+        val = meta.get("active_follower")
+        if val and val not in (None, "none", "solo", ""):
+            return [val]
         return ["riasilmane"]
     except Exception:
         return ["riasilmane"]
@@ -99,7 +97,6 @@ def set_active_followers(follower_ids: list[str] | str | None, save_id: str = No
     meta = bundle.setdefault("meta", {})
     meta["active_followers"] = clean_ids
     meta["active_follower"] = clean_ids[0] if clean_ids else None
-    meta["active_companion"] = clean_ids[0] if clean_ids else None
     write_save(active_id, bundle)
 
 
@@ -108,17 +105,11 @@ def get_active_follower(save_id: str = None) -> str | None:
     return followers[0] if followers else None
 
 
-get_active_companion = get_active_follower
-
-
 def set_active_follower(follower_id: str | None, save_id: str = None) -> None:
     if not follower_id or follower_id in ("game", "none", "solo"):
         set_active_followers([], save_id)
     else:
         set_active_followers([follower_id], save_id)
-
-
-set_active_companion = set_active_follower
 
 
 def sync_save_meta(save_id: str) -> dict:
@@ -399,7 +390,8 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
             "tamrielic_date": "1 Hearthfire, 3E 389",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
-            "active_companion": "riasilmane"
+            "active_follower": "riasilmane",
+            "active_followers": ["riasilmane"]
         },
         "character": sheet,
         "world": world_state,

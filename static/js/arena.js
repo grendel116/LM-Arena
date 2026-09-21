@@ -7092,6 +7092,8 @@ async function resendUserMessage(bubble) {
     const activeSpeaker = 'game';
     const profileUrl = getProfileUrl(activeSpeaker);
     const displayName = 'The Game';
+    const typingIndicatorRow = document.createElement('div');
+    typingIndicatorRow.className = 'message-row follower-row';
     typingIndicatorRow.innerHTML = `
         <div class="avatar-container">
             <img class="avatar follower-avatar ${activeSpeaker}-avatar" src="${profileUrl}" alt="${displayName}" onclick="expandImage('${profileUrl}')">

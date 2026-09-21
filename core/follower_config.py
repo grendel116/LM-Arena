@@ -17,8 +17,8 @@ from runners.follower import get_active_follower, get_active_user, get_player_na
 GAME_FORMATTING = (
     "\n\n# NARRATION STYLE RULES (MANDATORY)\n"
     "- Narration: Wrap EVERY paragraph and sentence of environmental description, sensory detail, NPC action, and world outcomes in *asterisks*.\n"
-    "- World NPCs & Questgivers: You portray all enemies, creatures, questgivers, guards, and world NPCs. Wrap their physical actions in *asterisks* and output their spoken speech in plain text without quotation marks.\n"
-    "- Followers: Traveling party members act and speak independently on their own turns. Produce no actions, reactions, or dialogue for followers.\n"
+    "- World NPCs & Questgivers: You portray enemies, creatures, questgivers, guards, and non-party world NPCs. Wrap their physical actions in *asterisks* and output their spoken speech in plain text without quotation marks.\n"
+    "- Party Followers: Traveling party members speak and act independently on their own turns. Generate zero dialogue, zero spoken quotes, zero reactions, and zero actions for party followers. Leave all follower responses to the follower's turn.\n"
     "- Claims: State all claims directly and affirmatively in single assertions.\n"
     "- Style: Use short words and precise phrasing. Write with linear progression.\n"
     "- Be succinct, atmospheric, and faithful to Elder Scrolls lore.\n"
@@ -153,11 +153,16 @@ def replace_placeholders(text: str, user_name: str = None, follower_id: str = No
     else:
         char_name = char1_name or "Follower"
 
+    party_names = [get_follower_name(fid) for fid in party if fid and fid not in ("game", "the_game", "none", "solo")]
+    party_str = ", ".join(party_names) if party_names else "none"
+
     text = re.sub(r'(?i)\{\{user\}\}', user_name, text)
     text = re.sub(r'(?i)\{\{char1\}\}', char1_name, text)
     text = re.sub(r'(?i)\{\{char2\}\}', char2_name, text)
     text = re.sub(r'(?i)\{\{char3\}\}', char3_name, text)
     text = re.sub(r'(?i)\{\{char\}\}', char_name, text)
+    text = re.sub(r'(?i)\{\{followers\}\}', party_str, text)
+    text = re.sub(r'(?i)\{\{party\}\}', party_str, text)
     return text
 
 
@@ -256,25 +261,33 @@ def load_user_instructions() -> str:
     return f"\n\n# PLAYER PROFILE\n- Hero: {get_player_name()}\n"
 
 
-def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = None, companion_id: str = None, party_followers: list = None) -> str:
+def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = None, party_followers: list = None) -> str:
     """Compiles a complete system prompt specifically for the active speaker (Game or Follower)."""
     from utils.utils import _ARENA_DIRECTIVE_PROMPT
     player_name = get_player_name()
     
     from runners.follower import get_active_followers
     party = party_followers if party_followers is not None else get_active_followers()
-    active_target = follower_id or companion_id
+    active_target = follower_id
     if active_target and active_target not in ("game", "none", "solo") and active_target not in party:
         party = [active_target] + [p for p in party if p != active_target][:2]
 
     party_names = [get_follower_name(fid) for fid in party]
 
     party_follower_entries = []
+    party_follower_all_names = []
     for fid in party:
         fname = get_follower_name(fid)
-        party_follower_entries.append(f"{fname} (ID: {fid})")
+        party_follower_all_names.append(fname)
+        first_name = fname.split()[0]
+        if first_name != fname:
+            party_follower_all_names.append(first_name)
+            party_follower_entries.append(f"{fname} (also called {first_name}, ID: {fid})")
+        else:
+            party_follower_entries.append(f"{fname} (ID: {fid})")
+
     party_list_str = ", ".join(party_follower_entries) if party_follower_entries else "None (traveling solo)"
-    party_names_str = ", ".join(party_names) if party_names else "none"
+    party_names_str = ", ".join(dict.fromkeys(party_follower_all_names)) if party_follower_all_names else "none"
 
     if speaker_id == "game":
         card = _load_card_data("game")
@@ -292,11 +305,12 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
             f"\n\n# REFEREE ROLE DIRECTIVE (MANDATORY)\n"
             f"You are The Game, the world referee and narrator.\n"
             f"- Hero: {player_name}.\n"
-            f"- Followers: {party_list_str}.\n"
-            f"- Narrate the world environment, sensory details, dungeon hazards, and results of actions.\n"
-            f"- Direct and portray all world NPCs, questgivers, dungeon creatures, enemies, and townspeople.\n"
-            f"- Followers ({party_names_str}) and {player_name} speak and act on their own turns.\n"
-            f"- Never write speech, dialogue, actions, thoughts, or movements for {player_name} or followers ({party_names_str}). Let followers speak and act for themselves."
+            f"- Active Party Followers: {party_list_str}.\n"
+            f"- World Authority: You narrate world environments, sensory details, dungeon hazards, and results of actions.\n"
+            f"- World NPCs & Creatures: You portray enemies, creatures, questgivers, guards, and townspeople.\n"
+            f"- STRICT FOLLOWER AUTONOMY: Traveling party members ({party_names_str}) and {player_name} are independent characters who speak and act on their own turns.\n"
+            f"- ZERO FOLLOWER PUPPETING: Never write speech, dialogue, quotes, thoughts, physical actions, or reactions for {player_name} or ANY follower ({party_names_str}).\n"
+            f"- When {player_name} speaks to, looks at, touches, or interacts with a follower, describe ONLY the physical environment, dungeon conditions, or world NPC reactions. Conclude your turn immediately so the follower can respond for themselves."
         )
 
         base = game_instructions + load_user_instructions()

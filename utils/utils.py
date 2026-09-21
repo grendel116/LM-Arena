@@ -60,7 +60,6 @@ _ARENA_DIRECTIVE_PROMPT = (
 
 TOOL_ALIASES = {
     "generate_follower_portrait": "generate_follower_portrait",
-    "generate_companion_portrait": "generate_follower_portrait",
     "generate_program_portrait": "generate_follower_portrait",
     "generate_player_portrait": "generate_player_portrait",
     "generate_environment_image": "generate_environment_image",

@@ -12,13 +12,12 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-09-21T06:05:29.333425",
-    "updated_at": "2026-09-21T07:05:13.363858",
-    "active_companion": "breamaccius",
+    "created_at": "2026-09-21T07:49:46.164459",
+    "updated_at": "2026-09-21T07:54:47.125054",
+    "active_follower": "riasilmane",
     "active_followers": [
-      "breamaccius"
-    ],
-    "active_follower": "breamaccius"
+      "riasilmane"
+    ]
   },
   "character": {
     "name": "Eternal Champion",
@@ -72,8 +71,8 @@
         "quantity": 1
       },
       {
-        "name": "Cell Key",
-        "type": "key",
+        "name": "Prison Key",
+        "type": "misc",
         "weight": 0.1,
         "quantity": 1,
         "equipped": false,
@@ -150,9 +149,9 @@
   },
   "history": [
     {
-      "id": "first_mes_8e2656c0e10a",
+      "id": "first_mes_f3cd4696ff3c",
       "role": "follower",
-      "timestamp": 1789995929.333425
+      "timestamp": 1790002186.1644595
     }
   ],
   "memories": {
@@ -169,176 +168,20 @@
   "profile": "A Nord from Skyrim.",
   "messages": [
     {
-      "id": "first_mes_02cb45cc419746c2b93da87ea1fff963",
+      "id": "first_mes_f3ea0d85153341bc8e7ae6a96cd68369",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a small brass key resting on a narrow ledge. Further down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1789995929.3563225
+      "timestamp": 1790002186.185689
     },
     {
-      "id": "usr_zaxaowoj0mub9yqyk",
+      "id": "usr_lm4zj94l7mubd3bj2",
       "role": "user",
-      "text": "*I lunge for the key on the ledge, straining upward with both arms to grasp the brass object.*",
+      "text": "*I grab the key.*",
       "image_url": null,
-      "timestamp": 1789996945.931606
-    },
-    {
-      "id": "game_29e0f25d21",
-      "role": "follower",
-      "text": "*The brass key glints just beyond reach as you lunge upward, muscles straining against the cold stone wall.*",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "arena_request_skill_check",
-          "args": {
-            "skill_name": "Athletics",
-            "attribute_name": "Strength",
-            "dc": 12,
-            "reason": "Reach the key on the high ledge"
-          },
-          "id": "call_1789996954_0_911e"
-        },
-        {
-          "type": "response",
-          "name": "arena_request_skill_check",
-          "response": "{'status': 'skill_check_required', 'skill_name': 'Athletics', 'attribute_name': 'Strength', 'dc': 12, 'reason': 'Reach the key on the high ledge'}",
-          "id": "call_1789996954_0_911e"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789996954.4916265,
-      "sender_id": "game",
-      "follower_id": null,
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_adiun80w7mub9z4mq",
-      "role": "user",
-      "text": "*I stretch my arm high, fingers closing around the cold metal of the key as it slides from the ledge into my grasp.*",
-      "image_url": null,
-      "timestamp": 1789996963.6454904
-    },
-    {
-      "id": "game_b9e5dbd3f8",
-      "role": "follower",
-      "text": "*Cold metal presses against your palm as your fingers close around the small key. It slips from the ledge and into your grasp, the brass surface chilled from the damp stone.*\n\n\n\n*The key fits the heavy iron lock of the cell door, its tumblers turning with a rusty click. The door creaks open, revealing a narrow corridor carved into living rock. Torches flicker in wall brackets, casting dancing shadows across the passage ahead. The distant drip of water echoes through the tunnels.*",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "arena_add_item",
-          "args": {
-            "item_name": "Cell Key",
-            "item_type": "Key",
-            "quantity": 1
-          },
-          "id": "call_1789996969_0_185a"
-        },
-        {
-          "type": "response",
-          "name": "arena_add_item",
-          "response": "{'inventory_count': 2, 'item': 'Cell Key'}",
-          "id": "call_1789996969_0_185a"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789996969.773367,
-      "sender_id": "game",
-      "follower_id": null,
-      "sender_name": "The Game"
-    },
-    {
-      "id": "usr_1a9k2f67zmub9zl2f",
-      "role": "user",
-      "text": "*I pocket the key and step carefully through the open door, scanning the dimly lit corridor for any signs of movement.*",
-      "image_url": null,
-      "timestamp": 1789996984.9470725
-    },
-    {
-      "id": "game_f15885a81c",
-      "role": "follower",
-      "text": "*The heavy cell door swings shut behind you with a hollow clang that reverberates down the corridor. You step into the narrow passage, boots scraping softly against wet stone. To the left, the tunnel continues into deeper shadow. To the right, a wooden door stands slightly ajar, a sliver of yellow light spilling from within.*\n\n*Movement catches your eye at the far end of the left passage—something small and brown scurries behind a pile of discarded straw. A faint scratching sound follows, then silence.*",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789996994.5198462,
-      "sender_id": "game",
-      "follower_id": null,
-      "sender_name": "The Game"
-    },
-    {
-      "id": "fol_breamaccius_21bf0947f8",
-      "role": "follower",
-      "text": "*A sharp gasp echoes from the wooden door as the light shifts. A woman's silhouette appears in the doorway, her tall form outlined by the torchlight within. She steps forward into the corridor, the chains around her wrists rattling softly as she moves. Her gaze locks onto you immediately, green eyes narrowing in assessment.*\n\nYou. You are not one of the guards.\n\n*Her voice carries a practiced confidence despite her obvious restraints. She adjusts her stance, shifting her weight onto one hip as her expression softens into something approaching curiosity. The movement causes the leather of her bikini to creak faintly.*\n\nTell me, stranger. Did you come to liberate me, or are you simply another lost soul wandering these tunnels?",
-      "tool_calls": [],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789997347.7891726,
-      "sender_id": "breamaccius",
-      "follower_id": "breamaccius",
-      "sender_name": "Brea Maccius"
-    },
-    {
-      "id": "port_znb0drl6vmubao6jf",
-      "role": "user",
-      "text": "[GENERATE_IMAGE: Render an image of the active follower. Do not narrate new story events or call mechanics tools.]",
-      "image_url": null,
-      "timestamp": 1789998132.5210612
-    },
-    {
-      "id": "game_6d4f3a2bbf",
-      "role": "follower",
-      "text": "",
-      "tool_calls": [
-        {
-          "type": "call",
-          "name": "generate_local_image",
-          "args": {
-            "prompt": "1girl, solo, Brea Maccius, green eyes, wearing minimal leather bikini, iron shackles on wrists, standing in a dimly lit stone dungeon corridor, torchlight casting amber glow, sharp focused expression, looking at viewer"
-          },
-          "id": "call_1789998216_0_8c87"
-        },
-        {
-          "type": "response",
-          "name": "generate_local_image",
-          "response": "![Portrait](/images/portraits/portrait_1789999430.png?v=1789999430?v=1789998307?v=1789998148)",
-          "id": "call_1789998216_0_8c87"
-        }
-      ],
-      "tamrielic_date": {
-        "day": 1,
-        "month": "Hearthfire",
-        "year": 389,
-        "hour": 6,
-        "era": "Third Era"
-      },
-      "timestamp": 1789998216.52091,
-      "sender_id": "game",
-      "follower_id": null,
-      "sender_name": "The Game"
+      "timestamp": 1790002198.0580578
     }
   ],
   "memory_state": {

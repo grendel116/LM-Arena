@@ -422,7 +422,7 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
 
 @track_tool_activity
 def generate_follower_portrait(prompt: str) -> str:
-    """Generates a portrait of the active companion."""
+    """Generates a portrait of the active follower."""
     return generate_local_image(prompt, subject_type="follower")
 
 

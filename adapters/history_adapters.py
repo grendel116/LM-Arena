@@ -313,6 +313,11 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
             if msg_role == "user":
                 role = "user"
+                if not content_text.startswith(("[Tool Response", "[SYSTEM:")):
+                    from runners.follower import get_player_name
+                    player_name = get_player_name()
+                    if player_name and not content_text.startswith(f"[{player_name}") and not content_text.startswith(f"{player_name}:"):
+                        content_text = f"[{player_name} (Hero)]: {content_text}"
             else:
                 # Character message in history: assistant if active speaker, else user
                 if msg_sender == active_speaker:

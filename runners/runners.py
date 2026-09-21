@@ -114,58 +114,23 @@ def detect_addressed_speaker(text: str, candidate_ids: list[str], exclude_id: st
     return None
 
 
-def clean_speaker_response(text: str, speaker_id: str = "game", follower_id: str = None, companion_id: str = None) -> str:
-    """Sanitizes LLM output:
-    - Strips leading speaker tags for the active speaker (e.g. [Game]: or [Ria Silmane]:).
-    - Truncates at the boundary where the LLM attempts to puppet another speaker or the player.
-    """
+def clean_speaker_response(text: str, speaker_id: str = "game", follower_id: str = None) -> str:
+    """Strips leading speaker prefix tag for the active speaker if present."""
     if not text:
         return text
 
     from core.follower_config import _load_card_data
-    from runners.follower import get_player_name
 
     sp_card = _load_card_data(speaker_id)
     sp_name = (sp_card.get("name") if sp_card else speaker_id).strip()
-    active_follower_id = follower_id or companion_id
 
-    # 1. Strip leading active speaker tag if present
     for name_candidate in [sp_name, speaker_id, "The Game", "Game", "Dungeon Master", "DM"]:
-        if name_candidate:
-            text = re.sub(rf"^(?:\[?{re.escape(name_candidate)}\]?:?\s*)", "", text, flags=re.IGNORECASE).strip()
+        if not name_candidate:
+            continue
+        for prefix in (f"[{name_candidate}]:", f"{name_candidate}:", f"[{name_candidate}]"):
+            if text.lower().startswith(prefix.lower()):
+                text = text[len(prefix):].strip()
 
-    # 2. Gather names of other participants to prevent puppeting
-    other_names = []
-    player_name = get_player_name()
-    if player_name:
-        other_names.append(player_name)
-    other_names.append("User")
-
-    if speaker_id == "game":
-        if active_follower_id and active_follower_id != "game":
-            c = _load_card_data(active_follower_id)
-            c_name = (c.get("name") if c else active_follower_id).strip()
-            if c_name:
-                other_names.append(c_name)
-    else:
-        other_names.extend(["The Game", "Game", "Dungeon Master", "DM"])
-
-    # 3. Truncate at any point where another room member is puppeted
-    if other_names:
-        escaped_others = [re.escape(n) for n in other_names if n]
-        if escaped_others:
-            leading_puppet_regex = rf"^(?:\[?(?:{'|'.join(escaped_others)})\]?:?\s*)"
-            text = re.sub(leading_puppet_regex, "", text, flags=re.IGNORECASE).strip()
-            puppet_regex = rf"\n+\s*(?:\[(?:{'|'.join(escaped_others)})\]:?|(?:{'|'.join(escaped_others)}):\s*)"
-            text = re.split(puppet_regex, text, maxsplit=1, flags=re.IGNORECASE)[0].strip()
-
-    # 4. If Game attempts to introduce itself as or speak as the active follower
-    if speaker_id == "game" and active_follower_id and active_follower_id != "game":
-        c = _load_card_data(active_follower_id)
-        c_name = (c.get("name") if c else active_follower_id).strip()
-        if c_name:
-            intro_pattern = rf"\n+\s*.*?\b(?:my name(?:'s|\s+is)|i am|i'm)\s+{re.escape(c_name)}\b.*"
-            text = re.split(intro_pattern, text, maxsplit=1, flags=re.IGNORECASE)[0].strip()
     return text
 
 
@@ -477,8 +442,8 @@ class BaseRunner:
         existing_tool_calls: list = None,
         speaker_id: str = "game",
     ) -> tuple[str, list]:
-        from core.save_manager import get_active_companion
-        companion_id = get_active_companion(session_id)
+        from core.save_manager import get_active_follower
+        follower_id = get_active_follower(session_id)
         max_iterations = 5
         iteration = 0
         all_tool_calls = list(existing_tool_calls) if existing_tool_calls else []
@@ -577,7 +542,7 @@ class BaseRunner:
                 needs_continuation = has_query_tool and "arena_request_skill_check" not in active_tool_names
 
                 if not results or not needs_continuation:
-                    final_response_text = clean_speaker_response(clean_text, speaker_id=speaker_id, companion_id=companion_id)
+                    final_response_text = clean_speaker_response(clean_text, speaker_id=speaker_id, follower_id=follower_id)
                     image_tools = {
                         "generate_local_image",
                         "generate_follower_portrait",
@@ -596,7 +561,7 @@ class BaseRunner:
                     adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id, speaker_id=speaker_id)
                     break
 
-                clean_text = clean_speaker_response(clean_text, speaker_id=speaker_id, companion_id=companion_id)
+                clean_text = clean_speaker_response(clean_text, speaker_id=speaker_id, follower_id=follower_id)
                 adapter.append_assistant_message(clean_text, tool_calls, invocation_id, intermediate=True, speaker_id=speaker_id)
                 adapter.append_tool_events(results, invocation_id)
 
@@ -605,14 +570,14 @@ class BaseRunner:
 
                 continue
             else:
-                clean_text = clean_speaker_response(bot_response_text.strip(), speaker_id=speaker_id, companion_id=companion_id)
+                clean_text = clean_speaker_response(bot_response_text.strip(), speaker_id=speaker_id, follower_id=follower_id)
                 final_response_text = clean_text if clean_text else final_response_text
 
                 adapter.append_assistant_message(final_response_text, all_tool_calls, invocation_id, speaker_id=speaker_id)
                 break
 
         adapter.post_process_thoughts(invocation_id)
-        final_response_text = clean_speaker_response(final_response_text, speaker_id=speaker_id, companion_id=companion_id)
+        final_response_text = clean_speaker_response(final_response_text, speaker_id=speaker_id, follower_id=follower_id)
         final_response_text = self._ensure_images_are_embedded(final_response_text)
 
         if isinstance(session_id, str) and session_id.endswith("_voice"):

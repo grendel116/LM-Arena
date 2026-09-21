@@ -732,18 +732,17 @@ def history():
         from core.save_manager import get_active_followers
         user_name = get_player_name()
         active_followers = get_active_followers(session_id)
-        active_companion = active_followers[0] if active_followers else None
+        active_follower = active_followers[0] if active_followers else None
         welcome_message = replace_placeholders(get_follower_greeting("game"), user_name=user_name, party_followers=active_followers)
         char_name = "The Game"
         
-        theme = load_theme(active_companion or "game")
+        theme = load_theme(active_follower or "game")
 
         return jsonify({
             'history': chat_history,
             'character_name': char_name,
             'user_name': user_name,
-            'active_follower': active_companion or 'none',
-            'active_companion': active_companion or 'none',
+            'active_follower': active_follower or 'none',
             'active_followers': active_followers,
             'theme': theme,
             'welcome_message': welcome_message
@@ -2947,12 +2946,11 @@ def list_followers():
 list_followers = list_followers
 
 @app.route('/api/followers/select', methods=['POST'])
-@app.route('/api/companion/select', methods=['POST'])
 @requires_auth
 def select_follower():
     try:
         data = request.get_json(silent=True) or {}
-        follower_id = data.get('follower_id') or data.get('companion_id')
+        follower_id = data.get('follower_id')
         follower_ids = data.get('follower_ids')
         action = data.get('action')
 
@@ -4173,8 +4171,8 @@ Respond with ONLY a single JSON object with these EXACT keys:
         else:
             resolved_name = "Follower"
 
-    resolved_desc = parsed.get("description") or description or f"{resolved_name} is a traveling companion."
-    resolved_personality = parsed.get("personality") or personality or "Loyal and capable companion."
+    resolved_desc = parsed.get("description") or description or f"{resolved_name} is a traveling follower."
+    resolved_personality = parsed.get("personality") or personality or "Loyal and capable follower."
     resolved_scenario = parsed.get("scenario") or scenario or "Traveling together in Tamriel."
     resolved_first_mes = parsed.get("first_mes") or first_mes or f"Greetings. I am {resolved_name}."
     resolved_sys_prompt = parsed.get("system_prompt") or f"You are {resolved_name}. Respond in character with distinct mannerisms."

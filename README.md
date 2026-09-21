@@ -30,9 +30,9 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 * **Arena Spellmaker**: Design custom spells with dynamic school and tier calculations (Destruction, Restoration, Alteration, Illusion, Mysticism, Conjuration, Thaumaturgy, Sorcery).
 * **Passive Traits**: Heritage traits (Nord Cold Resistance, Breton Magic Resistance, Dark Elf Fire Resistance) and class abilities (Sorcerer passive Spell Absorption).
 
-### Companions & Guides
+### Followers & Guides
 * **Ria Silmane**: The spectral former apprentice to Jagar Tharn, communicating through mystical dream visions to guide your quest.
-* **Procedural Companions**: Meet, hire, and adventure with local sellswords, spellcasters, and rogues encountered across Tamriel's taverns and cities.
+* **Procedural Followers**: Meet, hire, and adventure with local sellswords, spellcasters, and rogues encountered across Tamriel's taverns and cities.
 
 ### Comprehensive Lorebook Engine
 * **Bestiary**: Complete statistics and lore grounding for 22 iconic Arena monsters, beasts, and Daedric entities.
@@ -47,7 +47,7 @@ Embark on an epic journey across Tamriel to reconstruct the shattered **Staff of
 * **Backpack (Pouch Icon)**: Inspect inventory items, equip gear, view your grimoire, and manage gold.
 * **Quest Log (Bookmark Icon)**: Review active main quest objectives and current campaign stages.
 * **Player & Saves (User Icon)**: Switch characters, adjust identity, or manage distinct save game slots.
-* **Follower Journals (Layers Icon)**: Access companion journals, memories, and shared knowledge.
+* **Follower Journals (Layers Icon)**: Access follower journals, memories, and shared knowledge.
 * **Settings (Gear Icon)**: Configure local LLM connections, cloud models, and ComfyUI image generation.
 
 ---
@@ -98,7 +98,7 @@ Place your model files in the designated subdirectories under `models/`:
 * **`core/`**:
   * `engine_diffusion.py` & `comfy_engine/`: In-process GPU diffusion engine for portrait art generation.
   * `character.py`, `world_engine.py`, `side_quests.py`, `quest_tracker.py`, `save_manager.py`: RPG game logic and world state.
-  * `followers/`: Companion profiles, dialogue scripts, and character cards (Ria Silmane).
+  * `followers/`: Follower profiles, dialogue scripts, and character cards (Ria Silmane).
   * `lorebooks/`: Lore grounding for Tamriel, bestiary, artifacts, and factions.
 * **`runners/`**:
   * `engine_llm.py`, `local_runner.py`, `local_server.py`: In-process GGUF LLM execution and server process orchestration.
