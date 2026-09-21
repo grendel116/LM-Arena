@@ -12,8 +12,8 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-09-21T08:16:51.095051",
-    "updated_at": "2026-09-21T08:46:08.187481",
+    "created_at": "2026-09-21T08:50:44.209022",
+    "updated_at": "2026-09-21T08:54:29.063608",
     "active_follower": "breamaccius",
     "active_followers": [
       "breamaccius"
@@ -141,9 +141,9 @@
   },
   "history": [
     {
-      "id": "first_mes_6f9a295dcb0e",
+      "id": "first_mes_e53013a77ac8",
       "role": "follower",
-      "timestamp": 1790003811.095051
+      "timestamp": 1790005844.2090228
     }
   ],
   "memories": {
@@ -160,25 +160,25 @@
   "profile": "A Nord from Skyrim.",
   "messages": [
     {
-      "id": "first_mes_159d79add8704da1935023ce07f879e1",
+      "id": "first_mes_1c037e0174e54078996c3b92a4f9dab7",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1790003811.114639
+      "timestamp": 1790005844.2323627
     },
     {
-      "id": "usr_6mb09e98xmubf3913",
+      "id": "usr_nrtf6qzxsmubf9snh",
       "role": "user",
       "text": "*I grab that old key.*",
       "image_url": null,
-      "timestamp": 1790005554.0543725
+      "timestamp": 1790005859.4209673
     },
     {
-      "id": "game_d28715b503",
+      "id": "game_11a3973a45",
       "role": "follower",
-      "text": "*The high ledge requires reaching upward from the stone floor. Your fingers brush against the cold metal surface of the key as you stretch toward the loosened stone.*",
+      "text": "*Eternal Champion stretches toward the high wall, fingers brushing against the rough stone and cold metal. The key's surface is coated in grit and oxidation, making it difficult to grasp.*",
       "tool_calls": [
         {
           "type": "call",
@@ -186,16 +186,16 @@
           "args": {
             "skill_name": "Acrobatics",
             "attribute_name": "Agility",
-            "dc": 10,
-            "reason": "Attempting to retrieve the key from the high ledge"
+            "dc": 12,
+            "reason": "Reaching for the key on the high ledge without falling or missing"
           },
-          "id": "call_1790005568_0_5270"
+          "id": "call_1790005863_0_80b5"
         },
         {
           "type": "response",
           "name": "arena_request_skill_check",
-          "response": "{'status': 'skill_check_required', 'skill_name': 'Acrobatics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Attempting to retrieve the key from the high ledge'}",
-          "id": "call_1790005568_0_5270"
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Acrobatics', 'attribute_name': 'Agility', 'dc': 12, 'reason': 'Reaching for the key on the high ledge without falling or missing'}",
+          "id": "call_1790005863_0_80b5"
         }
       ],
       "tamrielic_date": {
@@ -205,10 +205,82 @@
         "hour": 6,
         "era": "Third Era"
       },
-      "timestamp": 1790005568.17665,
+      "timestamp": 1790005863.6023765,
       "sender_id": "game",
       "follower_id": null,
       "sender_name": "The Game"
+    },
+    {
+      "id": "usr_mtzwf605hmubfb2i4",
+      "role": "user",
+      "text": "*I stretch my arm toward the ledge, but my fingers slip off the stone and send the key tumbling out of reach.*",
+      "image_url": null,
+      "timestamp": 1790005918.8430195
+    },
+    {
+      "id": "game_2b599630d0",
+      "role": "follower",
+      "text": "*The key clatters against the wall and bounces onto the prison floor, landing with a dull metallic ring. It skitters across the damp flagstones before coming to rest in a puddle of stagnant water near the cell door.*\n\n*The object's surface is coated in a layer of filth and rust, making it difficult to grip. From the corridor beyond the bars, footsteps echo against stone—slow, rhythmic, and approaching.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790005930.7698727,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
+    },
+    {
+      "id": "fol_breamaccius_15a6cd1c3d",
+      "role": "follower",
+      "text": "*A shadow stretches across the cell bars before a woman steps into the torchlight. Her leather bikini leaves little to the imagination, the tight fabric straining against her generous curves. Her hips sway with practiced grace as she pauses, one gloved hand resting on the iron bars. Her green eyes narrow with amusement as she surveys the scene.*\n\nWell, well. Look what we have here. A little thief trying to make a break for it.\n\n*She leans forward, the movement causing her breasts to shift visibly beneath the thin leather. A faint smirk plays on her lips as she eyes the fallen key.*\n\nThat was a clumsy attempt. But you have spirit. I like spirit.\n\n*Her gaze flicks toward the corridor behind her, then back to your face. Her voice drops to a playful whisper.*\n\nI am Brea. And you are in a great deal of trouble. But maybe we can work something out.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790005943.2454927,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius"
+    },
+    {
+      "id": "usr_xf15bgpzgmubfcfd7",
+      "role": "user",
+      "text": "You the new torturer?",
+      "image_url": null,
+      "timestamp": 1790005982.1693923
+    },
+    {
+      "id": "fol_breamaccius_a231eb65c9",
+      "role": "follower",
+      "text": "*A low laugh escapes her lips, her shoulders shaking with amusement. The movement causes her breasts to bounce subtly beneath the tight leather. She runs a gloved finger along the iron bars, her gaze fixed on you with mock offense.*\n\nTorturer? Please. That would be far too uncivilized. I prefer the term... entertainer.\n\n*She pushes away from the cell wall, her thigh-high boots clicking softly on the stone. She turns her back to you, the fit of her bikini highlighting her rounded hips as she glances over her shoulder.*\n\nThough I suppose this place does make it hard to keep up appearances. Tell me, darling, what did you do to earn yourself a cell in the sewers?",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790005990.893888,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius"
+    },
+    {
+      "id": "usr_vgnjw4q8gmubfe31f",
+      "role": "user",
+      "text": "Seditious speech. I tried to unionize my farm.",
+      "image_url": null,
+      "timestamp": 1790006059.503618
     }
   ],
   "memory_state": {

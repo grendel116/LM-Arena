@@ -5527,31 +5527,6 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
     }
 }
 
-// --- renderActorDialogueCards ---
-function renderActorDialogueCards(bubble, toolCalls) {
-    if (!bubble || !toolCalls || toolCalls.length === 0) return;
-    bubble.querySelectorAll('.arena-actor-card').forEach(el => el.remove());
-    const actorCalls = toolCalls.filter(tc => tc.type === 'call' && (tc.name === 'arena_actor' || tc.name === 'actor') && tc.args);
-    actorCalls.forEach(tc => {
-        const a = tc.args || {};
-        const spk = a.speaker || a.name || a.npc || 'NPC';
-        const dlg = a.dialogue || a.speech || a.text || '';
-        const act = a.action || '';
-        if (dlg || act) {
-            const actorBox = document.createElement('div');
-            actorBox.className = 'arena-actor-card';
-            let innerHtml = `<div class="arena-actor-header"><span class="arena-actor-icon">🎭</span> <span class="arena-actor-name">${escapeHtml(spk)}</span></div>`;
-            if (act) {
-                innerHtml += `<div class="arena-actor-action">*${escapeHtml(act)}*</div>`;
-            }
-            if (dlg) {
-                innerHtml += `<div class="arena-actor-dialogue">${escapeHtml(dlg)}</div>`;
-            }
-            actorBox.innerHTML = innerHtml;
-            bubble.appendChild(actorBox);
-        }
-    });
-}
 
 // --- renderCompletedLogs ---
 function renderCompletedLogs(bubble, toolCalls, duration = null) {
@@ -6060,10 +6035,6 @@ function renderMessage(msg, isLive = false) {
                 const reason = skillCall.args.reason || (skillCall.args.skill_name ? `${skillCall.args.skill_name} check required.` : '');
                 if (reason) fallbackText = `*${reason}*`;
             }
-            if (!fallbackText) {
-                const actorCall = msg.tool_calls.find(tc => (tc.name === 'arena_actor' || tc.name === 'actor') && tc.args);
-                if (actorCall) fallbackText = ' ';
-            }
         }
         if (fallbackText !== null && fallbackText !== undefined && (fallbackText.trim() || fallbackText === ' ')) {
             bubblesToCreate.push({ type: 'text', content: fallbackText.trim() });
@@ -6193,7 +6164,6 @@ function renderMessage(msg, isLive = false) {
                     textDiv.textContent = actualResponse;
                 }
                 bubble.appendChild(textDiv);
-                renderActorDialogueCards(bubble, msg.tool_calls);
                 if (role === 'follower' && isLive) {
                     const toolCtx = (msg.tool_calls || []).map(tc => `${tc.name || ''} ${JSON.stringify(tc.args || {})}`).join(' ');
                     evaluateSceneBGM(item.content || actualResponse, toolCtx);
@@ -6618,7 +6588,12 @@ function determineClientSpeaker(rawText, lastSpeaker) {
         }
     }
 
-    // 2. Continuing an ongoing conversation with a follower
+    // 2. Explicit world action in asterisks -> The Game
+    if (textClean.startsWith('*') && textClean.endsWith('*')) {
+        return 'game';
+    }
+
+    // 3. Continuing an ongoing conversation with a follower
     if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
         return lastSpeaker;
     }

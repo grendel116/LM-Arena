@@ -1118,10 +1118,12 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, na
             forbidden_names.add(fid.lower())
             fname = get_follower_name(fid).strip().lower()
             forbidden_names.add(fname)
-            first_name = fname.split()[0]
-            forbidden_names.add(first_name)
+            for part in fname.split():
+                if len(part) > 2:
+                    forbidden_names.add(part)
 
-        if actual_speaker.lower() in forbidden_names:
+        spk_lower = actual_speaker.lower()
+        if spk_lower in forbidden_names or any(fn in spk_lower for fn in forbidden_names if len(fn) > 2):
             return {
                 "success": False,
                 "error": f"Forbidden: '{actual_speaker}' is an autonomous party member or hero. Party followers and the hero speak on their own turns. The Actor tool is exclusively for world NPCs, monsters, merchants, and questgivers."

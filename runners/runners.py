@@ -522,10 +522,42 @@ class BaseRunner:
                         res = await asyncio.to_thread(_execute_emulated_tool, m.group(1), m.group(2))
                         raw_results.append(res)
 
-                    results = [
-                        (_normalize_tool_name(m.group(1)), parsed_args["kwargs"], output)
-                        for m, (parsed_args, output) in zip(new_matches, raw_results)
-                    ]
+                    results = []
+                    for m, (parsed_args, output) in zip(new_matches, raw_results):
+                        t_name = _normalize_tool_name(m.group(1))
+                        t_args = parsed_args["kwargs"]
+                        results.append((t_name, t_args, output))
+
+                        if t_name == "arena_actor":
+                            output_dict = {}
+                            if isinstance(output, dict):
+                                output_dict = output
+                            elif isinstance(output, str):
+                                try:
+                                    import ast
+                                    output_dict = ast.literal_eval(output)
+                                except Exception:
+                                    pass
+
+                            replacement = ""
+                            if output_dict.get("success"):
+                                spk = str(t_args.get("speaker") or t_args.get("name") or "NPC").strip()
+                                dlg = str(t_args.get("dialogue") or t_args.get("speech") or t_args.get("text") or "").strip()
+                                act = str(t_args.get("action") or "").strip()
+
+                                parts = []
+                                if act:
+                                    parts.append(f"*{act}*")
+                                if dlg:
+                                    clean_dlg = dlg.strip(' "\'')
+                                    if spk and spk.lower() not in ("npc", "actor", "none"):
+                                        parts.append(f'{spk}: "{clean_dlg}"')
+                                    else:
+                                        parts.append(f'"{clean_dlg}"')
+                                if parts:
+                                    replacement = "\n\n" + "\n\n".join(parts)
+
+                            bot_response_text = bot_response_text.replace(m.group(0), replacement, 1)
 
                     tool_calls = []
                     for idx, (t_name, t_args, t_output) in enumerate(results):
