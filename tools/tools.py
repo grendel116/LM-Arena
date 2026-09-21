@@ -294,11 +294,17 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
 
     party = get_active_followers()
     prompt_lower = prompt.lower()
+    from core.follower_config import match_follower_by_full_name, get_follower_image_details
 
-    if subject_type == "auto":
-        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "dungeon corridor", "exterior", "architectural", "generate_environment")):
+    # Name in prompt acts as direct trigger for follower portrait injection
+    name_matched_fol = match_follower_by_full_name(prompt)
+    if name_matched_fol:
+        mode = "follower"
+        target_fol_id = name_matched_fol
+    elif subject_type == "auto":
+        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "exterior", "architectural", "generate_environment")):
             mode = "environment"
-        elif any(w in prompt_lower for w in ("player character", "player portrait", "the hero", "adventurer", "portrait of the player", "generate_player_portrait")) and not any(w in prompt_lower for w in ("ria silmane", "spectral", "ghost woman")):
+        elif any(w in prompt_lower for w in ("player character", "player portrait", "the hero", "adventurer", "portrait of the player", "generate_player_portrait")):
             mode = "player"
         else:
             mode = "follower"
@@ -307,7 +313,6 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
 
     img_details_val = ""
     neg_details_val = ""
-    target_fol_id = target_follower
 
     if mode == "player":
         try:
@@ -341,15 +346,10 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
     else:
         # Follower mode: Resolve target follower
         if not target_fol_id:
-            # Check if any follower is explicitly named in prompt
-            for fid in party:
-                fn = get_follower_name(fid).lower()
-                if fn in prompt_lower or fid in prompt_lower:
-                    target_fol_id = fid
-                    break
+            target_fol_id = match_follower_by_full_name(prompt)
 
         if not target_fol_id and party:
-            # Check active session history for last follower mentioned or last speaker
+            # Check active session history for last follower who spoke
             try:
                 sid = current_session_id.get("default")
                 from runners.runners import runner
@@ -368,31 +368,21 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
 
         save_fol_id = target_fol_id or "game"
 
-        # Load image prompt tags from resolved follower card
-        follower_json_path = os.path.normpath(os.path.join(
-            base_dir, "core", "followers", save_fol_id, f"{save_fol_id}.json"
-        ))
-        if os.path.exists(follower_json_path):
-            try:
-                with open(follower_json_path, "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-                card = raw.get("data", raw)
-                arena_ext = card.get("extensions", {}).get("arena", {})
-                img_details = arena_ext.get("image_details", {})
-                img_details_val = img_details.get("positive", "")
-                neg_details_val = img_details.get("negative", "")
-            except Exception as e:
-                print(f"[DEBUG] Error reading follower JSON for image generation: {e}", flush=True)
+        # Load image prompt tags directly from resolved follower card
+        img_details_val, neg_details_val = get_follower_image_details(save_fol_id)
 
     # Combine prompt and image details
     from core.follower_config import replace_placeholders
     final_prompt = replace_placeholders(prompt, follower_id=save_fol_id, party_followers=party)
-    if img_details_val:
+    if img_details_val and img_details_val not in final_prompt:
         if final_prompt and not final_prompt.endswith(","):
             final_prompt += ", "
         final_prompt += img_details_val
         
-    final_negative = neg_details_val if neg_details_val else "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
+    if neg_details_val:
+        final_negative = f"{neg_details_val}, worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
+    else:
+        final_negative = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
 
     timestamp = int(time.time())
     local_filename = f"portrait_{timestamp}.png"
@@ -414,7 +404,14 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
         json_path = os.path.join(portraits_dir, f"portrait_{timestamp}.json")
         try:
             with open(json_path, "w", encoding="utf-8") as jf:
-                json.dump({"prompt": prompt, "full_prompt": final_prompt, "mode": mode, "subject_type": mode, "engine": "in_process_gpu"}, jf, indent=4)
+                json.dump({
+                    "prompt": prompt,
+                    "full_prompt": final_prompt,
+                    "mode": mode,
+                    "subject_type": mode,
+                    "follower_id": save_fol_id,
+                    "engine": "in_process_gpu"
+                }, jf, indent=4)
         except Exception:
             pass
         return f"![Portrait](/images/portraits/{local_filename}?v={timestamp})"

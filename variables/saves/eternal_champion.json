@@ -13,7 +13,7 @@
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
     "created_at": "2026-09-21T06:05:29.333425",
-    "updated_at": "2026-09-21T06:29:07.801549",
+    "updated_at": "2026-09-21T07:05:13.363858",
     "active_companion": "breamaccius",
     "active_followers": [
       "breamaccius"
@@ -300,6 +300,45 @@
       "sender_id": "breamaccius",
       "follower_id": "breamaccius",
       "sender_name": "Brea Maccius"
+    },
+    {
+      "id": "port_znb0drl6vmubao6jf",
+      "role": "user",
+      "text": "[GENERATE_IMAGE: Render an image of the active follower. Do not narrate new story events or call mechanics tools.]",
+      "image_url": null,
+      "timestamp": 1789998132.5210612
+    },
+    {
+      "id": "game_6d4f3a2bbf",
+      "role": "follower",
+      "text": "",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "generate_local_image",
+          "args": {
+            "prompt": "1girl, solo, Brea Maccius, green eyes, wearing minimal leather bikini, iron shackles on wrists, standing in a dimly lit stone dungeon corridor, torchlight casting amber glow, sharp focused expression, looking at viewer"
+          },
+          "id": "call_1789998216_0_8c87"
+        },
+        {
+          "type": "response",
+          "name": "generate_local_image",
+          "response": "![Portrait](/images/portraits/portrait_1789999430.png?v=1789999430?v=1789998307?v=1789998148)",
+          "id": "call_1789998216_0_8c87"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1789998216.52091,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
     }
   ],
   "memory_state": {

@@ -52,7 +52,71 @@ def _load_card_data(follower_id: str) -> dict:
             return raw.get("data", raw)
         except Exception as e:
             logging.error(f"Error loading follower card for '{follower_id}': {e}")
+    fol_dir = os.path.join(FOLLOWERS_DIR, follower_id)
+    if os.path.isdir(fol_dir):
+        for fname in os.listdir(fol_dir):
+            if fname.endswith(".json") and not fname.endswith("_voice.json"):
+                try:
+                    with open(os.path.join(fol_dir, fname), "r", encoding="utf-8") as f:
+                        raw = json.load(f)
+                    return raw.get("data", raw)
+                except Exception as e:
+                    logging.error(f"Error loading follower card file '{fname}': {e}")
     return {}
+
+
+def get_follower_image_details(follower_id: str = None, card: dict = None) -> tuple[str, str]:
+    """Returns (positive_prompt, negative_prompt) from the follower's card."""
+    if card is None:
+        card = _load_card_data(follower_id)
+    if not card:
+        return "", ""
+
+    exts = card.get("extensions") or {}
+    arena = exts.get("arena") or exts.get("sanctuary") or {}
+    details = arena.get("image_details") or {}
+    pos = details.get("positive") or ""
+    neg = details.get("negative") or ""
+
+    if not pos and not neg:
+        top_details = card.get("image_details") or {}
+        pos = top_details.get("positive") or ""
+        neg = top_details.get("negative") or ""
+
+    if not pos:
+        pos = card.get("image_positive") or ""
+    if not neg:
+        neg = card.get("image_negative") or ""
+
+    return str(pos).strip(), str(neg).strip()
+
+
+def match_follower_by_full_name(text: str, candidate_ids: list[str] = None) -> str | None:
+    """Scans text for followers' full names (case-insensitive) and returns the matched follower ID."""
+    if not text:
+        return None
+
+    from runners.follower import get_active_followers
+    active_ids = list(candidate_ids) if candidate_ids is not None else list(get_active_followers())
+
+    clean_text = text.lower()
+    for fid in active_ids:
+        if fid in ("game", "the_game"):
+            continue
+        fname = get_follower_name(fid).strip().lower()
+        if fname and re.search(rf"\b{re.escape(fname)}\b", clean_text):
+            return fid
+
+    if os.path.exists(FOLLOWERS_DIR):
+        for entry in os.listdir(FOLLOWERS_DIR):
+            if entry in ("game", "the_game") or entry in active_ids:
+                continue
+            if os.path.isdir(os.path.join(FOLLOWERS_DIR, entry)):
+                fname = get_follower_name(entry).strip().lower()
+                if fname and re.search(rf"\b{re.escape(fname)}\b", clean_text):
+                    return entry
+
+    return None
 
 
 def get_follower_name(follower_id: str = None) -> str:
@@ -140,13 +204,7 @@ def compile_instructions_from_card(card: dict) -> str:
     if post_history:
         prompt_parts.append(f"## ROLEPLAY GUIDELINES\n{post_history}")
 
-    visual = (
-        card.get("extensions", {})
-        .get("arena", card.get("extensions", {}).get("sanctuary", {}))
-        .get("image_details", {})
-        .get("positive", "")
-        .strip()
-    )
+    visual, _ = get_follower_image_details(card=card)
     if visual:
         prompt_parts.append(f"## APPEARANCE\n{visual}")
 

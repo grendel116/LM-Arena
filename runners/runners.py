@@ -846,10 +846,30 @@ class BaseRunner:
                     "Output the tool call tag directly."
                 )
             else:
+                from core.follower_config import match_follower_by_full_name, get_follower_name, get_follower_image_details
+                target_fol_id = match_follower_by_full_name(user_message, candidate_ids=party)
+                if not target_fol_id and party:
+                    try:
+                        history = self.sessions_history.get(session_id, [])
+                        for m in reversed(history):
+                            sid_sender = m.get("sender_id")
+                            if sid_sender in party:
+                                target_fol_id = sid_sender
+                                break
+                    except Exception:
+                        pass
+                if not target_fol_id:
+                    target_fol_id = party[0] if party else "riasilmane"
+
+                fol_name = get_follower_name(target_fol_id)
+                fol_pos_tags, _ = get_follower_image_details(target_fol_id)
+                tag_hint = f", {fol_pos_tags}" if fol_pos_tags else ""
+
                 instructions += (
                     "\n\n# IMMEDIATE FOLLOWER PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
-                    "The user requested an image generation of {{char}}. Output ONLY the tool call tag "
-                    "`[generate_follower_portrait(prompt=\"...\")]`."
+                    f"The user requested a character portrait of {fol_name}. Construct visual tags describing {fol_name}'s appearance and current scene, and output ONLY the tool call tag "
+                    f"`[generate_follower_portrait(prompt=\"solo, {fol_name}{tag_hint}, fantasy portrait\")]`.\n"
+                    "Output the tool call tag directly."
                 )
 
         return replace_placeholders(instructions, follower_id=speaker_id, party_followers=party)

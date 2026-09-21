@@ -8142,11 +8142,28 @@ async function generateCustomImage(type = 'follower') {
             userInput.value = `[GENERATE_IMAGE: Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters. Do not narrate new story events or call mechanics tools.]`;
         }
     } else {
-        // Follower portrait
+        // Follower portrait: identify the last follower who spoke
+        let targetFollowerName = "";
+        if (chatContainer) {
+            const rows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'));
+            for (let i = rows.length - 1; i >= 0; i--) {
+                const row = rows[i];
+                const folId = row.dataset.followerId || row.dataset.senderId;
+                if (folId && folId !== 'game' && folId !== 'user') {
+                    targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[folId]) || row.dataset.senderName || "";
+                    if (targetFollowerName) break;
+                }
+            }
+        }
+        if (!targetFollowerName) {
+            const leadId = (typeof activePartyFollowers !== 'undefined' && activePartyFollowers[0]) || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
+            targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[leadId]) || (typeof activefollowerName !== 'undefined' && activefollowerName) || "Follower";
+        }
+
         if (useImagenMode) {
-            userInput.value = "[GENERATE_IMAGEN: Render an image of the active follower using Google Imagen. Do not narrate new story events or call mechanics tools.]";
+            userInput.value = `[GENERATE_IMAGEN: Render a detailed character portrait of ${targetFollowerName}. Do not narrate new story events or call mechanics tools.]`;
         } else {
-            userInput.value = "[GENERATE_IMAGE: Render an image of the active follower. Do not narrate new story events or call mechanics tools.]";
+            userInput.value = `[GENERATE_IMAGE: Render a detailed character portrait of ${targetFollowerName}. Do not narrate new story events or call mechanics tools.]`;
         }
     }
 

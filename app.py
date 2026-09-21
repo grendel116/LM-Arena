@@ -1568,7 +1568,8 @@ def regenerate_image():
                         prompt = meta.get('prompt')
                     if not subject_type:
                         subject_type = meta.get('subject_type') or meta.get('mode')
-                    print(f"[DEBUG REROLL] Found in sidecar JSON: prompt={prompt}, subject_type={subject_type}")
+                    sidecar_follower_id = meta.get('follower_id')
+                    print(f"[DEBUG REROLL] Found in sidecar JSON: prompt={prompt}, subject_type={subject_type}, follower={sidecar_follower_id}")
         except Exception as je:
             print(f"Error reading sidecar JSON: {je}")
 
@@ -1629,7 +1630,7 @@ def regenerate_image():
         if use_imagen and hasattr(tools, 'generate_imagen'):
             new_markdown = tools.generate_imagen(prompt, subject_type=subject_type or "auto")
         else:
-            new_markdown = tools.generate_local_image(prompt, subject_type=subject_type or "auto")
+            new_markdown = tools.generate_local_image(prompt, subject_type=subject_type or "auto", target_follower=locals().get('sidecar_follower_id'))
         if new_markdown.startswith("Error"):
             return jsonify({'error': new_markdown}), 500
             
@@ -1662,43 +1663,27 @@ def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "",
     Returns a tuple of (tags, resolved_follower_id).
     """
     from runners.follower import get_active_followers
-    from core.follower_config import get_follower_name
+    from core.follower_config import get_follower_name, match_follower_by_full_name, get_follower_image_details
     party = get_active_followers(session_id)
     
-    # Resolve target follower: check explicitly provided, or scan recent messages / prompt
+    # Resolve target follower: check explicitly provided, or match full name in prompt, or check last follower who spoke
     active_fol = target_follower
-    if not active_fol and party:
-        prompt_lower = (custom_prompt or "").lower()
-        # 1. Check if follower is named in prompt
-        for fid in party:
-            fname = get_follower_name(fid).lower()
-            if fname in prompt_lower or fid in prompt_lower:
-                active_fol = fid
-                break
-        # 2. Check recent chat history for last mentioned follower
-        if not active_fol:
-            try:
-                hist = asyncio.run(runner.get_history(session_id))
-                for msg in reversed(hist[-6:]):
-                    sid = msg.get("sender_id")
-                    if sid in party:
-                        active_fol = sid
-                        break
-                    mtxt = (msg.get("text") or "").lower()
-                    for fid in party:
-                        if get_follower_name(fid).lower() in mtxt or fid in mtxt:
-                            active_fol = fid
-                            break
-                    if active_fol:
-                        break
-            except Exception:
-                pass
-        # 3. Default to party lead
-        if not active_fol:
-            active_fol = party[0]
+    if not active_fol and custom_prompt:
+        active_fol = match_follower_by_full_name(custom_prompt, candidate_ids=party)
     
+    if not active_fol and party:
+        try:
+            hist = asyncio.run(runner.get_history(session_id))
+            for msg in reversed(hist):
+                sid = msg.get("sender_id")
+                if sid in party:
+                    active_fol = sid
+                    break
+        except Exception:
+            pass
+
     if not active_fol:
-        active_fol = "game"
+        active_fol = party[0] if party else "game"
 
     if custom_prompt and custom_prompt.strip():
         return custom_prompt.strip(), active_fol
@@ -1750,6 +1735,9 @@ def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "",
     prompt_parts = []
     if description:
         prompt_parts.append(f"Character Profile ({char_name}):\n{description}")
+    fol_pos_tags, _ = get_follower_image_details(active_fol)
+    if fol_pos_tags:
+        prompt_parts.append(f"Card Visual Tags ({char_name}):\n{fol_pos_tags}")
     if scenario:
         prompt_parts.append(f"Default Setting / Scenario:\n{scenario}")
     if history_text:
