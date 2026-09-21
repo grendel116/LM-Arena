@@ -6695,8 +6695,8 @@ async function sendMessage() {
     typingIndicatorRow.className = 'message-row follower-row';
 
     const previousFollowerRows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'));
-    const lastRow = previousFollowerRows.length > 0 ? previousFollowerRows[previousFollowerRows.length - 1] : null;
-    const lastSpeaker = lastRow ? (lastRow.dataset.senderId || 'game') : 'game';
+    const lastFollowerRow = previousFollowerRows.length > 0 ? previousFollowerRows[previousFollowerRows.length - 1] : null;
+    const lastSpeaker = lastFollowerRow ? (lastFollowerRow.dataset.senderId || 'game') : 'game';
 
     const textLower = text.toLowerCase();
     let addressed = null;
