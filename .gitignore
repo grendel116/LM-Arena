@@ -15,6 +15,14 @@ scratch/
 reports/
 certs/
 core/comfy_engine/temp/
+core/comfy_engine/output/
+core/comfy_engine/input/
+core/comfy_engine/**/*.png
+core/comfy_engine/**/*.jpg
+core/comfy_engine/**/*.jpeg
+core/comfy_engine/**/*.webp
+core/comfy_engine/**/*.gif
+core/comfy_engine/**/*.bmp
 
 # Ignore all runtime and user variables except code dependencies, template examples, and default profile
 variables/*
