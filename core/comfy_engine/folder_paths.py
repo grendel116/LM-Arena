@@ -1,5 +1,7 @@
 import os
 import tempfile
+import atexit
+import shutil
 import time
 import mimetypes
 import logging
@@ -139,6 +141,16 @@ def get_output_directory() -> str:
 def get_temp_directory() -> str:
     global temp_directory
     return temp_directory
+
+def cleanup_temp_directory() -> None:
+    global temp_directory
+    if temp_directory and os.path.exists(temp_directory):
+        try:
+            shutil.rmtree(temp_directory, ignore_errors=True)
+        except Exception:
+            pass
+
+atexit.register(cleanup_temp_directory)
 
 def get_input_directory() -> str:
     global input_directory
