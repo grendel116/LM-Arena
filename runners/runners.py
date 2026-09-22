@@ -860,7 +860,8 @@ class BaseRunner:
 
                 fol_name = get_follower_name(target_fol_id)
                 fol_pos_tags, _ = get_follower_image_details(target_fol_id)
-                tag_hint = f", {fol_pos_tags}" if fol_pos_tags else ""
+                clean_tags = fol_pos_tags.replace('"', '').replace('\n', ' ').strip() if fol_pos_tags else ""
+                tag_hint = f", {clean_tags}" if clean_tags else ""
 
                 instructions += (
                     "\n\n# IMMEDIATE FOLLOWER PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"

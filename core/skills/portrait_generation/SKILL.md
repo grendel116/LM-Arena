@@ -10,9 +10,8 @@ When generating a portrait, construct a detailed comma-separated prompt of visua
 
 ### Prompt Tag Directives:
 1. **Subject**: Depict {{char}} as the main subject (e.g. `1girl, solo, {{char}}`). Do not invent extra subjects.
-2. **Current Outfit & Appearance**: Include the character's clothing, style, garments, fabrics, and signature accessories from their character profile unless a specific alternate outfit has been established in the scene.
-3. **Setting & Environment**: Include the setting location, background elements, atmosphere, and lighting from the character's scenario setting and active conversation scene.
-4. **Pose & Expression**: Include the character's active posture, framing, and facial expression (e.g. `upper body, warm smile, looking at viewer`).
+2. **Current Outfit & Appearance**: Include the character's current clothing, armor, and accessories.
+3. **Setting & Environment**: Include the setting, background, atmosphere, and lighting from the character's current environment.
 
 ### Mandatory Output Format:
 Your ENTIRE response MUST consist ONLY of the single tool call tag:

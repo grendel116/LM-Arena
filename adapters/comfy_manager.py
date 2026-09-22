@@ -74,7 +74,7 @@ def check_comfy_running(force_refresh=False):
         pass
         
     try:
-        # Fallback to GET / (static HTML, very lightweight)
+        # Secondary check on GET / (static HTML, very lightweight)
         res = requests.get(f"{COMFYUI_URL}/", timeout=0.3)
         if res.status_code == 200:
             _comfy_running_cached = True
@@ -383,7 +383,8 @@ def start_comfy_server():
             cmd = [arg for arg in cmd if arg not in gpu_args]
             
         # Start ComfyUI headlessly (shell=False handles spaces in venv path automatically)
-        log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "comfy_server.log")
+        from variables.settings import LOGS_DIR
+        log_file = os.path.join(LOGS_DIR, "comfy_server.log")
         env = os.environ.copy()
         env["PYTORCH_HIP_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:512"
         env["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:512"
@@ -752,7 +753,8 @@ def stop_comfy_server():
         if os.name == 'nt':
             try:
                 import subprocess
-                output = subprocess.check_output("netstat -ano", shell=True).decode('utf-8', errors='ignore')
+                flags = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0x08000000
+                output = subprocess.check_output("netstat -ano", shell=True, creationflags=flags).decode('utf-8', errors='ignore')
                 for line in output.splitlines():
                     if f":{COMFYUI_PORT}" in line and "LISTENING" in line:
                         parts = line.strip().split()

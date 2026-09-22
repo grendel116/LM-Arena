@@ -207,19 +207,27 @@ _daemon_proc: Optional[subprocess.Popen] = None
 _daemon_lock = threading.Lock()
 
 
+def is_port_listening(port: int = DIFFUSION_DAEMON_PORT) -> bool:
+    """Checks if a TCP port is actively listening on localhost."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 def check_daemon_status() -> bool:
-    """Checks if the persistent diffusion daemon is online."""
+    """Checks if the persistent diffusion server is online."""
     try:
         import urllib.request
         req = urllib.request.Request(f"{DIFFUSION_DAEMON_URL}/health", method="GET")
-        with urllib.request.urlopen(req, timeout=1.0) as resp:
+        with urllib.request.urlopen(req, timeout=3.0) as resp:
             return resp.status == 200
     except Exception:
         return False
 
 
 def ensure_daemon_running(timeout: float = 60.0) -> bool:
-    """Starts the persistent diffusion daemon if not already running."""
+    """Starts the persistent diffusion server if not already running."""
     global _daemon_proc
     if check_daemon_status():
         return True
@@ -228,7 +236,14 @@ def ensure_daemon_running(timeout: float = 60.0) -> bool:
         if check_daemon_status():
             return True
 
-        print("[engine_diffusion] Starting persistent diffusion daemon...", flush=True)
+        if is_port_listening(DIFFUSION_DAEMON_PORT):
+            start_t = time.time()
+            while time.time() - start_t < 10.0:
+                time.sleep(0.5)
+                if check_daemon_status():
+                    return True
+
+        print("[engine_diffusion] Starting persistent diffusion server...", flush=True)
         py_exe = sys.executable
         env = os.environ.copy()
         env["DIFFUSION_WORKER"] = "1"
@@ -257,24 +272,24 @@ def ensure_daemon_running(timeout: float = 60.0) -> bool:
         while time.time() - start_t < timeout:
             time.sleep(0.5)
             if check_daemon_status():
-                print("[engine_diffusion] Persistent diffusion daemon is ready.", flush=True)
+                print("[engine_diffusion] Persistent diffusion server is ready.", flush=True)
                 return True
             if _daemon_proc and _daemon_proc.poll() is not None:
-                print(f"[engine_diffusion] Daemon exited prematurely with code {_daemon_proc.poll()}.", flush=True)
+                print(f"[engine_diffusion] Server exited prematurely with code {_daemon_proc.poll()}.", flush=True)
                 return False
 
-        print("[engine_diffusion] Daemon startup timed out.", flush=True)
+        print("[engine_diffusion] Server startup timed out.", flush=True)
         return False
 
 
 def unload_diffusion_models():
-    """Unloads the persistent diffusion daemon, releasing 100% of GPU VRAM back to the OS."""
+    """Unloads the persistent diffusion server, releasing GPU memory."""
     global _daemon_proc, _COMFY_NODE_CACHE, _active_checkpoint
     with _daemon_lock:
         try:
             import urllib.request
             req = urllib.request.Request(f"{DIFFUSION_DAEMON_URL}/shutdown", method="POST", data=b"{}")
-            urllib.request.urlopen(req, timeout=1.0)
+            urllib.request.urlopen(req, timeout=2.0)
         except Exception:
             pass
 
@@ -291,13 +306,18 @@ def unload_diffusion_models():
 
         if os.name == 'nt':
             try:
-                flags = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0x08000000
-                subprocess.run(
-                    ["powershell", "-Command", "Get-Process -Name python -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*--server*' -and $_.CommandLine -like '*engine_diffusion*' } | Stop-Process -Force"],
-                    creationflags=flags,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
+                import psutil
+                output = subprocess.check_output("netstat -ano", shell=True).decode('utf-8', errors='ignore')
+                for line in output.splitlines():
+                    if f":{DIFFUSION_DAEMON_PORT}" in line and "LISTENING" in line:
+                        parts = line.strip().split()
+                        if len(parts) >= 5:
+                            pid = int(parts[-1])
+                            try:
+                                proc = psutil.Process(pid)
+                                proc.kill()
+                            except Exception:
+                                pass
             except Exception:
                 pass
 
@@ -339,17 +359,31 @@ def execute_workflow_graph(
 
     if isinstance(workflow_path_or_dict, str):
         with open(workflow_path_or_dict, "r", encoding="utf-8") as f:
-            wf_str = f.read()
+            graph = json.load(f)
     else:
-        wf_str = json.dumps(workflow_path_or_dict)
+        import copy
+        graph = copy.deepcopy(workflow_path_or_dict)
 
     if replacements:
-        for k, v in replacements.items():
-            if k == "%seed%":
-                wf_str = wf_str.replace(f'"{k}"', str(v))
-            wf_str = wf_str.replace(k, str(v))
+        def _apply_replacements(obj: Any) -> Any:
+            if isinstance(obj, dict):
+                return {k: _apply_replacements(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [_apply_replacements(elem) for elem in obj]
+            elif isinstance(obj, str):
+                res = obj
+                for placeholder, rep_val in replacements.items():
+                    if placeholder in res:
+                        if placeholder == "%seed%" and res == placeholder:
+                            try:
+                                return int(rep_val)
+                            except (ValueError, TypeError):
+                                return rep_val
+                        res = res.replace(placeholder, str(rep_val))
+                return res
+            return obj
 
-    graph: Dict[str, Any] = json.loads(wf_str)
+        graph = _apply_replacements(graph)
     executed_outputs: Dict[str, Any] = {}
 
     def get_input_val(val: Any) -> Any:
@@ -669,45 +703,54 @@ def generate_portrait_image(
 
 if __name__ == "__main__":
     import argparse
-    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--server", action="store_true", help="Run as HTTP diffusion daemon")
+    parser.add_argument("--server", action="store_true", help="Run as HTTP diffusion server")
     args = parser.parse_args()
 
     if args.server:
+        _gen_lock = threading.Lock()
+        _is_busy = False
+
         class DiffusionHandler(BaseHTTPRequestHandler):
             def log_message(self, format, *args):
                 pass  # Suppress access logs
 
             def do_GET(self):
                 if self.path == "/health":
+                    status = "busy" if _is_busy else "ready"
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
-                    self.wfile.write(b'{"status":"ready"}')
+                    self.wfile.write(json.dumps({"status": status}).encode("utf-8"))
                 else:
                     self.send_response(404)
                     self.end_headers()
 
             def do_POST(self):
+                global _is_busy
                 if self.path == "/generate":
                     content_len = int(self.headers.get("Content-Length", 0))
                     body = self.rfile.read(content_len)
-                    try:
-                        cfg = json.loads(body.decode("utf-8"))
-                        out_path = _generate_portrait_image_inprocess(**cfg)
-                        self.send_response(200)
-                        self.send_header("Content-Type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps({"status": "ok", "path": out_path}).encode("utf-8"))
-                    except Exception as ex:
-                        import traceback
-                        traceback.print_exc()
-                        self.send_response(500)
-                        self.send_header("Content-Type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps({"status": "error", "error": str(ex)}).encode("utf-8"))
+                    with _gen_lock:
+                        _is_busy = True
+                        try:
+                            cfg = json.loads(body.decode("utf-8"))
+                            out_path = _generate_portrait_image_inprocess(**cfg)
+                            self.send_response(200)
+                            self.send_header("Content-Type", "application/json")
+                            self.end_headers()
+                            self.wfile.write(json.dumps({"status": "ok", "path": out_path}).encode("utf-8"))
+                        except Exception as ex:
+                            import traceback
+                            traceback.print_exc()
+                            self.send_response(500)
+                            self.send_header("Content-Type", "application/json")
+                            self.end_headers()
+                            self.wfile.write(json.dumps({"status": "error", "error": str(ex)}).encode("utf-8"))
+                        finally:
+                            _is_busy = False
                 elif self.path == "/shutdown":
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
@@ -718,8 +761,9 @@ if __name__ == "__main__":
                     self.send_response(404)
                     self.end_headers()
 
-        server = HTTPServer(("127.0.0.1", DIFFUSION_DAEMON_PORT), DiffusionHandler)
-        print(f"[engine_diffusion daemon] Listening on http://127.0.0.1:{DIFFUSION_DAEMON_PORT}", flush=True)
+        server = ThreadingHTTPServer(("127.0.0.1", DIFFUSION_DAEMON_PORT), DiffusionHandler)
+        server.daemon_threads = True
+        print(f"[engine_diffusion server] Listening on http://127.0.0.1:{DIFFUSION_DAEMON_PORT}", flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:

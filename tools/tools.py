@@ -371,16 +371,26 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
         # Load image prompt tags directly from resolved follower card
         img_details_val, neg_details_val = get_follower_image_details(save_fol_id)
 
+    # Sanitize prompt string
+    clean_prompt = (prompt or "").strip().strip('"\'')
+    clean_prompt = clean_prompt.replace('\n', ' ').strip()
+
     # Combine prompt and image details
     from core.follower_config import replace_placeholders
-    final_prompt = replace_placeholders(prompt, follower_id=save_fol_id, party_followers=party)
-    if img_details_val and img_details_val not in final_prompt:
-        if final_prompt and not final_prompt.endswith(","):
-            final_prompt += ", "
-        final_prompt += img_details_val
-        
-    if neg_details_val:
-        final_negative = f"{neg_details_val}, worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
+    final_prompt = replace_placeholders(clean_prompt, follower_id=save_fol_id, party_followers=party)
+
+    if img_details_val:
+        clean_img_details = img_details_val.replace('"', '').replace('\n', ' ').strip()
+        existing_lower = final_prompt.lower()
+        new_tags = [t.strip() for t in clean_img_details.split(',') if t.strip() and t.strip().lower() not in existing_lower]
+        if new_tags:
+            if final_prompt and not final_prompt.rstrip().endswith(','):
+                final_prompt += ", "
+            final_prompt += ", ".join(new_tags)
+
+    clean_neg = (neg_details_val or "").replace('"', '').replace('\n', ' ').strip()
+    if clean_neg:
+        final_negative = f"{clean_neg}, worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
     else:
         final_negative = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
 
