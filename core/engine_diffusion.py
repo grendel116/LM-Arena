@@ -499,6 +499,8 @@ def execute_workflow_graph(
             if res is not None:
                 if isinstance(res, (list, tuple)) and len(res) > 0 and hasattr(res[0], "shape"):
                     final_images = res[0]
+                elif isinstance(res, dict) and "result" in res and isinstance(res["result"], (list, tuple)) and len(res["result"]) > 0:
+                    final_images = res["result"][0]
                 elif isinstance(res, dict) and "images" in res:
                     final_images = res["images"]
 

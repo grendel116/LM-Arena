@@ -1734,6 +1734,9 @@ class PreviewImage(SaveImage):
                 "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
                 }
 
+    def save_images(self, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
+        return {"ui": {"images": []}, "result": (images,)}
+
 class LoadImage:
     @classmethod
     def INPUT_TYPES(s):

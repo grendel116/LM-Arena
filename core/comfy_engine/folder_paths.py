@@ -1,4 +1,5 @@
 import os
+import tempfile
 import time
 import mimetypes
 import logging
@@ -67,7 +68,7 @@ folder_names_and_paths["optical_flow"] = ([os.path.join(models_dir, "optical_flo
 folder_names_and_paths["detection"] = ([os.path.join(models_dir, "detection")], supported_pt_extensions)
 
 output_directory = os.path.join(base_path, "output")
-temp_directory = os.path.join(base_path, "temp")
+temp_directory = os.path.abspath(args.temp_directory) if getattr(args, "temp_directory", None) else os.path.join(tempfile.gettempdir(), "comfy_temp")
 input_directory = os.path.join(base_path, "input")
 user_directory = os.path.join(base_path, "user")
 
