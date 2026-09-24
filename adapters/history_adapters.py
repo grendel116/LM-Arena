@@ -388,20 +388,16 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             "",
         )
 
-        is_image_request = (
+        last_turn_is_user = bool(filtered_history and filtered_history[-1].get("role") == "user")
+        is_image_request = last_turn_is_user and (
             "[GENERATE_IMAGE" in (last_user_msg or "")
             or "Send me a portrait of yourself" in (last_user_msg or "")
             or (last_user_msg or "").startswith("[Render image")
         )
         if is_image_request:
             core_system += (
-                "\n\n[CRITICAL IMAGE DIRECTIVE: The user requested an image of the active follower. "
-                "You must ONLY output the image generation tool call tag: `[generate_local_image(prompt=\"...\")]` "
-                "or `[generate_imagen(prompt=\"...\")]` depicting an image of the active follower character. "
-                "Do NOT write any story narrative or dialogue. "
-                "Do NOT advance the plot. "
-                "Do NOT call any gameplay mechanics tools or add/remove items. "
-                "Output ONLY the image tool call tag.]"
+                "\n\n# Image Generation Directive\n"
+                "Output only the image generation tool call tag (`[generate_local_image(prompt=\"...\")]` or `[generate_imagen(prompt=\"...\")]`) with the character's pose, appearance, and current scenery."
             )
 
         # Tier 3 & 4 Auxiliary Blocks (Lore, Memory, Journals, RAG, Skills)
@@ -514,6 +510,15 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             post_blocks.append(f"# CURRENT WORLD STATE\n- Province: {prov}\n- Location: {loc}\n- Date: {day} {month}, 3E {year}\n- Time: {time_display}\n{state_tag}")
 
             if active_speaker == "game":
+                from runners.follower import get_player_name
+                player_hero_name = get_player_name()
+                post_blocks.append(
+                    f"# REFEREE ACTION CHECKS (MANDATORY)\n"
+                    f"Respond exclusively as The Game. Never speak as {player_hero_name} or traveling followers.\n"
+                    f"- Action Checks: When {player_hero_name} casts a spell, attacks, or attempts an action with an uncertain outcome: call `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` and stop your turn immediately. Do not resolve the outcome or spend resources until {player_hero_name} rolls.\n"
+                    f"- Resolution: When resolving a player roll from the previous turn: deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), roll adversary counter-attacks (`[arena_roll_combat]`), and narrate the outcome according to the roll result."
+                )
+
                 from core.save_manager import get_active_followers
                 active_fols = get_active_followers(self.session_id)
                 if active_fols:

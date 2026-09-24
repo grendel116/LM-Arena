@@ -4560,20 +4560,72 @@ async function loadfollowerJournals() {
     const progId = currentEditingfollowerId || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
     if (!progId) return;
     const journalsContainer = document.getElementById('follower-journals-list');
-    const memoriesContainer = document.getElementById('follower-memories-list');
+    const fullSummaryContainer = document.getElementById('follower-full-summary-container');
+    const recentSummaryContainer = document.getElementById('follower-recent-summary-container');
+
     if (journalsContainer) {
         journalsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 10px;">Loading journals...</div>';
     }
-    if (memoriesContainer) {
-        memoriesContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 10px;">Loading memories...</div>';
-    }
     
     try {
-        // 1. Fetch Keyphrase-Triggered Journals
         const res = await fetch(`/api/followers/journals?follower_id=${progId}&t=${Date.now()}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        
+
+        const memoryState = data.memory_state || {};
+        const userDisplayName = getUserDisplayName();
+        const followerDisplayName = typeof activefollowerName !== 'undefined' ? activefollowerName : 'follower';
+
+        // Render Full Summary
+        if (fullSummaryContainer) {
+            const epic = memoryState.epic_chronicle || '';
+            if (epic.trim()) {
+                let displayEpic = epic.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, followerDisplayName);
+                fullSummaryContainer.innerHTML = `<div style="white-space: pre-wrap; font-size: 0.8rem; line-height: 1.5;">${typeof escapeHtml === 'function' ? escapeHtml(displayEpic) : displayEpic}</div>`;
+            } else {
+                fullSummaryContainer.innerHTML = '<div class="empty-state" style="padding: 6px 0;">No full summary generated yet.</div>';
+            }
+        }
+
+        // Render Recent Summaries
+        if (recentSummaryContainer) {
+            recentSummaryContainer.innerHTML = '';
+            const chapters = memoryState.recent_chapters || [];
+            if (chapters.length === 0) {
+                recentSummaryContainer.innerHTML = '<div class="empty-state" style="padding: 6px 0;">No recent summaries generated yet.</div>';
+            } else {
+                chapters.forEach((chap, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'form-card-container';
+                    card.style.padding = '12px 14px';
+                    card.style.fontSize = '0.8rem';
+                    card.style.lineHeight = '1.5';
+                    card.style.background = 'rgba(255, 255, 255, 0.03)';
+                    card.style.border = '1px solid hsla(215, 5%, 100%, 0.08)';
+                    card.style.borderRadius = '8px';
+
+                    const header = document.createElement('div');
+                    header.style.color = 'var(--primary-accent)';
+                    header.style.fontWeight = '600';
+                    header.style.fontSize = '0.75rem';
+                    header.style.marginBottom = '6px';
+                    header.textContent = `Summary ${idx + 1}`;
+                    card.appendChild(header);
+
+                    const body = document.createElement('div');
+                    body.style.color = 'var(--text-main)';
+                    body.style.whiteSpace = 'pre-wrap';
+                    let chapText = chap || '';
+                    chapText = chapText.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, followerDisplayName);
+                    body.textContent = chapText;
+                    card.appendChild(body);
+
+                    recentSummaryContainer.appendChild(card);
+                });
+            }
+        }
+
+        // Render Log Journals
         const entries = data.journals || [];
         if (journalsContainer) {
             journalsContainer.innerHTML = '';
@@ -4615,8 +4667,6 @@ async function loadfollowerJournals() {
                     const text = document.createElement('div');
                     text.className = 'list-entry-content';
                     let displayContent = e.content || '';
-                    const userDisplayName = getUserDisplayName();
-                    const followerDisplayName = activefollowerName || 'follower';
                     displayContent = displayContent.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, followerDisplayName);
                     text.textContent = displayContent;
                     row.appendChild(text);
@@ -4625,83 +4675,6 @@ async function loadfollowerJournals() {
                 });
             }
         }
-        
-        // 2. Fetch Chat Compaction Memories (from memories.json for this follower)
-        if (memoriesContainer) {
-            memoriesContainer.innerHTML = '';
-            const memoriesRes = await fetch(`/api/followers/memories?follower_id=${currentEditingfollowerId}&t=${Date.now()}`);
-            const memoriesData = await memoriesRes.json();
-            
-            const memoryList = memoriesData.memories || [];
-            
-            if (memoryList.length === 0) {
-                memoriesContainer.innerHTML = '<div class="empty-state">No consolidated memories created for this follower yet.</div>';
-            } else {
-                memoryList.forEach(msg => {
-                    // Clean up text
-                    let cleanText = msg.text || '';
-                    if (cleanText.startsWith('[System Memory of older conversation turns]:')) {
-                        cleanText = cleanText.replace('[System Memory of older conversation turns]:', '').trim();
-                    }
-                    
-                    const row = document.createElement('div');
-                    row.className = 'list-entry-row';
-                    
-                    const header = document.createElement('div');
-                    header.className = 'list-entry-header';
-                    
-                    const kps = document.createElement('span');
-                    kps.style.color = 'hsl(115, 80%, 40%)';
-                    kps.style.fontWeight = '600';
-                    kps.style.fontSize = '0.72rem';
-                    kps.textContent = 'Auto-Compacted';
-                    header.appendChild(kps);
-                    
-                    // Right side container for timestamp and delete button
-                    const rightContainer = document.createElement('div');
-                    rightContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
-                    
-                    if (msg.timestamp) {
-                        const tsSpan = document.createElement('span');
-                        tsSpan.style.cssText = 'color: var(--text-muted); font-size: 0.7rem;';
-                        const d = new Date(msg.timestamp * 1000);
-                        tsSpan.textContent = d.toLocaleString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
-                        rightContainer.appendChild(tsSpan);
-                    }
-                    
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'action-icon-btn';
-                    deleteBtn.innerHTML = `
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                    `;
-                    deleteBtn.title = 'Delete Compacted Memory';
-                    deleteBtn.style.width = '26px';
-                    deleteBtn.style.height = '26px';
-                    deleteBtn.style.borderRadius = '6px';
-                    deleteBtn.style.flexShrink = '0';
-                    deleteBtn.onclick = () => deleteConsolidatedMemory(msg.session_id, msg.timestamp);
-                    rightContainer.appendChild(deleteBtn);
-                    
-                    header.appendChild(rightContainer);
-                    row.appendChild(header);
-                    
-                    const text = document.createElement('div');
-                    text.className = 'list-entry-content italic';
-                    let displayMem = cleanText;
-                    const userDisplayName = getUserDisplayName();
-                    const followerDisplayName = activefollowerName || 'follower';
-                    displayMem = displayMem.replace(/\{\{user\}\}/gi, userDisplayName).replace(/\{\{char\}\}/gi, followerDisplayName);
-                    text.textContent = displayMem;
-                    row.appendChild(text);
-                    
-                    memoriesContainer.appendChild(row);
-                });
-            }
-        }
-        
     } catch (e) {
         console.error("Error in loadfollowerJournals:", e);
         if (journalsContainer) {
@@ -5490,8 +5463,10 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
         case 'arena_set_quest_stage':
             if (resObj && resObj.stage_label) return resObj.stage_label;
             return a.target_stage ? `Stage ${a.target_stage}` : `Quest Advance`;
-        case 'arena_add_experience':
-            return `+${a.amount || a.xp_amount || 0} XP`;
+        case 'arena_add_experience': {
+            const amt = a.amount || a.xp_amount || (resObj && resObj.amount) || 0;
+            return amt > 0 ? `+${amt} XP` : 'XP Gain';
+        }
         case 'arena_create_spell':
         case 'arena_learn_spell':
             return `Spell: ${a.spell_name || 'New Spell'}`;
@@ -5544,18 +5519,17 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
 
     const pairedTools = [];
     const callsMap = {};
-    const seenCallSignatures = new Set();
+    const seenCallIds = new Set();
     
     toolCalls.forEach(tc => {
         if (tc.type === 'call') {
             if (hiddenPassiveTools.has(tc.name)) return;
-            const sig = tc.name + '::' + JSON.stringify(tc.args || {});
-            if (seenCallSignatures.has(sig)) return;
-            seenCallSignatures.add(sig);
+            if (seenCallIds.has(tc.id)) return;
+            seenCallIds.add(tc.id);
             const callInfo = {
                 id: tc.id,
                 name: tc.name,
-                args: tc.args,
+                args: tc.args || {},
                 response: null
             };
             pairedTools.push(callInfo);
@@ -5564,18 +5538,46 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
             if (hiddenPassiveTools.has(tc.name)) return;
             if (callsMap[tc.id]) {
                 callsMap[tc.id].response = tc.response;
-            } else {
+            } else if (!seenCallIds.has(tc.id)) {
+                seenCallIds.add(tc.id);
                 pairedTools.push({
                     id: tc.id,
                     name: tc.name,
-                    args: null,
+                    args: {},
                     response: tc.response
                 });
             }
         }
     });
 
-    if (pairedTools.length === 0) {
+    // Consolidate multiple experience awards in the same turn into a single unified pill
+    const consolidatedTools = [];
+    let totalXp = 0;
+    let xpToolRecord = null;
+
+    pairedTools.forEach(tool => {
+        if (tool.name === 'arena_add_experience') {
+            const amt = Number((tool.args && (tool.args.amount || tool.args.xp_amount)) || 0);
+            if (amt > 0) {
+                totalXp += amt;
+                if (!xpToolRecord) {
+                    xpToolRecord = {
+                        id: tool.id,
+                        name: 'arena_add_experience',
+                        args: { amount: 0 },
+                        response: tool.response
+                    };
+                    consolidatedTools.push(xpToolRecord);
+                }
+                xpToolRecord.args.amount = totalXp;
+                if (tool.response) xpToolRecord.response = tool.response;
+            }
+        } else {
+            consolidatedTools.push(tool);
+        }
+    });
+
+    if (consolidatedTools.length === 0) {
         if (logsContainer.parentElement) {
             logsContainer.remove();
         }
@@ -5604,7 +5606,7 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
 
     let activePill = null;
 
-    pairedTools.forEach(tool => {
+    consolidatedTools.forEach(tool => {
         const meta = arenaToolMetaMap[tool.name] || {
             label: tool.name,
             icon: (tool.name.includes('read') || tool.name.includes('view')) ? 'file' :
@@ -6077,7 +6079,8 @@ function renderMessage(msg, isLive = false) {
             }
 
             if (role === 'user') {
-                if (!isMsgTransient && !isImageOnly && item.type === 'text') {
+                const isCheckMessage = typeof text === 'string' && text.includes('<!-- check:');
+                if (!isMsgTransient && !isImageOnly && item.type === 'text' && !isCheckMessage) {
                     const rerollBtn = document.createElement('button');
                     rerollBtn.className = 'action-icon-btn';
                     rerollBtn.title = 'Reroll Message';
@@ -6566,6 +6569,22 @@ function handleToolReloadOrRecovery() {
     }
 }
 
+// --- isImageMessageRow ---
+function isImageMessageRow(row) {
+    if (!row) return false;
+    const msgId = row.dataset.msgId || '';
+    if (msgId.startsWith('img_') || msgId.startsWith('port_')) return true;
+    const bubbles = Array.from(row.querySelectorAll('.message'));
+    if (bubbles.length === 0) return false;
+    return bubbles.every(b => {
+        if (b.classList.contains('image-message')) return true;
+        const raw = (b.dataset.rawText || '').trim();
+        if (raw.startsWith('![') && raw.endsWith(')')) return true;
+        if (/^\[generate_(image|imagen|follower_portrait|player_portrait|environment):/i.test(raw)) return true;
+        return false;
+    });
+}
+
 // --- determineClientSpeaker ---
 function determineClientSpeaker(rawText, lastSpeaker) {
     if (typeof activePartyFollowers === 'undefined' || !Array.isArray(activePartyFollowers) || activePartyFollowers.length === 0) {
@@ -6573,7 +6592,15 @@ function determineClientSpeaker(rawText, lastSpeaker) {
     }
 
     const textClean = (rawText || '').trim();
+    if (!textClean) {
+        return 'game';
+    }
     const textLower = textClean.toLowerCase();
+
+    // Pure environment rendering tag is handled by The Game
+    if (textLower.includes('[generate_environment:') || textLower.includes('generate_environment_image')) {
+        return 'game';
+    }
 
     // 1. Explicit @mention of a follower (e.g. @Brea)
     for (const fid of activePartyFollowers) {
@@ -6586,6 +6613,7 @@ function determineClientSpeaker(rawText, lastSpeaker) {
 
     // 2. Continuing an ongoing conversation with a follower: Follower speaks first!
     // follower > user > follower OR follower > user*narration* > follower > game
+    // Image messages are functionally invisible to the chain, preserving ongoing follower exchange.
     if (lastSpeaker && activePartyFollowers.includes(lastSpeaker)) {
         return lastSpeaker;
     }
@@ -6609,6 +6637,7 @@ function determineClientSpeaker(rawText, lastSpeaker) {
 // --- sendMessage ---
 async function sendMessage() {
     hideThoughtBubbleOverlay();
+    if (isGenerating || activePlayerSkillCheck) return;
 
     if (isNewGamePendingStart) {
         unlockControlsFromNewGame();
@@ -6676,9 +6705,6 @@ async function sendMessage() {
     }
 
     const text = userInput.value.trim();
-    if (!text && !attachedBase64 && !attachedMediaPath) {
-        return;
-    }
 
     hasApprovedToolThisTurn = false;
     hasStagedRollMessage = false;
@@ -6721,7 +6747,7 @@ async function sendMessage() {
         stamina: _lastTrackedVitals.stamina,
         staminaMax: _lastTrackedVitals.staminaMax
     } : null;
-    const userMsgRow = appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals);
+    const userMsgRow = (text || userImageUrl) ? appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals) : null;
 
     // Trigger heart jiggle on high user interaction or when follower is generating/responding
     const heartElement = document.querySelector('.heart-pulse');
@@ -6748,7 +6774,8 @@ async function sendMessage() {
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
 
-    const previousFollowerRows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'));
+    const previousFollowerRows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'))
+        .filter(r => !isImageMessageRow(r));
     const lastFollowerRow = previousFollowerRows.length > 0 ? previousFollowerRows[previousFollowerRows.length - 1] : null;
     const lastSpeaker = lastFollowerRow ? (lastFollowerRow.dataset.senderId || 'game') : 'game';
     const activeSpeaker = determineClientSpeaker(text, lastSpeaker);
@@ -6930,6 +6957,10 @@ function truncateChatAfter(row) {
 // --- startEditMessage ---
 function startEditMessage(button) {
     const bubble = button.closest('.message');
+    if (!bubble) return;
+    const rawText = bubble.dataset.rawText || '';
+    if (rawText.includes('<!-- check:')) return;
+
     bubble.classList.add('editing');
     const container = bubble.closest('.message-bubbles-container');
     if (container) container.classList.add('editing-container');
@@ -6944,8 +6975,6 @@ function startEditMessage(button) {
     if (actions) actions.style.display = 'none';
     
     bubble.dataset.originalHTML = textDiv.innerHTML;
-    
-    const rawText = bubble.dataset.rawText || '';
     
     // Strip any image markdown: ![title](url)
     const imgRegex = /!\[[^\]]*\]\([^)]+\)/g;
@@ -7268,7 +7297,7 @@ async function rerollUserMessage(button) {
     
     const msgId = bubble.dataset.msgId;
     const origRawText = bubble.dataset.rawText || bubble.textContent || '';
-    if (!msgId || !origRawText.trim()) return;
+    if (!msgId || !origRawText.trim() || origRawText.includes('<!-- check:')) return;
 
     const origBtnHtml = button.innerHTML;
     button.disabled = true;
@@ -7437,7 +7466,6 @@ async function rerollFromMessage(button) {
                 postProcessMessageHTML(textDiv);
             }
             
-            renderActorDialogueCards(bubble, data.tool_calls);
             if (data.tool_calls && data.tool_calls.length > 0) {
                 renderCompletedLogs(bubble, data.tool_calls, data.duration);
             }
@@ -8215,9 +8243,9 @@ async function generateCustomImage(type = 'follower') {
         }
 
         if (useImagenMode) {
-            userInput.value = `[GENERATE_IMAGEN: Render a detailed character portrait of the player character: ${descSummary}. Do not narrate new story events or call mechanics tools.]`;
+            userInput.value = `[GENERATE_IMAGEN: Render a portrait of the player character: ${descSummary}, with current pose and scenery.]`;
         } else {
-            userInput.value = `[GENERATE_IMAGE: Render a detailed character portrait of the player character: ${descSummary}. Do not narrate new story events or call mechanics tools.]`;
+            userInput.value = `[GENERATE_IMAGE: Render a portrait of the player character: ${descSummary}, with current pose and scenery.]`;
         }
     } else if (type === 'environment') {
         const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
@@ -8228,15 +8256,15 @@ async function generateCustomImage(type = 'follower') {
         const envDetails = `${loc} in ${prov}${timeStr ? ', ' + timeStr : ''}`;
 
         if (useImagenMode) {
-            userInput.value = `[GENERATE_IMAGEN: Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters. Do not narrate new story events or call mechanics tools.]`;
+            userInput.value = `[GENERATE_IMAGEN: Render a scene of the current surroundings, with scenery and lighting. Empty scenery, no characters.]`;
         } else {
-            userInput.value = `[GENERATE_IMAGE: Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters. Do not narrate new story events or call mechanics tools.]`;
+            userInput.value = `[GENERATE_IMAGE: Render a scene of the current surroundings, with scenery and lighting. Empty scenery, no characters.]`;
         }
     } else {
-        // Follower portrait: identify the last follower who spoke
         let targetFollowerName = "";
         if (chatContainer) {
-            const rows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'));
+            const rows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'))
+                .filter(r => !isImageMessageRow(r));
             for (let i = rows.length - 1; i >= 0; i--) {
                 const row = rows[i];
                 const folId = row.dataset.followerId || row.dataset.senderId;
@@ -8252,9 +8280,9 @@ async function generateCustomImage(type = 'follower') {
         }
 
         if (useImagenMode) {
-            userInput.value = `[GENERATE_IMAGEN: Render a detailed character portrait of ${targetFollowerName}. Do not narrate new story events or call mechanics tools.]`;
+            userInput.value = `[GENERATE_IMAGEN: Render a portrait of ${targetFollowerName} with current pose and scenery.]`;
         } else {
-            userInput.value = `[GENERATE_IMAGE: Render a detailed character portrait of ${targetFollowerName}. Do not narrate new story events or call mechanics tools.]`;
+            userInput.value = `[GENERATE_IMAGE: Render a portrait of ${targetFollowerName} with current pose and scenery.]`;
         }
     }
 
@@ -8585,61 +8613,8 @@ async function resolvePlayerSkillCheck() {
         const data = await response.json();
         if (data.formatted_message) {
             userInput.value = data.formatted_message;
-            userInput.style.height = 'auto';
-            userInput.style.height = (userInput.scrollHeight) + 'px';
-
-            // Allow player to review and edit the action sentence before sending
-            userInput.disabled = false;
-            userInput.classList.remove('user-input-frozen');
-            userInput.placeholder = "Review or edit action, then click Send";
-            userInput.focus();
-
-            // Lock dice button so player cannot reroll outcome before sending
-            if (diceBtn) {
-                diceBtn.classList.remove('skill-check-active');
-                diceBtn.classList.remove('rolling');
-                diceBtn.disabled = true;
-                diceBtn.style.opacity = '0.25';
-                diceBtn.style.pointerEvents = 'none';
-                diceBtn.title = "Roll locked — Send action to submit";
-            }
-
-            // Keep toolbar buttons disabled while staged roll message is locked
-            const autoGenBtn = document.getElementById('auto-generate-user-btn');
-            if (autoGenBtn) {
-                autoGenBtn.disabled = true;
-                autoGenBtn.style.opacity = '0.25';
-                autoGenBtn.style.pointerEvents = 'none';
-            }
-
-            const portraitBtn = document.getElementById('generate-portrait-btn');
-            if (portraitBtn) {
-                portraitBtn.disabled = true;
-                portraitBtn.style.opacity = '0.25';
-                portraitBtn.style.pointerEvents = 'none';
-            }
-
-            const imgUploadBtn = document.getElementById('image-upload-btn');
-            if (imgUploadBtn) {
-                imgUploadBtn.disabled = true;
-                imgUploadBtn.style.opacity = '0.25';
-                imgUploadBtn.style.pointerEvents = 'none';
-            }
-
-            // Unlock, pulse green, and focus the send button so the user can send with one click or Enter
-            const sendBtn = document.querySelector('.send-btn');
-            if (sendBtn) {
-                sendBtn.disabled = false;
-                sendBtn.style.opacity = '';
-                sendBtn.style.pointerEvents = '';
-                sendBtn.classList.add('skill-check-send-pulse');
-                sendBtn.focus();
-            }
-
-            hasStagedRollMessage = true;
-            activePlayerSkillCheck = null;
-            updateInputGlow();
-
+            resetSkillCheckUI();
+            await sendMessage();
         } else if (data.error) {
             showCustomAlert("Skill Check Failed", data.error);
             resetSkillCheckUI();

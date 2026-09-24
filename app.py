@@ -792,30 +792,80 @@ def upload_media():
 
     return jsonify({'file_path': f'/images/uploads/{unique_name}'})
 
+def is_image_message(msg: dict) -> bool:
+    """Returns True if the message is an image message (generation tag, portrait, or standalone media)."""
+    if not isinstance(msg, dict):
+        return False
+
+    msg_id = msg.get("id", "")
+    if msg_id.startswith("img_") or msg_id.startswith("port_"):
+        return True
+
+    text = (msg.get("text") or "").strip()
+    text_lower = text.lower()
+
+    image_tags = (
+        "[generate_image:", "[generate_imagen:",
+        "[generate_player_portrait:", "[generate_environment:", "[generate_follower_portrait:",
+        "generate a portrait of yourself"
+    )
+    if any(k in text_lower for k in image_tags):
+        return True
+
+    if text.startswith("![") and text.endswith(")"):
+        return True
+
+    tool_calls = msg.get("tool_calls") or []
+    if tool_calls and not text:
+        image_tool_names = {
+            "generate_local_image", "generate_imagen", "generate_follower_portrait",
+            "generate_player_portrait", "generate_environment_image", "generate_program_portrait",
+            "generate_general_image", "apply_comfy_workflow"
+        }
+        all_image_tools = all(
+            (tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "")) in image_tool_names
+            for tc in tool_calls
+        )
+        if all_image_tools:
+            return True
+
+    if msg.get("role") == "user" and msg.get("image_url") and not text:
+        return True
+
+    return False
+
+
 def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls: list = None) -> tuple[bool, str | None]:
     """Determines the next speaker in the alternating turn chain.
     If the turn started with The Game: The Game -> Follower(s).
     If the turn started with a Follower: Follower(s) -> The Game.
+    Image messages are functionally invisible to the chain.
     """
-    # Dialogue portrayal tools (like arena_actor) do not block or break the speaking chain
+    CHECK_BLOCKING_TOOLS = {
+        "arena_roll_check",
+        "arena_request_skill_check",
+    }
     blocking_tools = [
         tc for tc in (tool_calls or [])
-        if (tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "")) not in ("arena_actor", "actor")
+        if (tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "")) in CHECK_BLOCKING_TOOLS
     ]
     if blocking_tools or not active_followers:
         return False, None
 
-    # Find the most recent user turn
+    # Filter out image messages so they are functionally invisible to the chain
+    chain_history = [m for m in chat_history if not is_image_message(m)]
+
+    # Find the most recent narrative user turn
     user_idx = -1
-    for i in range(len(chat_history) - 1, -1, -1):
-        if chat_history[i].get("role") == "user":
+    for i in range(len(chain_history) - 1, -1, -1):
+        if chain_history[i].get("role") == "user":
             user_idx = i
             break
 
-    user_msg = chat_history[user_idx].get("text", "") if user_idx != -1 else ""
+    user_msg = chain_history[user_idx].get("text", "") if user_idx != -1 else ""
     user_has_narration = "*" in user_msg
 
-    current_turn_msgs = chat_history[user_idx + 1:] if user_idx != -1 else chat_history
+    current_turn_msgs = chain_history[user_idx + 1:] if user_idx != -1 else chain_history
     spoken_senders = []
     for m in current_turn_msgs:
         if m.get("role") in ("follower", "assistant"):
@@ -848,24 +898,27 @@ def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls
 
 def determine_first_speaker(user_message: str, prior_history: list, active_followers: list) -> str:
     """Intelligently routes the first response turn to The Game or an active follower.
+    - Explicit @mention -> that follower speaks first.
     - Ongoing exchange with a follower -> that follower speaks first:
         follower > user > follower
         follower > user*narration* > follower > game
-    - Explicit @mention -> that follower speaks first.
+    - Image messages are functionally invisible to the chain.
     - Otherwise -> The Game speaks first.
     """
     if not active_followers:
         return "game"
 
     user_msg_clean = (user_message or "").strip()
+    if not user_msg_clean:
+        return "game"
+
     user_msg_lower = user_msg_clean.lower()
 
-    if any(k in user_msg_lower for k in (
-        "generate a portrait", "[generate_image:", "[generate_imagen:",
-        "[generate_player_portrait:", "[generate_environment:", "[generate_follower_portrait:",
-        "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"
-    )):
+    if any(k in user_msg_lower for k in ("[generate_environment:", "generate_environment_image")):
         return "game"
+
+    # Filter out image messages from prior history so they are invisible to the chain
+    chain_prior_history = [m for m in prior_history if not is_image_message(m)]
 
     from core.follower_config import get_follower_name
     import re
@@ -879,9 +932,9 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
             or f"@{fol_id.lower()}" in user_msg_lower):
             return fol_id
 
-    # 2. Check the most recent assistant/follower speaker
+    # 2. Check the most recent narrative assistant/follower speaker
     last_assistant_speaker = None
-    for m in reversed(prior_history):
+    for m in reversed(chain_prior_history):
         if m.get("role") in ("follower", "assistant"):
             last_assistant_speaker = m.get("sender_id") or ("game" if m.get("role") == "follower" else None)
             break
@@ -963,17 +1016,7 @@ def chat():
         if not sender_name:
             sender_name = get_follower_name(first_speaker)
 
-        user_msg_lower = (user_message or "").lower()
-        is_image_request = any(k in user_msg_lower for k in (
-            "generate a portrait", "[generate_image:", "[generate_imagen:",
-            "[generate_player_portrait:", "[generate_environment:", "[generate_follower_portrait:",
-            "generate_follower_portrait", "generate_player_portrait", "generate_environment_image"
-        ))
-
         chain_continue, next_speaker = compute_chain_speaker(chat_history, active_followers, tool_calls)
-        if is_image_request:
-            chain_continue = False
-            next_speaker = None
 
         return jsonify({
             'response': response_text,
@@ -1364,6 +1407,8 @@ def generate_user_message():
     msg_id = request.json.get('msg_id')
     is_reroll = request.json.get('is_reroll', False)
     original_text = request.json.get('original_text', '').strip()
+    if '<!-- check:' in original_text:
+        return jsonify({'error': 'Cannot reroll a dice roll result'}), 400
         
     try:
         generated_msg = generate_impersonated_message(
@@ -1492,8 +1537,9 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
     except Exception:
         pass
 
-    # Return pure narrative action without visible bracketed roll formulas
-    formatted_message = action_text
+    # Return pure narrative action with structured resolution tag (hidden in rendered UI, read by models)
+    check_outcome_tag = f"<!-- check: {skill_name} DC {dc_val} -> {roll_res['degree'].upper()} (rolled {roll_res['total']}) -->"
+    formatted_message = f"{action_text} {check_outcome_tag}"
 
     return {
         "roll_res": roll_res,
@@ -3382,7 +3428,18 @@ def get_follower_journals():
 
         target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
         bundle = read_save(target_id)
-        memory_meta = bundle.get("memory_state")
+        memory_meta = bundle.get("memory_state") or {}
+
+        if not memory_meta or (not memory_meta.get("epic_chronicle") and not memory_meta.get("recent_chapters")):
+            try:
+                import app as main_app
+                active_r = getattr(main_app, 'active_runner', None)
+                if active_r and hasattr(active_r, 'sessions_memory_state'):
+                    live_meta = active_r.sessions_memory_state.get(target_id) or active_r.sessions_memory_state.get('default')
+                    if live_meta:
+                        memory_meta = live_meta
+            except Exception:
+                pass
 
         return jsonify({
             'journals': entries,
@@ -4248,7 +4305,7 @@ Respond with ONLY a single JSON object with these EXACT keys:
     resolved_scenario = parsed.get("scenario") or scenario or "Traveling together in Tamriel."
     resolved_first_mes = parsed.get("first_mes") or first_mes or f"Greetings. I am {resolved_name}."
     resolved_sys_prompt = parsed.get("system_prompt") or f"You are {resolved_name}. Respond in character with distinct mannerisms."
-    resolved_img_pos = parsed.get("image_positive") or f"solo, {resolved_name}, fantasy portrait, highly detailed"
+    resolved_img_pos = parsed.get("image_positive") or f"solo, {resolved_name}, highly detailed"
     resolved_img_neg = parsed.get("image_negative") or "extra limbs, bad anatomy, deformed, modern clothing"
     main_color = parsed.get("main_color") or "#d4af37"
 

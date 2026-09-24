@@ -296,13 +296,15 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
     prompt_lower = prompt.lower()
     from core.follower_config import match_follower_by_full_name, get_follower_image_details
 
+    target_fol_id = target_follower
+
     # Name in prompt acts as direct trigger for follower portrait injection
     name_matched_fol = match_follower_by_full_name(prompt)
     if name_matched_fol:
         mode = "follower"
         target_fol_id = name_matched_fol
     elif subject_type == "auto":
-        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "exterior", "architectural", "generate_environment")):
+        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "exterior", "architectural", "generate_environment", "dungeon", "chamber", "corridor", "hallway", "cave", "cavern", "room", "ruins", "interior")):
             mode = "environment"
         elif any(w in prompt_lower for w in ("player character", "player portrait", "the hero", "adventurer", "portrait of the player", "generate_player_portrait")):
             mode = "player"
@@ -330,18 +332,8 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
             neg_details_val = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
         save_fol_id = party[0] if party else "game"
     elif mode == "environment":
-        try:
-            from core.world_engine import load_world_state
-            from runners.follower import get_active_user
-            world = load_world_state(get_active_user())
-            loc = world.get("current_location", "Imperial Dungeon")
-            prov = world.get("current_province", "Cyrodiil")
-            img_details_val = f"scenery, environment landscape art, {loc}, {prov}, Elder Scrolls aesthetic, atmospheric lighting, detailed architecture, empty, no humans, no people"
-            neg_details_val = "worst quality, low quality, character, human, person, 1girl, 1boy, face, portrait, deformed, watermark, text"
-        except Exception as ee:
-            print(f"[DEBUG] Error reading environment details for image generation: {ee}", flush=True)
-            img_details_val = "scenery, environment landscape art, Elder Scrolls aesthetic, atmospheric lighting, detailed architecture, empty, no humans, no people"
-            neg_details_val = "worst quality, low quality, character, human, person, 1girl, 1boy, face, portrait, deformed, watermark, text"
+        img_details_val = "scenery, environment landscape art, Elder Scrolls aesthetic, atmospheric lighting, detailed architecture, empty, no humans, no people"
+        neg_details_val = "worst quality, low quality, character, human, person, 1girl, 1boy, face, portrait, deformed, watermark, text"
         save_fol_id = party[0] if party else "game"
     else:
         # Follower mode: Resolve target follower
@@ -1271,10 +1263,12 @@ def arena_remove_effect(effect_name, **kwargs):
 @track_tool_activity
 def arena_add_experience(amount=0, xp_amount=None, **kwargs):
     """Award XP. Automatically handles level-up if threshold reached."""
-    actual_amount = amount if amount else (xp_amount if xp_amount is not None else 0)
+    actual_amount = int(amount if amount else (xp_amount if xp_amount is not None else 0))
+    if actual_amount <= 0:
+        return {"error": "Experience amount must be greater than zero."}
     
     save_id, sheet = _get_active_sheet(kwargs)
-    sheet, leveled_up = add_experience(sheet, int(actual_amount))
+    sheet, leveled_up = add_experience(sheet, actual_amount)
     _commit_and_sync(save_id, sheet, kwargs)
     
     d = sheet.get("derived", {})

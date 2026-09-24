@@ -13,31 +13,17 @@ if PARENT_DIR not in sys.path:
 from variables.settings import FOLLOWERS_DIR, SAVES_DIR
 from runners.follower import get_active_follower, get_active_user, get_player_name
 
-# Formatting rules for The Game (World referee & narrator)
-GAME_FORMATTING = (
-    "\n\n# NARRATION STYLE RULES (MANDATORY)\n"
-    "- Narration: Wrap EVERY paragraph and sentence of environmental description, sensory detail, and world outcomes in *asterisks*.\n"
-    "- Zero Dialogue in Prose: The Game never outputs spoken dialogue or speech in standard text (period). All speech from world NPCs, monsters, merchants, and questgivers must be delivered via the `[arena_actor]` tool.\n"
-    "- Focus on Perception: Describe what {{user}} and {{followers}} perceive through their senses. As characters search and examine things more closely, reveal further details progressively.\n"
-    "- Pacing & Drama: Set the pace of the scene and create situations that facilitate drama and excitement.\n"
-    "- Party Followers: Traveling party members speak and act independently on their own turns. Generate zero dialogue, zero spoken quotes, zero reactions, and zero actions for party followers. Leave all follower responses to the follower's turn.\n"
-    "- Claims: State all claims directly and affirmatively in single assertions.\n"
-    "- Style: Use short words and precise phrasing. Write with linear progression.\n"
-    "- Be succinct, atmospheric, and faithful to Elder Scrolls lore.\n"
-)
-
-# Global formatting rules for narrative roleplay (Followers)
+# Global tone and formatting rules for narrative roleplay (Applies to The Game and Followers)
 GLOBAL_FORMATTING = (
-    "\n\n# MESSAGE FORMAT & STYLING RULES (MANDATORY)\n"
-    "- Narration: Wrap EVERY paragraph, sentence, and phrase of narration, action, expression, physical movement, and environmental detail in *asterisks* (e.g. *The wall is slick with moisture, and the ledge sits high above.*).\n"
-    "- Dialogue: Output spoken speech in plain text without quotation marks and without asterisks (e.g. I am Ria Silmane. We must act quickly.). Use **bold** only for vocal emphasis.\n"
+    "\n\n# SETTING TONE & FORMATTING RULES (MANDATORY)\n"
+    "- Tone & Setting: Grim, dark fantasy atmosphere with cosmic lore, mature themes, and cartoon absurdity.\n"
+    "- Narration & Actions: Wrap EVERY paragraph, sentence, and phrase of environmental description, action, expression, physical movement, and detail in *asterisks* (e.g. *The stone corridor narrows into darkness.*).\n"
+    "- Spoken Dialogue: Output spoken speech in plain text without quotation marks and without asterisks. Use **bold** only for vocal emphasis.\n"
     "- Paragraph Separation: Keep narration and dialogue separated into distinct, separate lines and paragraphs.\n"
-    "- Claims: State all claims directly and affirmatively in single assertions.\n"
-    "- FORBIDDEN: Do not use contrast structures ('not X, but Y', 'it is not A, it is B', 'not just X, it is Y'). Express ideas positively without negating alternatives.\n"
-    "- Style: Use short words and precise phrasing. Write with linear progression.\n"
-    "- Be succinct, atmospheric, and faithful to Elder Scrolls lore and character persona.\n"
+    "- Affirmative Claims: State all claims directly and affirmatively in single assertions.\n"
+    "- Restraint: Do not use contrast structures ('not X, but Y', 'it is not A, it is B'). Express ideas positively without negating alternatives.\n"
+    "- Style: Use short words and precise phrasing. Write with linear progression, concise pacing, sensory perception, and faithfulness to Elder Scrolls lore.\n"
 )
-
 
 GLOBAL_USER_FORMATTING = GLOBAL_FORMATTING
 
@@ -304,32 +290,16 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
             logging.error(f"[follower_config] Error loading toolbelt for Game: {e}")
 
         referee_block = (
-            f"\n\n# REFEREE & ENCOUNTER DIRECTIVE (MANDATORY)\n"
-            f"You are The Game, the world referee and narrator.\n"
-            f"- Hero: {player_name}.\n"
-            f"- Active Party Followers: {party_list_str}.\n"
-            f"- World Authority: You decide and describe what {player_name} and traveling party followers encounter in the course of an adventure. You set the pace and create situations that facilitate drama and excitement.\n"
-            f"- Sensory Perception: Focus on what the characters can perceive. As characters search and examine things more closely, give them more details about what they find.\n"
-            f"- World NPCs & Creatures: You portray all enemies, creatures, questgivers, merchants, guards, and townspeople.\n"
-            f"- ZERO DIALOGUE IN PROSE: You never output spoken dialogue or quotes in narrative prose (period). When any non-party creature or person speaks, you must invoke the `[arena_actor]` tool.\n"
-            f"- STRICT FOLLOWER AUTONOMY: Traveling party members ({party_names_str}) and {player_name} are independent characters who speak and act on their own turns.\n"
-            f"- ZERO FOLLOWER PUPPETING: The party members ({party_names_str}) are NOT world NPCs. Never write speech, dialogue, quotes, thoughts, physical actions, body movements, or reactions for {player_name} or ANY follower ({party_names_str}) in prose or via the Actor tool.\n"
-            f"- When {player_name} speaks to, looks at, touches, or interacts with a follower, describe ONLY the physical environment or world conditions. Conclude your turn immediately so the follower can respond for themselves."
+            f"\n\n# REFEREE DIRECTIVES\n"
+            f"Respond exclusively as The Game. Never speak as the player or their followers.\n"
+            f"- World Authority: Narrate environments, hazards, combat, and outcomes. Deliver world NPC and monster speech directly in prose.\n"
+            f"- Action Checks: When {player_name} attempts an attack, spell, or risky physical action, call [arena_request_skill_check] and stop your turn immediately. Do not resolve the outcome or spend resources until {player_name} rolls.\n"
+            f"- Outcome Resolution: When a roll resolves, deduct Magicka ([arena_spend_magicka]) or Stamina ([arena_spend_stamina]), roll enemy actions ([arena_roll_combat]), and narrate consequences.\n"
+            f"- Experience & Loot: Award XP ([arena_add_experience]) once at the end of an encounter with the combined total XP. Never award 0 XP.\n"
+            f"- Narrative Focus: Describe scenes vividly through sensory details. Avoid asking questions or offering choice menus."
         )
 
-        follower_exclusion_footer = (
-            f"\n\n# CRITICAL ENFORCEMENT: FOLLOWER EXCLUSION\n"
-            f"Party followers traveling with {player_name}: {party_names_str}.\n"
-            f"They speak, act, and react exclusively on their own turns.\n"
-            f"You must generate ZERO dialogue, ZERO quotes, and ZERO physical actions for {party_names_str}."
-        )
-
-        base = game_instructions + load_user_instructions()
-        base += referee_block
-        base += _ARENA_DIRECTIVE_PROMPT
-        base += GAME_FORMATTING
-        base += follower_exclusion_footer
-        base += load_dynamic_runtime_context()
+        base = game_instructions + load_user_instructions() + referee_block + _ARENA_DIRECTIVE_PROMPT + GLOBAL_FORMATTING + load_dynamic_runtime_context()
         return replace_placeholders(base, party_followers=party)
 
     else:
@@ -342,17 +312,11 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
         follower_context = f"- Fellow Followers: {', '.join(other_followers)}.\n" if other_followers else ""
 
         follower_block = (
-            f"\n\n# FOLLOWER ROLE DIRECTIVES (MANDATORY)\n"
-            f"You are {follower_name}, a follower traveling alongside {player_name}.\n"
-            f"- Active Speaker: You ({follower_name}).\n"
+            f"\n\n# FOLLOWER ROLE DIRECTIVES\n"
+            f"You are {follower_name}, traveling alongside {player_name}.\n"
             f"{follower_context}"
-            f"- Deliver only {follower_name}'s spoken dialogue, physical gestures, emotions, and personal reactions.\n"
-            f"- Speak and act strictly from {follower_name}'s perspective and character persona.\n"
             f"- Converse directly with {player_name}{(' and ' + ', '.join(other_followers)) if other_followers else ''}.\n"
-            f"- In exploration, speak, observe, and advise. Leave physical actions on the world to {player_name}.\n"
-            f"- The Game is the sole referee and narrator of the world. The Game narrates all story progression, environmental changes, dungeon mechanics, and player action outcomes.\n"
-            f"- React to the events and outcomes already established by The Game and {player_name}.\n"
-            f"- Never narrate world outcomes, scenery changes, lock/door results, combat resolution, or the consequences of {player_name}'s actions."
+            f"- Speak, react, and advise solely as {follower_name}. Leave world narration, dungeon mechanics, and referee tools to The Game."
         )
 
         base = replace_placeholders(follower_instructions + load_user_instructions(), follower_id=speaker_id, party_followers=party)

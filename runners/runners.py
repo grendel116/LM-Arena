@@ -166,7 +166,19 @@ class BaseRunner:
         self.sessions_memory_state: dict = {}
 
     def _get_memory_meta(self, session_id: str) -> dict:
-        """Helper to ensure session memory state exists."""
+        """Helper to ensure session memory state exists and is synchronized across active saves."""
+        if session_id not in self.sessions_memory_state:
+            try:
+                from core.save_manager import get_active_save_id, read_save
+                target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
+                bundle = read_save(target_id)
+                if "memory_state" in bundle and isinstance(bundle["memory_state"], dict):
+                    self.sessions_memory_state[session_id] = bundle["memory_state"]
+                    if target_id != session_id:
+                        self.sessions_memory_state[target_id] = bundle["memory_state"]
+            except Exception:
+                pass
+
         meta = self.sessions_memory_state.setdefault(
             session_id,
             {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0}
@@ -510,6 +522,23 @@ class BaseRunner:
 
             existing_tool_names = {tc.get("name") for tc in all_tool_calls if tc.get("type") == "call"}
             matches = list(TOOL_TAG_RE.finditer(bot_response_text))
+
+            REFEREE_WORLD_TOOLS = {
+                "arena_set_location", "arena_travel", "arena_advance_stage", "arena_set_quest_stage",
+                "arena_roll_combat", "arena_roll_check", "arena_roll_initiative", "arena_roll_skill",
+                "arena_request_skill_check", "arena_sorcerer_absorb", "arena_actor", "actor",
+            }
+            if speaker_id != "game":
+                # Enforce tool partitioning: followers cannot execute referee or world manipulation tools
+                valid_matches = []
+                for m in matches:
+                    norm_name = _normalize_tool_name(m.group(1))
+                    if norm_name in REFEREE_WORLD_TOOLS:
+                        bot_response_text = bot_response_text.replace(m.group(0), "", 1)
+                    else:
+                        valid_matches.append(m)
+                matches = valid_matches
+
             new_matches = [m for m in matches if _normalize_tool_name(m.group(1)) not in existing_tool_names]
 
             if matches:
@@ -550,10 +579,8 @@ class BaseRunner:
                                     parts.append(f"*{act}*")
                                 if dlg:
                                     clean_dlg = dlg.strip(' "\'')
-                                    if spk and spk.lower() not in ("npc", "actor", "none"):
-                                        parts.append(f'{spk}: "{clean_dlg}"')
-                                    else:
-                                        parts.append(f'"{clean_dlg}"')
+                                    if clean_dlg:
+                                        parts.append(clean_dlg)
                                 if parts:
                                     replacement = "\n\n" + "\n\n".join(parts)
 
@@ -815,32 +842,81 @@ class BaseRunner:
         return instructions
 
     def _get_system_instructions(self, session_id: str, user_message: str = None, speaker_id: str = "game") -> str:
-        from core.follower_config import compile_speaker_instructions, replace_placeholders
+        from core.follower_config import compile_speaker_instructions, replace_placeholders, get_follower_name
         from core.save_manager import get_active_followers
         import re
 
         party = get_active_followers(session_id)
         instructions = compile_speaker_instructions(speaker_id=speaker_id, party_followers=party)
+
+        # Compact Scene & World State Header (<35 tokens)
+        try:
+            from core.world_engine import load_world_state
+            from core.character import load_character
+            ws = load_world_state(session_id)
+            loc = ws.get("current_location", "Imperial Dungeon")
+            prov = ws.get("current_province", "Cyrodiil")
+            q_stage = ws.get("quest_stage", 1)
+            sheet = load_character(session_id)
+            d = sheet.get("derived", {})
+            hp_cur, hp_max = d.get("hp_current", 25), d.get("hp_max", 25)
+            mp_cur, mp_max = d.get("mp_current", d.get("sp_current", 40)), d.get("mp_max", d.get("sp_max", 40))
+            stm_cur, stm_max = d.get("stamina_current", 50), d.get("stamina_max", 50)
+            player_name = sheet.get("name", "Eternal Champion")
+            party_names_str = ", ".join(get_follower_name(fid) for fid in party) if party else "None (Traveling solo)"
+
+            instructions += (
+                f"\n\n# ACTIVE SCENE & WORLD STATE\n"
+                f"- Location: {loc}, {prov} (Main Quest Stage {q_stage})\n"
+                f"- Party: {player_name} (HP {hp_cur}/{hp_max}, MP {mp_cur}/{mp_max}, Stamina {stm_cur}/{stm_max}) | Followers: {party_names_str}\n"
+            )
+        except Exception as se:
+            print(f"Error compiling scene state header: {se}")
+
         instructions = self._inject_system_memories(instructions, session_id)
+        instructions = self._inject_journals(instructions, user_message)
 
         # Image and portrait generation directives
         if user_message and any(k in user_message for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:", "[GENERATE_PLAYER_PORTRAIT:", "[GENERATE_ENVIRONMENT:", "[GENERATE_FOLLOWER_PORTRAIT:", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image")):
             msg_lower = user_message.lower()
+
+            # Retrieve recent scene narrative for contextual pose & scenery inference
+            recent_scene_snippet = ""
+            try:
+                history = self.sessions_history.get(session_id, [])
+                narrative_msgs = [
+                    m for m in history
+                    if m.get("role") in ("follower", "assistant", "user")
+                    and (m.get("text") or "").strip()
+                    and not any(k in (m.get("text") or "") for k in ("[GENERATE_IMAGE", "[GENERATE_IMAGEN", "[GENERATE_PLAYER_PORTRAIT", "[GENERATE_ENVIRONMENT", "[GENERATE_FOLLOWER_PORTRAIT"))
+                ]
+                if narrative_msgs:
+                    recent_snippets = []
+                    for nm in narrative_msgs[-2:]:
+                        r_name = "User" if nm.get("role") == "user" else (nm.get("sender_name") or "Narrative")
+                        t_clean = re.sub(r'<!--.*?-->', '', nm.get("text", "")).strip()
+                        if t_clean:
+                            recent_snippets.append(f"- {r_name}: {t_clean[:350]}")
+                    if recent_snippets:
+                        recent_scene_snippet = "\n" + "\n".join(recent_snippets)
+            except Exception:
+                pass
+
+            context_block = f"\nRecent Scene Dialogue & Actions:{recent_scene_snippet}\n" if recent_scene_snippet else ""
+
             if any(k in msg_lower for k in ("player character", "player portrait", "[generate_player_portrait:")):
                 instructions += (
-                    "\n\n# IMMEDIATE PLAYER PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
-                    "The user requested a portrait of their player character. Using the active player character's name, race, gender, class, worn gear, and appearance, "
-                    "construct detailed comma-separated visual tags and output ONLY the tool call tag "
-                    "`[generate_player_portrait(prompt=\"1man/1girl, solo, [race], [class], [appearance tags]...\")]`. "
-                    "Output the tool call tag directly."
+                    f"\n\n# Player Portrait Directive\n"
+                    f"Generate a portrait of the player character.{context_block}"
+                    f"Include their current pose, action, worn gear, and immediate scenery in comma-separated visual tags. Output only the tool call:\n"
+                    f"`[generate_player_portrait(prompt=\"1man/1girl, solo, [pose/action], [race], [class], [appearance], [scenery]\")]`."
                 )
             elif any(k in msg_lower for k in ("environment", "landscape", "scenic view", "[generate_environment:")):
                 instructions += (
-                    "\n\n# IMMEDIATE ENVIRONMENT SCENE DIRECTIVE (CRITICAL OVERRIDE)\n"
-                    "The user requested a visual depiction of the current environment and surroundings. "
-                    "Construct detailed comma-separated visual tags describing the scenery, architecture, lighting, dungeon/wilderness atmosphere, and materials without any people or characters, and output ONLY the tool call tag "
-                    "`[generate_environment_image(prompt=\"scenery, environment, landscape, [location], [lighting], [atmosphere], no humans...\")]`. "
-                    "Output the tool call tag directly."
+                    f"\n\n# Environment Image Directive\n"
+                    f"Generate an image of the current scene.{context_block}"
+                    f"Include current scenery, architecture, lighting, and atmosphere in comma-separated visual tags. Output only the tool call:\n"
+                    f"`[generate_environment_image(prompt=\"scenery, landscape, [scenery], [lighting], [atmosphere], empty scenery, no humans\")]`."
                 )
             else:
                 from core.follower_config import match_follower_by_full_name, get_follower_name, get_follower_image_details
@@ -864,10 +940,10 @@ class BaseRunner:
                 tag_hint = f", {clean_tags}" if clean_tags else ""
 
                 instructions += (
-                    "\n\n# IMMEDIATE FOLLOWER PORTRAIT DIRECTIVE (CRITICAL OVERRIDE)\n"
-                    f"The user requested a character portrait of {fol_name}. Construct visual tags describing {fol_name}'s appearance and current scene, and output ONLY the tool call tag "
-                    f"`[generate_follower_portrait(prompt=\"solo, {fol_name}{tag_hint}, fantasy portrait\")]`.\n"
-                    "Output the tool call tag directly."
+                    f"\n\n# Follower Portrait Directive\n"
+                    f"Generate a portrait of {fol_name}.{context_block}"
+                    f"Include their current pose, expression, and immediate scenery with their appearance tags. Output only the tool call:\n"
+                    f"`[generate_follower_portrait(prompt=\"solo, [pose/action], {fol_name}{tag_hint}, [scenery]\")]`."
                 )
 
         return replace_placeholders(instructions, follower_id=speaker_id, party_followers=party)
@@ -1716,6 +1792,8 @@ class OpenSourceRunner(BaseRunner):
                     
             if found_idx != -1:
                 target_msg = real_history[found_idx]
+                if '<!-- check:' in target_msg.get('text', ''):
+                    return False
                 target_msg['text'] = new_text
                 role = target_msg.get('role')
                 if role in ('follower', 'model'):

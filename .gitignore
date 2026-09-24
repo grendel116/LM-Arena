@@ -33,7 +33,7 @@ variables/*
 variables/saves/*
 !variables/saves/eternal_champion.json
 
-# Ignore all companion profiles under core/followers except default Arena guide and Host Game
+# Ignore all follower profiles under core/followers except default Arena guide and Host Game
 core/followers/*
 !core/followers/riasilmane/
 !core/followers/game/
