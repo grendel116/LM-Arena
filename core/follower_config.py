@@ -13,10 +13,22 @@ if PARENT_DIR not in sys.path:
 from variables.settings import FOLLOWERS_DIR, SAVES_DIR
 from runners.follower import get_active_follower, get_active_user, get_player_name
 
-# Global tone and formatting rules for narrative roleplay (Applies to The Game and Followers)
+# Formatting rules for The Game (World referee & narrator)
+GAME_FORMATTING = (
+    "\n\n# SETTING TONE & FORMATTING RULES (MANDATORY)\n"
+    "- Tone & Setting: Grim, dark fantasy atmosphere with cosmic lore, mature themes, esoteric absurdity, and cartoon physics.\n"
+    "- Narration & Action: Wrap EVERY paragraph, sentence, and phrase of environmental description, sensory detail, and world outcome in *asterisks* (e.g. *The stone corridor narrows into darkness.*).\n"
+    "- Zero Dialogue in Prose: Narrative prose describes only sensory perception, environment, and action. The Game never outputs spoken dialogue or speech in standard text.\n"
+    "- Actor Tool Exclusive: All world NPCs, monsters, merchants, guards, and questgivers speak and act exclusively through `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`.\n"
+    "- Party Autonomy: Party followers ({{followers}}) and the player ({{user}}) are autonomous characters who speak and act on their own turns. The Game never generates dialogue, quotes, physical actions, or expressions for {{followers}} or {{user}}.\n"
+    "- Affirmative Claims: State all claims directly and affirmatively in single assertions.\n"
+    "- Style: Use short words and precise phrasing. Write with linear progression, concise pacing, sensory perception, and faithfulness to Elder Scrolls lore.\n"
+)
+
+# Global tone and formatting rules for narrative roleplay (Followers)
 GLOBAL_FORMATTING = (
     "\n\n# SETTING TONE & FORMATTING RULES (MANDATORY)\n"
-    "- Tone & Setting: Grim, dark fantasy atmosphere with cosmic lore, mature themes, and cartoon absurdity.\n"
+    "- Tone & Setting: Grim, dark fantasy atmosphere with cosmic lore, mature themes, esoteric absurdity, and cartoon physics.\n"
     "- Narration & Actions: Wrap EVERY paragraph, sentence, and phrase of environmental description, action, expression, physical movement, and detail in *asterisks* (e.g. *The stone corridor narrows into darkness.*).\n"
     "- Spoken Dialogue: Output spoken speech in plain text without quotation marks and without asterisks. Use **bold** only for vocal emphasis.\n"
     "- Paragraph Separation: Keep narration and dialogue separated into distinct, separate lines and paragraphs.\n"
@@ -290,16 +302,23 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
             logging.error(f"[follower_config] Error loading toolbelt for Game: {e}")
 
         referee_block = (
-            f"\n\n# REFEREE DIRECTIVES\n"
-            f"Respond exclusively as The Game. Never speak as the player or their followers.\n"
-            f"- World Authority: Narrate environments, hazards, combat, and outcomes. Deliver world NPC and monster speech directly in prose.\n"
+            f"\n\n# REFEREE & ENCOUNTER DIRECTIVES (MANDATORY)\n"
+            f"You are The Game, the world referee and narrator.\n"
+            f"- Hero: {player_name}.\n"
+            f"- Active Party Followers: {party_list_str}.\n"
+            f"- World Authority: Narrate environments, hazards, dungeon mechanics, combat, and outcomes in vivid sensory prose.\n"
+            f"- Zero Dialogue in Prose: The Game never outputs spoken dialogue or quotes in narrative prose. All world NPCs, monsters, merchants, and questgivers speak exclusively through `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`.\n"
+            f"- Party Follower Autonomy: Party followers traveling with {player_name}: {party_names_str}.\n"
+            f"  Traveling party followers and {player_name} are independent characters who speak and act on their own turns.\n"
+            f"  The Game never generates dialogue, speech, quotes, thoughts, physical actions, body movements, or reactions for {player_name} or any party follower ({party_names_str}).\n"
+            f"  When {player_name} interacts with or addresses a follower, describe only ambient room details and conclude your turn immediately so the follower can respond on their own turn.\n"
             f"- Action Checks: When {player_name} attempts an attack, spell, or risky physical action, call [arena_request_skill_check] and stop your turn immediately. Do not resolve the outcome or spend resources until {player_name} rolls.\n"
             f"- Outcome Resolution: When a roll resolves, deduct Magicka ([arena_spend_magicka]) or Stamina ([arena_spend_stamina]), roll enemy actions ([arena_roll_combat]), and narrate consequences.\n"
             f"- Experience & Loot: Award XP ([arena_add_experience]) once at the end of an encounter with the combined total XP. Never award 0 XP.\n"
             f"- Narrative Focus: Describe scenes vividly through sensory details. Avoid asking questions or offering choice menus."
         )
 
-        base = game_instructions + load_user_instructions() + referee_block + _ARENA_DIRECTIVE_PROMPT + GLOBAL_FORMATTING + load_dynamic_runtime_context()
+        base = game_instructions + load_user_instructions() + referee_block + _ARENA_DIRECTIVE_PROMPT + GAME_FORMATTING + load_dynamic_runtime_context()
         return replace_placeholders(base, party_followers=party)
 
     else:

@@ -34,6 +34,8 @@ def atomic_save_json(path: str | Path, data: object, indent: int = 2):
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG MECHANICS\n"
+    "- Actor Tool Exclusive: All world NPCs, monsters, merchants, and questgivers speak and act exclusively through `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`. Never write spoken dialogue in narrative prose.\n"
+    "- Follower Autonomy: Party followers ({{followers}}) and {{user}} are autonomous characters who speak and act on their own turns. The Game never writes speech, actions, or dialogue for party followers or {{user}}.\n"
     "- Action Sequence: When {{user}} attempts an attack, spell, or risky action, call `[arena_request_skill_check]` and stop turn. Conclude turn immediately without narrating consequences or spending resources. When the roll resolves on the next turn, deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), resolve counter-attacks (`[arena_roll_combat]`), and narrate consequences.\n"
     "- Magicka: Spells require sufficient MP. Depleted MP causes spells to fizzle and fail.\n"
     "- Vitals & Status: Adjust Health (`[arena_take_damage]`, `[arena_heal]`) and log conditions accurately.\n"

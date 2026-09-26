@@ -173,9 +173,6 @@ def retrieve_skill_instructions(query: str, threshold: float = 0.35, top_k: int 
     3. Vector fallback: for skills not matched by keywords, checks semantic
        similarity against the skill description
     """
-    if not query:
-        return ""
-
     registry = _get_skill_registry()
 
     always_blocks = []
@@ -188,7 +185,7 @@ def retrieve_skill_instructions(query: str, threshold: float = 0.35, top_k: int 
             always_blocks.append(
                 f"## Skill Instruction: {record['name']}\n\n{record['instruction_body']}"
             )
-        elif record["retrieval"] == "vector":
+        elif query and record["retrieval"] == "vector":
             # Primary gate: keyword matching
             if record["triggers"] and _keyword_match(query, record):
                 matched_blocks.append(
@@ -200,7 +197,7 @@ def retrieve_skill_instructions(query: str, threshold: float = 0.35, top_k: int 
                 vector_candidates.append(record)
 
     # Vector fallback for skills not matched by keywords
-    if vector_candidates and len(matched_blocks) < top_k:
+    if query and vector_candidates and len(matched_blocks) < top_k:
         try:
             from core.skills.vectorized_databank.databank import get_embedding_model
             model = get_embedding_model()

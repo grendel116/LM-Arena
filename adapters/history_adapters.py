@@ -516,7 +516,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     f"# REFEREE ACTION CHECKS (MANDATORY)\n"
                     f"Respond exclusively as The Game. Never speak as {player_hero_name} or traveling followers.\n"
                     f"- Action Checks: When {player_hero_name} casts a spell, attacks, or attempts an action with an uncertain outcome: call `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` and stop your turn immediately. Do not resolve the outcome or spend resources until {player_hero_name} rolls.\n"
-                    f"- Resolution: When resolving a player roll from the previous turn: deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), roll adversary counter-attacks (`[arena_roll_combat]`), and narrate the outcome according to the roll result."
+                    f"- Resolution: When resolving a player roll from the previous turn: deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), roll adversary counter-attacks (`[arena_roll_combat]`), and narrate the outcome according to the roll result.\n"
+                    f"- Zero Dialogue in Prose: Narrative prose describes only sensory perception, environment, and action. Portray world NPCs, monsters, merchants, and questgivers exclusively with `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`."
                 )
 
                 from core.save_manager import get_active_followers

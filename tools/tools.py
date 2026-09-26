@@ -1196,6 +1196,19 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, na
                 if len(part) > 2:
                     forbidden_names.add(part)
 
+        from variables.settings import FOLLOWERS_DIR
+        if os.path.exists(FOLLOWERS_DIR):
+            for entry in os.listdir(FOLLOWERS_DIR):
+                if entry in ("game", "the_game", "none", "solo"):
+                    continue
+                forbidden_names.add(entry.lower())
+                fol_name = get_follower_name(entry).strip().lower()
+                if fol_name:
+                    forbidden_names.add(fol_name)
+                    for part in fol_name.split():
+                        if len(part) > 2:
+                            forbidden_names.add(part)
+
         spk_lower = actual_speaker.lower()
         if spk_lower in forbidden_names or any(fn in spk_lower for fn in forbidden_names if len(fn) > 2):
             return {
