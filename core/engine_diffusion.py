@@ -325,7 +325,6 @@ def unload_diffusion_models():
         _active_checkpoint = None
 
         gc.collect()
-        time.sleep(0.5)
 
 
 def execute_workflow_graph(

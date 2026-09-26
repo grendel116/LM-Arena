@@ -167,6 +167,16 @@ def _normalize_tool_name(tool_name: str) -> str:
     return TOOL_ALIASES.get(tool_name, tool_name)
 
 
+def _sanitize_tool_arg(val):
+    if val is Ellipsis:
+        return None
+    if isinstance(val, dict):
+        return {k: _sanitize_tool_arg(v) for k, v in val.items()}
+    if isinstance(val, list):
+        return [_sanitize_tool_arg(v) for v in val]
+    return val
+
+
 def _parse_emulated_tool_call(tool_name: str, args_str: str) -> dict:
     """Parses tool call argument strings safely into dictionary structures, 
     handling multi-line code blocks and parameter aliases.
@@ -178,8 +188,8 @@ def _parse_emulated_tool_call(tool_name: str, args_str: str) -> dict:
         # Try standard AST parse first
         parsed = ast.parse(f"dummy({args_str})")
         call_node = parsed.body[0].value
-        kwargs = {kw.arg: ast.literal_eval(kw.value) for kw in call_node.keywords}
-        args = [ast.literal_eval(arg) for arg in call_node.args]
+        kwargs = {kw.arg: _sanitize_tool_arg(ast.literal_eval(kw.value)) for kw in call_node.keywords}
+        args = [_sanitize_tool_arg(ast.literal_eval(arg)) for arg in call_node.args]
     except Exception:
         # Backup for multi-line / complex arguments (like code blocks)
         # Matches key="value" or key="""value"""
@@ -188,17 +198,38 @@ def _parse_emulated_tool_call(tool_name: str, args_str: str) -> dict:
         
         if matches:
             for key, quote, val in matches:
-                kwargs[key] = val
+                kwargs[key] = _sanitize_tool_arg(val)
         else:
             # Backup for single raw string argument
             val = args_str.strip().strip("'\"")
             if val:
-                args = [val]
+                args = [_sanitize_tool_arg(val)]
 
     # --- Parameter Alias Normalization ---
     if tool_name == "write_file":
         if "filename" in kwargs and "path" not in kwargs:
             kwargs["path"] = kwargs.pop("filename")
+    elif tool_name in ("arena_add_item", "arena_remove_item", "add_item", "remove_item"):
+        if "item_name" not in kwargs:
+            if "item" in kwargs:
+                kwargs["item_name"] = kwargs.pop("item")
+            elif "name" in kwargs:
+                kwargs["item_name"] = kwargs.pop("name")
+        if "quantity" not in kwargs:
+            if "qty" in kwargs:
+                kwargs["quantity"] = kwargs.pop("qty")
+            elif "count" in kwargs:
+                kwargs["quantity"] = kwargs.pop("count")
+    elif tool_name in ("arena_add_gold", "arena_spend_gold", "add_gold", "spend_gold"):
+        if "amount" not in kwargs:
+            if "gold" in kwargs:
+                kwargs["amount"] = kwargs.pop("gold")
+            elif "coins" in kwargs:
+                kwargs["amount"] = kwargs.pop("coins")
+            elif "gold_amount" in kwargs:
+                kwargs["amount"] = kwargs.pop("gold_amount")
+            elif "cost" in kwargs:
+                kwargs["amount"] = kwargs.pop("cost")
 
     return {"args": args, "kwargs": kwargs}
 
@@ -531,45 +562,6 @@ def strip_narration(text: str) -> str:
     text = re.sub(r' +', ' ', text)
     
     return text.strip()
-
-def _sanitize_tool_arg(val):
-    if val is Ellipsis:
-        return None
-    if isinstance(val, dict):
-        return {k: _sanitize_tool_arg(v) for k, v in val.items()}
-    if isinstance(val, list):
-        return [_sanitize_tool_arg(v) for v in val]
-    return val
-
-
-def _parse_emulated_tool_call(tool_name: str, args_str: str) -> dict:
-    """Parses arguments from an emulated tool call string.
-    Supports both key=value style and simple positional string style.
-    """
-    import ast
-    try:
-        parsed = ast.parse(f"dummy({args_str})")
-        call_node = parsed.body[0].value
-        kwargs = {}
-        args = []
-        for kw in call_node.keywords:
-            kwargs[kw.arg] = _sanitize_tool_arg(ast.literal_eval(kw.value))
-        for arg in call_node.args:
-            args.append(_sanitize_tool_arg(ast.literal_eval(arg)))
-        return {"args": args, "kwargs": kwargs}
-    except Exception:
-        kwargs = {}
-        kv_pairs = re.findall(r'(\w+)\s*=\s*(["\'])(.*?)\2', args_str)
-        if kv_pairs:
-            for k, _, v in kv_pairs:
-                kwargs[k] = v
-            return {"args": [], "kwargs": kwargs}
-        
-        val = args_str.strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
-            val = val[1:-1]
-        return {"args": [_sanitize_tool_arg(val)], "kwargs": {}}
-
 
 def _convert_json_tool_calls_to_tags(text: str) -> str:
     """Detects JSON formatted tool calls from any model

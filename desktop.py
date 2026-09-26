@@ -86,14 +86,60 @@ def main():
     server_thread = threading.Thread(target=start_flask_server, args=(port, ssl_context), daemon=True)
     server_thread.start()
 
-    # Wait for server readiness
-    if not wait_for_server(f"{server_url}/api/health", timeout=30.0):
-        sys.exit(1)
+    splash_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LM-Arena</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #121214;
+            color: #dcd7ce;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+        }
+        .loading-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            animation: pulse-scale 2s infinite ease-in-out;
+        }
+        .loading-logo {
+            font-size: 3.5rem;
+            line-height: 1;
+            filter: drop-shadow(0 4px 16px rgba(212, 175, 55, 0.35));
+            animation: pulse-heart 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse-heart {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(196, 160, 82, 0.3)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 16px rgba(196, 160, 82, 0.7)); }
+        }
+        @keyframes pulse-scale {
+            0%, 100% { transform: scale(0.98); }
+            50% { transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-content">
+        <div class="loading-logo">📜</div>
+    </div>
+</body>
+</html>"""
 
-    # Launch native desktop window
+    # Launch native desktop window immediately with instant splash screen
     window = webview.create_window(
         title="LM-Arena",
-        url=server_url,
+        html=splash_html,
         width=1320,
         height=880,
         min_size=(960, 640),
@@ -101,15 +147,21 @@ def main():
         text_select=True
     )
 
+    def load_app_when_ready(win, url):
+        if wait_for_server(f"{url}/api/health", timeout=30.0):
+            win.load_url(url)
+        else:
+            win.load_html("<html><body style='background:#121214;color:#f87171;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;'><p>Failed to start local server. Please check logs.</p></body></html>")
+
     app_icon_path = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'img', 'app_icon.ico'))
     if not os.path.exists(app_icon_path):
         app_icon_path = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'img', 'app_icon.png'))
 
     window.events.closed += on_closed
     if sys.platform == "win32":
-        webview.start(gui='edgechromium', debug=False, icon=app_icon_path)
+        webview.start(load_app_when_ready, (window, server_url), gui='edgechromium', debug=False, icon=app_icon_path)
     else:
-        webview.start(debug=False, icon=app_icon_path)
+        webview.start(load_app_when_ready, (window, server_url), debug=False, icon=app_icon_path)
     on_closed()
 
 

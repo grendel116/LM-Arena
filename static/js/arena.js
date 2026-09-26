@@ -4965,11 +4965,14 @@ async function waitForModelLoad(maxSeconds = 180) {
             const res = await fetch(`/api/local_llm/status?t=${Date.now()}`);
             if (res.ok) {
                 const data = await res.json();
-                if (data.status === true || (data.running && data.status !== 'starting')) {
+                const isOnline = data.online === true || data.status === true;
+                const isStarting = data.online === 'starting' || data.status === 'starting';
+
+                if (isOnline) {
                     if (statusTextEl) statusTextEl.textContent = "Model ready. Entering arena...";
                     await initializeModelSelect();
                     return true;
-                } else if (data.status === 'starting') {
+                } else if (isStarting) {
                     const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
                     if (statusTextEl) {
                         statusTextEl.textContent = `Loading language model into memory... (${elapsedSec}s)`;
@@ -5115,8 +5118,18 @@ async function loadHistory() {
                 await modelInitPromise;
             } catch (e) {}
         }
-        if (connectionStatus && connectionStatus.local_online === 'starting') {
-            await waitForModelLoad();
+        try {
+            const statusCheck = await fetch(`/api/local_llm/status?t=${Date.now()}`);
+            if (statusCheck.ok) {
+                const sData = await statusCheck.json();
+                if (sData.online === 'starting' || sData.status === 'starting' || (connectionStatus && connectionStatus.local_online === 'starting')) {
+                    await waitForModelLoad();
+                }
+            }
+        } catch (e) {
+            if (connectionStatus && connectionStatus.local_online === 'starting') {
+                await waitForModelLoad();
+            }
         }
     } catch (error) {
         console.error("Error loading chat history:", error);
@@ -5125,8 +5138,18 @@ async function loadHistory() {
                 await modelInitPromise;
             } catch (e) {}
         }
-        if (connectionStatus && connectionStatus.local_online === 'starting') {
-            await waitForModelLoad();
+        try {
+            const statusCheck = await fetch(`/api/local_llm/status?t=${Date.now()}`);
+            if (statusCheck.ok) {
+                const sData = await statusCheck.json();
+                if (sData.online === 'starting' || sData.status === 'starting' || (connectionStatus && connectionStatus.local_online === 'starting')) {
+                    await waitForModelLoad();
+                }
+            }
+        } catch (e) {
+            if (connectionStatus && connectionStatus.local_online === 'starting') {
+                await waitForModelLoad();
+            }
         }
         if (!connectionStatus.remote_configured && !connectionStatus.local_online) {
             showWelcomeMessage();

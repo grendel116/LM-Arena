@@ -136,6 +136,24 @@
       "enabled": true,
       "priority": 10,
       "probability": 100
+    },
+    {
+      "uid": 8016,
+      "key": ["ebony mail", "armor of boethiah", "boethiah's mail"],
+      "secondary_key": ["cuirass", "mail", "armor", "artifact", "boethiah"],
+      "content": "The Ebony Mail is an ancient artifact created by the Daedric Prince Boethiah. It is a suit of dark plate armor that bestows formidable defensive shielding, immunity to fire, and wards the bearer against hostile magical attacks.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 8017,
+      "key": ["artifact rumor", "artifact quest", "legendary artifact", "ancient relic", "relics of power"],
+      "secondary_key": ["rumor", "quest", "artifact", "relic", "sage", "scholar", "map"],
+      "content": "Legendary artifacts in Tamriel are extraordinarily rare, singular relics never found as ordinary loot. Following ancient tradition: 1. A hero may pursue only ONE active artifact quest at a time. 2. Locating a relic requires hearing a sparse rumor in a tavern or guildhall, followed by consulting a sage, astrologer, or temple scholar who demands a hefty fee (several hundred to thousands of gold septims) to decipher texts or inscribe a map. 3. The relic lies buried in a perilous multi-level dungeon guarded by formidable horrors.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
     }
   ]
 }

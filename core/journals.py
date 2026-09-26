@@ -58,6 +58,14 @@ def add_journal_entry(keyphrases_str: str, content: str, follower_id: str = None
         "content": content.strip()[:300],  # Keep it small and focused (max 300 chars)
         "timestamp": time.time()
     }
+    try:
+        from core.skills.vectorized_databank.databank import get_embedding_model
+        model = get_embedding_model()
+        vec = model.encode(entry["content"])
+        entry["vector"] = vec.tolist() if hasattr(vec, "tolist") else list(vec)
+    except Exception as e:
+        print(f"[Journals] Pre-embedding failed during add_journal_entry: {e}")
+
     entries.append(entry)
     save_journal_entries(entries, follower_id)
     return entry
@@ -71,7 +79,7 @@ def delete_journal_entry(entry_id: str, follower_id: str = None) -> bool:
         return True
     return False
 
-def match_journals(user_message: str, follower_id: str = None) -> list:
+def match_journals(user_message: str, follower_id: str = None, query_vector=None) -> list:
     """Finds top 3 matching journal entries using keyword matching with vector similarity fallback."""
     if not user_message:
         return []
@@ -115,26 +123,50 @@ def match_journals(user_message: str, follower_id: str = None) -> list:
     # Semantic fallback: vector similarity when keyword matching finds nothing
     try:
         import numpy as np
-        from core.skills.vectorized_databank.databank import get_embedding_model
-        model = get_embedding_model()
-        query_vec = model.encode(user_message)
+
+        if query_vector is not None:
+            query_vec = np.array(query_vector, dtype=float)
+        else:
+            from core.skills.vectorized_databank.databank import get_embedding_model
+            model = get_embedding_model()
+            query_vec = np.array(model.encode(user_message), dtype=float)
+
         query_norm = np.linalg.norm(query_vec)
         if query_norm == 0:
             return []
-        
+
+        # Batch-encode any entries missing a stored vector (legacy data migration)
+        missing_entries = [e for e in entries if not e.get("vector") and e.get("content")]
+        if missing_entries:
+            try:
+                from core.skills.vectorized_databank.databank import get_embedding_model
+                model = get_embedding_model()
+                texts = [e["content"] for e in missing_entries]
+                encoded_vecs = model.encode(texts)
+                for e, vec in zip(missing_entries, encoded_vecs):
+                    e["vector"] = vec.tolist() if hasattr(vec, "tolist") else list(vec)
+                save_journal_entries(entries, follower_id)
+                if follower_id:
+                    f_json = os.path.join(FOLLOWERS_DIR, follower_id, "journals.json")
+                    if os.path.exists(f_json):
+                        with open(f_json, "w", encoding="utf-8") as f:
+                            json.dump(entries, f, indent=2)
+            except Exception as mig_err:
+                print(f"[Journals] Legacy vector migration error: {mig_err}")
+
         semantic_matched = []
         for entry in entries:
-            content = entry.get("content", "")
-            if not content:
+            vec_data = entry.get("vector")
+            if not vec_data:
                 continue
-            content_vec = model.encode(content)
+            content_vec = np.array(vec_data, dtype=float)
             content_norm = np.linalg.norm(content_vec)
             if content_norm == 0:
                 continue
             similarity = float(np.dot(query_vec, content_vec) / (query_norm * content_norm))
             if similarity >= 0.35:
                 semantic_matched.append((similarity, entry))
-        
+
         semantic_matched.sort(key=lambda x: x[0], reverse=True)
         return [item[1] for item in semantic_matched[:3]]
     except Exception as e:

@@ -163,6 +163,85 @@
       "constant": false,
       "insertion_order": 100,
       "position": "before_char"
+    },
+    {
+      "content": "Imperial and provincial settlements maintain strict curfews. City gates are barred shut from 6:00 PM (18:00) until 6:00 AM (06:00) to protect against wilderness beasts and bandits. Citizens and travelers caught outside after sunset must camp outside the walls, pay a steep guard bribe, or scale the battlements illicitly. Within the walls, shops shutter during curfew hours while taverns and inns remain bustling havens.",
+      "enabled": true,
+      "key": [
+        "city gate",
+        "gates",
+        "curfew",
+        "portcullis",
+        "nightfall",
+        "city wall",
+        "sunset"
+      ],
+      "priority": 10,
+      "probability": 100,
+      "secondary_key": [
+        "closed",
+        "locked",
+        "barred",
+        "guard",
+        "wall"
+      ],
+      "uid": 8106,
+      "name": "City Gates & Night Curfew",
+      "keys": [
+        "city gate",
+        "gates",
+        "curfew",
+        "portcullis",
+        "nightfall",
+        "city wall"
+      ],
+      "secondary_keys": [],
+      "constant": false,
+      "insertion_order": 100,
+      "position": "before_char"
+    },
+    {
+      "content": "Revelers & Dibellans: A signature fixture of Tamriel's tournament circuits, grand arenas, festival grounds, and opulent taverns. Drawing from Dibellan traditions of beauty and charm alongside classic gladiatorial bikini armor (epitomized by Arena's cover art champion and fantasy mod aesthetics), revelers of all genders wear daring, modular skimpy armor: molded plate or hardened leather halter-cuirasses, open-chest leather harnesses, bare midriffs, multi-strap string loincloths with hip cords, studded forearm bracers, and high greaves. Charismatic and fiercely confident, they accompany champions, hype crowd spectacle, wager fortunes, and entertain tavern patrons and nobles with playful banter and magnetic allure.",
+      "enabled": true,
+      "key": [
+        "reveler",
+        "revelers",
+        "dibellan",
+        "dibellans",
+        "courtesan",
+        "paramour",
+        "babe",
+        "entertainer",
+        "dancer"
+      ],
+      "priority": 10,
+      "probability": 100,
+      "secondary_key": [
+        "skimpy",
+        "sexy",
+        "tavern",
+        "arena",
+        "festival",
+        "wager",
+        "gladiator"
+      ],
+      "uid": 8107,
+      "name": "Revelers & Dibellans",
+      "keys": [
+        "reveler",
+        "revelers",
+        "dibellan",
+        "dibellans",
+        "courtesan",
+        "paramour",
+        "babe",
+        "entertainer",
+        "dancer"
+      ],
+      "secondary_keys": [],
+      "constant": false,
+      "insertion_order": 100,
+      "position": "before_char"
     }
   ]
 }

@@ -202,7 +202,7 @@ def get_item_category(item: dict) -> str:
         return "neck"
     if item_type in ["ring"] or "ring" in name:
         return "ring"
-    if item_type in ["weapon", "2h_weapon", "1h_weapon"] or any(w in name for w in ["dagger", "sword", "blade", "mace", "axe", "staff", "bow", "hammer", "halberd", "spear", "club", "wand", "katana", "scimitar"]):
+    if item_type in ["weapon", "2h_weapon", "1h_weapon"] or any(w in name for w in ["dagger", "sword", "blade", "mace", "axe", "staff", "bow", "hammer", "halberd", "spear", "club", "wand", "katana", "scimitar", "claymore", "greatsword", "battleaxe", "warhammer", "rapier", "pike", "flail"]):
         return "weapon"
     if item_type in ["body", "chest", "torso", "cuirass", "robes", "apparel"] or any(a in name for a in ["robe", "cuirass", "mail", "tunic", "hauberk", "breastplate", "doublet", "vest", "jerkin", "chestpiece", "rags", "clothes", "clothing", "harness", "gambeson"]):
         return "armor"
@@ -520,13 +520,24 @@ def normalize_item(item: dict) -> dict:
     if not isinstance(item, dict):
         item = {"name": str(item)}
         
-    raw_name = str(item.get("name", "Unknown Item")).strip()
-    raw_type = str(item.get("type", "")).strip().lower()
+    raw_name = str(
+        item.get("name")
+        or item.get("item_name")
+        or item.get("item")
+        or item.get("title")
+        or "Unknown Item"
+    ).strip()
+    raw_type = str(
+        item.get("type")
+        or item.get("item_type")
+        or item.get("category")
+        or ""
+    ).strip().lower()
     temp_item = {"name": raw_name, "type": raw_type}
     inferred_cat = get_item_category(temp_item)
     final_type = inferred_cat if inferred_cat else (raw_type if raw_type and raw_type != "item" else "misc")
     
-    weight = item.get("weight")
+    weight = item.get("weight") if "weight" in item and item.get("weight") is not None else item.get("wt")
     if weight is not None:
         try:
             final_weight = round(float(weight), 1)
@@ -535,7 +546,9 @@ def normalize_item(item: dict) -> dict:
     else:
         final_weight = get_item_weight(temp_item)
         
-    qty = item.get("quantity", 1)
+    qty = item.get("quantity") if "quantity" in item and item.get("quantity") is not None else (
+        item.get("qty") if "qty" in item and item.get("qty") is not None else item.get("count", 1)
+    )
     try:
         final_qty = max(1, int(qty))
     except (ValueError, TypeError):
@@ -561,7 +574,7 @@ def normalize_item(item: dict) -> dict:
         "weight": final_weight,
         "quantity": final_qty,
         "equipped": is_equipped,
-        "description": str(item.get("description", "")).strip()
+        "description": str(item.get("description") or item.get("desc") or "").strip()
     }
     if is_equipped and equipped_slot:
         res["equipped_slot"] = equipped_slot
@@ -1163,14 +1176,14 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                 spend_gold(sheet, amount)
                 modified = True
             elif t_name == "arena_add_item":
-                item_name = args.get("item_name")
-                qty = int(args.get("quantity", 1))
+                item_name = args.get("item_name") or args.get("item") or args.get("name")
+                qty = int(args.get("quantity", args.get("qty", 1)))
                 if item_name:
                     remove_item(sheet, item_name, qty)
                     modified = True
             elif t_name == "arena_remove_item":
-                item_name = args.get("item_name")
-                qty = int(args.get("quantity", 1))
+                item_name = args.get("item_name") or args.get("item") or args.get("name")
+                qty = int(args.get("quantity", args.get("qty", 1)))
                 item_type = args.get("item_type", "misc")
                 if item_name:
                     add_item(sheet, {"name": item_name, "type": item_type, "quantity": qty})

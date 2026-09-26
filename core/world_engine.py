@@ -250,7 +250,7 @@ def get_location_context(state: dict, provinces_data: list, cities_data: list, d
             dominant_culture = c.get("culture", "Imperial")
             break
             
-    date = state.get("tamrielic_date") or state.get("date") or {"day": 1, "month": "Hearthfire", "year": 389}
+    date = state.get("tamrielic_date") or state.get("date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
     
     geo = TAMRIEL_GEOGRAPHY.get(current_province, {
         "region": "Tamriel Realm",
@@ -259,7 +259,19 @@ def get_location_context(state: dict, provinces_data: list, cities_data: list, d
     })
 
     loc_info = resolve_location_anchor(current_province, current_location)
-    
+
+    day = date.get("day", 1)
+    month = date.get("month", "Hearthfire")
+    year = date.get("year", 389)
+    hour = date.get("hour", 6)
+
+    time_label = get_time_of_day_label(hour)
+    is_curfew = (hour >= 18 or hour < 6)
+    curfew_str = " [Night Curfew: City gates barred until 6:00 AM]" if is_curfew else " [Daylight: City gates open, markets active]"
+
+    holiday = get_holiday(day, month)
+    holiday_str = f" (Festival: {holiday})" if holiday else ""
+
     return (
         f"Current Location: {loc_info['orientation']}, {current_province}\n"
         f"Regional Orientation: Currently situated {loc_info['narrative_orientation']}.\n"
@@ -270,7 +282,8 @@ def get_location_context(state: dict, provinces_data: list, cities_data: list, d
         f"Province Climate: {province_climate}\n"
         f"Dominant Culture: {dominant_culture}\n"
         f"Local Weather: {state.get('weather', 'clear')}\n"
-        f"Tamrielic Date: {date.get('day', 1)} {date.get('month', 'Hearthfire')}, Third Era {date.get('year', 389)}"
+        f"Time of Day: {time_label} ({hour:02d}:00){curfew_str}\n"
+        f"Tamrielic Date: {day} {month}, Third Era {year}{holiday_str}"
     )
 
 def travel(state: dict, destination_province: str, destination_city: str) -> dict:
@@ -314,20 +327,71 @@ TAMRIELIC_MONTHS = [
 ]
 
 CANONICAL_HOLIDAYS = {
+    # Morning Star
     (1, "Morning Star"): "New Life Festival",
     (2, "Morning Star"): "Scour Day",
+    (12, "Morning Star"): "Ovank'a",
+    (15, "Morning Star"): "South Wind's Prayer",
+    (16, "Morning Star"): "Day of Lights",
+    (18, "Morning Star"): "Waking Day",
+    # Sun's Dawn
+    (2, "Sun's Dawn"): "Mad Pelagius",
+    (5, "Sun's Dawn"): "Othroktide",
+    (8, "Sun's Dawn"): "Day of Release",
+    (13, "Sun's Dawn"): "Feast of the Dead",
     (16, "Sun's Dawn"): "Heart's Day",
+    (27, "Sun's Dawn"): "Perseverance Day",
+    (28, "Sun's Dawn"): "Aduros Nau",
+    # First Seed
     (7, "First Seed"): "First Planting",
-    (28, "Rain's Hand"): "Jester's Day",
+    (9, "First Seed"): "Day of Waiting",
+    (21, "First Seed"): "Hogithum",
+    (25, "First Seed"): "Flower Day",
+    (26, "First Seed"): "Festival of Blades",
+    # Rain's Hand
+    (1, "Rain's Hand"): "Gardtide",
+    (13, "Rain's Hand"): "Day of the Dead",
+    (20, "Rain's Hand"): "Day of Shame",
+    (28, "Rain's Hand"): "Jester's Festival",
+    # Second Seed
     (7, "Second Seed"): "Second Planting",
+    (9, "Second Seed"): "Marukh's Day",
+    (17, "Second Seed"): "Koomu Alezer'i",
+    (20, "Second Seed"): "Fire Festival",
+    (30, "Second Seed"): "Fishing Day",
+    # Midyear
+    (1, "Midyear"): "Drigh R'Zimb",
     (16, "Midyear"): "Midyear Celebration",
-    (10, "Sun's Height"): "Merchant's Festival",
+    (23, "Midyear"): "Dancing Day",
+    (24, "Midyear"): "Tibedetha (Tiber's Day)",
+    # Sun's Height
+    (10, "Sun's Height"): "Merchants' Festival",
+    (12, "Sun's Height"): "Divat Etep't",
+    (20, "Sun's Height"): "Sun's Rest",
+    (29, "Sun's Height"): "Fiery Night",
+    # Last Seed
+    (2, "Last Seed"): "Maiden Katrica",
+    (14, "Last Seed"): "Feast of the Tiger",
+    (21, "Last Seed"): "Appreciation Day",
     (27, "Last Seed"): "Harvest's End",
+    # Hearthfire
     (3, "Hearthfire"): "Tales and Tallows",
+    (6, "Hearthfire"): "Khurat",
+    (12, "Hearthfire"): "Riglametha",
+    (19, "Hearthfire"): "Children's Day",
+    # Frostfall
+    (5, "Frostfall"): "Dirij Tereur",
     (13, "Frostfall"): "Witches' Festival",
-    (20, "Sun's Dusk"): "South Wall's Day",
+    (23, "Frostfall"): "Broken Diamonds",
+    (30, "Frostfall"): "Emperor's Day",
+    # Sun's Dusk
+    (8, "Sun's Dusk"): "Moon Festival",
+    (18, "Sun's Dusk"): "Hel Anseilak",
+    (20, "Sun's Dusk"): "Warriors' Festival",
+    # Evening Star
     (15, "Evening Star"): "North Wind's Prayer",
     (18, "Evening Star"): "Baranth Do",
+    (25, "Evening Star"): "Saturalia",
     (30, "Evening Star"): "Old Life Festival"
 }
 

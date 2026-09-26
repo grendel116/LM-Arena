@@ -423,7 +423,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         if last_user_msg and not response_only:
             try:
                 from core.journals import match_journals
-                matched = match_journals(last_user_msg, active_fol)
+                matched = match_journals(last_user_msg, active_fol, query_vector=self.query_vector)
                 if matched:
                     journals_text = "\n".join(f"- {replace_placeholders(e['content'])}" for e in matched)
                     auxiliary_blocks.append(f"# RECALLED JOURNALS\n{journals_text}")

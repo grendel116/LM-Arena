@@ -16,6 +16,79 @@ _active_tools_lock = threading.Lock()
 current_session_id = contextvars.ContextVar('current_session_id', default='eternal_champion')
 session_tool_calls_lock = threading.Lock()
 session_tool_calls = {}
+import inspect
+
+DEFAULT_PARAMETER_ALIASES = {
+    "item_name": ("item", "name", "target", "object", "item_title", "title"),
+    "item_type": ("type", "category", "item_category"),
+    "quantity": ("qty", "count", "amount", "num"),
+    "amount": ("gold", "coins", "gold_amount", "cost", "xp", "experience", "points", "heal_amount", "damage_amount", "hp_amount", "mp_amount", "stamina_amount"),
+    "weight": ("wt", "item_weight"),
+    "skill_name": ("skill", "skill_title"),
+    "attribute_name": ("attribute", "attr", "stat"),
+    "reason": ("description", "desc", "details", "why"),
+    "dc": ("difficulty", "target_dc", "check_dc"),
+    "spell_name": ("spell", "name"),
+    "hours": ("duration", "rest_hours", "time"),
+    "location_name": ("location", "city", "place", "destination"),
+    "destination_city": ("city", "destination", "location"),
+    "destination_province": ("province", "region"),
+}
+
+def allow_aliases(**custom_aliases):
+    """
+    Introspective decorator that binds caller arguments against func signature,
+    automatically mapping synonyms/aliases to official parameter names and safely
+    coercing string numeric arguments.
+    """
+    def decorator(func):
+        sig = inspect.signature(func)
+        param_names = list(sig.parameters.keys())
+
+        alias_map = dict(DEFAULT_PARAMETER_ALIASES)
+        alias_map.update(custom_aliases)
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            bound_kwargs = dict(kwargs)
+            bound_pos_names = set(param_names[:len(args)])
+
+            for param_name, param in sig.parameters.items():
+                if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+                    continue
+                if param_name in bound_pos_names:
+                    continue
+
+                if param_name not in bound_kwargs or bound_kwargs[param_name] is None:
+                    aliases = alias_map.get(param_name, ())
+                    for alias in aliases:
+                        if alias in bound_kwargs and bound_kwargs[alias] is not None:
+                            bound_kwargs[param_name] = bound_kwargs.pop(alias)
+                            break
+
+                # Safe type coercion if string numbers were passed for int/float params
+                if param_name in bound_kwargs and bound_kwargs[param_name] is not None:
+                    val = bound_kwargs[param_name]
+                    target_type = param.annotation
+                    default_type = type(param.default) if param.default is not inspect.Parameter.empty and param.default is not None else None
+                    chosen_type = target_type if target_type in (int, float) else (default_type if default_type in (int, float) else None)
+
+                    if chosen_type is int and isinstance(val, str):
+                        try:
+                            bound_kwargs[param_name] = int(float(val))
+                        except (ValueError, TypeError):
+                            pass
+                    elif chosen_type is float and isinstance(val, str):
+                        try:
+                            bound_kwargs[param_name] = float(val)
+                        except (ValueError, TypeError):
+                            pass
+
+            return func(*args, **bound_kwargs)
+
+        return wrapper
+    return decorator
+
 
 def track_tool_activity(func):
     @functools.wraps(func)
@@ -1088,12 +1161,11 @@ def arena_rest(hours=8, safe=True, **kwargs):
     }
 
 @track_tool_activity
-def arena_add_gold(amount=0, gold_amount=None, **kwargs):
+@allow_aliases()
+def arena_add_gold(amount: int = 0, **kwargs):
     """Add gold to the character (loot, reward, sale)."""
-    actual_amount = amount if amount else (gold_amount if gold_amount is not None else 0)
-    
     save_id, sheet = _get_active_sheet(kwargs)
-    sheet = add_gold(sheet, int(actual_amount))
+    sheet = add_gold(sheet, int(amount))
     _commit_and_sync(save_id, sheet, kwargs)
     
     return {"gold": sheet["gold"]}
@@ -1141,46 +1213,68 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, na
     }
 
 @track_tool_activity
-def arena_spend_gold(amount=0, gold_amount=None, cost=None, **kwargs):
+@allow_aliases()
+def arena_spend_gold(amount: int = 0, **kwargs):
     """Spend gold on a purchase. Returns success or failure if funds insufficient."""
-    actual_amount = amount if amount else (gold_amount if gold_amount is not None else (cost if cost is not None else 0))
-    
     save_id, sheet = _get_active_sheet(kwargs)
-    sheet, success = spend_gold(sheet, int(actual_amount))
+    sheet, success = spend_gold(sheet, int(amount))
     if success:
         _commit_and_sync(save_id, sheet, kwargs)
         
     return {"success": success, "gold": sheet["gold"]}
 
 @track_tool_activity
-def arena_add_item(item_name, item_type="Item", quantity=1, weight=None, **kwargs):
+@allow_aliases()
+def arena_add_item(item_name: str = None, item_type: str = "Item", quantity: int = 1, weight: float = None, *args, **kwargs):
     """Add an item to the character's inventory (looted, purchased, found)."""
+    resolved_name = item_name or (args[0] if args else None)
+    if not resolved_name:
+        return {"error": "Missing item name."}
+
+    resolved_qty = quantity
+    if len(args) > 2:
+        resolved_qty = args[2]
+
+    resolved_type = item_type
+    if resolved_type == "Item" and len(args) > 1:
+        resolved_type = args[1]
+
     save_id, sheet = _get_active_sheet(kwargs)
     item_dict = {
-        "name": str(item_name).strip(),
-        "type": str(item_type).strip(),
-        "quantity": int(quantity)
+        "name": str(resolved_name).strip(),
+        "type": str(resolved_type).strip(),
+        "quantity": int(resolved_qty)
     }
-    if weight is not None:
+    resolved_weight = weight
+    if resolved_weight is not None:
         try:
-            item_dict["weight"] = float(weight)
+            item_dict["weight"] = float(resolved_weight)
         except (ValueError, TypeError):
             pass
             
     sheet = add_item(sheet, item_dict)
     _commit_and_sync(save_id, sheet, kwargs)
     
-    return {"inventory_count": len(sheet["inventory"]), "item": item_name}
+    return {"inventory_count": len(sheet["inventory"]), "item": resolved_name}
 
 @track_tool_activity
-def arena_remove_item(item_name, quantity=1, **kwargs):
+@allow_aliases()
+def arena_remove_item(item_name: str = None, quantity: int = 1, *args, **kwargs):
     """Remove an item from inventory (used, sold, consumed)."""
+    resolved_name = item_name or (args[0] if args else None)
+    if not resolved_name:
+        return {"error": "Missing item name."}
+
+    resolved_qty = quantity
+    if len(args) > 1:
+        resolved_qty = args[1]
+
     save_id, sheet = _get_active_sheet(kwargs)
-    sheet, success = remove_item(sheet, item_name, int(quantity))
+    sheet, success = remove_item(sheet, resolved_name, int(resolved_qty))
     if success:
         _commit_and_sync(save_id, sheet, kwargs)
         
-    return {"success": success, "item": item_name}
+    return {"success": success, "item": resolved_name}
 
 @track_tool_activity
 def arena_create_spell(spell_name, effect_description, school=None, target_type="Target", tier=2, deduct_gold=True, **kwargs):

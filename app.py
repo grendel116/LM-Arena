@@ -3835,10 +3835,17 @@ def create_character_item_route():
         req_session_id = data.get("session_id", "default")
         model = data.get("model")
 
-        if not description:
-            return jsonify({"error": "Missing item description"}), 400
+        from core.character import normalize_item
 
-        item = generate_inventory_item(description, model=model)
+        # Allow direct structured manual addition if item name/fields are supplied
+        raw_name = data.get("name") or data.get("item_name") or data.get("item")
+        if raw_name:
+            item = normalize_item(data)
+        elif description:
+            item = generate_inventory_item(description, model=model)
+            item = normalize_item(item)
+        else:
+            return jsonify({"error": "Missing item name or description"}), 400
 
         from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, add_item
@@ -4698,6 +4705,8 @@ def local_llm_status():
     return jsonify({
         "installed": installed,
         "online": online,
+        "status": online,
+        "running": online is True,
         "loaded_models": loaded_models,
         "downloaded_models": downloaded_models,
         "download_status": local_llm_manager.download_status

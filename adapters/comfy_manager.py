@@ -87,6 +87,8 @@ def check_comfy_running(force_refresh=False):
     _comfy_running_cache_time = now
     return False
 
+check_comfy_status = check_comfy_running
+
 def install_comfy():
     """Downloads the portable ComfyUI package matching the GPU architecture, extracts it, and registers ComfyUI-Manager."""
     global resolution_status
