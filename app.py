@@ -852,6 +852,17 @@ def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls
     if blocking_tools or not active_followers:
         return False, None
 
+    # An image generation turn is self-contained and must never chain a follow-up speaker
+    if chat_history and is_image_message(chat_history[-1]):
+        return False, None
+    image_tool_names = {
+        "generate_local_image", "generate_imagen", "generate_follower_portrait",
+        "generate_player_portrait", "generate_environment_image", "generate_program_portrait",
+        "generate_general_image", "apply_comfy_workflow"
+    }
+    if tool_calls and any((tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "")) in image_tool_names for tc in tool_calls):
+        return False, None
+
     # Filter out image messages so they are functionally invisible to the chain
     chain_history = [m for m in chat_history if not is_image_message(m)]
 
@@ -898,6 +909,7 @@ def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls
 
 def determine_first_speaker(user_message: str, prior_history: list, active_followers: list) -> str:
     """Intelligently routes the first response turn to The Game or an active follower.
+    - Check resolution (roll result) or pending check -> The Game speaks first.
     - Explicit @mention -> that follower speaks first.
     - Ongoing exchange with a follower -> that follower speaks first:
         follower > user > follower
@@ -917,8 +929,20 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
     if any(k in user_msg_lower for k in ("[generate_environment:", "generate_environment_image")):
         return "game"
 
+    # Action check resolutions: The Game must adjudicate roll outcomes before party members react
+    if "<!-- check:" in user_msg_lower:
+        return "game"
+
     # Filter out image messages from prior history so they are invisible to the chain
     chain_prior_history = [m for m in prior_history if not is_image_message(m)]
+
+    # If the preceding assistant message requested a skill check, The Game resolves the turn
+    for m in reversed(chain_prior_history):
+        if m.get("role") in ("follower", "assistant"):
+            tcs = m.get("tool_calls") or []
+            if any(tc.get("name") == "arena_request_skill_check" for tc in tcs if isinstance(tc, dict)):
+                return "game"
+            break
 
     from core.follower_config import get_follower_name
     import re

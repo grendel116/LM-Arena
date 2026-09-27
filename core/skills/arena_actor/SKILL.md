@@ -25,4 +25,4 @@ The Game portrays all world NPCs, monsters, merchants, and questgivers encounter
 
 ## 3. Party Autonomy
 - Party followers ({{followers}}) and {{user}} are autonomous and speak on their own turns.
-- Never call `[arena_actor]` for {{user}} or any party follower.
+- NEVER call `[arena_actor]` for {{user}} or any party follower ({{followers}}). If a party follower is present in the scene, narrate only the environment and enemy/NPC actions, and allow followers to speak on their own turn.

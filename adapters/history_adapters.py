@@ -9,10 +9,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 import tools.tools as tools
-from utils.utils import (
-    _merge_consecutive_messages,
-    _ARENA_DIRECTIVE_PROMPT
-)
+from utils.utils import _merge_consecutive_messages
 
 
 def _get_base64_image_url(image_source: str | None) -> str | None:
@@ -223,7 +220,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             block_str = str(block).strip()
             if not block_str:
                 continue
-            if accumulated_system_len + len(block_str) + 2 <= (CHAR_BUDGET // 2):
+            if accumulated_system_len + len(block_str) + 2 <= (CHAR_BUDGET - 4000):
                 included_aux.append(block_str)
                 accumulated_system_len += len(block_str) + 2
 
@@ -400,9 +397,23 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 "Output only the image generation tool call tag (`[generate_local_image(prompt=\"...\")]` or `[generate_imagen(prompt=\"...\")]`) with the character's pose, appearance, and current scenery."
             )
 
-        # Tier 3 & 4 Auxiliary Blocks (Lore, Memory, Journals, RAG, Skills)
+        # Tier 3 & 4 Auxiliary Blocks (Skills, Lore, Memory, Journals, RAG)
         auxiliary_blocks = []
         active_fol = get_active_follower()
+
+        # Skills (On-demand trigger retrieval - prioritized first so core task protocols are never dropped)
+        if not response_only:
+            try:
+                from core.skill_retriever import retrieve_skill_instructions
+                skills = retrieve_skill_instructions(
+                    query=last_user_msg or "",
+                    threshold=0.35,
+                    top_k=2,
+                )
+                if skills:
+                    auxiliary_blocks.append(skills)
+            except Exception as se:
+                print(f"[skills] Retrieval error: {se}")
 
         # Lore Injection
         try:
@@ -435,20 +446,6 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             auxiliary_blocks.append(f"# KNOWLEDGE BASE\n{rag_context}")
         if memory_context and not response_only:
             auxiliary_blocks.append(f"# ARCHIVED MEMORY\n{replace_placeholders(memory_context)}")
-
-        # Skills (On-demand trigger retrieval)
-        if last_user_msg and not response_only:
-            try:
-                from core.skill_retriever import retrieve_skill_instructions
-                skills = retrieve_skill_instructions(
-                    query=last_user_msg,
-                    threshold=0.35,
-                    top_k=2,
-                )
-                if skills:
-                    auxiliary_blocks.append(skills)
-            except Exception as se:
-                print(f"[skills] Retrieval error: {se}")
 
         # Gather Post-History System Context (Character Sheet, World Engine State & Quests)
         full_post_injection = ""
@@ -511,28 +508,20 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
             if active_speaker == "game":
                 from runners.follower import get_player_name
-                player_hero_name = get_player_name()
-                post_blocks.append(
-                    f"# REFEREE ACTION CHECKS (MANDATORY)\n"
-                    f"Respond exclusively as The Game. Never speak as {player_hero_name} or traveling followers.\n"
-                    f"- Action Checks: When {player_hero_name} casts a spell, attacks, or attempts an action with an uncertain outcome: call `[arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]` and stop your turn immediately. Do not resolve the outcome or spend resources until {player_hero_name} rolls.\n"
-                    f"- Resolution: When resolving a player roll from the previous turn: deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), roll adversary counter-attacks (`[arena_roll_combat]`), and narrate the outcome according to the roll result.\n"
-                    f"- Zero Dialogue in Prose: Narrative prose describes only sensory perception, environment, and action. Portray world NPCs, monsters, merchants, and questgivers exclusively with `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`."
-                )
-
                 from core.save_manager import get_active_followers
+                from core.follower_config import get_follower_name
+
+                player_hero_name = get_player_name()
                 active_fols = get_active_followers(self.session_id)
-                if active_fols:
-                    from core.follower_config import get_follower_name
-                    fol_names = [get_follower_name(fid) for fid in active_fols]
-                    fol_names_str = ", ".join(fol_names)
-                    post_blocks.append(
-                        f"# CRITICAL FOLLOWER AUTONOMY MANDATE\n"
-                        f"Party followers traveling with the hero: {fol_names_str}.\n"
-                        f"They are independent characters who speak and act on their own turns.\n"
-                        f"You are The Game (world referee and narrator). You must NEVER generate dialogue, speech, quotes, physical actions, body movements, or expressions for {fol_names_str}.\n"
-                        f"Narrate only ambient room details, dungeon hazards, mechanics, and world enemies."
-                    )
+                fol_names = [get_follower_name(fid) for fid in active_fols] if active_fols else []
+                fol_names_str = ", ".join(fol_names) if fol_names else "none"
+
+                post_blocks.append(
+                    f"# REFEREE DIRECTIVES\n"
+                    f"- Party Autonomy: {player_hero_name} and followers ({fol_names_str}) act on their own turns. Never generate dialogue, actions, or [arena_actor] calls for them.\n"
+                    f"- World Dialogue: World NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]. Never write spoken dialogue in narrative prose.\n"
+                    f"- Action Checks: When {player_hero_name} attempts an action with an uncertain outcome, call [arena_request_skill_check] and wait for the roll. Resolve outcomes and spend resources only after the roll resolves."
+                )
 
             full_post_injection = "\n\n".join(post_blocks)
 

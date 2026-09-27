@@ -12,8 +12,8 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-09-26T03:52:22.187464",
-    "updated_at": "2026-09-26T03:52:24.867997",
+    "created_at": "2026-09-27T02:55:37.485404",
+    "updated_at": "2026-09-27T03:00:10.740714",
     "active_follower": "breamaccius",
     "active_followers": [
       "breamaccius"
@@ -45,7 +45,7 @@
       "stamina_max": 72,
       "armor_rating": 0,
       "encumbrance_max": 120.0,
-      "encumbrance_current": 1.0,
+      "encumbrance_current": 1.1,
       "is_encumbered": false
     },
     "skills": {
@@ -69,6 +69,14 @@
         "equipped_slot": "body",
         "weight": 1.0,
         "quantity": 1
+      },
+      {
+        "name": "Brass Key",
+        "type": "key",
+        "weight": 0.1,
+        "quantity": 1,
+        "equipped": false,
+        "description": ""
       }
     ],
     "spells": [
@@ -87,6 +95,7 @@
       "day": 1,
       "month": "Hearthfire",
       "year": 389,
+      "hour": 6,
       "era": "Third Era"
     },
     "current_province": "Cyrodiil",
@@ -96,7 +105,9 @@
     "provinces_visited": [
       "Cyrodiil"
     ],
-    "cities_discovered": [],
+    "cities_discovered": [
+      "Imperial Dungeon"
+    ],
     "dungeons_cleared": [],
     "followers": [],
     "world_flags": {
@@ -127,13 +138,20 @@
       "temple_of_dibella": 0,
       "temple_of_stendarr": 0,
       "noble_courts": 0
+    },
+    "date": {
+      "day": 1,
+      "month": "Hearthfire",
+      "year": 389,
+      "hour": 6,
+      "era": "Third Era"
     }
   },
   "history": [
     {
-      "id": "first_mes_61bb80ed7d15",
+      "id": "first_mes_56ff1685dca4",
       "role": "follower",
-      "timestamp": 1790419942.1874642
+      "timestamp": 1790502937.4854045
     }
   ],
   "memories": {
@@ -150,13 +168,113 @@
   "profile": "A Nord from Skyrim.",
   "messages": [
     {
-      "id": "first_mes_d91452680ca44cc586928794bcbbed40",
+      "id": "first_mes_c3f631d397a94728967c2634be4dff79",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1790419942.209364
+      "timestamp": 1790502937.5034199
+    },
+    {
+      "id": "usr_7olg5us7fmujnc28v",
+      "role": "user",
+      "text": "*I grab the key.*",
+      "image_url": null,
+      "timestamp": 1790503131.5026765
+    },
+    {
+      "id": "game_fd6f585d86",
+      "role": "follower",
+      "text": "*The stone ledge proves awkwardly positioned, forcing you to stretch upward against the damp masonry. Your fingers brush against the cold brass of the key as you strain to secure a grip on the small object before it can slip into the shadows below.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Acrobatics",
+            "attribute_name": "Agility",
+            "dc": 10,
+            "reason": "Reaching for the key on a high, narrow ledge"
+          },
+          "id": "call_1790503164_0_cb4d"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Acrobatics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Reaching for the key on a high, narrow ledge'}",
+          "id": "call_1790503164_0_cb4d"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790503164.4714398,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
+    },
+    {
+      "id": "usr_5qqoecudbmujnd2t9",
+      "role": "user",
+      "text": "*I stretch upward, balancing precariously on my toes to snatch the key from its perch atop the narrow ledge.* <!-- check: Acrobatics DC 10 -> SUCCESS (rolled 17) -->",
+      "image_url": null,
+      "timestamp": 1790503178.8889933
+    },
+    {
+      "id": "game_116b9cba58",
+      "role": "follower",
+      "text": "*With a sudden burst of coordination, your fingers clamp firmly around the brass key. A slight twist of your wrist retrieves it from the stone niche just as your balance wavers, causing you to stumble back against the cell wall. The small object feels cold and solid in your palm, its ridges worn smooth by time.*\n\n\n\n*The key's presence changes everything—the rusted lock on your cell door now sits within reach, though the heavy iron barrier still separates you from the flickering torchlight of the corridor beyond.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_add_item",
+          "args": {
+            "item_name": "Brass Key",
+            "weight": 0.1,
+            "type": "Key"
+          },
+          "id": "call_1790503189_0_a75f"
+        },
+        {
+          "type": "response",
+          "name": "arena_add_item",
+          "response": "{'inventory_count': 2, 'item': 'Brass Key'}",
+          "id": "call_1790503189_0_a75f"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790503189.591651,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
+    },
+    {
+      "id": "fol_breamaccius_a1211d9019",
+      "role": "follower",
+      "text": "*The heavy iron door creaks as you approach, the metal pitted with rust and age. The key slides into the lock with a grinding protest, turning with a sharp click that echoes through the damp silence of the dungeon. As the door swings open, a figure emerges from the gloom of the adjacent corridor, her footsteps light despite the oppressive atmosphere.*\n\n*A woman steps into the torchlight, her striking appearance immediately contrasting the squalor of the prison. Long blonde hair falls in waves over her shoulders, framing a face that holds both beauty and a certain sharpness in the eyes. She wears only a black leather headband and a revealing black bikini that leaves little to the imagination, the tight fabric straining against her voluptuous curves. Her skin glows faintly in the dim light, and as she moves, the subtle shift of her weight causes her ample chest to bounce slightly beneath the minimal covering.*\n\n*She stops a few paces away, green eyes sweeping over you with a mixture of curiosity and wariness. Her lips, full and painted a soft pink, part as she speaks.*\n\nYou're awake then? Good. I thought the guards had finally succeeded in breaking you.\n\n*She shifts her weight, the movement causing her rounded hips to sway, and her thighs, clad in thigh-high boots, tense as she leans against the opposite wall.*\n\nI'm Brea Maccius. And if you're smart, you'll tell me exactly why someone like you was tossed into this hole.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790503210.7287257,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius"
     }
   ],
   "memory_state": {

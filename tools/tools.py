@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import requests
 import time
@@ -1184,17 +1185,28 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, na
     try:
         from runners.follower import get_active_followers, get_player_name
         from core.follower_config import get_follower_name
+        from core.save_manager import get_active_followers as sm_get_active_followers, get_active_save_id
 
         player_name = get_player_name().strip().lower()
-        active_fids = get_active_followers()
+        session_id = current_session_id.get(None) or get_active_save_id()
+        try:
+            active_fids = sm_get_active_followers(session_id) if session_id else get_active_followers()
+        except Exception:
+            active_fids = get_active_followers()
+
         forbidden_names = {player_name, "player", "user", "{{user}}", "{{char}}"}
+        for part in re.findall(r'\w+', player_name):
+            if len(part) > 2:
+                forbidden_names.add(part)
+
         for fid in active_fids:
             forbidden_names.add(fid.lower())
             fname = get_follower_name(fid).strip().lower()
-            forbidden_names.add(fname)
-            for part in fname.split():
-                if len(part) > 2:
-                    forbidden_names.add(part)
+            if fname:
+                forbidden_names.add(fname)
+                for part in re.findall(r'\w+', fname):
+                    if len(part) > 2:
+                        forbidden_names.add(part)
 
         from variables.settings import FOLLOWERS_DIR
         if os.path.exists(FOLLOWERS_DIR):
@@ -1205,18 +1217,19 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, na
                 fol_name = get_follower_name(entry).strip().lower()
                 if fol_name:
                     forbidden_names.add(fol_name)
-                    for part in fol_name.split():
+                    for part in re.findall(r'\w+', fol_name):
                         if len(part) > 2:
                             forbidden_names.add(part)
 
         spk_lower = actual_speaker.lower()
-        if spk_lower in forbidden_names or any(fn in spk_lower for fn in forbidden_names if len(fn) > 2):
+        spk_tokens = set(re.findall(r'\w+', spk_lower))
+        if spk_lower in forbidden_names or bool(spk_tokens & forbidden_names):
             return {
                 "success": False,
                 "error": f"Forbidden: '{actual_speaker}' is an autonomous party member or hero. Party followers and the hero speak on their own turns. The Actor tool is exclusively for world NPCs, monsters, merchants, and questgivers."
             }
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error in arena_actor autonomy guard: {e}")
 
     return {
         "success": True,

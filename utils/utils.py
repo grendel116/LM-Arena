@@ -34,9 +34,9 @@ def atomic_save_json(path: str | Path, data: object, indent: int = 2):
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG MECHANICS\n"
-    "- Actor Tool Exclusive: All world NPCs, monsters, merchants, and questgivers speak and act exclusively through `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`. Never write spoken dialogue in narrative prose.\n"
+    "- Actor Tool Exclusive: All world NPCs, monsters, merchants, and questgivers speak and act exclusively through `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`. Never write spoken dialogue in narrative prose. NEVER call `[arena_actor]` for party followers ({{followers}}) or {{user}}.\n"
     "- Follower Autonomy: Party followers ({{followers}}) and {{user}} are autonomous characters who speak and act on their own turns. The Game never writes speech, actions, or dialogue for party followers or {{user}}.\n"
-    "- Action Sequence: When {{user}} attempts an attack, spell, or risky action, call `[arena_request_skill_check]` and stop turn. Conclude turn immediately without narrating consequences or spending resources. When the roll resolves on the next turn, deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), resolve counter-attacks (`[arena_roll_combat]`), and narrate consequences.\n"
+    "- Action Sequence: When {{user}} attempts an attack, spell, or risky action, narrate the initial attempt, sensory environment, and physical tension leading up to the moment of uncertainty, call `[arena_request_skill_check]`, and await the roll. Never narrate the outcome or spend resources until the check is resolved. When the roll resolves on the next turn, deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), resolve counter-attacks (`[arena_roll_combat]`), and narrate consequences.\n"
     "- Magicka: Spells require sufficient MP. Depleted MP causes spells to fizzle and fail.\n"
     "- Vitals & Status: Adjust Health (`[arena_take_damage]`, `[arena_heal]`) and log conditions accurately.\n"
     "- Experience & Loot: Award XP (`[arena_add_experience]`) once upon defeating enemies with the total combined amount. Never award 0 XP.\n"

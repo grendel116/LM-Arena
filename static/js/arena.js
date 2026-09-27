@@ -753,6 +753,7 @@ async function softReloadApp() {
         
         // Maintain scroll posture
         if (domUpdated) {
+            updateRerollVisibility();
             if (isAtBottom) {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             } else {
@@ -3035,7 +3036,8 @@ function getLogIconSvg(name) {
         coin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="7" x2="12" y2="17"></line></svg>`,
         backpack: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10z"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><path d="M8 14h8"></path></svg>`,
         droplet: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>`,
-        users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`
+        users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
+        'message-square': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
     };
     return svgs[name] || svgs.command;
 }
@@ -5069,6 +5071,7 @@ async function loadHistory() {
             (data.history || []).forEach(msg => {
                 renderMessage(msg);
             });
+            updateRerollVisibility();
 
             // Check if latest message is a pending player skill check
             evaluateLatestMessageForSkillCheck();
@@ -5391,8 +5394,6 @@ const arenaToolMetaMap = {
 };
 
 const hiddenPassiveTools = new Set([
-    'arena_actor',
-    'actor',
     'arena_get_character_context',
     'arena_get_location',
     'generate_local_image',
@@ -6092,7 +6093,7 @@ function renderMessage(msg, isLive = false) {
             if (!msgTimestamp && isLive) {
                 msgTimestamp = Date.now() / 1000;
             }
-            if (msgTimestamp && !isImageOnly) {
+            if (msgTimestamp && !isImageOnly && role !== 'user') {
                 const tsSpan = document.createElement('span');
                 tsSpan.className = 'message-timestamp';
                 const formattedTs = formatMessageTimestamp(msgTimestamp, msg);
@@ -6105,7 +6106,7 @@ function renderMessage(msg, isLive = false) {
                 const isCheckMessage = typeof text === 'string' && text.includes('<!-- check:');
                 if (!isMsgTransient && !isImageOnly && item.type === 'text' && !isCheckMessage) {
                     const rerollBtn = document.createElement('button');
-                    rerollBtn.className = 'action-icon-btn';
+                    rerollBtn.className = 'action-icon-btn reroll-btn';
                     rerollBtn.title = 'Reroll Message';
                     rerollBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -6118,7 +6119,7 @@ function renderMessage(msg, isLive = false) {
             } else if (role === 'follower' && !text.startsWith("Hello, " + getUserDisplayName())) {
                 if (!isMsgTransient && !isImageOnly && item.type === 'text') {
                     const rerollBtn = document.createElement('button');
-                    rerollBtn.className = 'action-icon-btn';
+                    rerollBtn.className = 'action-icon-btn reroll-btn';
                     rerollBtn.title = 'Reroll response';
                     rerollBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -6341,6 +6342,7 @@ function renderMessage(msg, isLive = false) {
     row.appendChild(bubblesContainer);
     chatContainer.appendChild(row);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    updateRerollVisibility();
     evaluateLatestMessageForSkillCheck();
 
     if (role === 'follower' && isLive && ttsAutoSpeak) {
@@ -6974,6 +6976,7 @@ function truncateChatAfter(row) {
         next = next.nextElementSibling;
         toRemove.remove();
     }
+    updateRerollVisibility();
     evaluateLatestMessageForSkillCheck();
 }
 
@@ -7312,11 +7315,37 @@ async function resendUserMessage(bubble) {
     }
 }
 
+// --- updateRerollVisibility ---
+function updateRerollVisibility() {
+    if (!chatContainer) return;
+    const messageRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container):not(#active-thought-bubble)'))
+        .filter(row => !row.querySelector('.typing-indicator') && !row.querySelector('[data-is-transient="true"]') && row.dataset.isTransient !== "true");
+    
+    const lastRow = messageRows[messageRows.length - 1];
+
+    messageRows.forEach(row => {
+        const isLast = (row === lastRow);
+        const rerollBtns = row.querySelectorAll('.reroll-btn');
+        rerollBtns.forEach(btn => {
+            btn.style.display = isLast ? 'flex' : 'none';
+        });
+    });
+}
+
 // --- rerollUserMessage ---
 async function rerollUserMessage(button) {
     const bubble = button.closest('.message');
-    const row = bubble.closest('.message-row.user-row');
+    const row = bubble ? bubble.closest('.message-row.user-row') : null;
     if (!row || !bubble) return;
+
+    const messageRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container):not(#active-thought-bubble)'))
+        .filter(r => !r.querySelector('.typing-indicator') && !r.querySelector('[data-is-transient="true"]') && r.dataset.isTransient !== "true");
+    const lastRow = messageRows[messageRows.length - 1];
+
+    if (row !== lastRow) {
+        showCustomAlert("Reroll Restricted", "Only the last message in chat can be rerolled.");
+        return;
+    }
     
     const msgId = bubble.dataset.msgId;
     const origRawText = bubble.dataset.rawText || bubble.textContent || '';
@@ -7401,6 +7430,15 @@ async function rerollFromMessage(button) {
     const bubble = button.closest('.message');
     const row = bubble ? bubble.closest('.message-row.follower-row') : null;
     if (!row || !bubble) return;
+
+    const messageRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container):not(#active-thought-bubble)'))
+        .filter(r => !r.querySelector('.typing-indicator') && !r.querySelector('[data-is-transient="true"]') && r.dataset.isTransient !== "true");
+    const lastRow = messageRows[messageRows.length - 1];
+
+    if (row !== lastRow) {
+        showCustomAlert("Reroll Restricted", "Only the last message in chat can be rerolled.");
+        return;
+    }
     
     const msgId = bubble.dataset.msgId || row.dataset.msgId;
     if (!msgId) {
@@ -7453,6 +7491,7 @@ async function rerollFromMessage(button) {
         const data = await response.json();
         if (data.response !== undefined) {
             bubble.dataset.rawText = data.response;
+            row.dataset.rawText = data.response;
             if (data.follower_msg_id) {
                 bubble.dataset.msgId = data.follower_msg_id;
                 row.dataset.msgId = data.follower_msg_id;
@@ -7463,6 +7502,9 @@ async function rerollFromMessage(button) {
             if (data.sender_name) {
                 row.dataset.senderName = data.sender_name;
             }
+            row.dataset.toolCalls = JSON.stringify(data.tool_calls || []);
+            row.dataset.timestamp = data.timestamp || '';
+            row.dataset.duration = data.duration || '';
             
             let actualResponse = data.response.replace(/<think>[\s\S]*?<\/think>/gi, '')
                                               .replace(/\[think\][\s\S]*?\[\/think\]/gi, '')
@@ -7536,6 +7578,7 @@ async function deleteTurnFromMessage(button) {
             const row = bubble.closest('.message-row');
             if (row) {
                 row.remove();
+                updateRerollVisibility();
             }
             return;
         }
@@ -7565,6 +7608,7 @@ async function deleteTurnFromMessage(button) {
                         toRemove.remove();
                     }
                     row.remove();
+                    updateRerollVisibility();
                 }
                 evaluateLatestMessageForSkillCheck();
                 if (typeof fetchCharacterStatus === 'function') {

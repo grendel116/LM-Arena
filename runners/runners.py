@@ -40,7 +40,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOL_TAG_RE = re.compile(r"\[(\w+)\(([\s\S]*?)\)\]")
 TOOL_TAG_STRIP_RE = re.compile(r"\[\w+\([\s\S]*?\n?\)\]", flags=re.DOTALL)
 
-# Tools that provide dice/lookup information requiring follow-up narrative generation
+# Tools that provide dice/lookup or resolve mechanics requiring follow-up narrative generation
 QUERY_TOOLS = {
     "arena_roll_combat",
     "arena_roll_check",
@@ -49,6 +49,10 @@ QUERY_TOOLS = {
     "arena_sorcerer_absorb",
     "arena_get_location",
     "arena_get_character_context",
+    "arena_take_damage",
+    "arena_spend_magicka",
+    "arena_spend_stamina",
+    "arena_add_item",
 }
 
 _http_client: httpx.AsyncClient | None = None
@@ -381,11 +385,21 @@ class BaseRunner:
             and not (msg.get("text") or "").startswith(("[SYSTEM:", "[Tool Response from"))
         ]
 
-        # Pair dialogue into sequential (user, follower) conversation turns
+        # Cluster dialogue into user-led turns (user message + all responses before next user turn)
         turns = []
-        start_idx = 1 if (dialogue_messages and dialogue_messages[0].get("role") in ("assistant", "follower")) else 0
-        for i in range(start_idx, len(dialogue_messages) - 1, 2):
-            turns.append((dialogue_messages[i], dialogue_messages[i + 1]))
+        current_turn = []
+        for msg in dialogue_messages:
+            if msg.get("role") == "user":
+                if current_turn:
+                    turns.append(current_turn)
+                current_turn = [msg]
+            else:
+                if current_turn:
+                    current_turn.append(msg)
+                else:
+                    current_turn = [msg]
+        if current_turn:
+            turns.append(current_turn)
 
         total_turns = len(turns)
         last_turn = meta.get("last_summarized_turn", 0)
@@ -400,8 +414,8 @@ class BaseRunner:
             chapter_turns = turns[last_turn : last_turn + 12]
 
             formatted_turns = "\n".join(
-                f"{'User' if msg.get('role') == 'user' else 'Follower'}: {(msg.get('text') or msg.get('content') or '')[:1000]}"
-                for pair in chapter_turns for msg in pair
+                f"{'User' if msg.get('role') == 'user' else (msg.get('sender_name') or msg.get('sender_id') or 'Game')}: {(msg.get('text') or msg.get('content') or '')[:1000]}"
+                for turn_group in chapter_turns for msg in turn_group
             )
 
             chapter_summary = await self._generate_local_summary(
@@ -555,8 +569,6 @@ class BaseRunner:
                     for m, (parsed_args, output) in zip(new_matches, raw_results):
                         t_name = _normalize_tool_name(m.group(1))
                         t_args = parsed_args["kwargs"]
-                        results.append((t_name, t_args, output))
-
                         if t_name == "arena_actor":
                             output_dict = {}
                             if isinstance(output, dict):
@@ -583,8 +595,11 @@ class BaseRunner:
                                         parts.append(clean_dlg)
                                 if parts:
                                     replacement = "\n\n" + "\n\n".join(parts)
+                                results.append((t_name, t_args, output))
 
                             bot_response_text = bot_response_text.replace(m.group(0), replacement, 1)
+                        else:
+                            results.append((t_name, t_args, output))
 
                     tool_calls = []
                     for idx, (t_name, t_args, t_output) in enumerate(results):
@@ -596,9 +611,49 @@ class BaseRunner:
 
                 clean_text = TOOL_TAG_STRIP_RE.sub("", bot_response_text).strip()
 
+                player_is_dead = False
+                for t_name, _, t_output in results:
+                    if t_name in ("arena_take_damage", "arena_roll_combat"):
+                        if isinstance(t_output, dict) and t_output.get("dead"):
+                            player_is_dead = True
+                        elif isinstance(t_output, str) and ("'dead': True" in t_output or '"dead": true' in t_output):
+                            player_is_dead = True
+
+                if not player_is_dead:
+                    try:
+                        from core.character import load_character
+                        from core.save_manager import get_active_save_id
+                        active_save = get_active_save_id() if (not session_id or session_id == "default") else session_id
+                        sheet = load_character(active_save)
+                        if sheet and sheet.get("derived", {}).get("hp_current", 1) <= 0:
+                            player_is_dead = True
+                    except Exception:
+                        pass
+
+                if player_is_dead:
+                    # Dead characters cannot make action checks; discard pending skill checks
+                    results = [r for r in results if r[0] != "arena_request_skill_check"]
+                    all_tool_calls = [tc for tc in all_tool_calls if tc.get("name") != "arena_request_skill_check"]
+                    tool_calls = [tc for tc in tool_calls if tc.get("name") != "arena_request_skill_check"]
+                    clean_text = ""
+                    final_response_text = ""
+
                 active_tool_names = {tc.get("name") for tc in all_tool_calls if tc.get("type") == "call"}
-                has_query_tool = any(t_name in QUERY_TOOLS for t_name, _, _ in results)
-                needs_continuation = has_query_tool and "arena_request_skill_check" not in active_tool_names
+
+                if player_is_dead:
+                    needs_continuation = True
+                elif not clean_text and results:
+                    needs_continuation = "arena_request_skill_check" not in active_tool_names
+                else:
+                    dice_query_tools = {
+                        "arena_roll_combat",
+                        "arena_roll_check",
+                        "arena_roll_initiative",
+                        "arena_roll_skill",
+                        "arena_sorcerer_absorb",
+                    }
+                    has_dice_query = any(t_name in dice_query_tools for t_name, _, _ in results)
+                    needs_continuation = has_dice_query and "arena_request_skill_check" not in active_tool_names
 
                 if not results or not needs_continuation:
                     final_response_text = clean_speaker_response(clean_text, speaker_id=speaker_id, follower_id=follower_id)
@@ -642,14 +697,12 @@ class BaseRunner:
         if isinstance(session_id, str) and session_id.endswith("_voice"):
             final_response_text = strip_story(final_response_text)
 
-        # Background Memory Pipeline Task
-        asyncio.create_task(
-            self._process_memory_pipeline(
-                session_id=session_id,
-                active_model=target_model or "",
-                user_text=new_message_text,
-                assistant_text=final_response_text
-            )
+        # Process Memory Pipeline
+        await self._process_memory_pipeline(
+            session_id=session_id,
+            active_model=target_model or "",
+            user_text=new_message_text,
+            assistant_text=final_response_text
         )
 
         return final_response_text, all_tool_calls
@@ -1335,10 +1388,16 @@ class OpenSourceRunner(BaseRunner):
 
         history = self.sessions_history.get(session_id, [])
         user_idx = next((i for i, m in enumerate(history) if m.get("id") == user_msg_id), -1)
+        if user_idx == -1 and user_msg_id is None:
+            for i in range(len(history) - 1, -1, -1):
+                if history[i].get("role") == "user":
+                    user_idx = i
+                    break
 
+        target_speaker = speaker_id or "game"
         if user_idx != -1:
             for msg in history[user_idx + 1 :]:
-                if msg.get("role") == "follower":
+                if msg.get("role") == "follower" and msg.get("sender_id", "game") == target_speaker:
                     if msg.get("text"):
                         follower_texts.append(msg["text"])
                     if msg.get("id"):
@@ -1347,7 +1406,10 @@ class OpenSourceRunner(BaseRunner):
         if follower_texts:
             bot_response_text = "\n\n".join(follower_texts)
         else:
-            follower_msg_id = next((m.get("id") for m in reversed(history) if m.get("role") == "follower"), None)
+            follower_msg_id = next(
+                (m.get("id") for m in reversed(history) if m.get("role") == "follower" and m.get("sender_id", "game") == target_speaker),
+                None
+            )
 
         return bot_response_text, tool_calls, user_msg_id, follower_msg_id
 
@@ -1364,6 +1426,10 @@ class OpenSourceRunner(BaseRunner):
         user_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
         if user_idx == -1:
             raise ValueError("Message not found")
+
+        # Restrict rerolling to the last turn in chat
+        if any(ev.get("role") == "user" for ev in history[user_idx + 1:]):
+            raise ValueError("Only the last message in chat can be rerolled.")
 
         orig_msg = history[user_idx]
         img_data, img_mime, media_path = None, None, None
@@ -1430,6 +1496,10 @@ class OpenSourceRunner(BaseRunner):
         msg_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
         if msg_idx == -1:
             raise ValueError(f"Message {msg_id} not found")
+
+        # Restrict rerolling to the last message in chat
+        if msg_idx != len(history) - 1:
+            raise ValueError("Only the last message in chat can be rerolled.")
 
         target_msg = history[msg_idx]
         speaker_id = target_msg.get("sender_id")
