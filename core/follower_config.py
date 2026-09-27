@@ -25,7 +25,7 @@ GAME_FORMATTING = (
 GLOBAL_FORMATTING = (
     "\n\n# SETTING TONE & FORMATTING RULES (MANDATORY)\n"
     "- Tone & Setting: Grim, dark fantasy atmosphere with cosmic lore, mature themes, esoteric absurdity, and cartoon physics.\n"
-    "- Narration & Actions: Wrap EVERY paragraph, sentence, and phrase of environmental description, action, expression, physical movement, and detail in *asterisks* (e.g. *The stone corridor narrows into darkness.*).\n"
+    "- Narration: Wrap all environmental description, sensory details, and world events in *asterisks*.\n"
     "- Spoken Dialogue: Output spoken speech in plain text without quotation marks and without asterisks. Use **bold** only for vocal emphasis.\n"
     "- Paragraph Separation: Keep narration and dialogue separated into distinct, separate lines and paragraphs.\n"
 )
@@ -320,10 +320,10 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
             f"\n\n# FOLLOWER ROLE DIRECTIVES\n"
             f"You are {follower_name}, traveling alongside {player_name}.\n"
             f"{follower_context}"
-            f"- Converse directly with {player_name}{(' and ' + ', '.join(other_followers)) if other_followers else ''}.\n"
-            f"- Speak, react, and advise solely as {follower_name}. Leave world narration, dungeon mechanics, and referee tools to The Game.\n"
-            f"- Lead with spoken dialogue and tactical reactions to the immediate situation and new events."
-        )
+            f"- Converse with {player_name}{(' and ' + ', '.join(other_followers)) if other_followers else ''}.\n"
+            f"- React and advise solely as {follower_name}.\n"
+            f"- Short messages with a succinct narration and limited dialogue.\n"        )
+
 
         base = replace_placeholders(follower_instructions + load_user_instructions(), follower_id=speaker_id, party_followers=party)
         base += follower_block

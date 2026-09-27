@@ -737,7 +737,15 @@ class BaseRunner:
     async def replace_image_with_video_in_session(self, session_id: str, old_image_url: str, new_video_url: str) -> bool:
         raise NotImplementedError()
 
-    async def append_message_to_session(self, session_id: str, role: str, text: str, sender_id: str | None = None, sender_name: str | None = None) -> bool:
+    async def append_message_to_session(
+        self,
+        session_id: str,
+        role: str,
+        text: str,
+        sender_id: str | None = None,
+        sender_name: str | None = None,
+        tool_calls: list | None = None,
+    ) -> dict:
         raise NotImplementedError()
 
     async def append_voice_call(self, session_id: str, transcript: str, timestamp: float = None, start_time: float = None) -> bool:
@@ -1195,7 +1203,15 @@ class OpenSourceRunner(BaseRunner):
         clean_text = clean_text.replace("(Generation stopped)", "").strip()
         tool_summary = self._consolidate_tools(tool_calls)
 
-        image_tools = {"generate_local_image", "generate_imagen", "generate_follower_portrait", "generate_general_image"}
+        image_tools = {
+            "generate_local_image",
+            "generate_imagen",
+            "generate_follower_portrait",
+            "generate_player_portrait",
+            "generate_environment_image",
+            "generate_program_portrait",
+            "generate_general_image",
+        }
         image_prompt = next(
             (ts.get("args", {}).get("prompt") for ts in tool_summary if ts.get("name") in image_tools),
             None,
@@ -1747,7 +1763,15 @@ class OpenSourceRunner(BaseRunner):
                 return True
             return False
 
-    async def append_message_to_session(self, session_id: str, role: str, text: str, sender_id: str | None = None, sender_name: str | None = None) -> bool:
+    async def append_message_to_session(
+        self,
+        session_id: str,
+        role: str,
+        text: str,
+        sender_id: str | None = None,
+        sender_name: str | None = None,
+        tool_calls: list | None = None,
+    ) -> dict:
         with self._lock:
             if session_id not in self.sessions_history:
                 self._load_session_from_disk(session_id)
@@ -1776,18 +1800,18 @@ class OpenSourceRunner(BaseRunner):
             t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
 
             if role != 'user':
-                resolved_sender_id = sender_id or get_active_follower() or "misty"
+                resolved_sender_id = sender_id or get_active_follower()
                 resolved_sender_name = sender_name or get_follower_name(resolved_sender_id) or "Follower"
             else:
-                resolved_sender_id = None
-                resolved_sender_name = None
+                resolved_sender_id = sender_id
+                resolved_sender_name = sender_name
 
             history = self.sessions_history[session_id]
             new_msg = {
                 'id': f"{prefix}{uuid.uuid4().hex}",
                 'role': 'user' if role == 'user' else 'follower',
                 'text': text,
-                'tool_calls': [],
+                'tool_calls': tool_calls or [],
                 'tamrielic_date': t_date,
                 'timestamp': time.time()
             }
@@ -1797,7 +1821,7 @@ class OpenSourceRunner(BaseRunner):
 
             history.append(new_msg)
             self._save_session_to_disk(session_id)
-            return True
+            return new_msg
 
     async def append_voice_call(self, session_id: str, transcript: str, timestamp: float = None, start_time: float = None) -> bool:
         with self._lock:

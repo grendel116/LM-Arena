@@ -46,10 +46,10 @@ def _save_settings(settings: dict):
         print(f"Error saving project settings: {e}")
 
 
-def get_active_followers() -> list[str]:
+def get_active_followers(save_id: str = None) -> list[str]:
     try:
         from core.save_manager import get_active_followers as sm_get_active_followers
-        fols = sm_get_active_followers()
+        fols = sm_get_active_followers(save_id)
         if fols:
             return fols
     except Exception:

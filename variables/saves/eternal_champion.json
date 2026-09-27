@@ -13,7 +13,7 @@
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
     "created_at": "2026-09-27T02:55:37.485404",
-    "updated_at": "2026-09-27T03:00:10.740714",
+    "updated_at": "2026-09-27T06:13:28.918011",
     "active_follower": "breamaccius",
     "active_followers": [
       "breamaccius"
@@ -260,9 +260,58 @@
       "sender_name": "The Game"
     },
     {
-      "id": "fol_breamaccius_a1211d9019",
+      "id": "usr_5exib9wwxmujrcutw",
+      "role": "user",
+      "text": "*I step forward and slide the brass key into the rusted lock of the cell door.*",
+      "image_url": null,
+      "timestamp": 1790509885.5089006
+    },
+    {
+      "id": "game_d6271cb64a",
       "role": "follower",
-      "text": "*The heavy iron door creaks as you approach, the metal pitted with rust and age. The key slides into the lock with a grinding protest, turning with a sharp click that echoes through the damp silence of the dungeon. As the door swings open, a figure emerges from the gloom of the adjacent corridor, her footsteps light despite the oppressive atmosphere.*\n\n*A woman steps into the torchlight, her striking appearance immediately contrasting the squalor of the prison. Long blonde hair falls in waves over her shoulders, framing a face that holds both beauty and a certain sharpness in the eyes. She wears only a black leather headband and a revealing black bikini that leaves little to the imagination, the tight fabric straining against her voluptuous curves. Her skin glows faintly in the dim light, and as she moves, the subtle shift of her weight causes her ample chest to bounce slightly beneath the minimal covering.*\n\n*She stops a few paces away, green eyes sweeping over you with a mixture of curiosity and wariness. Her lips, full and painted a soft pink, part as she speaks.*\n\nYou're awake then? Good. I thought the guards had finally succeeded in breaking you.\n\n*She shifts her weight, the movement causing her rounded hips to sway, and her thighs, clad in thigh-high boots, tense as she leans against the opposite wall.*\n\nI'm Brea Maccius. And if you're smart, you'll tell me exactly why someone like you was tossed into this hole.",
+      "text": "*The brass key slides into the mechanism with a grating screech of metal against metal. Years of rust and neglect have fouled the internal tumblers, and the key resists turning, grinding against corroded pins that threaten to snap under pressure.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Lockpicking",
+            "attribute_name": "Agility",
+            "dc": 12,
+            "reason": "Turning a rusted lock with an old key"
+          },
+          "id": "call_1790509900_0_1085"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Lockpicking', 'attribute_name': 'Agility', 'dc': 12, 'reason': 'Turning a rusted lock with an old key'}",
+          "id": "call_1790509900_0_1085"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790509900.16059,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
+    },
+    {
+      "id": "usr_3ushiocrmmujrdfie",
+      "role": "user",
+      "text": "*I twist the brass key carefully through the rust-caked mechanism, feeling the tumblers click into place as the lock finally turns.* <!-- check: Lockpicking DC 12 -> SUCCESS (rolled 16) -->",
+      "image_url": null,
+      "timestamp": 1790509912.290429
+    },
+    {
+      "id": "game_35f7787eb8",
+      "role": "follower",
+      "text": "*A sharp metallic snap echoes through the cell as the stubborn tumblers finally yield. The lock rotates with a heavy click, and the door swings inward on protesting hinges. Beyond the threshold, the narrow corridor stretches into darkness, lit only by the flickering torch that casts long, dancing shadows across the stone walls.*\n\n*The air outside the cell feels marginally fresher, though it carries the faint tang of mildew and the distant sound of dripping water. Somewhere in the labyrinthine depths below, the scratching of tiny claws against stone grows momentarily louder before fading away again.*",
       "tool_calls": [],
       "tamrielic_date": {
         "day": 1,
@@ -271,9 +320,64 @@
         "hour": 6,
         "era": "Third Era"
       },
-      "timestamp": 1790503210.7287257,
+      "timestamp": 1790509918.0788355,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game"
+    },
+    {
+      "id": "fol_breamaccius_f598547770",
+      "role": "follower",
+      "text": "*The door creaks open to reveal a narrow passage where a woman stands draped in the shadows, her voluptuous form outlined by the guttering torchlight. Her long blonde hair falls in wavy strands over her bare shoulders, and the minimal black leather of her attire leaves little to the imagination, especially as she leans against the damp stone wall.*\n\n*When she notices your emergence from the cell, her emerald eyes widen with surprise, and her full lips part slightly. She pushes herself upright, her chest rising and falling visibly beneath the thin straps of her bikini top.*\n\nSo, the rumors were true. They've thrown another poor soul into this hole.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790509932.4287035,
       "sender_id": "breamaccius",
       "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius"
+    },
+    {
+      "id": "tool_de5a71e70c74413581d5300192ec88bb",
+      "role": "user",
+      "text": "[Tool Response from generate_follower_portrait]:",
+      "tool_calls": [],
+      "timestamp": 1790510067.5595117
+    },
+    {
+      "id": "img_32368f9b81f84392a22a82df72dfcb0b",
+      "role": "follower",
+      "text": "![Portrait](/images/portraits/portrait_1790514762.png?v=1790514762?v=1790514695?v=1790514567)",
+      "tool_calls": [
+        {
+          "id": "call_1790514657011",
+          "type": "call",
+          "name": "generate_local_image",
+          "args": {
+            "prompt": "solo, woman, long blonde hair, wavy hair, bare shoulders, leaning against damp stone wall, voluptuous, seductive expression, smirk, looking at viewer, narrow stone corridor, flickering torchlight, dramatic shadows, cinematic lighting, dungeon atmosphere, dark fantasy, high detail, photorealistic, 8k resolution, green eyes, black leather headband, black bikini, large breasts, saggy breasts, arm gloves, thigh-high boots, fair skin, sharp eyes, big lips"
+          }
+        },
+        {
+          "id": "call_1790514657011",
+          "type": "response",
+          "name": "generate_local_image",
+          "response": "![Portrait](/images/portraits/portrait_1790514762.png?v=1790514762?v=1790514695?v=1790514567)"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1790514657.0127845,
+      "sender_id": "breamaccius",
       "sender_name": "Brea Maccius"
     }
   ],

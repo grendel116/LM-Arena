@@ -8285,11 +8285,11 @@ async function selectImageGenerationType(type) {
 
 async function generateCustomImage(type = 'follower') {
     if (isGenerating) return;
-    if (chatContainer) {
-        const allRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container)'));
-        const lastRow = allRows[allRows.length - 1];
-        if (lastRow && lastRow.classList.contains('user-row')) return;
-    }
+
+    let targetFollowerId = null;
+    let targetFollowerName = "";
+    let speakerForIndicator = 'game';
+    let prompt = "";
 
     if (type === 'player') {
         const char = (currentCharacterData && currentCharacterData.character) ? currentCharacterData.character : {};
@@ -8308,12 +8308,10 @@ async function generateCustomImage(type = 'follower') {
         if (profileDesc) {
             descSummary += `. Appearance details: ${profileDesc}`;
         }
-
-        if (useImagenMode) {
-            userInput.value = `[GENERATE_IMAGEN: Render a portrait of the player character: ${descSummary}, with current pose and scenery.]`;
-        } else {
-            userInput.value = `[GENERATE_IMAGE: Render a portrait of the player character: ${descSummary}, with current pose and scenery.]`;
-        }
+        prompt = `Render a detailed character portrait of the player character: ${descSummary}.`;
+        speakerForIndicator = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none') ? activefollower : 'game';
+        targetFollowerId = 'user';
+        targetFollowerName = activePlayerName || "Hero";
     } else if (type === 'environment') {
         const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
         const loc = world.current_location || "Imperial Dungeon";
@@ -8321,39 +8319,116 @@ async function generateCustomImage(type = 'follower') {
         const dateObj = world.tamrielic_date || world.date || {};
         const timeStr = typeof dateObj === 'object' ? `${dateObj.day || 1} ${dateObj.month || 'Hearthfire'}, 3E ${dateObj.year || 389}` : (dateObj || "");
         const envDetails = `${loc} in ${prov}${timeStr ? ', ' + timeStr : ''}`;
-
-        if (useImagenMode) {
-            userInput.value = `[GENERATE_IMAGEN: Render a scene of the current surroundings, with scenery and lighting. Empty scenery, no characters.]`;
-        } else {
-            userInput.value = `[GENERATE_IMAGE: Render a scene of the current surroundings, with scenery and lighting. Empty scenery, no characters.]`;
-        }
+        prompt = `Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters.`;
+        speakerForIndicator = 'game';
+        targetFollowerId = 'game';
+        targetFollowerName = 'The Game';
     } else {
-        let targetFollowerName = "";
-        if (chatContainer) {
+        if (typeof activePartyFollowers !== 'undefined' && Array.isArray(activePartyFollowers)) {
+            for (const fid of activePartyFollowers) {
+                targetFollowerId = fid;
+                targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || "";
+                if (targetFollowerName) break;
+            }
+        }
+        if (!targetFollowerId && chatContainer) {
             const rows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'))
                 .filter(r => !isImageMessageRow(r));
             for (let i = rows.length - 1; i >= 0; i--) {
                 const row = rows[i];
                 const folId = row.dataset.followerId || row.dataset.senderId;
                 if (folId && folId !== 'game' && folId !== 'user') {
+                    targetFollowerId = folId;
                     targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[folId]) || row.dataset.senderName || "";
                     if (targetFollowerName) break;
                 }
             }
         }
-        if (!targetFollowerName) {
-            const leadId = (typeof activePartyFollowers !== 'undefined' && activePartyFollowers[0]) || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
-            targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[leadId]) || (typeof activefollowerName !== 'undefined' && activefollowerName) || "Follower";
+        if (!targetFollowerId) {
+            targetFollowerId = (typeof activePartyFollowers !== 'undefined' && activePartyFollowers[0]) || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
+            targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[targetFollowerId]) || (typeof activefollowerName !== 'undefined' && activefollowerName) || "Follower";
         }
-
-        if (useImagenMode) {
-            userInput.value = `[GENERATE_IMAGEN: Render a portrait of ${targetFollowerName} with current pose and scenery.]`;
-        } else {
-            userInput.value = `[GENERATE_IMAGE: Render a portrait of ${targetFollowerName} with current pose and scenery.]`;
-        }
+        speakerForIndicator = targetFollowerId;
+        prompt = '';
     }
 
-    await sendMessage();
+    setGenerating(true);
+    const profileUrl = getProfileUrl(speakerForIndicator);
+    const displayName = (speakerForIndicator === 'game') ? 'The Game' : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[speakerForIndicator]) || activefollowerName || 'Follower');
+
+    const typingIndicatorRow = document.createElement('div');
+    typingIndicatorRow.className = 'message-row follower-row';
+    typingIndicatorRow.innerHTML = `
+        <div class="avatar-container">
+            <img class="avatar follower-avatar ${speakerForIndicator}-avatar" src="${profileUrl}" alt="${displayName}">
+        </div>
+        <div class="message follower">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    `;
+    if (chatContainer) {
+        chatContainer.appendChild(typingIndicatorRow);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    startToolPolling();
+
+    try {
+        const response = await fetch('/api/portrait/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: sessionId,
+                type: type,
+                prompt: prompt,
+                target_follower: targetFollowerId,
+                use_imagen: typeof useImagenMode !== 'undefined' ? useImagenMode : false
+            })
+        });
+
+        if (chatContainer && chatContainer.contains(typingIndicatorRow)) {
+            chatContainer.removeChild(typingIndicatorRow);
+        }
+
+        const data = await response.json();
+        if (data.status === 'success') {
+            appendMessage(
+                data.role || 'follower',
+                data.markdown,
+                null,
+                data.tool_calls || [],
+                true,
+                data.timestamp,
+                null,
+                false,
+                data.msg_id,
+                null,
+                data.sender_id || targetFollowerId,
+                data.sender_name || displayName
+            );
+            if (typeof loadServerImages === 'function') {
+                await loadServerImages();
+            }
+        } else {
+            showCustomAlert("Portrait Generation Error", data.error || "Failed to generate portrait.");
+        }
+    } catch (err) {
+        if (chatContainer && chatContainer.contains(typingIndicatorRow)) {
+            chatContainer.removeChild(typingIndicatorRow);
+        }
+        console.error("Error generating portrait:", err);
+        showCustomAlert("Error", "Could not connect to the server to generate portrait.");
+    } finally {
+        setGenerating(false);
+        stopToolPolling();
+        updateInputGlow();
+        updateRerollVisibility();
+        evaluateLatestMessageForSkillCheck();
+    }
 }
 
 async function generatePortraitPrompt() {

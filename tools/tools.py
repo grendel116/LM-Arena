@@ -352,7 +352,7 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
     Args:
         prompt: A prompt describing what you are doing or the scene/expression.
         subject_type: "follower", "player", "environment", or "auto" (detected from prompt)
-        target_follower: Follower ID to focus on (e.g. "misty", "riasilmane"). If omitted, targets last mentioned.
+        target_follower: Follower ID to focus on (e.g. "brea", "riasilmane"). If omitted, targets last mentioned.
         
     Returns:
         A markdown link to the generated image, or an error message.
@@ -460,6 +460,10 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
     else:
         final_negative = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
 
+    if not final_prompt.strip():
+        char_title = get_follower_name(save_fol_id) if save_fol_id != "game" else "Follower"
+        final_prompt = f"portrait of {char_title}, highly detailed, dramatic lighting"
+
     timestamp = int(time.time())
     local_filename = f"portrait_{timestamp}.png"
     portraits_dir = os.path.normpath(os.path.join(base_dir, "core", "followers", save_fol_id, "portraits"))
@@ -481,7 +485,7 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
         try:
             with open(json_path, "w", encoding="utf-8") as jf:
                 json.dump({
-                    "prompt": prompt,
+                    "prompt": prompt or final_prompt,
                     "full_prompt": final_prompt,
                     "mode": mode,
                     "subject_type": mode,
@@ -497,25 +501,25 @@ def generate_local_image(prompt: str, subject_type: str = "auto", target_followe
 
 
 @track_tool_activity
-def generate_follower_portrait(prompt: str) -> str:
+def generate_follower_portrait(prompt: str = "", target_follower: str = None) -> str:
     """Generates a portrait of the active follower."""
-    return generate_local_image(prompt, subject_type="follower")
+    return generate_local_image(prompt, subject_type="follower", target_follower=target_follower)
 
 
 @track_tool_activity
-def generate_player_portrait(prompt: str) -> str:
+def generate_player_portrait(prompt: str = "") -> str:
     """Generates a portrait of the player character based on character sheet and profile."""
     return generate_local_image(prompt, subject_type="player")
 
 
 @track_tool_activity
-def generate_environment_image(prompt: str) -> str:
+def generate_environment_image(prompt: str = "") -> str:
     """Generates an atmospheric scene depiction of the current environment and location."""
     return generate_local_image(prompt, subject_type="environment")
 
 
 @track_tool_activity
-def generate_imagen(prompt: str, subject_type: str = "auto") -> str:
+def generate_imagen(prompt: str = "", subject_type: str = "auto") -> str:
     """Generates an image using Google Imagen or local diffusion engine."""
     return generate_local_image(prompt, subject_type=subject_type)
 

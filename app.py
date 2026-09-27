@@ -524,7 +524,7 @@ def get_image_prompt():
         if json_path and os.path.exists(json_path):
             with open(json_path, 'r', encoding='utf-8') as f:
                 meta = json.load(f)
-                prompt = meta.get('prompt', '')
+                prompt = meta.get('full_prompt') or meta.get('prompt') or ''
                 mode = meta.get('mode') or meta.get('subject_type') or 'auto'
                 return jsonify({'status': 'success', 'prompt': prompt, 'mode': mode, 'subject_type': mode})
         else:
@@ -1798,111 +1798,6 @@ def regenerate_image():
     finally:
         _image_mutex.release()
 
-def extract_portrait_tags_from_context(session_id: str, custom_prompt: str = "", target_follower: str = None) -> tuple[str, str]:
-    """Extracts comma-separated visual tags from the latest conversation and follower context
-    by querying the LLM (which automatically triggers start_llm()).
-    Returns a tuple of (tags, resolved_follower_id).
-    """
-    from runners.follower import get_active_followers
-    from core.follower_config import get_follower_name, match_follower_by_full_name, get_follower_image_details
-    party = get_active_followers(session_id)
-    
-    # Resolve target follower: check explicitly provided, or match full name in prompt, or check last follower who spoke
-    active_fol = target_follower
-    if not active_fol and custom_prompt:
-        active_fol = match_follower_by_full_name(custom_prompt, candidate_ids=party)
-    
-    if not active_fol and party:
-        try:
-            hist = asyncio.run(runner.get_history(session_id))
-            for msg in reversed(hist):
-                sid = msg.get("sender_id")
-                if sid in party:
-                    active_fol = sid
-                    break
-        except Exception:
-            pass
-
-    if not active_fol:
-        active_fol = party[0] if party else "game"
-
-    if custom_prompt and custom_prompt.strip():
-        return custom_prompt.strip(), active_fol
-
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    fol_json = os.path.normpath(os.path.join(base_dir, "core", "followers", active_fol, f"{active_fol}.json"))
-    description = ""
-    scenario = ""
-    char_name = get_follower_name(active_fol) if active_fol != "game" else "Follower"
-    user_name = "User"
-    
-    if os.path.exists(fol_json):
-        try:
-            with open(fol_json, "r", encoding="utf-8") as f:
-                raw = json.load(f)
-            card = raw.get("data", raw)
-            char_name = card.get("name") or char_name
-            description = card.get("description", "").strip()
-            scenario = card.get("scenario", "").strip()
-        except Exception:
-            pass
-
-    chat_history = []
-    try:
-        chat_history = asyncio.run(runner.get_history(session_id))
-    except Exception:
-        pass
-
-    recent_history = chat_history[-4:] if len(chat_history) > 4 else chat_history
-    history_text = ""
-    for msg in recent_history:
-        role = user_name if msg.get('role') == 'user' else (msg.get('sender_name') or char_name)
-        text_val = msg.get('text', '')
-        if text_val and not text_val.startswith("![Portrait"):
-            history_text += f"{role}: {text_val}\n"
-
-    system_instruction = (
-        "You are an expert Stable Diffusion prompt tagger. "
-        f"Your task is to generate precise visual image tags depicting the character '{char_name}' in the current scene.\n"
-        "Rules for tag generation:\n"
-        f"1. Main Subject: Focus on '{char_name}' (e.g. '1girl, solo'). Do NOT include additional characters.\n"
-        "2. Character & Outfit: Include the character's clothing/outfit, features, and accessories.\n"
-        "3. Setting & Environment: Include environment details combined with the active scene context.\n"
-        "4. Pose & Expression: Capture the character's posture, action, and expression.\n"
-        "5. Format: Output ONLY comma-separated tags. "
-        "ONLY output the comma-separated prompt tags."
-    )
-
-    prompt_parts = []
-    if description:
-        prompt_parts.append(f"Character Profile ({char_name}):\n{description}")
-    fol_pos_tags, _ = get_follower_image_details(active_fol)
-    if fol_pos_tags:
-        prompt_parts.append(f"Card Visual Tags ({char_name}):\n{fol_pos_tags}")
-    if scenario:
-        prompt_parts.append(f"Default Setting / Scenario:\n{scenario}")
-    if history_text:
-        prompt_parts.append(f"Recent Scene & Dialogue:\n{history_text.strip()}")
-    prompt_parts.append(f"Output comma-separated Stable Diffusion tags for {char_name} in this scene:")
-    prompt = "\n\n".join(prompt_parts)
-
-    try:
-        from adapters.vram_orchestrator import start_llm
-        start_llm()
-        tags = asyncio.run(runner.generate_impersonation(prompt, system_instruction, temperature=0.3))
-        if tags:
-            import re
-            tags = re.sub(r'<think>.*?</think>', '', tags, flags=re.DOTALL).strip()
-            tags = tags.strip('`"\'').strip()
-            if tags:
-                print(f"[Portrait] LLM extracted tags for {char_name}: {tags}", flush=True)
-                return tags, active_fol
-    except Exception as e:
-        print(f"[Portrait] Error querying LLM for tags: {e}", flush=True)
-
-    return custom_prompt, active_fol
-
-
 _image_mutex = threading.Lock()
 
 @app.route('/api/portrait/generate', methods=['POST'])
@@ -1911,6 +1806,8 @@ def api_generate_portrait():
     session_id = request.json.get('session_id', 'default')
     custom_prompt = request.json.get('prompt', '')
     target_follower = request.json.get('target_follower') or request.json.get('follower_id')
+    image_type = request.json.get('type') or 'follower'
+
     from runners.runners import cancelled_sessions
     cancelled_sessions.discard(session_id)
 
@@ -1926,14 +1823,44 @@ def api_generate_portrait():
         with tools.session_tool_calls_lock:
             tools.session_tool_calls[session_id] = []
 
-        # 1. Decoupled tag extraction via LLM targeting the specific follower
-        extracted_tags, fol_id = extract_portrait_tags_from_context(session_id, custom_prompt, target_follower=target_follower)
+        from core.save_manager import get_active_followers
+        from runners.follower import get_active_follower
+        from core.follower_config import get_follower_name, get_follower_image_details
+
+        party = get_active_followers(session_id)
+
+        # Resolve subject
+        if image_type == 'player':
+            fol_id = target_follower or (party[0] if party else (get_active_follower() or "game"))
+            subject_type = "player"
+        elif image_type == 'environment':
+            fol_id = "game"
+            subject_type = "environment"
+        else:
+            fol_id = target_follower
+            if not fol_id and party:
+                try:
+                    chat_history = asyncio.run(runner.get_history(session_id))
+                    for msg in reversed(chat_history):
+                        if msg.get("sender_id") in party:
+                            fol_id = msg["sender_id"]
+                            break
+                except Exception:
+                    pass
+            if not fol_id:
+                fol_id = party[0] if party else (get_active_follower() or "game")
+            subject_type = "follower"
+
+        fol_name = get_follower_name(fol_id) if fol_id != "game" else "The Game"
+
+        # Build context-aware prompt via lightweight LLM call if no custom prompt provided
+        if not custom_prompt.strip():
+            custom_prompt = _generate_portrait_tags(session_id, fol_id, fol_name, subject_type, party)
 
         if session_id in cancelled_sessions:
             return jsonify({'error': 'Portrait generation cancelled by user.'}), 400
 
-        # 2. Local GPU image generation (unloads LLM before running diffusion engine)
-        new_markdown = tools.generate_local_image(extracted_tags, target_follower=fol_id)
+        new_markdown = tools.generate_local_image(custom_prompt, subject_type=subject_type, target_follower=fol_id)
 
         if session_id in cancelled_sessions:
             return jsonify({'error': 'Portrait generation cancelled by user.'}), 400
@@ -1946,24 +1873,111 @@ def api_generate_portrait():
         if new_markdown.startswith("![") and new_markdown.endswith(")"):
             new_image_url = new_markdown.split("(", 1)[1][:-1]
 
-        from core.follower_config import get_follower_name
-        fol_name = get_follower_name(fol_id) if fol_id != "game" else "Follower"
+        # Read back full_prompt from sidecar for tool_calls record
+        resolved_prompt = custom_prompt
+        if new_image_url:
+            img_basename = os.path.basename(new_image_url.split('?')[0])
+            sidecar = find_image_sidecar_json(img_basename, fol_id)
+            if sidecar and os.path.exists(sidecar):
+                try:
+                    with open(sidecar, 'r', encoding='utf-8') as sf:
+                        resolved_prompt = json.load(sf).get('full_prompt') or custom_prompt
+                except Exception:
+                    pass
 
-        # Append directly to session history as an image message preserving character identity
-        asyncio.run(runner.append_message_to_session(session_id, "follower", new_markdown, sender_id=fol_id, sender_name=fol_name))
+        recorded_tool_calls = [
+            {
+                'id': f"call_{int(time.time()*1000)}",
+                'type': 'call',
+                'name': 'generate_local_image',
+                'args': {'prompt': resolved_prompt}
+            },
+            {
+                'id': f"call_{int(time.time()*1000)}",
+                'type': 'response',
+                'name': 'generate_local_image',
+                'response': new_markdown
+            }
+        ]
+
+        new_msg = asyncio.run(runner.append_message_to_session(
+            session_id,
+            "follower",
+            new_markdown,
+            sender_id=fol_id,
+            sender_name=fol_name,
+            tool_calls=recorded_tool_calls
+        ))
+
+        msg_id = new_msg.get('id') if isinstance(new_msg, dict) else None
+        msg_timestamp = new_msg.get('timestamp') if isinstance(new_msg, dict) else time.time()
 
         return jsonify({
             'status': 'success',
             'markdown': new_markdown,
             'image_url': new_image_url,
             'target_follower': fol_id,
-            'follower_name': fol_name
+            'follower_name': fol_name,
+            'role': 'follower',
+            'sender_id': fol_id,
+            'sender_name': fol_name,
+            'tool_calls': recorded_tool_calls,
+            'msg_id': msg_id,
+            'timestamp': msg_timestamp
         })
     except Exception as e:
-        print(f"Error generating direct portrait: {e}")
+        print(f"Error generating portrait: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         _image_mutex.release()
+
+
+def _generate_portrait_tags(session_id, fol_id, fol_name, subject_type, party):
+    """Ask the LLM for contextual SD tags based on the last few chat messages."""
+    # Grab recent scene context
+    recent_lines = []
+    try:
+        chat_history = asyncio.run(runner.get_history(session_id))
+        narrative = [
+            m for m in chat_history
+            if m.get("role") in ("follower", "assistant", "user")
+            and (m.get("text") or "").strip()
+            and "![" not in (m.get("text") or "")
+        ]
+        for nm in narrative[-3:]:
+            name = "User" if nm.get("role") == "user" else (nm.get("sender_name") or "Narrator")
+            text = (nm.get("text") or "")[:400].strip()
+            if text:
+                recent_lines.append(f"{name}: {text}")
+    except Exception:
+        pass
+
+    scene_block = "\n".join(recent_lines) if recent_lines else "(no recent context)"
+
+    if subject_type == "player":
+        subject_desc = "the player character"
+    elif subject_type == "environment":
+        subject_desc = "the current environment (no characters, empty scenery)"
+    else:
+        subject_desc = fol_name
+
+    prompt = (
+        f"Recent scene:\n{scene_block}\n\n"
+        f"Write a Stable Diffusion tag prompt for a portrait of {subject_desc} in the scene above. "
+        f"Output ONLY comma-separated visual tags describing pose, expression, action, clothing, and scenery. "
+        f"No prose, no explanation, no tool calls. Just the tags."
+    )
+
+    try:
+        tags = asyncio.run(runner._run_llm_summary_task(prompt, os.getenv("LOCAL_MODEL_NAME", ""), ""))
+        # Strip any markdown formatting the LLM might add
+        tags = tags.strip().strip('`').strip()
+        if tags:
+            return tags
+    except Exception as e:
+        print(f"[portrait] LLM tag generation failed: {e}")
+
+    return ""
 
 import threading
 import uuid
