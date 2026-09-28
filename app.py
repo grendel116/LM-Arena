@@ -194,8 +194,8 @@ def load_theme(follower_id):
 
 
 def load_temperature():
-    """Returns the pre-defined gameplay temperature (0.75) optimized for Elder Scrolls narrative consistency and formatting."""
-    return 0.75
+    """Returns the pre-defined gameplay temperature (0.7) optimized for Elder Scrolls narrative consistency and formatting."""
+    return 0.7
 
 
 
@@ -1954,19 +1954,40 @@ def _generate_portrait_tags(session_id, fol_id, fol_name, subject_type, party):
 
     scene_block = "\n".join(recent_lines) if recent_lines else "(no recent context)"
 
-    if subject_type == "player":
+    if subject_type == "environment":
+        loc_info = ""
+        try:
+            from core.world_engine import load_world_state
+            ws = load_world_state(session_id)
+            loc = ws.get("current_location", "")
+            prov = ws.get("current_province", "")
+            if loc or prov:
+                loc_info = f"Setting/Location: {loc}, {prov}\n"
+        except Exception:
+            pass
+
+        prompt = (
+            f"{loc_info}Recent Scene Narrative:\n{scene_block}\n\n"
+            f"Write a Stable Diffusion visual tag prompt depicting the physical environment, architecture, lighting, and atmosphere of this scene. "
+            f"Output ONLY comma-separated visual tags (e.g. scenery, dungeon corridor, iron bars, stone masonry, dripping water, moss, guttering torchlight, atmospheric lighting, volumetric light, dark fantasy, empty scenery, no humans, no people). "
+            f"Do not include dates, numbers, lore names, character names, or text. Output ONLY comma-separated visual tags."
+        )
+    elif subject_type == "player":
         subject_desc = "the player character"
-    elif subject_type == "environment":
-        subject_desc = "the current environment (no characters, empty scenery)"
+        prompt = (
+            f"Recent scene:\n{scene_block}\n\n"
+            f"Write a Stable Diffusion tag prompt for a portrait of {subject_desc} in the scene above. "
+            f"Output ONLY comma-separated visual tags describing pose, expression, action, clothing, and scenery. "
+            f"No prose, no explanation, no tool calls. Just the tags."
+        )
     else:
         subject_desc = fol_name
-
-    prompt = (
-        f"Recent scene:\n{scene_block}\n\n"
-        f"Write a Stable Diffusion tag prompt for a portrait of {subject_desc} in the scene above. "
-        f"Output ONLY comma-separated visual tags describing pose, expression, action, clothing, and scenery. "
-        f"No prose, no explanation, no tool calls. Just the tags."
-    )
+        prompt = (
+            f"Recent scene:\n{scene_block}\n\n"
+            f"Write a Stable Diffusion tag prompt for a portrait of {subject_desc} in the scene above. "
+            f"Output ONLY comma-separated visual tags describing pose, expression, action, clothing, and scenery. "
+            f"No prose, no explanation, no tool calls. Just the tags."
+        )
 
     try:
         tags = asyncio.run(runner._run_llm_summary_task(prompt, os.getenv("LOCAL_MODEL_NAME", ""), ""))
@@ -4280,38 +4301,32 @@ def generate_character_theme(main_color, accent_color_a=None, accent_color_b=Non
 
 
 def generate_character_json(name, description, personality, scenario, first_mes, model):
-    """Ask the LLM to produce chara_card_v3-compatible fields for a new follower."""
+    """Ask the LLM to produce a simplified follower card for a new follower."""
     import os, json, re, asyncio
 
     system_instruction = (
-        "You are an expert character designer and tabletop RPG lorekeeper. "
-        "You convert character descriptions, dossiers, or backstory notes into rich, immersive chara_card_v3 JSON profiles. "
+        "You are an expert character designer and tabletop RPG lorekeeper for The Elder Scrolls. "
+        "You convert character descriptions into follower card JSON. "
         "Output ONLY valid JSON matching the requested schema."
     )
 
-    prompt = f"""Design a high-quality character card based on the information below.
+    prompt = f"""Design a follower card based on the information below.
 
-Input Information:
+Input:
 Name: {name or 'Extract from description'}
-Description/Dossier:
-{description}
-
-Personality Hint: {personality or 'Extract from description'}
-Scenario Hint: {scenario or 'Extract from description'}
-First Message Hint: {first_mes or 'Extract from description'}
+Description: {description}
 
 Respond with ONLY a single JSON object with these EXACT keys:
 {{
   "name": "Full character name",
-  "description": "Comprehensive narrative backstory, history, and background details.",
-  "personality": "Personality traits, mannerisms, combat mindset, and quirks.",
-  "scenario": "Current situational setting or location.",
-  "first_mes": "Atmospheric, in-character opening greeting or spoken dialogue (wrapped in *asterisks* for narration, plain text for dialogue).",
-  "system_prompt": "Roleplay directives, speech patterns, and tone instructions.",
+  "description": "All-in-one prose covering background, personality, appearance, beliefs, and mannerisms. 2-4 sentences.",
+  "factions": ["faction_id_1", "faction_id_2"],
   "image_positive": "Comma-separated Stable Diffusion visual tags describing physical appearance, clothing, and gear.",
-  "image_negative": "Comma-separated SD negative tags to avoid (e.g. extra limbs, bad anatomy, deformed).",
+  "image_negative": "Comma-separated SD negative tags (e.g. extra limbs, bad anatomy, deformed).",
   "main_color": "#RRGGBB (a hex accent color suited for this character)"
-}}"""
+}}
+
+For factions, use snake_case IDs from: blades, mages_guild, thieves_guild, dark_brotherhood, companions, imperial_legion, stormcloaks, temple_of_kynareth, temple_of_arkay, noble_courts. Leave empty array if unclear."""
 
     raw_response = None
     try:
@@ -4324,11 +4339,9 @@ Respond with ONLY a single JSON object with these EXACT keys:
     parsed = {}
     if raw_response:
         try:
-            # Strip think tags and code blocks
             cleaned = re.sub(r'<think>.*?</think>', '', raw_response, flags=re.DOTALL).strip()
             cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned)
             cleaned = re.sub(r'\s*```$', '', cleaned).strip()
-            # Extract JSON object substring if surrounded by extra text
             match = re.search(r'(\{[\s\S]*\})', cleaned)
             if match:
                 cleaned = match.group(1)
@@ -4336,20 +4349,9 @@ Respond with ONLY a single JSON object with these EXACT keys:
         except Exception as e:
             print(f"Failed to parse card JSON: {e}. Raw: {raw_response}")
 
-    # Fallback name extraction from text if needed
-    resolved_name = parsed.get("name") or name
-    if not resolved_name or resolved_name == "Follower":
-        subj_match = re.search(r'\*\*Subject:\*\*\s*([A-Za-z\s]+?)(?:\s*\(|\n|$)', description)
-        if subj_match:
-            resolved_name = subj_match.group(1).strip()
-        else:
-            resolved_name = "Follower"
-
-    resolved_desc = parsed.get("description") or description or f"{resolved_name} is a traveling follower."
-    resolved_personality = parsed.get("personality") or personality or "Loyal and capable follower."
-    resolved_scenario = parsed.get("scenario") or scenario or "Traveling together in Tamriel."
-    resolved_first_mes = parsed.get("first_mes") or first_mes or f"Greetings. I am {resolved_name}."
-    resolved_sys_prompt = parsed.get("system_prompt") or f"You are {resolved_name}. Respond in character with distinct mannerisms."
+    resolved_name = parsed.get("name") or name or "Follower"
+    resolved_desc = parsed.get("description") or description or f"{resolved_name} is a traveling follower in Tamriel."
+    resolved_factions = parsed.get("factions") or []
     resolved_img_pos = parsed.get("image_positive") or f"solo, {resolved_name}, highly detailed"
     resolved_img_neg = parsed.get("image_negative") or "extra limbs, bad anatomy, deformed, modern clothing"
     main_color = parsed.get("main_color") or "#d4af37"
@@ -4360,17 +4362,7 @@ Respond with ONLY a single JSON object with these EXACT keys:
         "data": {
             "name": resolved_name,
             "description": resolved_desc,
-            "personality": resolved_personality,
-            "scenario": resolved_scenario,
-            "first_mes": resolved_first_mes,
-            "mes_example": "",
-            "system_prompt": resolved_sys_prompt,
-            "post_history_instructions": "",
-            "creator_notes": "",
-            "tags": ["Elder Scrolls", "Follower"],
-            "creator": "LM-Arena",
-            "character_version": "1.0",
-            "alternate_greetings": [],
+            "factions": resolved_factions,
             "extensions": {
                 "arena": {
                     "follower_id": "",
@@ -4384,6 +4376,7 @@ Respond with ONLY a single JSON object with these EXACT keys:
         "_colors": {"main_color": main_color}
     }
     return card
+
 
 
 def finalize_imported_follower(follower_path, follower_id, card_json):

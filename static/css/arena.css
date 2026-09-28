@@ -3066,14 +3066,19 @@ input.onboarding-input {
 }
 
 .loading-logo {
-    font-size: 3.5rem;
-    line-height: 1;
     display: flex;
     justify-content: center;
     align-items: center;
     user-select: none;
     filter: drop-shadow(0 4px 16px hsla(var(--gold-h), 48%, 56%, 0.35));
     animation: pulse-heart 1.5s infinite ease-in-out;
+}
+
+.loading-logo img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    display: block;
 }
 
 .loading-text {

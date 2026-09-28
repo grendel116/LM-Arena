@@ -52,14 +52,18 @@
             animation: pulse-scale 2s infinite ease-in-out;
         }
         .loading-logo {
-            font-size: 3.5rem;
-            line-height: 1;
             display: flex;
             justify-content: center;
             align-items: center;
             user-select: none;
             filter: drop-shadow(0 4px 16px rgba(212, 175, 55, 0.35));
             animation: pulse-heart 1.5s infinite ease-in-out;
+        }
+        .loading-logo img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            display: block;
         }
         @keyframes pulse-heart {
             0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(196, 160, 82, 0.3)); }
@@ -71,7 +75,7 @@
         }
     </style>
     <!-- Application Stylesheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/arena.css') }}?v=40">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arena.css') }}?v=41">
     <!-- Vendor Stylesheets -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/github-dark.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cropper.min.css') }}">
@@ -99,7 +103,7 @@
         <div id="chat-loading-overlay">
             <div class="loading-content">
                 <div class="loading-logo">
-                    📜
+                    <img src="{{ url_for('static', filename='img/app_icon.png') }}" alt="LM Arena" width="64" height="64">
                 </div>
             </div>
         </div>
@@ -1055,7 +1059,7 @@
                 </button>
             </div>
 
-            <!-- Tab 1: Character (chara_card_v3 fields) -->
+            <!-- Tab 1: Character -->
             <div id="comp-tab-content-core" style="display: block; max-height: 420px; overflow-y: auto; padding-right: 15px;">
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 5px;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -1083,33 +1087,20 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label for="comp-personality-type">Personality</label>
-                        <input type="text" id="comp-personality-type" class="onboarding-input" placeholder="e.g. Luminous">
-                    </div>
-                    <div class="input-group">
                         <label for="comp-backstory">Description</label>
-                        <textarea id="comp-backstory" class="onboarding-input" style="height: 120px; resize: vertical;" placeholder="Who they are, their appearance, backstory, beliefs — written as prose. Use {{user}} and {{char}} as placeholders."></textarea>
+                        <textarea id="comp-backstory" class="onboarding-input" style="height: 160px; resize: vertical;" placeholder="Who they are — background, personality, appearance, beliefs — written as prose. Use {{user}} and {{char}} as placeholders."></textarea>
                     </div>
                     <div class="input-group">
-                        <label for="comp-scenario">Scenario</label>
-                        <textarea id="comp-scenario" class="onboarding-input" style="height: 60px; resize: vertical;" placeholder="A dark interior castle of the mind..."></textarea>
+                        <label for="comp-factions">Factions</label>
+                        <input type="text" id="comp-factions" class="onboarding-input" placeholder="e.g. blades, imperial_cult" style="font-family: monospace; font-size: 0.85rem;">
                     </div>
-                    <div class="input-group">
-                        <label for="comp-example-msg">First Message</label>
-                        <textarea id="comp-example-msg" class="onboarding-input" style="height: 60px; resize: vertical;" placeholder="*I look up and smile.* Hello, my love."></textarea>
-                    </div>
-                    <div class="input-group">
-                        <label for="comp-directives">Response Instructions</label>
-                        <textarea id="comp-directives" class="onboarding-input" style="height: 60px; resize: vertical;" placeholder="Speak naturally (use contractions). Be concise and direct."></textarea>
-                    </div>
-
                 </div>
             </div>
 
             <!-- Tab 2: Image Prompts (ComfyUI) -->
             <div id="comp-tab-content-phys" style="display: none; max-height: 420px; overflow-y: auto; padding-right: 15px;">
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 5px;">
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">These tags are used by ComfyUI for portrait generation. They are not part of the character card.</p>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">These tags define the character's visual appearance. They are passed to the language model for narrative consistency and to ComfyUI for portrait generation.</p>
                     <div class="input-group">
                         <label for="comp-image-details">Positive Prompt Tags</label>
                         <textarea id="comp-image-details" class="onboarding-input" style="height: 80px; resize: vertical;" placeholder="translucent fairy wings, warm smile, silver hair, purple eyes..."></textarea>
@@ -1164,6 +1155,6 @@
 
 
 
-    <script defer src="{{ url_for('static', filename='js/arena.js') }}?v=54"></script>
+    <script defer src="{{ url_for('static', filename='js/arena.js') }}?v=55"></script>
 </body>
 </html>

@@ -910,7 +910,6 @@ class BaseRunner:
         party = get_active_followers(session_id)
         instructions = compile_speaker_instructions(speaker_id=speaker_id, party_followers=party)
 
-        # Compact Scene & World State Header (<35 tokens)
         try:
             from core.world_engine import load_world_state
             from core.character import load_character
@@ -926,10 +925,44 @@ class BaseRunner:
             player_name = sheet.get("name", "Eternal Champion")
             party_names_str = ", ".join(get_follower_name(fid) for fid in party) if party else "None (Traveling solo)"
 
+            # Quest objective
+            quest_objective = ""
+            try:
+                from core.quest_tracker import load_quest_stages, get_stage_context_injection
+                quest_objective = get_stage_context_injection(ws, load_quest_stages())
+            except Exception:
+                pass
+
+            # Faction standings (non-zero only)
+            faction_pieces = []
+            try:
+                for fname, val in ws.get("faction_reputation", {}).items():
+                    if val != 0:
+                        sign = "+" if val > 0 else ""
+                        faction_pieces.append(f"{fname} {sign}{val}")
+            except Exception:
+                pass
+
+            # Follower factions
+            try:
+                from core.follower_config import _load_card_data
+                for fid in party:
+                    card = _load_card_data(fid)
+                    factions = card.get("factions", [])
+                    if factions:
+                        follower_label = get_follower_name(fid)
+                        faction_pieces.append(f"{follower_label}: {', '.join(factions)}")
+            except Exception:
+                pass
+
+            faction_str = " | ".join(faction_pieces)
+
             instructions += (
                 f"\n\n# ACTIVE SCENE & WORLD STATE\n"
-                f"- Location: {loc}, {prov} (Main Quest Stage {q_stage})\n"
-                f"- Party: {player_name} (HP {hp_cur}/{hp_max}, MP {mp_cur}/{mp_max}, Stamina {stm_cur}/{stm_max}) | Followers: {party_names_str}\n"
+                f"- Location: {loc}, {prov} (Main Quest Stage {q_stage})"
+                + (f"\n- Objective: {quest_objective}" if quest_objective else "")
+                + f"\n- Party: {player_name} (HP {hp_cur}/{hp_max}, MP {mp_cur}/{mp_max}, Stamina {stm_cur}/{stm_max}) | Followers: {party_names_str}\n"
+                + (f"- Factions: {faction_str}\n" if faction_str else "")
             )
         except Exception as se:
             print(f"Error compiling scene state header: {se}")
@@ -975,9 +1008,10 @@ class BaseRunner:
             elif any(k in msg_lower for k in ("environment", "landscape", "scenic view", "[generate_environment:")):
                 instructions += (
                     f"\n\n# Environment Image Directive\n"
-                    f"Generate an image of the current scene.{context_block}"
-                    f"Include current scenery, architecture, lighting, and atmosphere in comma-separated visual tags. Output only the tool call:\n"
-                    f"`[generate_environment_image(prompt=\"scenery, landscape, [scenery], [lighting], [atmosphere], empty scenery, no humans\")]`."
+                    f"Generate an image depicting the immediate physical environment of the current scene.{context_block}"
+                    f"Synthesize the architecture, environment, lighting, mood, and atmosphere from the recent narrative into comma-separated visual tags. Do not include dates, numbers, character names, or text.\n"
+                    f"Output only the tool call:\n"
+                    f"`[generate_environment_image(prompt=\"scenery, landscape, [specific architecture/environment], [lighting/atmosphere], empty scenery, no humans\")]`."
                 )
             else:
                 from core.follower_config import match_follower_by_full_name, get_follower_name, get_follower_image_details

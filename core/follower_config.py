@@ -16,17 +16,19 @@ from runners.follower import get_active_follower, get_active_user, get_player_na
 # Formatting rules for The Game (World referee & narrator)
 GAME_FORMATTING = (
     "\n\n# NARRATIVE FORMATTING\n"
+    "- Perspective: Write in third person. You are the Dungeon Master — describe the world, environment, and all characters from the outside.\n"
+    "- Length: 2–3 short paragraphs maximum per response.\n"
     "- Narration: Wrap all environmental description, sensory details, and world events in *asterisks*.\n"
-    "- Spoken Dialogue: Portray world NPCs, guards, merchants, and creatures exclusively with [arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]. Never write spoken dialogue in narrative prose.\n"
-    "- Party Autonomy: {{user}} and party followers ({{followers}}) speak and act on their own turns. Never generate speech, actions, or [arena_actor] calls for {{user}} or {{followers}}.\n"
+    "- Spoken Dialogue: Portray world NPCs, guards, merchants, and creatures exclusively with [arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")].\n"
+    "- Party Autonomy: Never generate speech, actions, or [arena_actor] calls for {{user}} or {{followers}}.\n"
 )
 
 # Global tone and formatting rules for narrative roleplay (Followers)
 GLOBAL_FORMATTING = (
     "\n\n# SETTING TONE & FORMATTING RULES (MANDATORY)\n"
-    "- Tone & Setting: Grim, dark fantasy atmosphere with cosmic lore, mature themes, esoteric absurdity, and cartoon physics.\n"
+    "- Tone & Setting: Grim, dark fantasy atmosphere with esoteric and cosmic lore, mature themes, and cartoon physics.\n"
     "- Narration: Wrap all environmental description, sensory details, and world events in *asterisks*.\n"
-    "- Spoken Dialogue: Output spoken speech in plain text without quotation marks and without asterisks. Use **bold** only for vocal emphasis.\n"
+    "- Spoken Dialogue: Output spoken speech in plain text without quotation marks and without asterisks. Use **bold** sparingly for vocal emphasis.\n"
     "- Paragraph Separation: Keep narration and dialogue separated into distinct, separate lines and paragraphs.\n"
 )
 
@@ -171,36 +173,20 @@ def get_follower_greeting(follower_id: str = None) -> str:
 
 
 def compile_instructions_from_card(card: dict) -> str:
-    """Compiles character card fields into a cohesive system instruction block."""
+    """Compiles a minimal character identity block from the card.
+
+    Outputs: name (# CHARACTER: {name}), description (## DESCRIPTION), and
+    appearance from get_follower_image_details (## APPEARANCE).
+    """
     prompt_parts = []
-    
+
     name = card.get("name", "").strip()
     if name:
-        prompt_parts.append(f"# CHARACTER IDENTITY: {name}")
+        prompt_parts.append(f"# CHARACTER: {name}")
 
     description = card.get("description", "").strip()
     if description:
-        prompt_parts.append(f"## DESCRIPTION & BACKGROUND\n{description}")
-
-    personality = card.get("personality", "").strip()
-    if personality:
-        prompt_parts.append(f"## PERSONALITY & TRAITS\n{personality}")
-
-    scenario = card.get("scenario", "").strip()
-    if scenario:
-        prompt_parts.append(f"## ACTIVE SCENARIO & SETTING\n{scenario}")
-
-    mes_example = (card.get("mes_example") or "").strip()
-    if mes_example:
-        prompt_parts.append(f"## DIALOGUE EXAMPLES\n{mes_example}")
-
-    system_prompt = card.get("system_prompt", "").strip()
-    if system_prompt:
-        prompt_parts.append(f"## CORE INSTRUCTIONS\n{system_prompt}")
-
-    post_history = card.get("post_history_instructions", "").strip()
-    if post_history:
-        prompt_parts.append(f"## ROLEPLAY GUIDELINES\n{post_history}")
+        prompt_parts.append(f"## DESCRIPTION\n{description}")
 
     visual, _ = get_follower_image_details(card=card)
     if visual:
@@ -321,8 +307,10 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
             f"You are {follower_name}, traveling alongside {player_name}.\n"
             f"{follower_context}"
             f"- Converse with {player_name}{(' and ' + ', '.join(other_followers)) if other_followers else ''}.\n"
+            f"- Write in first person. Narrate your own actions in first-person italics (*I glance toward the bars*), never third person.\n"
+            f"- Keep responses to 2 beats maximum: one action, one or two lines of dialogue.\n"
             f"- React and advise solely as {follower_name}.\n"
-            f"- Short messages with a succinct narration and limited dialogue.\n"        )
+        )
 
 
         base = replace_placeholders(follower_instructions + load_user_instructions(), follower_id=speaker_id, party_followers=party)

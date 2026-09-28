@@ -1004,27 +1004,21 @@ def arena_recruit_follower(follower_name, follower_race="Imperial", follower_cla
         follower_path = os.path.join(FOLLOWERS_DIR, follower_id)
         if not os.path.exists(follower_path):
             os.makedirs(follower_path, exist_ok=True)
-            desc = persona_description or f"A loyal {follower_race} {follower_class} following the Eternal Champion into combat."
+            desc = persona_description or f"A {follower_race} {follower_class} who has joined the Eternal Champion's party in Tamriel."
             profile_data = {
                 "spec": "chara_card_v3",
                 "spec_version": "3.0",
                 "data": {
                     "name": follower_name,
                     "description": desc,
-                    "personality": "Loyal, vigilant",
-                    "scenario": f"Traveling alongside {{user}} through Tamriel as a {follower_race} follower.",
-                    "first_mes": "I stand with you, Champion. Let us face whatever dangers await.",
-                    "mes_example": "",
-                    "system_prompt": "",
-                    "post_history_instructions": "",
-                    "creator_notes": "",
-                    "tags": [follower_race.lower(), follower_class.lower()],
-                    "creator": "LM-Arena",
-                    "character_version": "1.0",
-                    "alternate_greetings": [],
+                    "factions": [],
                     "extensions": {
                         "arena": {
-                            "follower_id": follower_id
+                            "follower_id": follower_id,
+                            "image_details": {
+                                "positive": f"solo, {follower_name}, {follower_race.lower()}, {follower_class.lower()}, highly detailed",
+                                "negative": "extra limbs, bad anatomy, deformed"
+                            }
                         }
                     }
                 }

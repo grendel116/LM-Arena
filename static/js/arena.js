@@ -4404,10 +4404,7 @@ async function openfollowerProfileModal(followerId) {
     // Clear inputs
     document.getElementById('comp-name').value = '';
     document.getElementById('comp-backstory').value = '';
-    document.getElementById('comp-directives').value = '';
-    document.getElementById('comp-example-msg').value = '';
-    document.getElementById('comp-personality-type').value = '';
-    document.getElementById('comp-scenario').value = '';
+    document.getElementById('comp-factions').value = '';
     document.getElementById('comp-tts-voice').value = 'af_heart';
     document.getElementById('comp-image-details').value = '';
     document.getElementById('comp-negative-details').value = '';
@@ -4417,15 +4414,14 @@ async function openfollowerProfileModal(followerId) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         
-        // v3 fields
         currentEditingfollowerOriginalName = data.name || '';
         document.getElementById('comp-name').value = currentEditingfollowerOriginalName;
-        document.getElementById('comp-personality-type').value = data.personality || '';
         document.getElementById('comp-backstory').value = data.description || '';
-        document.getElementById('comp-scenario').value = data.scenario || '';
-        document.getElementById('comp-example-msg').value = data.first_mes || '';
-        document.getElementById('comp-directives').value = data.system_prompt || '';
         document.getElementById('comp-tts-voice').value = data.tts_voice || 'af_heart';
+        
+        // Factions — stored as array, displayed as comma-separated string
+        const factions = data.factions || [];
+        document.getElementById('comp-factions').value = Array.isArray(factions) ? factions.join(', ') : (factions || '');
         
         // Image prompts from extensions.arena
         const arena = (data.extensions || {}).arena || {};
@@ -4517,10 +4513,7 @@ async function savefollowerProfile() {
         name: newName,
         tts_voice: document.getElementById('comp-tts-voice').value,
         description: document.getElementById('comp-backstory').value.trim(),
-        personality: document.getElementById('comp-personality-type').value.trim(),
-        scenario: document.getElementById('comp-scenario').value.trim(),
-        first_mes: document.getElementById('comp-example-msg').value.trim(),
-        system_prompt: document.getElementById('comp-directives').value.trim(),
+        factions: document.getElementById('comp-factions').value.split(',').map(f => f.trim()).filter(Boolean),
         extensions: {
             arena: {
                 follower_id: targetfollowerId,
@@ -8313,13 +8306,7 @@ async function generateCustomImage(type = 'follower') {
         targetFollowerId = 'user';
         targetFollowerName = activePlayerName || "Hero";
     } else if (type === 'environment') {
-        const world = (currentCharacterData && currentCharacterData.world) ? currentCharacterData.world : {};
-        const loc = world.current_location || "Imperial Dungeon";
-        const prov = world.current_province || "Cyrodiil";
-        const dateObj = world.tamrielic_date || world.date || {};
-        const timeStr = typeof dateObj === 'object' ? `${dateObj.day || 1} ${dateObj.month || 'Hearthfire'}, 3E ${dateObj.year || 389}` : (dateObj || "");
-        const envDetails = `${loc} in ${prov}${timeStr ? ', ' + timeStr : ''}`;
-        prompt = `Render an atmospheric landscape and environment scene of ${envDetails}. Scenic view, architectural detail, atmospheric lighting, empty scenery, no characters.`;
+        prompt = '';
         speakerForIndicator = 'game';
         targetFollowerId = 'game';
         targetFollowerName = 'The Game';
