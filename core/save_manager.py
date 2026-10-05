@@ -39,31 +39,35 @@ def get_active_save_id() -> str:
                 data = json.load(f)
                 save_id = data.get("active_save_id")
                 if save_id:
-                    json_path = SAVES_DIR / f"{save_id}.json"
-                    dir_path = SAVES_DIR / save_id
+                    clean_id = _get_clean_name(save_id)
+                    json_path = SAVES_DIR / f"{clean_id}.json"
+                    dir_path = SAVES_DIR / clean_id
                     if json_path.exists() or dir_path.exists():
-                        return save_id
+                        return clean_id
+                    if (SAVES_DIR / f"{save_id}.json").exists():
+                        return clean_id
         except Exception:
             pass
 
     # Quick scan without calling list_saves to avoid recursion
     for item in sorted(SAVES_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
         if not item.name.startswith("."):
-            return item.stem
+            return _get_clean_name(item.stem)
 
     for item in sorted(SAVES_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
         if item.is_dir():
-            return item.name
+            return _get_clean_name(item.name)
 
     return "eternal_champion"
 
 
 def set_active_save_id(save_id: str) -> None:
     """Set the active save ID."""
+    clean_id = _get_clean_name(save_id)
     ACTIVE_SAVE_FILE.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = ACTIVE_SAVE_FILE.with_suffix(".json.tmp")
     with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump({"active_save_id": save_id}, f, indent=2)
+        json.dump({"active_save_id": clean_id}, f, indent=2)
         f.flush()
         os.fsync(f.fileno())
     tmp_path.replace(ACTIVE_SAVE_FILE)
@@ -144,14 +148,18 @@ def get_save_path(save_id: str = None) -> Path:
     """Return path to save file or legacy directory."""
     if not save_id or save_id == "default":
         save_id = get_active_save_id()
+    clean_id = _get_clean_name(save_id)
     
-    json_path = SAVES_DIR / f"{save_id}.json"
+    json_path = SAVES_DIR / f"{clean_id}.json"
     if json_path.exists():
         return json_path
         
-    dir_path = SAVES_DIR / save_id
+    dir_path = SAVES_DIR / clean_id
     if dir_path.is_dir():
         return dir_path
+
+    if (SAVES_DIR / f"{save_id}.json").exists():
+        return SAVES_DIR / f"{save_id}.json"
         
     return json_path
 
@@ -161,9 +169,15 @@ def read_save(save_id: str = None) -> dict:
     if not save_id or save_id == "default":
         save_id = get_active_save_id()
     
+    clean_id = _get_clean_name(save_id)
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
-    json_path = SAVES_DIR / f"{save_id}.json"
-    dir_path = SAVES_DIR / save_id
+    json_path = SAVES_DIR / f"{clean_id}.json"
+    if not json_path.exists() and (SAVES_DIR / f"{save_id}.json").exists():
+        json_path = SAVES_DIR / f"{save_id}.json"
+
+    dir_path = SAVES_DIR / clean_id
+    if not dir_path.is_dir() and (SAVES_DIR / save_id).is_dir():
+        dir_path = SAVES_DIR / save_id
     
     # 1. Single-file JSON save format
     if json_path.exists():
@@ -239,15 +253,15 @@ def read_save(save_id: str = None) -> dict:
                 
         char_name = bundle["character"].get("name") or bundle["meta"].get("character_name")
         if not char_name:
-            clean_id = re.sub(r'[\s_]+\d+$', '', save_id)
-            char_name = clean_id.replace("_", " ").title() if clean_id else "Hero"
-        bundle["meta"]["id"] = save_id
+            clean_id_suffix = re.sub(r'[\s_]+\d+$', '', clean_id)
+            char_name = clean_id_suffix.replace("_", " ").title() if clean_id_suffix else "Hero"
+        bundle["meta"]["id"] = clean_id
         bundle["meta"]["character_name"] = char_name
         bundle["meta"]["name"] = bundle["meta"].get("name") or char_name
 
         # Auto convert legacy directory to single-file json and delete directory
         try:
-            write_save(save_id, bundle)
+            write_save(clean_id, bundle)
             shutil.rmtree(dir_path, ignore_errors=True)
         except Exception as conv_err:
             print(f"[read_save] Error migrating {dir_path} to single-file JSON: {conv_err}")
@@ -255,8 +269,8 @@ def read_save(save_id: str = None) -> dict:
         return bundle
 
     # 3. Default fresh bundle if missing
-    bundle = create_fresh_save_bundle(save_id)
-    write_save(save_id, bundle)
+    bundle = create_fresh_save_bundle(clean_id)
+    write_save(clean_id, bundle)
     return bundle
 
 
@@ -267,12 +281,13 @@ def write_save(save_id: str, bundle: dict) -> None:
     with _save_lock:
         if not save_id or save_id == "default":
             save_id = get_active_save_id()
+        clean_id = _get_clean_name(save_id)
             
         SAVES_DIR.mkdir(parents=True, exist_ok=True)
-        json_path = SAVES_DIR / f"{save_id}.json"
+        json_path = SAVES_DIR / f"{clean_id}.json"
         
         bundle.setdefault("meta", {})
-        bundle["meta"]["id"] = save_id
+        bundle["meta"]["id"] = clean_id
         bundle["meta"]["updated_at"] = datetime.now().isoformat()
         
         # Keep character info in meta in sync
@@ -294,7 +309,7 @@ def write_save(save_id: str, bundle: dict) -> None:
             if t_date:
                 bundle["meta"]["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Hearthfire')}, 3E {t_date.get('year', 389)}"
 
-        tmp_path = SAVES_DIR / f"{save_id}.json.tmp"
+        tmp_path = SAVES_DIR / f"{clean_id}.json.tmp"
         
         # Ensure file is completely written and closed inside the 'with' block
         with open(tmp_path, "w", encoding="utf-8") as f:
@@ -407,55 +422,28 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
 
 
 def save_game(character_name: str = None, save_id: str = None) -> dict:
-    """Save the active state, using playername.json first and appending sequential numbers if existing."""
+    """Save the active state in place to the active save slot."""
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
-    active_id = save_id or get_active_save_id()
-    current_bundle = read_save(active_id)
+    target_id = _get_clean_name(save_id or get_active_save_id())
+    current_bundle = read_save(target_id)
     
     try:
         from app import runner
-        if hasattr(runner, "sessions_history") and "default" in runner.sessions_history:
-            if runner.sessions_history["default"]:
-                current_bundle["history"] = runner.sessions_history["default"]
+        if hasattr(runner, "sessions_history"):
+            active_history = runner.sessions_history.get(target_id) or runner.sessions_history.get("default")
+            if active_history:
+                current_bundle["history"] = active_history
+                current_bundle["messages"] = active_history
     except Exception as e:
         print(f"[save_game] Error syncing history into save bundle: {e}")
 
     char = current_bundle.get("character", {})
-    raw_name = character_name or char.get("name") or current_bundle.get("meta", {}).get("character_name") or "hero"
-    
-    # Strip existing numeric suffixes (e.g., ' 001', ' 2', '_2') to prevent compounding names
-    base_char_name = re.sub(r'[\s_]+\d+$', '', raw_name).strip()
-    if not base_char_name:
-        base_char_name = "Hero"
-        
-    clean_prefix = _get_clean_name(base_char_name)
-
-    if not save_id:
-        base_file = SAVES_DIR / f"{clean_prefix}.json"
-        if not base_file.exists():
-            save_id = clean_prefix
-            display_name = base_char_name
-        else:
-            max_idx = 1
-            pattern = re.compile(rf"^{re.escape(clean_prefix)}_(\d+)$", re.IGNORECASE)
-            for item in SAVES_DIR.glob("*.json"):
-                match = pattern.match(item.stem)
-                if match:
-                    try:
-                        idx = int(match.group(1))
-                        if idx > max_idx:
-                            max_idx = idx
-                    except ValueError:
-                        pass
-                        
-            next_idx = max_idx + 1
-            save_id = f"{clean_prefix}_{next_idx}"
-            display_name = base_char_name
-    else:
-        display_name = base_char_name
+    raw_name = character_name or char.get("name") or current_bundle.get("meta", {}).get("character_name") or "Hero"
+    base_char_name = re.sub(r'[\s_]+\d+$', '', raw_name).strip() or "Hero"
+    display_name = current_bundle.get("meta", {}).get("name") or base_char_name
 
     current_bundle.setdefault("meta", {})
-    current_bundle["meta"]["id"] = save_id
+    current_bundle["meta"]["id"] = target_id
     current_bundle["meta"]["name"] = display_name
     current_bundle["meta"]["character_name"] = base_char_name
     if char:
@@ -464,11 +452,11 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
     if "created_at" not in current_bundle["meta"]:
         current_bundle["meta"]["created_at"] = datetime.now().isoformat()
 
-    write_save(save_id, current_bundle)
-    set_active_save_id(save_id)
+    write_save(target_id, current_bundle)
+    set_active_save_id(target_id)
     
     from runners.follower import set_active_user
-    set_active_user(save_id)
+    set_active_user(target_id)
     
     meta = current_bundle["meta"]
     meta["is_active"] = True
@@ -523,11 +511,12 @@ def create_save(name: str = None, character_name: str = "Eternal Champion", race
 
 def load_save(save_id: str) -> dict:
     """Activate a save state by ID."""
-    bundle = read_save(save_id)
-    set_active_save_id(save_id)
+    clean_id = _get_clean_name(save_id)
+    bundle = read_save(clean_id)
+    set_active_save_id(clean_id)
     
     from runners.follower import set_active_user
-    set_active_user(save_id)
+    set_active_user(clean_id)
     
     meta = bundle.get("meta", {})
     meta["is_active"] = True
@@ -591,19 +580,26 @@ def list_saves() -> list:
 
 def delete_save(save_id: str, force_delete: bool = True) -> bool:
     """Delete a single save JSON file or directory."""
-    json_path = SAVES_DIR / f"{save_id}.json"
-    dir_path = SAVES_DIR / save_id
+    clean_id = _get_clean_name(save_id)
+    json_path = SAVES_DIR / f"{clean_id}.json"
+    dir_path = SAVES_DIR / clean_id
 
     # Check if this is the active save BEFORE deleting the file
-    was_active = get_active_save_id() == save_id
+    was_active = get_active_save_id() in (clean_id, save_id)
 
     deleted = False
     if json_path.exists():
         json_path.unlink()
         deleted = True
+    if (SAVES_DIR / f"{save_id}.json").exists():
+        (SAVES_DIR / f"{save_id}.json").unlink()
+        deleted = True
         
     if dir_path.is_dir():
         shutil.rmtree(dir_path, ignore_errors=True)
+        deleted = True
+    if (SAVES_DIR / save_id).is_dir():
+        shutil.rmtree(SAVES_DIR / save_id, ignore_errors=True)
         deleted = True
 
     if not deleted:
@@ -615,6 +611,6 @@ def delete_save(save_id: str, force_delete: bool = True) -> bool:
         if remaining:
             set_active_save_id(remaining[0]["id"])
         else:
-            create_save(save_id=save_id)
+            create_save(save_id="eternal_champion")
             
     return True

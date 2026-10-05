@@ -3758,8 +3758,10 @@ def get_saves():
 @requires_auth
 def save_active_game():
     try:
+        data = request.get_json(silent=True) or {}
+        save_id = data.get("save_id")
         from core.save_manager import save_game
-        meta = save_game()
+        meta = save_game(save_id=save_id)
         if hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
         reload_follower_state()

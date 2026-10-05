@@ -118,9 +118,11 @@ def get_player_name() -> str:
         return "Eternal Champion"
 
 def set_active_user(username: str):
-    os.environ["ACTIVE_USER"] = username
+    from core.save_manager import _get_clean_name
+    clean_name = _get_clean_name(username)
+    os.environ["ACTIVE_USER"] = clean_name
     settings = _load_settings()
-    settings["active_user"] = username
+    settings["active_user"] = clean_name
     _save_settings(settings)
 
 def get_tts_voice() -> str:
