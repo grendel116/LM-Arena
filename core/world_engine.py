@@ -582,7 +582,11 @@ def create_state_snapshot(world_state: dict, character_sheet: dict = None) -> di
             "gold": (character_sheet or {}).get("gold", 0)
         },
         "inventory": inventory,
-        "spells": spells
+        "spells": spells,
+        "conditions": copy.deepcopy((character_sheet or {}).get("conditions", [])),
+        "active_effects": copy.deepcopy((character_sheet or {}).get("active_effects", [])),
+        "level": (character_sheet or {}).get("level", 1),
+        "experience": (character_sheet or {}).get("experience", 0)
     }
 
 def apply_state_snapshot(character_name: str, snapshot: dict) -> None:
@@ -654,6 +658,22 @@ def apply_state_snapshot(character_name: str, snapshot: dict) -> None:
 
         if "spells" in snapshot and isinstance(snapshot["spells"], list):
             sheet["spells"] = copy.deepcopy(snapshot["spells"])
+            char_modified = True
+
+        if "conditions" in snapshot and isinstance(snapshot["conditions"], list):
+            sheet["conditions"] = copy.deepcopy(snapshot["conditions"])
+            char_modified = True
+
+        if "active_effects" in snapshot and isinstance(snapshot["active_effects"], list):
+            sheet["active_effects"] = copy.deepcopy(snapshot["active_effects"])
+            char_modified = True
+
+        if "level" in snapshot:
+            sheet["level"] = snapshot["level"]
+            char_modified = True
+
+        if "experience" in snapshot:
+            sheet["experience"] = snapshot["experience"]
             char_modified = True
 
         if char_modified:

@@ -44,6 +44,54 @@ _prewarm_started = False
 _prewarm_lock = threading.Lock()
 
 @app.before_request
+def sync_client_viewport():
+    try:
+        from core import engine_diffusion
+        orientation = None
+        if request.is_json and request.json:
+            orientation = request.json.get("orientation")
+        if not orientation:
+            orientation = (
+                request.headers.get("X-Window-Orientation")
+                or request.cookies.get("viewport_orientation")
+                or request.cookies.get("window_orientation")
+            )
+        if not orientation:
+            w = request.cookies.get("window_width")
+            h = request.cookies.get("window_height")
+            if w and h:
+                try:
+                    orientation = "portrait" if int(h) > int(w) else "landscape"
+                except Exception:
+                    pass
+        if orientation in ("portrait", "landscape"):
+            engine_diffusion.set_active_window_orientation(orientation)
+    except Exception:
+        pass
+
+
+@app.route('/api/client_viewport', methods=['POST'])
+def api_client_viewport():
+    data = request.get_json(silent=True) or {}
+    orientation = data.get("orientation")
+    w = data.get("width") or data.get("window_width")
+    h = data.get("height") or data.get("window_height")
+    if not orientation and w and h:
+        try:
+            orientation = "portrait" if int(h) > int(w) else "landscape"
+        except Exception:
+            pass
+    if orientation in ("portrait", "landscape"):
+        from core import engine_diffusion
+        engine_diffusion.set_active_window_orientation(orientation)
+    from core import engine_diffusion
+    return jsonify({
+        "status": "ok",
+        "orientation": engine_diffusion.get_active_window_orientation()
+    })
+
+
+@app.before_request
 def start_prewarm_on_first_request():
     global _prewarm_started
     if not _prewarm_started:
@@ -1772,7 +1820,14 @@ def regenerate_image():
         if use_imagen and hasattr(tools, 'generate_imagen'):
             new_markdown = tools.generate_imagen(prompt, subject_type=subject_type or "auto")
         else:
-            new_markdown = tools.generate_local_image(prompt, subject_type=subject_type or "auto", target_follower=locals().get('sidecar_follower_id'))
+            new_markdown = tools.generate_local_image(
+                prompt,
+                subject_type=subject_type or "auto",
+                target_follower=locals().get('sidecar_follower_id'),
+                orientation=request.json.get('orientation'),
+                width=request.json.get('width'),
+                height=request.json.get('height')
+            )
         if new_markdown.startswith("Error"):
             return jsonify({'error': new_markdown}), 500
             
@@ -1839,7 +1894,12 @@ def api_generate_portrait():
         if session_id in cancelled_sessions:
             return jsonify({'error': 'Scene capture cancelled by user.'}), 400
 
-        new_markdown = tools.generate_local_image(custom_prompt)
+        new_markdown = tools.generate_local_image(
+            custom_prompt,
+            orientation=request.json.get('orientation'),
+            width=request.json.get('width'),
+            height=request.json.get('height')
+        )
 
         if session_id in cancelled_sessions:
             return jsonify({'error': 'Scene capture cancelled by user.'}), 400

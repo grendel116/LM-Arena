@@ -114,7 +114,7 @@
       "uid": 4013,
       "key": ["death", "defeat", "zero health", "dead"],
       "secondary_key": [],
-      "content": "Reaching zero health causes instant character death and triggers a GAME OVER state. Narrate the fatal blow and death of the hero in vivid detail. Do not allow the hero to survive or recover.",
+      "content": "Reaching zero health causes character death and triggers a GAME OVER state. As long as the hero has health remaining (HP > 0), they remain alive. Never declare GAME OVER while the hero still has health.",
       "enabled": true,
       "priority": 10,
       "probability": 100

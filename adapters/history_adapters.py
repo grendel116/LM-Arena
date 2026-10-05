@@ -577,8 +577,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 "sender_id": sender_id,
                 "follower_id": follower_id,
                 "sender_name": sender_name,
+                "state_snapshot": updated_snapshot,
             })
-            history[-1].pop('state_snapshot', None)
             return history[-1]
 
         if intermediate:
@@ -600,6 +600,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             "sender_id": sender_id,
             "follower_id": follower_id,
             "sender_name": sender_name,
+            "state_snapshot": updated_snapshot,
         }
         history.append(bot_msg)
         return bot_msg

@@ -1144,16 +1144,11 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
                 heal(sheet, actual_dmg)
                 modified = True
             elif t_name == "arena_roll_combat":
-                if res_dict.get("damage_dealt"):
-                    target_name = str(res_dict.get("target_name", "")).lower()
-                    is_player = (
-                        target_name in ["player", "user", character_name.lower()]
-                        or res_dict.get("is_player", False)
-                    )
-                    dmg = int(res_dict.get("damage_dealt", 0))
-                    if is_player and dmg > 0:
-                        heal(sheet, dmg)
-                        modified = True
+                status = res_dict.get("status_effect")
+                if status:
+                    remove_condition(sheet, status)
+                    remove_effect(sheet, status.capitalize())
+                    modified = True
             elif t_name == "arena_heal":
                 take_damage(sheet, amount)
                 modified = True

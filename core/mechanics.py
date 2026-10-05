@@ -330,11 +330,19 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
         damage_narrative = "ineffective (weapon passed through harmlessly)"
         damage_dealt = 0
 
-    # Calculate Monster HP reduction if applicable
-    monster_max_hp = target.get("hp_max") or monster_data.get("hp_max", 15)
-    monster_current_hp = target.get("hp_current", monster_max_hp)
-    remaining_hp = max(0, monster_current_hp - damage_dealt) if hit else monster_current_hp
-    defeated = remaining_hp == 0 if (hit and not immune) else False
+    # Calculate target HP reduction
+    is_target_player = target.get("is_player") or str(target_name).lower() in ("player", "user", "{{user}}", "hero", "eternal champion")
+    if is_target_player:
+        target_max_hp = target.get("hp_max") or 28
+        target_current_hp = target.get("hp_current", target_max_hp)
+        remaining_hp = max(0, target_current_hp - damage_dealt) if (hit and not immune) else target_current_hp
+        defeated = (remaining_hp == 0) if (hit and not immune) else False
+    else:
+        monster_max_hp = target.get("hp_max") or monster_data.get("hp_max", 15)
+        monster_current_hp = target.get("hp_current", monster_max_hp)
+        remaining_hp = max(0, monster_current_hp - damage_dealt) if (hit and not immune) else monster_current_hp
+        defeated = (remaining_hp == 0) if (hit and not immune) else False
+        target_max_hp = monster_max_hp
     
     return {
         "attack_roll": attack_res,
@@ -347,10 +355,11 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
         "status_effect": status_effect,
         "target_name": target_name,
         "target_hp_current": remaining_hp,
-        "target_hp_max": monster_max_hp,
+        "target_hp_max": target_max_hp,
         "defeated": defeated,
-        "xp_reward": monster_data.get("xp_reward", 20) if defeated else 0,
-        "loot": monster_data.get("loot", []) if defeated else []
+        "dead": (defeated if is_target_player else False),
+        "xp_reward": 0 if is_target_player else (monster_data.get("xp_reward", 20) if defeated else 0),
+        "loot": [] if is_target_player else (monster_data.get("loot", []) if defeated else [])
     }
 
 def roll_initiative(combatants: list) -> list:

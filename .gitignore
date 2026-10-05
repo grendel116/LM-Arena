@@ -73,6 +73,7 @@ comfy_server.log
 
 # Workflow Configs
 ImageWorkflow.json
+!core/skills/portrait_generation/ImageWorkflow.json
 VideoWorkflow.json
 
 # Local Binaries

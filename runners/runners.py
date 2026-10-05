@@ -1387,12 +1387,19 @@ class OpenSourceRunner(BaseRunner):
             else:
                 user_msg_id = msg_id
 
+            from runners.follower import get_active_user
+            from core.world_engine import load_world_state, create_state_snapshot
+            from core.character import load_character
+            active_u = get_active_user()
+            user_snapshot = create_state_snapshot(load_world_state(active_u), load_character(active_u))
+
             user_msg = {
                 "id": user_msg_id,
                 "role": "user",
                 "text": new_message_text or "",
                 "image_url": media_path if media_path else (f"data:{image_mime};base64,{image_data}" if image_data else None),
                 "timestamp": time.time(),
+                "state_snapshot": user_snapshot,
             }
             self.sessions_history[session_id].append(user_msg)
 
@@ -1460,8 +1467,14 @@ class OpenSourceRunner(BaseRunner):
         if user_idx == -1:
             raise ValueError("Message not found")
 
-        # Restrict rerolling to the last turn in chat
-        if any(ev.get("role") == "user" for ev in history[user_idx + 1:]):
+        # Restrict rerolling to the last turn in chat (ignoring tool responses)
+        subsequent_users = [
+            ev for ev in history[user_idx + 1:]
+            if ev.get("role") == "user"
+            and not ev.get("id", "").startswith("tool_")
+            and not ev.get("text", "").startswith("[Tool Response from")
+        ]
+        if subsequent_users:
             raise ValueError("Only the last message in chat can be rerolled.")
 
         orig_msg = history[user_idx]
@@ -1475,22 +1488,23 @@ class OpenSourceRunner(BaseRunner):
             else:
                 media_path = url_str
 
-        # Collect prior tool calls from subsequent messages in the turn being rerolled
-        prior_tool_calls = []
-        if new_text is None:
+        # Roll back game state and tool effects for all discarded subsequent messages
+        from runners.follower import get_active_user
+        from core.save_manager import get_active_save_id
+        active_user = get_active_save_id() if (not session_id or session_id == "default") else session_id
+
+        prior_snapshot = orig_msg.get("state_snapshot")
+        if prior_snapshot:
+            from core.world_engine import apply_state_snapshot
+            apply_state_snapshot(active_user, prior_snapshot)
+        else:
+            discarded_tools = []
             for subsequent_msg in history[user_idx + 1:]:
                 if subsequent_msg.get("tool_calls"):
-                    prior_tool_calls.extend(subsequent_msg["tool_calls"])
-
-        seen_tc_ids = set()
-        deduped_prior_tools = []
-        for tc in prior_tool_calls:
-            cid = tc.get("id")
-            if cid:
-                if cid in seen_tc_ids:
-                    continue
-                seen_tc_ids.add(cid)
-            deduped_prior_tools.append(tc)
+                    discarded_tools.extend(subsequent_msg["tool_calls"])
+            if discarded_tools:
+                from core.character import rollback_tool_effects
+                rollback_tool_effects(active_user, discarded_tools)
 
         self.sessions_history[session_id] = history[:user_idx]
         self._save_session_to_disk(session_id)
@@ -1509,7 +1523,7 @@ class OpenSourceRunner(BaseRunner):
             model=model,
             media_path=media_path,
             msg_id=msg_id,
-            existing_tool_calls=deduped_prior_tools,
+            existing_tool_calls=None,
             speaker_id=speaker_id,
         )
 
@@ -1530,8 +1544,12 @@ class OpenSourceRunner(BaseRunner):
         if msg_idx == -1:
             raise ValueError(f"Message {msg_id} not found")
 
-        # Restrict rerolling to the last message in chat
-        if msg_idx != len(history) - 1:
+        hidden_prefixes = ("tool_", "port_", "quest_", "sys_", "itm_")
+        visible_indices = [
+            i for i, ev in enumerate(history)
+            if not ev.get("id", "").startswith(hidden_prefixes) and ev.get("role") != "system-memory"
+        ]
+        if visible_indices and msg_idx != visible_indices[-1]:
             raise ValueError("Only the last message in chat can be rerolled.")
 
         target_msg = history[msg_idx]
@@ -1547,11 +1565,43 @@ class OpenSourceRunner(BaseRunner):
                 from runners.follower import get_active_follower
                 speaker_id = get_active_follower() or "game"
 
-        # Preserve any messages subsequent to this one so the surrounding narrative is kept
-        subsequent_messages = list(history[msg_idx + 1:])
+        # Determine the start of this assistant turn (including intermediate and tool event messages)
+        turn_start_idx = msg_idx
+        while turn_start_idx > 0:
+            prev = history[turn_start_idx - 1]
+            pid = prev.get("id", "")
+            prole = prev.get("role", "")
+            ptext = prev.get("text", "")
+            if pid.startswith(("tool_", "itm_")) or (prole == "user" and ptext.startswith("[Tool Response from")):
+                turn_start_idx -= 1
+            else:
+                break
 
-        # Truncate to the point right before this message was created
-        self.sessions_history[session_id] = history[:msg_idx]
+        # Preserve any messages subsequent to this turn
+        subsequent_messages = list(history[msg_idx + 1:])
+        discarded_messages = list(history[turn_start_idx:msg_idx + 1])
+
+        # Roll back game state and character mutations from the turn being rerolled
+        from runners.follower import get_active_user
+        from core.save_manager import get_active_save_id
+        active_user = get_active_save_id() if (not session_id or session_id == "default") else session_id
+
+        prior_msg = history[turn_start_idx - 1] if turn_start_idx > 0 else None
+        prior_snapshot = prior_msg.get("state_snapshot") if prior_msg else None
+        if prior_snapshot:
+            from core.world_engine import apply_state_snapshot
+            apply_state_snapshot(active_user, prior_snapshot)
+        else:
+            discarded_tools = []
+            for dm in discarded_messages:
+                if dm.get("tool_calls"):
+                    discarded_tools.extend(dm["tool_calls"])
+            if discarded_tools:
+                from core.character import rollback_tool_effects
+                rollback_tool_effects(active_user, discarded_tools)
+
+        # Truncate history to the point right before this assistant turn started
+        self.sessions_history[session_id] = history[:turn_start_idx]
         self._save_session_to_disk(session_id)
 
         res = await self.run_async(
@@ -1561,7 +1611,7 @@ class OpenSourceRunner(BaseRunner):
             speaker_id=speaker_id,
         )
 
-        # Restore subsequent messages in place
+        # Restore subsequent messages in place if any
         if subsequent_messages:
             self.sessions_history[session_id].extend(subsequent_messages)
             self._save_session_to_disk(session_id)
@@ -1633,6 +1683,12 @@ class OpenSourceRunner(BaseRunner):
             history = self.sessions_history.get(session_id, [])
             for i, msg in enumerate(history):
                 if msg.get("id") == msg_id:
+                    if msg.get("tool_calls"):
+                        from runners.follower import get_active_user
+                        from core.save_manager import get_active_save_id
+                        from core.character import rollback_tool_effects
+                        active_user = get_active_save_id() if (not session_id or session_id == "default") else session_id
+                        rollback_tool_effects(active_user, msg["tool_calls"])
                     del history[i]
                     self._save_session_to_disk(session_id)
                     return True

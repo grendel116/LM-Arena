@@ -463,7 +463,10 @@ def generate_local_image(prompt: str = "", **kwargs) -> str:
             prompt=final_prompt,
             negative_prompt=final_negative,
             workflow_path=workflow_to_use,
-            save_path=local_path
+            save_path=local_path,
+            width=kwargs.get("width"),
+            height=kwargs.get("height"),
+            orientation=kwargs.get("orientation")
         )
 
         json_path = os.path.join(portraits_dir, f"scene_{timestamp}.json")
@@ -874,25 +877,41 @@ def arena_roll_combat(
     str_val = attacker_strength if attacker_strength is not None else monster.get("strength", 50)
     agi_val = attacker_agility if attacker_agility is not None else monster.get("agility", 50)
 
-    # Resolve target agility
-    is_target_player = str(target_name).lower() in ("{{user}}", "player", "hero", sheet.get("name", "").lower(), "eternal champion")
+    # Resolve target and attacker identities
+    player_name = sheet.get("name", "Eternal Champion")
+    is_target_player = str(target_name).lower() in ("{{user}}", "player", "hero", player_name.lower(), "eternal champion")
+    is_attacker_player = str(attacker_name).lower() in ("{{user}}", "player", "hero", player_name.lower(), "eternal champion")
+
     if target_agility is None:
         if is_target_player:
-            target_agility = sheet.get("agility", 50)
+            target_agility = sheet.get("attributes", {}).get("agility", sheet.get("agility", 50))
         else:
             target_monster = get_monster(target_name)
             target_agility = target_monster.get("agility", 50)
 
+    derived = sheet.get("derived", {})
+    resolved_target_name = player_name if is_target_player else target_name
+    resolved_attacker_name = player_name if is_attacker_player else attacker_name
+
+    if is_attacker_player:
+        str_val = attacker_strength if attacker_strength is not None else sheet.get("attributes", {}).get("strength", 50)
+        agi_val = attacker_agility if attacker_agility is not None else sheet.get("attributes", {}).get("agility", 50)
+
     attacker = {
-        "name": attacker_name,
+        "name": resolved_attacker_name,
         "strength": int(str_val),
         "agility": int(agi_val),
-        "class_archetype": attacker_class_archetype
+        "class_archetype": attacker_class_archetype,
+        "is_player": is_attacker_player,
+        "stamina_current": derived.get("stamina_current", 50) if is_attacker_player else None,
+        "stamina_max": derived.get("stamina_max", 50) if is_attacker_player else None,
     }
     target = {
-        "name": target_name,
+        "name": resolved_target_name,
         "agility": int(target_agility),
-        "is_player": is_target_player
+        "is_player": is_target_player,
+        "hp_max": derived.get("hp_max", 28) if is_target_player else None,
+        "hp_current": derived.get("hp_current", 28) if is_target_player else None,
     }
     weapon = {
         "name": weapon_name,

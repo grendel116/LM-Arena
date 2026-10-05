@@ -40,6 +40,34 @@ document.addEventListener('click', function (e) {
     }
 });
 
+// ── Viewport Orientation & Aspect Ratio Sync ──────────────────────────────
+let _viewportSyncTimer = null;
+function getWindowOrientation() {
+    return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
+}
+
+function syncWindowViewportDimensions() {
+    const orientation = getWindowOrientation();
+    document.cookie = `viewport_orientation=${orientation}; path=/; SameSite=Lax`;
+    document.cookie = `window_width=${window.innerWidth}; path=/; SameSite=Lax`;
+    document.cookie = `window_height=${window.innerHeight}; path=/; SameSite=Lax`;
+
+    clearTimeout(_viewportSyncTimer);
+    _viewportSyncTimer = setTimeout(() => {
+        fetch('/api/client_viewport', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                orientation: orientation,
+                window_width: window.innerWidth,
+                window_height: window.innerHeight
+            })
+        }).catch(() => {});
+    }, 250);
+}
+window.addEventListener('resize', syncWindowViewportDimensions);
+syncWindowViewportDimensions();
+
 // ── Arena: Tamriel Map Modal ──────────────────────────────────────────────
 let cachedProvincesData = null;
 let selectedProvinceName = null;
@@ -6780,7 +6808,8 @@ async function sendMessage() {
         image_mime: attachedMime,
         media_path: attachedMediaPath,
         session_id: sessionId,
-        model: selectedModel
+        model: selectedModel,
+        orientation: getWindowOrientation()
     };
 
     userInput.value = '';
@@ -6922,7 +6951,8 @@ async function executeGroupChainTurn(targetSpeaker) {
             body: JSON.stringify({
                 session_id: sessionId,
                 model: selectedModel,
-                speaker_id: targetSpeaker
+                speaker_id: targetSpeaker,
+                orientation: getWindowOrientation()
             }),
             signal: chatAbortController ? chatAbortController.signal : null
         });
@@ -7476,7 +7506,8 @@ async function rerollFromMessage(button) {
             body: JSON.stringify({
                 session_id: sessionId,
                 msg_id: msgId,
-                model: selectedModel
+                model: selectedModel,
+                orientation: getWindowOrientation()
             }),
             signal: chatAbortController.signal
         });
@@ -8291,7 +8322,8 @@ async function captureSceneImage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: sessionId,
-                target_follower: targetFollowerId
+                target_follower: targetFollowerId,
+                orientation: getWindowOrientation()
             })
         });
 
@@ -8735,7 +8767,8 @@ async function regenerateImage(buttonElement, oldImageUrl, prompt, subjectType =
                 old_image_url: getRelativePath(oldImageUrl),
                 prompt: prompt,
                 subject_type: subjectType,
-                use_imagen: useImagenMode
+                use_imagen: useImagenMode,
+                orientation: getWindowOrientation()
             })
         });
         
@@ -10756,7 +10789,8 @@ async function triggerProactiveAction() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: sessionId,
-                model: selectedModel
+                model: selectedModel,
+                orientation: getWindowOrientation()
             }),
             signal
         });
