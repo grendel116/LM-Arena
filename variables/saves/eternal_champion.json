@@ -13,7 +13,7 @@
     "quest_stage": 12,
     "tamrielic_date": "1 Hearthfire, 3E 389",
     "created_at": "2026-09-28T01:48:21.121310",
-    "updated_at": "2026-10-05T04:16:19.370284",
+    "updated_at": "2026-10-05T04:16:40.355596",
     "active_follower": "breamaccius",
     "active_followers": [
       "breamaccius"
@@ -2250,6 +2250,88 @@
       "sender_id": "game",
       "follower_id": null,
       "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 142,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          },
+          {
+            "name": "Tunneler Chitin",
+            "type": "misc",
+            "weight": 1.0,
+            "quantity": 3,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 70
+      }
+    },
+    {
+      "id": "fol_breamaccius_5867c1b59d",
+      "role": "follower",
+      "text": "*I step over the blackened carapaces, the soles of my boots sticking slightly to the congealed ichor.*\n\nNot bad for a first outing. Come on—let's find that Shift Gate before something else crawls up from the dark.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791199000.3399756,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
       "state_snapshot": {
         "province": "Cyrodiil",
         "location": "Imperial Dungeon",
