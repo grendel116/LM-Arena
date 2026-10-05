@@ -55,7 +55,7 @@ def start_flask_server(port: int, ssl_context=None):
 def on_closed():
     """Closes every process the app started, then exits immediately on window close."""
     try:
-        from adapters.shutdown import close_app_processes
+        from utils.shutdown import close_app_processes
         close_app_processes()
     finally:
         os._exit(0)

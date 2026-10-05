@@ -24,7 +24,7 @@ from flask import Flask, render_template, request, jsonify, send_file, send_from
 import asyncio
 from functools import wraps
 from runners.runners import OpenSourceRunner
-import adapters.shutdown  # closes every app-started process on exit
+import utils.shutdown  # closes every app-started process on exit
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -196,7 +196,7 @@ def prewarm_caches():
 
 def _trigger_early_prewarm():
     # Only auto-start in the active Werkzeug child worker, not the parent process.
-    # The parent's exit hook (adapters/shutdown.py) may kill llama-server on reload, causing races.
+    # The parent's exit hook (utils/shutdown.py) may kill llama-server on reload, causing races.
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         global _prewarm_started
         with _prewarm_lock:

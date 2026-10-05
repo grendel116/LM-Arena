@@ -1,5 +1,5 @@
 """
-adapters/shutdown.py — Closes every process the app started when the app exits.
+utils/shutdown.py — Closes every process the app started when the app exits.
 
 Covers the LLM server, the diffusion server, ComfyUI, and any other Python process
 launched from this app. Registered once at import; desktop.py also calls it directly
