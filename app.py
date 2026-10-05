@@ -4334,14 +4334,17 @@ def delete_user_profile():
         # If the deleted profile was active, switch active profile and save back to "eternal_champion"
         active_user = get_active_user()
                 
-        if profile_id == active_user:
-            # Clear in-memory session data for the deleted profile
-            if hasattr(runner, 'sessions_history'):
-                runner.sessions_history.pop(profile_id, None)
+        # Always clear in-memory session data for the deleted profile
+        if hasattr(runner, 'sessions_history'):
+            runner.sessions_history.pop(profile_id, None)
+            if profile_id == active_user:
                 runner.sessions_history.pop('default', None)
-            if hasattr(runner, 'sessions_memory_state'):
-                runner.sessions_memory_state.pop(profile_id, None)
+        if hasattr(runner, 'sessions_memory_state'):
+            runner.sessions_memory_state.pop(profile_id, None)
+            if profile_id == active_user:
                 runner.sessions_memory_state.pop('default', None)
+
+        if profile_id == active_user:
             set_active_user("eternal_champion")
             set_active_save_id("eternal_champion")
             reload_follower_state()
