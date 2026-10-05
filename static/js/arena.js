@@ -2468,6 +2468,11 @@ function closeInventoryModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function closeCharacterStatusModal() {
+    closeStatusModal();
+    closeInventoryModal();
+}
+
 function formatTamrielicTime(hour) {
     if (hour === undefined || hour === null) return "";
     const h = parseInt(hour, 10) % 24;
@@ -2708,12 +2713,13 @@ function renderCharacterStatusModal(data) {
                     badge.style.borderColor = 'hsla(218, 90%, 60%, 0.25)';
                 };
                 badge.onclick = () => {
-                    closeCharacterStatusModal();
-                    if (userInput) {
-                        userInput.value = `*I focus my magicka and cast ${spell.name}...*`;
-                        userInput.style.height = 'auto';
-                        userInput.style.height = (userInput.scrollHeight) + 'px';
-                        userInput.focus();
+                    closeInventoryModal();
+                    const inputEl = document.getElementById('user-input') || userInput;
+                    if (inputEl) {
+                        inputEl.value = `*I focus my magicka and cast ${spell.name}...*`;
+                        inputEl.style.height = 'auto';
+                        inputEl.style.height = (inputEl.scrollHeight) + 'px';
+                        inputEl.focus();
                     }
                 };
                 
@@ -9698,9 +9704,9 @@ function switchDataBankTab(tab) {
     const descriptor = document.getElementById('databank-descriptor');
 
     const descriptors = {
-        upload: "Follower backstory, documents, and personal lore (Follower-linked).",
-        memories: "Keyword-triggered journals and compacted memories linked to this game save.",
-        lorebooks: "Global world info, game setting lore, and mechanics encyclopedia shared across saves."
+        upload: "Extended background info, world lore and game documents.",
+        memories: "Keyword-triggered journals and compacted memories.",
+        lorebooks: "Lore, and mechanics encyclopedia."
     };
 
     if (descriptor && descriptors[tab]) {
@@ -11726,7 +11732,7 @@ async function fetchNativeModelsSummary() {
                 llmStatusBadge.className = "status-badge status-online";
             }
             if (llmDesc) {
-                llmDesc.textContent = "Ready for in-process chat. Select active model below.";
+                llmDesc.textContent = "Select active model below.";
             }
             if (llmSelect) {
                 llmSelect.innerHTML = data.gguf_models.map(m => 
@@ -11801,7 +11807,7 @@ async function onSelectNativeLLM(modelName) {
         });
         const data = await res.json();
         if (data.success) {
-            showCustomAlert("Model Active", `Loaded '${data.active_model}' for in-process chat.`);
+            showCustomAlert("Model Active", `Loaded '${data.active_model}' for chat.`);
         }
     } catch (e) {
         console.error("onSelectNativeLLM error:", e);

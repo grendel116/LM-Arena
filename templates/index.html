@@ -257,10 +257,6 @@
                     <span>Character Status</span>
                 </h3>
 
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                    Live attributes, vitals, location, and condition effects for your active hero in Tamriel.
-                </p>
-
                 <!-- Combined Active Character & World State Card -->
                 <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px;">
@@ -355,7 +351,7 @@
                 </h3>
 
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;">
-                    Manage carried equipment, active items, gold pouch, and learned spells in your grimoire.
+                    Manage equipment and spells.
                 </p>
 
                 <!-- Gold & Counts Card -->
@@ -916,7 +912,7 @@
             </h3>
 
             <p id="connection-descriptor" style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 15px; line-height: 1.4;">
-                Select your preferred model configuration for local in-process execution.
+                Select your preferred model configuration.
             </p>
             
             <div style="overflow-y: auto; flex: 1; padding-right: 2px;">
@@ -930,7 +926,7 @@
                                 <h4 style="margin: 0; font-size: 1.05rem; font-weight: 600;">LLM Engine</h4>
                                 <span id="modal-local-status" class="status-badge status-online">Online</span>
                             </div>
-                            <p id="modal-local-desc" class="option-desc" style="font-size: 0.8rem; margin: 8px 0 12px 0;">Executes GGUF chat models in-process directly from <code>models/llm/</code>.</p>
+                            <p id="modal-local-desc" class="option-desc" style="font-size: 0.8rem; margin: 8px 0 12px 0;">Executes GGUF chat models from <code>models/llm/</code>.</p>
                             
                             <div class="input-group" style="margin-bottom: 10px;">
                                 <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Active Chat Model</label>
@@ -948,7 +944,7 @@
                                 <h4 style="margin: 0; font-size: 1.05rem; font-weight: 600;">Image Generation Engine</h4>
                                 <span id="modal-diffusion-status" class="status-badge status-online">Online</span>
                             </div>
-                            <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 12px 0;">Renders character portraits in-process from <code>models/checkpoints/</code> and <code>models/loras/</code>.</p>
+                            <p class="option-desc" style="font-size: 0.8rem; margin: 8px 0 12px 0;">Renders character portraits from <code>models/checkpoints/</code> and <code>models/loras/</code>.</p>
                             
                             <div class="input-group" style="margin-bottom: 10px;">
                                 <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Active Checkpoint Model</label>
@@ -1084,7 +1080,7 @@
             <!-- Tab 2: Image Prompts (ComfyUI) -->
             <div id="comp-tab-content-phys" style="display: none; max-height: 420px; overflow-y: auto; padding-right: 15px;">
                 <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 5px;">
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">These tags define the character's visual appearance. They are passed to the language model for narrative consistency and to ComfyUI for portrait generation.</p>
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">These tags define the character's visual appearance.</p>
                     <div class="input-group">
                         <label for="comp-image-details">Positive Prompt Tags</label>
                         <textarea id="comp-image-details" class="onboarding-input" style="height: 80px; resize: vertical;" placeholder="translucent fairy wings, warm smile, silver hair, purple eyes..."></textarea>
@@ -1139,6 +1135,6 @@
 
 
 
-    <script defer src="{{ url_for('static', filename='js/arena.js') }}?v=55"></script>
+    <script defer src="{{ url_for('static', filename='js/arena.js') }}?v=56"></script>
 </body>
 </html>

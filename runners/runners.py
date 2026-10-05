@@ -514,7 +514,7 @@ class BaseRunner:
                 else:
                     bot_response_text = f"Error: {response.text}"
             except Exception as e:
-                # Query in-process engine if external server is offline
+                # Query engine if external server is offline
                 try:
                     from runners import engine_llm
                     if engine_llm.is_loaded():

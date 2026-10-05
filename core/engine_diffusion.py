@@ -1,7 +1,7 @@
 """
 core/engine_diffusion.py — Internal GPU-accelerated diffusion engine.
 
-Executes SDXL image generation directly in-process with PyTorch/GPU acceleration,
+Executes SDXL image generation in-process with PyTorch/GPU acceleration,
 using the exact parameters from ImageWorkflow.json.
 """
 
@@ -25,7 +25,7 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def resolve_checkpoint_path(checkpoint_name: Optional[str] = None) -> str:
-    """Resolves the absolute path to the requested or default checkpoint model."""
+    """Resolves the path to the requested or default checkpoint model."""
     target = (checkpoint_name or "").strip()
     if not target:
         target = (get_active_checkpoint() or "").strip()
