@@ -334,45 +334,43 @@ def write_save(save_id: str, bundle: dict) -> None:
 
 def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage") -> dict:
     """Create a default bundle for a new character."""
-    from core.character import DEFAULT_SHEET, update_character_identity
     import copy
     import uuid
+    import time
+    from datetime import datetime
+    from core.character import DEFAULT_SHEET, update_character_identity
+    from core.world_engine import DEFAULT_WORLD_STATE
 
     sheet = copy.deepcopy(DEFAULT_SHEET)
     sheet = update_character_identity(sheet, name=character_name, race=race, gender=gender, character_class=character_class, reset_vitals=True)
-    
-    default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
-    if default_world_path.exists():
-        try:
-            with open(default_world_path, "r", encoding="utf-8") as f:
-                world_state = json.load(f)
-        except Exception:
-            world_state = {}
-    else:
-        world_state = {}
-        
-    if not world_state:
-        world_state = {
-            "tamrielic_date": {"day": 1, "month": "Hearthfire", "year": 389, "era": "Third Era"},
-            "current_province": "Cyrodiil",
-            "current_location": "Imperial Dungeon",
-            "quest_stage": 10,
-            "fragments_collected": [],
-            "provinces_visited": ["Cyrodiil"],
-            "cities_discovered": [],
-            "dungeons_cleared": [],
-            "world_flags": {"shift_gate_answered": False, "ria_vision_1_seen": True}
-        }
+    world_state = copy.deepcopy(DEFAULT_WORLD_STATE)
 
     first_msg_id = f"first_mes_{uuid.uuid4().hex[:12]}"
+    try:
+        from core.follower_config import get_follower_greeting, replace_placeholders
+        greeting = replace_placeholders(get_follower_greeting("game"), character_name=character_name).strip()
+    except Exception:
+        greeting = ""
 
-    history = [
-        {
-            "id": first_msg_id,
-            "role": "follower",
-            "timestamp": time.time()
-        }
-    ]
+    if not greeting:
+        greeting = (
+            "**1st of Hearthfire, 3E 389**\n\n---\n\n"
+            f"*{character_name} wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. "
+            "A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. "
+            "As far as anyone in the world above knows, you have been forgotten.*\n\n"
+            "*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: "
+            "a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*"
+        )
+
+    first_msg = {
+        "id": first_msg_id,
+        "role": "follower",
+        "sender_id": "game",
+        "sender_name": "The Game",
+        "text": greeting,
+        "tool_calls": [],
+        "timestamp": time.time()
+    }
 
     RACE_HOMELANDS = {
         "Nord": "Skyrim",
@@ -398,7 +396,7 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
             "gender": gender,
             "class": character_class,
             "level": 1,
-            "gold": sheet.get("gold", 75),
+            "gold": sheet.get("gold", 0),
             "current_province": world_state.get("current_province", "Cyrodiil"),
             "current_location": world_state.get("current_location", "Imperial Dungeon"),
             "quest_stage": world_state.get("quest_stage", 10),
@@ -410,13 +408,20 @@ def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champi
         },
         "character": sheet,
         "world": world_state,
-        "history": history,
+        "history": [first_msg],
+        "messages": [first_msg],
         "memories": {"documents": [], "chunks": []},
         "databank": {"documents": [], "chunks": []},
         "journals": [],
         "side_quests": [],
         "archived_side_quests": [],
-        "profile": profile_content
+        "profile": profile_content,
+        "memory_state": {
+            "unsummarized_buffer": [],
+            "recent_chapters": [],
+            "epic_chronicle": "",
+            "last_summarized_turn": 0
+        }
     }
     return bundle
 

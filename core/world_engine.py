@@ -4,7 +4,59 @@ import random
 import math
 from pathlib import Path
 
+import copy
+
 BASE_DIR = Path(__file__).parent.parent
+
+DEFAULT_WORLD_STATE = {
+    "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+    },
+    "current_province": "Cyrodiil",
+    "current_location": "Imperial Dungeon",
+    "quest_stage": 10,
+    "fragments_collected": [],
+    "provinces_visited": [
+        "Cyrodiil"
+    ],
+    "cities_discovered": [],
+    "dungeons_cleared": [],
+    "followers": [],
+    "world_flags": {
+        "shift_gate_answered": False,
+        "ria_vision_1_seen": False,
+        "province_travel_unlocked": False,
+        "staff_assembled": False
+    },
+    "weather": {
+        "Cyrodiil": "clear",
+        "Skyrim": "blizzard",
+        "Morrowind": "ashstorm",
+        "Black Marsh": "monsoon",
+        "Elsweyr": "clear",
+        "Valenwood": "overcast",
+        "Summerset Isle": "clear",
+        "Hammerfell": "clear",
+        "High Rock": "overcast"
+    },
+    "faction_reputation": {
+        "mages_guild": 0,
+        "imperial_cult": 0,
+        "temple_of_kynareth": 0,
+        "temple_of_arkay": 0,
+        "temple_of_zenithar": 0,
+        "temple_of_talos": 0,
+        "temple_of_mara": 0,
+        "temple_of_dibella": 0,
+        "temple_of_stendarr": 0,
+        "noble_courts": 0
+    }
+}
+
 
 def load_world_state(save_id: str = None) -> dict:
     """Loads the world state for the active save slot."""
@@ -14,22 +66,13 @@ def load_world_state(save_id: str = None) -> dict:
         active_sess = current_session_id.get(None)
         slot = save_id or (active_sess if active_sess and active_sess != "default" else None) or get_active_save_id()
         bundle = read_save(slot)
-        state = bundle.get("world", {})
-        if state:
+        state = bundle.get("world")
+        if isinstance(state, dict) and state:
             return state
     except Exception:
         pass
 
-    default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
-    if default_world_path.exists():
-        try:
-            with open(default_world_path, "r", encoding="utf-8") as f:
-                state = json.load(f)
-            save_world_state(state, slot)
-            return state
-        except Exception:
-            pass
-    return {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
+    return copy.deepcopy(DEFAULT_WORLD_STATE)
 
 
 def save_world_state(arg1=None, arg2=None) -> None:
@@ -801,69 +844,6 @@ def extract_hidden_state_footer(text: str, current_snapshot: dict) -> tuple[str,
 def sync_world_state_from_history(character_name: str, history: list) -> dict:
     """Returns the active world state for the character."""
     return load_world_state(character_name)
-
-    # Fallback to walking tool calls in history
-    default_world_path = BASE_DIR / "core" / "world" / "world_state.json"
-    if default_world_path.exists():
-        try:
-            with open(default_world_path, "r", encoding="utf-8") as f:
-                state = json.load(f)
-        except Exception:
-            state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
-    else:
-        state = {"quest_stage": 10, "current_province": "Cyrodiil", "current_location": "Imperial Dungeon"}
-
-    stages = load_quest_stages()
-
-    for msg in history:
-        tool_calls = msg.get("tool_calls", [])
-        for tc in tool_calls:
-            if not isinstance(tc, dict):
-                continue
-            t_name = tc.get("name", "")
-            args = tc.get("args", {})
-            if not isinstance(args, dict):
-                continue
-
-            if t_name == "arena_set_location":
-                prov = args.get("province")
-                loc = args.get("location_name")
-                if prov:
-                    state["current_province"] = prov
-                    if "provinces_visited" not in state:
-                        state["provinces_visited"] = []
-                    if prov not in state["provinces_visited"]:
-                        state["provinces_visited"].append(prov)
-                if loc:
-                    state["current_location"] = loc
-                    if "cities_discovered" not in state:
-                        state["cities_discovered"] = []
-                    if loc not in state["cities_discovered"]:
-                        state["cities_discovered"].append(loc)
-                adv_hrs = int(args.get("advance_hours", 0)) if args.get("advance_hours") is not None else 0
-                if adv_hrs > 0:
-                    state = advance_time(state, adv_hrs)
-
-            elif t_name == "arena_travel":
-                prov = args.get("destination_province")
-                city = args.get("destination_city")
-                if prov and city:
-                    state, _ = travel(state, prov, city)
-
-            elif t_name == "arena_advance_stage":
-                target_stage = args.get("target_stage")
-                if target_stage is not None:
-                    state["quest_stage"] = int(target_stage)
-                else:
-                    state, _ = advance_stage(state, stages)
-
-            elif t_name == "arena_set_quest_stage":
-                st = args.get("stage_number")
-                if st is not None:
-                    state["quest_stage"] = int(st)
-
-    save_world_state(character_name, state)
-    return state
 
 
 

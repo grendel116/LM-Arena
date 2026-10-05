@@ -15,7 +15,7 @@ When the player completes narrative milestones, seeks Staff of Chaos fragments, 
   `[arena_advance_stage()]`
 - To jump or set a specific chapter stage directly:
   `[arena_set_quest_stage(stage_number=...)]`
-- This updates `world_state.json`, triggers spectral vision flags for Ria Silmane, and updates the player's active Quest Journal.
+- This updates the active save bundle world state, triggers spectral vision flags for Ria Silmane, and updates the player's active Quest Journal.
 
 ## 2. Setting Location & Portal Transit
 - When the player steps through a Shift Gate, enters or exits a dungeon, or arrives in a specific town or wilderness:
