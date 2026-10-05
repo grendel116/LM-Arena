@@ -58,7 +58,8 @@ except Exception:
 COMFYUI_SERVER_URL = os.getenv("COMFYUI_SERVER_URL", "http://127.0.0.1:8188")
 _env_comfyui_dir = os.getenv("COMFYUI_DIR")
 COMFYUI_DIR = _env_comfyui_dir.strip() if (_env_comfyui_dir and _env_comfyui_dir.strip()) else os.path.normpath(os.path.join(BASE_DIR, "..", "ComfyUI"))
-COMFYUI_CHECKPOINT = os.getenv("COMFYUI_CHECKPOINT", "sd_xl_base_1.0.safetensors")
+_env_comfyui_checkpoint = os.getenv("COMFYUI_CHECKPOINT")
+COMFYUI_CHECKPOINT = _env_comfyui_checkpoint.strip() if (_env_comfyui_checkpoint and _env_comfyui_checkpoint.strip()) else ""
 COMFYUI_VAE = os.getenv("COMFYUI_VAE", "sdxl_vae.safetensors")
 
 # Centralized Models directory hierarchy & Logs

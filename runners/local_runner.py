@@ -3,7 +3,6 @@ import time
 import zipfile
 import subprocess
 import requests
-import atexit
 import threading
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -459,13 +458,4 @@ async def ensure_server_online_async(model_key=None, timeout=120.0) -> bool:
             return False
 
     print(f"[Local LLM] Server startup timed out after {timeout}s.", flush=True)
-    return False
-
-def _atexit_clean():
-    # If Flask reloader is active, let the parent process handle cleanup on Ctrl+C
-    # so we don't kill the server on child process reloads.
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        return
-    stop_local_server()
-
-atexit.register(_atexit_clean)
+    return False

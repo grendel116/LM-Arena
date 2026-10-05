@@ -69,6 +69,23 @@ Place your model files in the designated subdirectories under `models/`:
 * **LoRAs**: `models/loras/`
 * **VAE**: `models/vae/`
 
+### Image Workflows:
+Every image is generated from a ComfyUI workflow saved in **API format** (in ComfyUI: *Workflow → Export (API)*). Images are rendered in landscape as first-person POV scenes (like a Skyrim screenshot looking directly into Tamriel). The workflow decides everything about how the image is generated: LoRAs and their strengths, resolution (default 1248x832 landscape), sampler, steps, CFG, style and quality tags, and face detailing.
+
+* **Shared workflow**: `core/skills/portrait_generation/ImageWorkflow.json` is used for all general scene generation and followers without their own workflow.
+* **Follower workflow**: Place an `ImageWorkflow.json` next to a follower's card to give scenes featuring them a custom visual look, e.g. `core/followers/riasilmane/ImageWorkflow.json`.
+
+The game fills these placeholders in the workflow's text before running it:
+
+| Placeholder | Filled with |
+|---|---|
+| `%prompt%` | The visual scene description plus any companion appearance tags |
+| `%negative_prompt%` | Any companion negative tags |
+| `%seed%` | A random seed for each image |
+| `%model%` | The checkpoint selected in Settings |
+
+Put any LoRA a workflow names in `models/loras/`. Generation stops with an error naming the missing file, so the image always matches its workflow.
+
 ### Manual Installation:
 1. Open a terminal in the project directory:
    ```bash

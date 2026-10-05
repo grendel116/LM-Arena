@@ -246,6 +246,14 @@ def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, s
     except Exception as e:
         return f"Error reading workflow template: {e}"
 
+    from core import engine_diffusion
+    active_ckpt = engine_diffusion.get_active_checkpoint() or os.getenv("COMFYUI_CHECKPOINT", "")
+    if active_ckpt:
+        if "%model%" not in parameters:
+            parameters["%model%"] = active_ckpt
+        if "%checkpoint%" not in parameters:
+            parameters["%checkpoint%"] = active_ckpt
+
     # Recursive replacement helper
     def replace_placeholders(obj):
         if isinstance(obj, dict):
@@ -346,182 +354,149 @@ def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, s
     except Exception as e:
         return f"Error executing ComfyUI workflow: {e}"
 @track_tool_activity
-def generate_local_image(prompt: str, subject_type: str = "auto", target_follower: str = None) -> str:
-    """Generates a local image using the in-process GPU diffusion engine.
+def generate_local_image(prompt: str = "", **kwargs) -> str:
+    """Generates a first-person POV image of the current scene (like a Skyrim screenshot).
+    
+    If followers are present or mentioned in the prompt, their character tags and appearance
+    are automatically injected into the scene.
     
     Args:
-        prompt: A prompt describing what you are doing or the scene/expression.
-        subject_type: "follower", "player", "environment", or "auto" (detected from prompt)
-        target_follower: Follower ID to focus on (e.g. "brea", "riasilmane"). If omitted, targets last mentioned.
+        prompt: Visual description of the current scene, characters present, actions, or atmosphere.
         
     Returns:
         A markdown link to the generated image, or an error message.
     """
     import os
-    import random
     import time
     import json
+    import re
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     from runners.follower import get_active_followers, get_active_follower
-    from core.follower_config import get_follower_name
+    from core.follower_config import (
+        get_follower_name,
+        get_follower_image_details,
+        replace_placeholders,
+        match_follower_by_full_name,
+    )
 
     party = get_active_followers()
-    prompt_lower = prompt.lower()
-    from core.follower_config import match_follower_by_full_name, get_follower_image_details
+    clean_prompt = (prompt or "").strip().strip('"\'').replace('\n', ' ').strip()
 
-    target_fol_id = target_follower
+    # Determine which follower(s) are present in the scene
+    matched_fol_id = match_follower_by_full_name(clean_prompt, candidate_ids=party)
+    target_fol = kwargs.get('target_follower') or matched_fol_id or (party[0] if party else get_active_follower())
 
-    # Name in prompt acts as direct trigger for follower portrait injection
-    name_matched_fol = match_follower_by_full_name(prompt)
-    if name_matched_fol:
-        mode = "follower"
-        target_fol_id = name_matched_fol
-    elif subject_type == "auto":
-        if any(w in prompt_lower for w in ("scenery", "environment", "landscape", "no humans", "no characters", "exterior", "architectural", "generate_environment", "dungeon", "chamber", "corridor", "hallway", "cave", "cavern", "room", "ruins", "interior")):
-            mode = "environment"
-        elif any(w in prompt_lower for w in ("player character", "player portrait", "the hero", "adventurer", "portrait of the player", "generate_player_portrait")):
-            mode = "player"
-        else:
-            mode = "follower"
-    else:
-        mode = subject_type
+    # Replace user/char placeholders (e.g. {{user}}, {{char}})
+    final_prompt = replace_placeholders(clean_prompt, follower_id=target_fol, party_followers=party)
 
-    img_details_val = ""
-    neg_details_val = ""
+    # Collect follower-specific negative prompt tags and workflow preference
+    injected_negatives = []
+    primary_workflow_fol = kwargs.get('target_follower')
 
-    if mode == "player":
-        try:
-            from core.character import load_character
-            from runners.follower import get_active_user
-            sheet = load_character(get_active_user())
-            race = sheet.get("race", "Nord")
-            gender = sheet.get("gender", "Male")
-            char_class = sheet.get("class", "Warrior")
-            img_details_val = f"Elder Scrolls fantasy character art, {gender} {race} {char_class}, portrait, highly detailed, dramatic lighting"
-            neg_details_val = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text, modern clothing, contemporary"
-        except Exception as pe:
-            print(f"[DEBUG] Error reading player details for image generation: {pe}", flush=True)
-            img_details_val = "Elder Scrolls fantasy character art, portrait, highly detailed, dramatic lighting"
-            neg_details_val = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
-        save_fol_id = party[0] if party else "game"
-    elif mode == "environment":
-        img_details_val = "scenery, environment landscape art, Elder Scrolls aesthetic, atmospheric lighting, detailed architecture, empty, no humans, no people"
-        neg_details_val = "worst quality, low quality, character, human, person, 1girl, 1boy, face, portrait, deformed, watermark, text"
-        save_fol_id = party[0] if party else "game"
-    else:
-        # Follower mode: Resolve target follower
-        if not target_fol_id:
-            target_fol_id = match_follower_by_full_name(prompt)
+    followers_to_check = party if party else ([target_fol] if target_fol else [])
+    for fol_id in followers_to_check:
+        if not fol_id or fol_id in ("game", "the_game"):
+            continue
+        fol_name = get_follower_name(fol_id)
+        is_mentioned = bool(fol_name and re.search(rf"\b{re.escape(fol_name.lower())}\b", final_prompt.lower()))
+        is_only_companion = (len(followers_to_check) == 1 and not clean_prompt)
 
-        if not target_fol_id and party:
-            # Check active session history for last follower who spoke
-            try:
-                sid = current_session_id.get("default")
-                from runners.runners import runner
-                import asyncio
-                chat_history = asyncio.run(runner.get_history(sid))
-                for msg in reversed(chat_history):
-                    sid_sender = msg.get("sender_id")
-                    if sid_sender in party:
-                        target_fol_id = sid_sender
-                        break
-            except Exception:
-                pass
+        if is_mentioned or is_only_companion:
+            pos_tags, neg_tags = get_follower_image_details(fol_id)
+            if pos_tags:
+                clean_tags = pos_tags.replace('"', '').replace('\n', ' ').strip()
+                existing_lower = final_prompt.lower()
+                new_tags = [t.strip() for t in clean_tags.split(',') if t.strip() and t.strip().lower() not in existing_lower]
+                if new_tags:
+                    injected_str = ", ".join(new_tags)
+                    if fol_name and re.search(rf"\b{re.escape(fol_name)}\b", final_prompt, flags=re.IGNORECASE):
+                        final_prompt = re.sub(
+                            rf"\b{re.escape(fol_name)}\b(\s*,)?",
+                            lambda m: f"{m.group(0).rstrip(',').strip()}, {injected_str},",
+                            final_prompt,
+                            count=1,
+                            flags=re.IGNORECASE
+                        )
+                        final_prompt = re.sub(r',\s*,+', ',', final_prompt).strip().rstrip(',')
+                    else:
+                        if final_prompt:
+                            final_prompt = f"{fol_name}, {injected_str}, {final_prompt}"
+                        else:
+                            final_prompt = f"{fol_name}, {injected_str}"
+            if neg_tags:
+                injected_negatives.append(neg_tags.replace('"', '').replace('\n', ' ').strip())
+            if not primary_workflow_fol:
+                primary_workflow_fol = fol_id
 
-        if not target_fol_id:
-            target_fol_id = party[0] if party else get_active_follower()
+    # Fallback if prompt is completely empty
+    if not final_prompt:
+        fallback_parts = []
+        if primary_workflow_fol:
+            fol_name = get_follower_name(primary_workflow_fol)
+            if fol_name:
+                pos_tags, _ = get_follower_image_details(primary_workflow_fol)
+                if pos_tags:
+                    fallback_parts.append(f"{fol_name}, {pos_tags}")
+                else:
+                    fallback_parts.append(f"{fol_name} standing nearby")
+        fallback_parts.extend(["dungeon stone walls", "torchlight and shadows"])
+        final_prompt = ", ".join(fallback_parts)
 
-        save_fol_id = target_fol_id or "game"
+    final_negative = ", ".join(injected_negatives) if injected_negatives else ""
 
-        # Load image prompt tags directly from resolved follower card
-        img_details_val, neg_details_val = get_follower_image_details(save_fol_id)
-
-    # Sanitize prompt string
-    clean_prompt = (prompt or "").strip().strip('"\'')
-    clean_prompt = clean_prompt.replace('\n', ' ').strip()
-
-    # Combine prompt and image details
-    from core.follower_config import replace_placeholders
-    final_prompt = replace_placeholders(clean_prompt, follower_id=save_fol_id, party_followers=party)
-
-    if img_details_val:
-        clean_img_details = img_details_val.replace('"', '').replace('\n', ' ').strip()
-        existing_lower = final_prompt.lower()
-        new_tags = [t.strip() for t in clean_img_details.split(',') if t.strip() and t.strip().lower() not in existing_lower]
-        if new_tags:
-            if final_prompt and not final_prompt.rstrip().endswith(','):
-                final_prompt += ", "
-            final_prompt += ", ".join(new_tags)
-
-    clean_neg = (neg_details_val or "").replace('"', '').replace('\n', ' ').strip()
-    if clean_neg:
-        final_negative = f"{clean_neg}, worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
-    else:
-        final_negative = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text"
-
-    if not final_prompt.strip():
-        char_title = get_follower_name(save_fol_id) if save_fol_id != "game" else "Follower"
-        final_prompt = f"portrait of {char_title}, highly detailed, dramatic lighting"
-
+    save_fol_id = primary_workflow_fol or (party[0] if party else "game")
     timestamp = int(time.time())
-    local_filename = f"portrait_{timestamp}.png"
+    local_filename = f"scene_{timestamp}.png"
     portraits_dir = os.path.normpath(os.path.join(base_dir, "core", "followers", save_fol_id, "portraits"))
     local_path = os.path.join(portraits_dir, local_filename)
     os.makedirs(portraits_dir, exist_ok=True)
 
-    # Execute in-process DirectML GPU diffusion engine
     try:
         from adapters.vram_orchestrator import start_img
         start_img()
 
-        from core.engine_diffusion import generate_portrait_image
+        from core.engine_diffusion import generate_portrait_image, resolve_image_workflow_path
+        workflow_to_use = resolve_image_workflow_path(follower_id=primary_workflow_fol)
+
         generate_portrait_image(
             prompt=final_prompt,
             negative_prompt=final_negative,
+            workflow_path=workflow_to_use,
             save_path=local_path
         )
-        json_path = os.path.join(portraits_dir, f"portrait_{timestamp}.json")
+
+        json_path = os.path.join(portraits_dir, f"scene_{timestamp}.json")
         try:
             with open(json_path, "w", encoding="utf-8") as jf:
                 json.dump({
                     "prompt": prompt or final_prompt,
                     "full_prompt": final_prompt,
-                    "mode": mode,
-                    "subject_type": mode,
+                    "mode": "first_person_pov",
                     "follower_id": save_fol_id,
                     "engine": "in_process_gpu"
                 }, jf, indent=4)
         except Exception:
             pass
-        return f"![Portrait](/images/portraits/{local_filename}?v={timestamp})"
+
+        return f"![Scene](/images/portraits/{local_filename}?v={timestamp})"
     except Exception as e:
         print(f"[engine_diffusion] Error generating image: {e}")
-        return f"Error generating portrait: {e}"
+        return f"Error generating scene: {e}"
 
 
-@track_tool_activity
-def generate_follower_portrait(prompt: str = "", target_follower: str = None) -> str:
-    """Generates a portrait of the active follower."""
-    return generate_local_image(prompt, subject_type="follower", target_follower=target_follower)
+# Backward-compatible aliases for legacy calls
+def generate_follower_portrait(prompt: str = "", **kwargs) -> str:
+    return generate_local_image(prompt=prompt)
 
+def generate_player_portrait(prompt: str = "", **kwargs) -> str:
+    return generate_local_image(prompt=prompt)
 
-@track_tool_activity
-def generate_player_portrait(prompt: str = "") -> str:
-    """Generates a portrait of the player character based on character sheet and profile."""
-    return generate_local_image(prompt, subject_type="player")
+def generate_environment_image(prompt: str = "", **kwargs) -> str:
+    return generate_local_image(prompt=prompt)
 
-
-@track_tool_activity
-def generate_environment_image(prompt: str = "") -> str:
-    """Generates an atmospheric scene depiction of the current environment and location."""
-    return generate_local_image(prompt, subject_type="environment")
-
-
-@track_tool_activity
-def generate_imagen(prompt: str = "", subject_type: str = "auto") -> str:
-    """Generates an image using Google Imagen or local diffusion engine."""
-    return generate_local_image(prompt, subject_type=subject_type)
+def generate_imagen(prompt: str = "", **kwargs) -> str:
+    return generate_local_image(prompt=prompt)
 
 
 

@@ -53,13 +53,12 @@ def start_flask_server(port: int, ssl_context=None):
 
 
 def on_closed():
-    """Immediately stops local server and exits process on window close."""
+    """Closes every process the app started, then exits immediately on window close."""
     try:
-        from runners import local_runner
-        local_runner.stop_local_server()
-    except Exception:
-        pass
-    os._exit(0)
+        from adapters.shutdown import close_app_processes
+        close_app_processes()
+    finally:
+        os._exit(0)
 
 
 def main():

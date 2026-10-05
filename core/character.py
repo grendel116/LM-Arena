@@ -1232,3 +1232,35 @@ def rollback_tool_effects(character_name: str, tool_calls: list) -> None:
             save_character(character_name, sheet)
     except Exception as e:
         print(f"[rollback_tool_effects] Error reverting tool effects: {e}", flush=True)
+
+
+def get_player_pov_details(save_id: str = None) -> dict:
+    """Returns visual vantage details for first-person POV scenes based on the character sheet."""
+    sheet = load_character(save_id)
+    race = sheet.get("race", "Nord")
+    gender = sheet.get("gender", "Male")
+    char_class = sheet.get("class", "Mage")
+    
+    equipped_items = []
+    equipped_hands = ""
+    for item in sheet.get("inventory", []):
+        if item.get("equipped"):
+            name = item.get("name", "")
+            slot = item.get("equipped_slot", "")
+            equipped_items.append(name)
+            if slot in ("main_hand", "weapon"):
+                equipped_hands = f"holding {name}"
+            elif slot in ("hands", "gloves", "gauntlets"):
+                equipped_hands = f"{name} on hands"
+
+    spells = [s.get("name") for s in sheet.get("spells", []) if s.get("name")]
+    primary_spell = spells[0] if spells else ""
+
+    return {
+        "race": race,
+        "gender": gender,
+        "class": char_class,
+        "equipped": equipped_items,
+        "hands_action": equipped_hands,
+        "primary_spell": primary_spell
+    }

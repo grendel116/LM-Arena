@@ -26,26 +26,22 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def resolve_checkpoint_path(checkpoint_name: Optional[str] = None) -> str:
     """Resolves the absolute path to the requested or default checkpoint model."""
-    if checkpoint_name and os.path.exists(checkpoint_name):
-        return checkpoint_name
+    target = (checkpoint_name or "").strip()
+    if not target:
+        target = (get_active_checkpoint() or "").strip()
 
-    candidates = []
-    if checkpoint_name:
-        candidates.append(os.path.join(CHECKPOINTS_DIR, checkpoint_name))
-        candidates.append(os.path.join(MODELS_DIR, checkpoint_name))
+    if target and os.path.exists(target):
+        return target
 
-    candidates.append(os.path.join(CHECKPOINTS_DIR, "olivkaIllustrious_v10.safetensors"))
-    candidates.append(os.path.join(CHECKPOINTS_DIR, "WAI_illustrious-SDXL_16.safetensors"))
-    candidates.append(os.path.join(CHECKPOINTS_DIR, "sd_xl_base_1.0.safetensors"))
+    if target:
+        for base in (CHECKPOINTS_DIR, MODELS_DIR):
+            candidate = os.path.join(base, target)
+            if os.path.exists(candidate):
+                return candidate
 
-    for path in candidates:
-        if os.path.exists(path):
-            return path
-
-    if os.path.exists(CHECKPOINTS_DIR):
-        for f in os.listdir(CHECKPOINTS_DIR):
-            if f.lower().endswith((".safetensors", ".ckpt")):
-                return os.path.join(CHECKPOINTS_DIR, f)
+    ckpts = list_checkpoints()
+    if ckpts:
+        return ckpts[0]["path"]
 
     raise FileNotFoundError(f"No checkpoint models found in {CHECKPOINTS_DIR}.")
 
@@ -179,22 +175,59 @@ def list_vaes() -> List[Dict[str, Any]]:
 def get_active_checkpoint() -> Optional[str]:
     """Returns the name of the currently selected checkpoint."""
     global _active_checkpoint
-    if _active_checkpoint and os.path.exists(_active_checkpoint):
-        return os.path.basename(_active_checkpoint)
+    if _active_checkpoint:
+        name = os.path.basename(_active_checkpoint)
+        if os.path.exists(_active_checkpoint) or any(os.path.exists(os.path.join(d, name)) for d in (CHECKPOINTS_DIR, MODELS_DIR)):
+            return name
+
+    env_ckpt = (os.getenv("COMFYUI_CHECKPOINT") or "").strip()
+    if env_ckpt:
+        if os.path.exists(env_ckpt) or any(os.path.exists(os.path.join(d, env_ckpt)) for d in (CHECKPOINTS_DIR, MODELS_DIR)):
+            _active_checkpoint = env_ckpt
+            return os.path.basename(env_ckpt)
+
+    from variables import settings
+    setting_ckpt = (getattr(settings, "COMFYUI_CHECKPOINT", None) or "").strip()
+    if setting_ckpt:
+        if os.path.exists(setting_ckpt) or any(os.path.exists(os.path.join(d, setting_ckpt)) for d in (CHECKPOINTS_DIR, MODELS_DIR)):
+            _active_checkpoint = setting_ckpt
+            return os.path.basename(setting_ckpt)
+
     ckpts = list_checkpoints()
-    for c in ckpts:
-        if "illustrious" in c["filename"].lower() or "sdxl" in c["filename"].lower():
-            return c["filename"]
-    return ckpts[0]["filename"] if ckpts else None
+    if ckpts:
+        _active_checkpoint = ckpts[0]["filename"]
+        return _active_checkpoint
+    return None
 
 
 def set_active_checkpoint(checkpoint_name: str) -> bool:
-    """Sets the active diffusion checkpoint."""
+    """Sets the active diffusion checkpoint and syncs environment."""
     global _active_checkpoint
     try:
         resolved = resolve_checkpoint_path(checkpoint_name)
         _active_checkpoint = resolved
-        print(f"[engine_diffusion] Active checkpoint set to: {resolved}")
+        filename = os.path.basename(resolved)
+        os.environ["COMFYUI_CHECKPOINT"] = filename
+
+        from variables import settings
+        settings.COMFYUI_CHECKPOINT = filename
+
+        env_path = os.path.join(root_dir, ".env")
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            updated = False
+            for i, line in enumerate(lines):
+                if line.strip().startswith("COMFYUI_CHECKPOINT="):
+                    lines[i] = f"COMFYUI_CHECKPOINT={filename}\n"
+                    updated = True
+                    break
+            if not updated:
+                lines.append(f"\nCOMFYUI_CHECKPOINT={filename}\n")
+            with open(env_path, "w", encoding="utf-8") as f:
+                f.writelines(lines)
+
+        print(f"[engine_diffusion] Active checkpoint set to: {filename}")
         return True
     except Exception as e:
         print(f"[engine_diffusion] Failed to set active checkpoint: {e}")
@@ -338,7 +371,12 @@ def execute_workflow_graph(
         sys.path.insert(0, comfy_dir)
 
     import folder_paths
-    folder_paths.folder_names_and_paths["checkpoints"] = ([os.path.join(root_dir, "models", "checkpoints")], folder_paths.supported_pt_extensions)
+    ckpt_dirs = [os.path.join(root_dir, "models", "checkpoints")]
+    from variables.settings import COMFYUI_DIR
+    comfy_ckpt_dir = os.path.normpath(os.path.join(COMFYUI_DIR, "models", "checkpoints"))
+    if os.path.exists(comfy_ckpt_dir) and comfy_ckpt_dir not in ckpt_dirs:
+        ckpt_dirs.append(comfy_ckpt_dir)
+    folder_paths.folder_names_and_paths["checkpoints"] = (ckpt_dirs, folder_paths.supported_pt_extensions)
     folder_paths.folder_names_and_paths["loras"] = ([os.path.join(root_dir, "models", "loras")], folder_paths.supported_pt_extensions)
     folder_paths.folder_names_and_paths["vae"] = ([os.path.join(root_dir, "models", "vae")], folder_paths.supported_pt_extensions)
     folder_paths.folder_names_and_paths["ultralytics"] = ([os.path.join(root_dir, "models", "ultralytics")], folder_paths.supported_pt_extensions)
@@ -434,10 +472,19 @@ def execute_workflow_graph(
 
         if class_type == "LoraLoader":
             lora_name = resolved_inputs.get("lora_name")
-            sm = resolved_inputs.get("strength_model")
-            sc = resolved_inputs.get("strength_clip")
+            sm = float(resolved_inputs.get("strength_model", 1.0))
+            sc = float(resolved_inputs.get("strength_clip", 1.0))
             m_in = resolved_inputs.get("model")
             c_in = resolved_inputs.get("clip")
+
+            is_placeholder = isinstance(lora_name, str) and lora_name.startswith("%") and lora_name.endswith("%")
+            if not lora_name or is_placeholder or (sm == 0 and sc == 0):
+                print(f"[engine_diffusion] Bypassing LoRA node [{node_id}]: {lora_name}")
+                executed_outputs[node_id] = (m_in, c_in)
+                return executed_outputs[node_id]
+            if not folder_paths.get_full_path("loras", lora_name):
+                raise FileNotFoundError(f"LoRA not found: {lora_name} (workflow node {node_id}). Place it in models/loras.")
+
             cache_key = ("LoraLoader", lora_name, sm, sc, id(m_in), id(c_in))
             if cache_key in _COMFY_NODE_CACHE:
                 print(f"[engine_diffusion] Reusing cached LoRA weights: {lora_name}")
@@ -538,146 +585,73 @@ def execute_workflow_graph(
     return None, ""
 
 
+SHARED_IMAGE_WORKFLOW = os.path.join(root_dir, "core", "skills", "portrait_generation", "ImageWorkflow.json")
+
+
+def resolve_image_workflow_path(follower_id: Optional[str] = None) -> str:
+    """Returns the image workflow that defines how images are generated:
+    the follower's own core/followers/<follower_id>/ImageWorkflow.json, else the shared workflow."""
+    if follower_id:
+        from variables.settings import FOLLOWERS_DIR
+        follower_wf = os.path.join(FOLLOWERS_DIR, follower_id, "ImageWorkflow.json")
+        if os.path.exists(follower_wf):
+            return follower_wf
+    return SHARED_IMAGE_WORKFLOW
+
+
 def _generate_portrait_image_inprocess(
     prompt: str,
-    negative_prompt: str = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text",
+    negative_prompt: str = "",
     checkpoint: Optional[str] = None,
-    width: int = 832,
-    height: int = 1248,
-    num_inference_steps: int = 24,
-    guidance_scale: float = 6.0,
-    sampler_name: str = "euler",
-    scheduler: str = "simple",
     seed: Optional[int] = None,
     workflow_path: Optional[str] = None,
     save_path: Optional[str] = None
 ) -> str:
-    """Internal implementation executing workflow graph with GPU acceleration."""
+    """Runs the image workflow graph in-process. Every generation setting comes from the workflow;
+    this function only fills its placeholders (%prompt%, %negative_prompt%, %seed%, %model%)."""
     if seed is None or seed < 0:
         seed = random.randint(1, 2147483647)
 
-    wf_file = workflow_path or os.getenv("COMFYUI_IMAGE_WORKFLOW", "core/skills/portrait_generation/ImageWorkflow.json")
-    if not os.path.isabs(wf_file):
-        wf_file = os.path.normpath(os.path.join(root_dir, wf_file))
-
-    selected_checkpoint = checkpoint or resolve_checkpoint_name()
-
-    if os.path.exists(wf_file):
-        print(f"[engine_diffusion] Adapting dynamically to workflow: {wf_file}")
-        replacements = {
-            "%prompt%": prompt,
-            "%negative_prompt%": negative_prompt,
-            "%seed%": seed,
-            "%model%": selected_checkpoint,
-            "%vae%": ""
-        }
-        _, out_path = execute_workflow_graph(wf_file, replacements=replacements, save_path=save_path)
-        if out_path and os.path.exists(out_path):
-            return out_path
-
-    # Fallback to direct node synthesis if no workflow file exists
-    comfy_dir = os.path.normpath(os.path.join(root_dir, "core", "comfy_engine"))
-    if comfy_dir not in sys.path:
-        sys.path.insert(0, comfy_dir)
-
-    import folder_paths
-    folder_paths.folder_names_and_paths["checkpoints"] = ([os.path.join(root_dir, "models", "checkpoints")], folder_paths.supported_pt_extensions)
-    folder_paths.folder_names_and_paths["loras"] = ([os.path.join(root_dir, "models", "loras")], folder_paths.supported_pt_extensions)
-
-    import nodes
-    import comfy.model_management
-
-    ckpt_loader = nodes.CheckpointLoaderSimple()
-    model, clip, vae = ckpt_loader.load_checkpoint(selected_checkpoint)
-    try:
-        model.model.to(torch.float16)
-    except Exception:
-        pass
-
-    clip_encoder = nodes.CLIPTextEncode()
-    positive = clip_encoder.encode(clip, prompt)[0]
-    negative = clip_encoder.encode(clip, negative_prompt)[0]
-
-    latent_node = nodes.EmptyLatentImage()
-    latent = latent_node.generate(width, height, 1)[0]
-
-    ksampler = nodes.KSampler()
-    samples = ksampler.sample(model, seed, num_inference_steps, guidance_scale, sampler_name, scheduler, positive, negative, latent, 1.0)[0]
-
-    try:
-        vae.first_stage_model.to("cpu")
-        vae.device = torch.device("cpu")
-        vae.output_device = torch.device("cpu")
-    except Exception:
-        pass
-
-    samples_cpu = {"samples": samples["samples"].to("cpu")}
-    vae_decoder = nodes.VAEDecode()
-    images = vae_decoder.decode(vae, samples_cpu)[0]
-
-    from PIL import Image
-    import numpy as np
-    img_array = (images[0].detach().cpu().numpy() * 255).astype(np.uint8)
-    image = Image.fromarray(img_array)
-
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        image.save(save_path)
-        print(f"[engine_diffusion] Portrait saved to {save_path}")
-
-    return save_path or ""
+    wf_file = workflow_path or SHARED_IMAGE_WORKFLOW
+    if not os.path.exists(wf_file):
+        raise FileNotFoundError(f"Image workflow not found: {wf_file}")
+    print(f"[engine_diffusion] Running workflow: {wf_file}")
+    replacements = {
+        "%prompt%": prompt,
+        "%negative_prompt%": negative_prompt,
+        "%seed%": seed,
+        "%model%": checkpoint or get_active_checkpoint() or resolve_checkpoint_name(),
+    }
+    _, out_path = execute_workflow_graph(wf_file, replacements=replacements, save_path=save_path)
+    if not out_path or not os.path.exists(out_path):
+        raise RuntimeError(f"Workflow produced no image: {wf_file}")
+    return out_path
 
 
 def generate_portrait_image(
     prompt: str,
-    negative_prompt: str = "worst quality, low quality, deformed, mutated, extra limbs, watermark, text",
+    negative_prompt: str = "",
     checkpoint: Optional[str] = None,
-    width: int = 832,
-    height: int = 1248,
-    num_inference_steps: int = 24,
-    guidance_scale: float = 6.0,
-    sampler_name: str = "euler",
-    scheduler: str = "simple",
     seed: Optional[int] = None,
     workflow_path: Optional[str] = None,
     save_path: Optional[str] = None
 ) -> str:
-    """Generates an image via persistent diffusion daemon, maintaining cached models across calls."""
+    payload = {
+        "prompt": prompt,
+        "negative_prompt": negative_prompt,
+        "checkpoint": checkpoint or get_active_checkpoint(),
+        "seed": seed,
+        "workflow_path": workflow_path,
+        "save_path": save_path
+    }
+
     if os.getenv("DIFFUSION_WORKER") == "1":
-        return _generate_portrait_image_inprocess(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            checkpoint=checkpoint,
-            width=width,
-            height=height,
-            num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale,
-            sampler_name=sampler_name,
-            scheduler=scheduler,
-            seed=seed,
-            workflow_path=workflow_path,
-            save_path=save_path
-        )
+        return _generate_portrait_image_inprocess(**payload)
 
     if not ensure_daemon_running():
         raise RuntimeError("Failed to start persistent diffusion daemon.")
 
     import urllib.request
-
-    payload = {
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-        "checkpoint": checkpoint,
-        "width": width,
-        "height": height,
-        "num_inference_steps": num_inference_steps,
-        "guidance_scale": guidance_scale,
-        "sampler_name": sampler_name,
-        "scheduler": scheduler,
-        "seed": seed,
-        "workflow_path": workflow_path,
-        "save_path": save_path
-    }
 
     req_data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(

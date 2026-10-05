@@ -4,7 +4,6 @@ import threading
 import requests
 import json
 import time
-import atexit
 
 # Headless ComfyUI Manager
 
@@ -452,15 +451,45 @@ def fetch_comfy_manager_databases():
     except Exception as e:
         print(f"Error fetching ComfyUI-Manager databases: {e}")
 
+MODEL_EXTENSIONS = (".safetensors", ".sft", ".ckpt")
+
+# ComfyUI models subfolder for each loader input key (API format)
+MODEL_FOLDER_BY_INPUT = {
+    "ckpt_name": "checkpoints",
+    "lora_name": "loras",
+    "vae_name": "vae",
+    "unet_name": "diffusion_models",
+}
+
+# ComfyUI models subfolder for each loader node type (workflow format, where widget values carry no key)
+MODEL_FOLDER_BY_NODE = {
+    "CheckpointLoaderSimple": "checkpoints",
+    "LoraLoader": "loras",
+    "LoraLoaderModelOnly": "loras",
+    "VAELoader": "vae",
+    "UNETLoader": "diffusion_models",
+}
+
+def _guess_model_folder(filename):
+    """Picks a models subfolder from the filename when the workflow gives no loader context."""
+    name = filename.lower()
+    if "vae" in name:
+        return "vae"
+    if "hunyuan_video" in name:
+        return "diffusion_models"
+    if "animatediff" in name or name.startswith("mm_"):
+        return "animatediff_models"
+    return "checkpoints"
+
 def parse_workflow_dependencies(workflow_json_str):
-    """Parses workflow JSON to identify missing node classes and missing model filenames."""
+    """Parses workflow JSON into required node classes and a {model filename: models subfolder} map."""
     try:
         workflow = json.loads(workflow_json_str)
     except Exception:
-        return [], []
+        return [], {}
         
     required_nodes = set()
-    required_models = set() # (type, filename)
+    required_models = {}
     
     # Standard format support (API format or workflow format)
     # 1. API format (dict key is node id, value is dict with "class_type" and "inputs")
@@ -471,23 +500,20 @@ def parse_workflow_dependencies(workflow_json_str):
             node_type = node.get("type")
             if node_type:
                 required_nodes.add(node_type)
-            # Find widgets or fields containing filenames
-            inputs = node.get("widgets_values", [])
-            for val in inputs:
-                if isinstance(val, str) and (val.endswith(".safetensors") or val.endswith(".sft") or val.endswith(".ckpt")):
-                    required_models.add(val)
+            for val in node.get("widgets_values", []):
+                if isinstance(val, str) and val.endswith(MODEL_EXTENSIONS):
+                    required_models[val] = MODEL_FOLDER_BY_NODE.get(node_type) or _guess_model_folder(val)
     elif isinstance(workflow, dict):
         for node_id, node_data in workflow.items():
             if isinstance(node_data, dict):
                 node_type = node_data.get("class_type")
                 if node_type:
                     required_nodes.add(node_type)
-                inputs = node_data.get("inputs", {})
-                for k, val in inputs.items():
-                    if isinstance(val, str) and (val.endswith(".safetensors") or val.endswith(".sft") or val.endswith(".ckpt")):
-                        required_models.add(val)
+                for k, val in node_data.get("inputs", {}).items():
+                    if isinstance(val, str) and val.endswith(MODEL_EXTENSIONS):
+                        required_models[val] = MODEL_FOLDER_BY_INPUT.get(k) or _guess_model_folder(val)
                         
-    return list(required_nodes), list(required_models)
+    return list(required_nodes), required_models
 
 def _resolver_worker(workflow_json_str):
     global resolution_status
@@ -505,15 +531,19 @@ def _resolver_worker(workflow_json_str):
         
         required_nodes, required_models = parse_workflow_dependencies(workflow_json_str)
         
-        # Ensure we always require the default checkpoint and VAE if not already present on disk
-        from variables.settings import COMFYUI_CHECKPOINT, COMFYUI_VAE
-        ckpt_path = os.path.normpath(os.path.join(COMFYUI_DIR, "models", "checkpoints", COMFYUI_CHECKPOINT))
-        if not os.path.exists(ckpt_path) and COMFYUI_CHECKPOINT not in required_models:
-            required_models.append(COMFYUI_CHECKPOINT)
+        # Ensure we require the active checkpoint and VAE if not already present on disk
+        from core import engine_diffusion
+        from variables.settings import COMFYUI_VAE, CHECKPOINTS_DIR
+        active_ckpt = engine_diffusion.get_active_checkpoint() or os.getenv("COMFYUI_CHECKPOINT", "")
+        if active_ckpt:
+            ckpt_path = os.path.normpath(os.path.join(COMFYUI_DIR, "models", "checkpoints", active_ckpt))
+            local_ckpt = os.path.normpath(os.path.join(CHECKPOINTS_DIR, active_ckpt))
+            if not os.path.exists(ckpt_path) and not os.path.exists(local_ckpt) and active_ckpt not in required_models:
+                required_models[active_ckpt] = "checkpoints"
             
         vae_path = os.path.normpath(os.path.join(COMFYUI_DIR, "models", "vae", COMFYUI_VAE))
         if not os.path.exists(vae_path) and COMFYUI_VAE not in required_models:
-            required_models.append(COMFYUI_VAE)
+            required_models[COMFYUI_VAE] = "vae"
         
         # 1. Resolve custom nodes
         missing_nodes = []
@@ -622,18 +652,7 @@ def _resolver_worker(workflow_json_str):
             except Exception as e:
                 print(f"Error loading model database: {e}")
                 
-        for filename in required_models:
-            # Determine destination folders based on extension/type
-            dest_subfolder = "checkpoints"
-            if "lora" in filename.lower() or filename.lower() == "img2vid.safetensors":
-                dest_subfolder = "loras"
-            elif "vae" in filename.lower():
-                dest_subfolder = "vae"
-            elif "hunyuan_video" in filename.lower():
-                dest_subfolder = "diffusion_models"
-            elif "animatediff" in filename.lower() or filename.startswith("mm_") or filename == "animatediff_lightning_4step_comfy.safetensors":
-                dest_subfolder = "animatediff_models"
-                
+        for filename, dest_subfolder in required_models.items():
             target_path = os.path.normpath(os.path.join(COMFYUI_DIR, "models", dest_subfolder, filename))
             if os.path.exists(target_path):
                 continue # Already downloaded
@@ -656,8 +675,6 @@ def _resolver_worker(workflow_json_str):
                     download_url = "https://huggingface.co/Kijai/HunyuanVideo_comfy/resolve/main/hunyuan_video_720_cfgdistill_fp8_e4m3fn.safetensors"
                 elif filename == "hunyuan_video_vae_bf16.safetensors":
                     download_url = "https://huggingface.co/Kijai/HunyuanVideo_comfy/resolve/main/hunyuan_video_vae_bf16.safetensors"
-                elif filename == "img2vid.safetensors":
-                    download_url = "https://huggingface.co/leapfusion-image2vid-test/image2vid-512x320/resolve/main/img2vid.safetensors"
                 elif filename == "mm_sdxl_v10_beta.ckpt":
                     download_url = "https://huggingface.co/guoyww/animatediff/resolve/main/mm_sdxl_v10_beta.ckpt"
                 elif filename == "animatediff_lightning_4step_comfy.safetensors":
@@ -825,34 +842,31 @@ _local_checkpoints_cached = None
 _local_checkpoints_cache_time = 0.0
 
 def list_local_checkpoints(force_refresh=False):
-    """Scans ComfyUI/models/checkpoints/ directory and returns list of available filenames (cached)."""
+    """Scans ComfyUI and local checkpoints directories and returns list of available filenames (cached)."""
     global _local_checkpoints_cached, _local_checkpoints_cache_time
     now = time.time()
     if not force_refresh and _local_checkpoints_cached is not None and (now - _local_checkpoints_cache_time < 5.0):
         return _local_checkpoints_cached
         
     checkpoints = []
-    checkpoints_dir = os.path.normpath(os.path.join(COMFYUI_DIR, "models", "checkpoints"))
-    if os.path.exists(checkpoints_dir):
-        # Scan with max_depth=4 to prevent runaway directory traversals
-        def _scan(current_dir, current_depth):
-            if current_depth > 4:
-                return
-            try:
-                with os.scandir(current_dir) as it:
-                    for entry in it:
-                        if entry.is_file():
-                            if entry.name.lower().endswith((".safetensors", ".ckpt", ".sft")):
-                                rel_path = os.path.relpath(entry.path, checkpoints_dir)
-                                key = rel_path.replace("\\", "/")
-                                checkpoints.append(key)
-                        elif entry.is_dir():
-                            _scan(entry.path, current_depth + 1)
-            except Exception:
-                pass
-        _scan(checkpoints_dir, 1)
+    from variables.settings import CHECKPOINTS_DIR, MODELS_DIR
+    search_dirs = [os.path.normpath(os.path.join(COMFYUI_DIR, "models", "checkpoints")), CHECKPOINTS_DIR, MODELS_DIR]
+    seen = set()
+
+    for s_dir in search_dirs:
+        if not os.path.exists(s_dir):
+            continue
+        try:
+            for root, _, files in os.walk(s_dir):
+                for f in files:
+                    if f.lower().endswith((".safetensors", ".ckpt", ".sft")) and not f.startswith("."):
+                        if f not in seen:
+                            seen.add(f)
+                            checkpoints.append(f)
+        except Exception:
+            pass
         
-    _local_checkpoints_cached = sorted(list(set(checkpoints)))
+    _local_checkpoints_cached = sorted(checkpoints)
     _local_checkpoints_cache_time = now
     return _local_checkpoints_cached
 
@@ -937,17 +951,3 @@ def trigger_checkpoint_download(url, filename):
     thread.daemon = True
     thread.start()
     return True, "Checkpoint download started in background."
-
-def _atexit_comfy_clean():
-    # If Flask reloader is active, let the parent process handle cleanup on Ctrl+C
-    # so we don't kill ComfyUI on child process reloads.
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        return
-    try:
-        if check_comfy_running(force_refresh=True):
-            print(">>> Stopping ComfyUI server on application exit...", flush=True)
-            stop_comfy_server()
-    except Exception:
-        pass
-
-atexit.register(_atexit_comfy_clean)

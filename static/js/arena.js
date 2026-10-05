@@ -6311,7 +6311,7 @@ function renderMessage(msg, isLive = false) {
                         showCustomTextareaPrompt(
                             "Animate Image",
                             "Describe the motion or animation (e.g. blinking, smiling, wind in hair, looking at camera):",
-                            "gentle head turn, smiling, blinking, looking at camera",
+                            "Kinetic motion, subtle animation, smooth transitions",
                             (motionPrompt) => {
                                 if (motionPrompt !== null) {
                                     animateImage(animateBtn, img.src, motionPrompt);
@@ -8241,107 +8241,28 @@ function handleSwipeGesture() {
     }
 }
 
-// --- Image Generation Menu & Prompt Generators ---
-function togglePortraitMenu(event) {
-    if (event) {
-        event.stopPropagation();
-    }
-    const menu = document.getElementById('portrait-dropdown-menu');
-    const btn = document.getElementById('generate-portrait-btn');
-    if (!menu) return;
-    const isVisible = menu.style.display === 'flex';
-    menu.style.display = isVisible ? 'none' : 'flex';
-    if (btn) {
-        btn.setAttribute('aria-expanded', !isVisible);
-    }
-}
-
-function closePortraitMenu() {
-    const menu = document.getElementById('portrait-dropdown-menu');
-    const btn = document.getElementById('generate-portrait-btn');
-    if (menu) menu.style.display = 'none';
-    if (btn) btn.setAttribute('aria-expanded', 'false');
-}
-
-// Close portrait dropdown on click outside
-document.addEventListener('click', function (e) {
-    const wrapper = document.querySelector('.portrait-menu-wrapper');
-    if (wrapper && !wrapper.contains(e.target)) {
-        closePortraitMenu();
-    }
-});
-
-async function selectImageGenerationType(type) {
-    closePortraitMenu();
-    await generateCustomImage(type);
-}
-
-async function generateCustomImage(type = 'follower') {
+// --- First-Person POV Scene Capture ---
+async function captureSceneImage() {
     if (isGenerating) return;
 
-    let targetFollowerId = null;
-    let targetFollowerName = "";
+    // Determine indicator avatar based on active follower or narrator
     let speakerForIndicator = 'game';
-    let prompt = "";
+    let targetFollowerId = null;
 
-    if (type === 'player') {
-        const char = (currentCharacterData && currentCharacterData.character) ? currentCharacterData.character : {};
-        const charName = char.name || activePlayerName || "Hero";
-        const charRace = char.race || "Nord";
-        const charGender = char.gender || "Male";
-        const charClass = char.class || "Warrior";
-
-        let profileDesc = "";
-        const activeProf = (userProfiles || []).find(p => p.id === activeUserProfile);
-        if (activeProf && activeProf.content) {
-            profileDesc = activeProf.content.replace(/^#\s+[^\n]+\n?/, '').trim();
-        }
-
-        let descSummary = `a ${charGender} ${charRace} ${charClass} named ${charName}`;
-        if (profileDesc) {
-            descSummary += `. Appearance details: ${profileDesc}`;
-        }
-        prompt = `Render a detailed character portrait of the player character: ${descSummary}.`;
-        speakerForIndicator = (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none') ? activefollower : 'game';
-        targetFollowerId = 'user';
-        targetFollowerName = activePlayerName || "Hero";
-    } else if (type === 'environment') {
-        prompt = '';
-        speakerForIndicator = 'game';
-        targetFollowerId = 'game';
-        targetFollowerName = 'The Game';
-    } else {
-        if (typeof activePartyFollowers !== 'undefined' && Array.isArray(activePartyFollowers)) {
-            for (const fid of activePartyFollowers) {
-                targetFollowerId = fid;
-                targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[fid]) || "";
-                if (targetFollowerName) break;
-            }
-        }
-        if (!targetFollowerId && chatContainer) {
-            const rows = Array.from(chatContainer.querySelectorAll('.message-row.follower-row'))
-                .filter(r => !isImageMessageRow(r));
-            for (let i = rows.length - 1; i >= 0; i--) {
-                const row = rows[i];
-                const folId = row.dataset.followerId || row.dataset.senderId;
-                if (folId && folId !== 'game' && folId !== 'user') {
-                    targetFollowerId = folId;
-                    targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[folId]) || row.dataset.senderName || "";
-                    if (targetFollowerName) break;
-                }
-            }
-        }
-        if (!targetFollowerId) {
-            targetFollowerId = (typeof activePartyFollowers !== 'undefined' && activePartyFollowers[0]) || (typeof activefollower !== 'undefined' ? activefollower : 'riasilmane');
-            targetFollowerName = (typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[targetFollowerId]) || (typeof activefollowerName !== 'undefined' && activefollowerName) || "Follower";
-        }
+    if (typeof activePartyFollowers !== 'undefined' && Array.isArray(activePartyFollowers) && activePartyFollowers.length > 0) {
+        targetFollowerId = activePartyFollowers[0];
         speakerForIndicator = targetFollowerId;
-        prompt = '';
+    } else if (typeof activefollower !== 'undefined' && activefollower && activefollower !== 'none') {
+        targetFollowerId = activefollower;
+        speakerForIndicator = targetFollowerId;
     }
 
-    setGenerating(true);
+    const displayName = (speakerForIndicator === 'game')
+        ? 'The Game'
+        : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[speakerForIndicator]) || activefollowerName || 'Follower');
     const profileUrl = getProfileUrl(speakerForIndicator);
-    const displayName = (speakerForIndicator === 'game') ? 'The Game' : ((typeof activePartyFollowerNames !== 'undefined' && activePartyFollowerNames[speakerForIndicator]) || activefollowerName || 'Follower');
+
+    setGenerating(true);
 
     const typingIndicatorRow = document.createElement('div');
     typingIndicatorRow.className = 'message-row follower-row';
@@ -8370,10 +8291,7 @@ async function generateCustomImage(type = 'follower') {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 session_id: sessionId,
-                type: type,
-                prompt: prompt,
-                target_follower: targetFollowerId,
-                use_imagen: typeof useImagenMode !== 'undefined' ? useImagenMode : false
+                target_follower: targetFollowerId
             })
         });
 
@@ -8394,21 +8312,21 @@ async function generateCustomImage(type = 'follower') {
                 false,
                 data.msg_id,
                 null,
-                data.sender_id || targetFollowerId,
+                data.sender_id || speakerForIndicator,
                 data.sender_name || displayName
             );
             if (typeof loadServerImages === 'function') {
                 await loadServerImages();
             }
         } else {
-            showCustomAlert("Portrait Generation Error", data.error || "Failed to generate portrait.");
+            showCustomAlert("Scene Capture Error", data.error || "Failed to capture scene.");
         }
     } catch (err) {
         if (chatContainer && chatContainer.contains(typingIndicatorRow)) {
             chatContainer.removeChild(typingIndicatorRow);
         }
-        console.error("Error generating portrait:", err);
-        showCustomAlert("Error", "Could not connect to the server to generate portrait.");
+        console.error("Error capturing scene:", err);
+        showCustomAlert("Error", "Could not connect to the server to capture scene.");
     } finally {
         setGenerating(false);
         stopToolPolling();
@@ -8418,8 +8336,20 @@ async function generateCustomImage(type = 'follower') {
     }
 }
 
+// Backward compatibility helpers
+function togglePortraitMenu(event) {
+    if (event) event.stopPropagation();
+    captureSceneImage();
+}
+function closePortraitMenu() {}
+async function selectImageGenerationType(type) {
+    await captureSceneImage();
+}
+async function generateCustomImage(type) {
+    await captureSceneImage();
+}
 async function generatePortraitPrompt() {
-    return selectImageGenerationType('follower');
+    return captureSceneImage();
 }
 
 // --- autoGenerateUserMessage ---

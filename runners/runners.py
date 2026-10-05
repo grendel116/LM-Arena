@@ -998,48 +998,31 @@ class BaseRunner:
 
             context_block = f"\nRecent Scene Dialogue & Actions:{recent_scene_snippet}\n" if recent_scene_snippet else ""
 
-            if any(k in msg_lower for k in ("player character", "player portrait", "[generate_player_portrait:")):
-                instructions += (
-                    f"\n\n# Player Portrait Directive\n"
-                    f"Generate a portrait of the player character.{context_block}"
-                    f"Include their current pose, action, worn gear, and immediate scenery in comma-separated visual tags. Output only the tool call:\n"
-                    f"`[generate_player_portrait(prompt=\"1man/1girl, solo, [pose/action], [race], [class], [appearance], [scenery]\")]`."
-                )
-            elif any(k in msg_lower for k in ("environment", "landscape", "scenic view", "[generate_environment:")):
-                instructions += (
-                    f"\n\n# Environment Image Directive\n"
-                    f"Generate an image depicting the immediate physical environment of the current scene.{context_block}"
-                    f"Synthesize the architecture, environment, lighting, mood, and atmosphere from the recent narrative into comma-separated visual tags. Do not include dates, numbers, character names, or text.\n"
-                    f"Output only the tool call:\n"
-                    f"`[generate_environment_image(prompt=\"scenery, landscape, [specific architecture/environment], [lighting/atmosphere], empty scenery, no humans\")]`."
-                )
-            else:
-                from core.follower_config import match_follower_by_full_name, get_follower_name, get_follower_image_details
-                target_fol_id = match_follower_by_full_name(user_message, candidate_ids=party)
-                if not target_fol_id and party:
-                    try:
-                        history = self.sessions_history.get(session_id, [])
-                        for m in reversed(history):
-                            sid_sender = m.get("sender_id")
-                            if sid_sender in party:
-                                target_fol_id = sid_sender
-                                break
-                    except Exception:
-                        pass
-                if not target_fol_id:
-                    target_fol_id = party[0] if party else "riasilmane"
+            comp_pieces = []
+            try:
+                from core.follower_config import get_follower_image_details
+                for fid in party:
+                    if fid not in ("game", "the_game"):
+                        fname = get_follower_name(fid)
+                        pos, _ = get_follower_image_details(fid)
+                        if pos:
+                            comp_pieces.append(f"{fname} (appearance reference: {pos})")
+                        else:
+                            comp_pieces.append(fname)
+            except Exception:
+                pass
+            comp_context = f"\nCompanions in scene: {'; '.join(comp_pieces)}\n" if comp_pieces else ""
 
-                fol_name = get_follower_name(target_fol_id)
-                fol_pos_tags, _ = get_follower_image_details(target_fol_id)
-                clean_tags = fol_pos_tags.replace('"', '').replace('\n', ' ').strip() if fol_pos_tags else ""
-                tag_hint = f", {clean_tags}" if clean_tags else ""
-
-                instructions += (
-                    f"\n\n# Follower Portrait Directive\n"
-                    f"Generate a portrait of {fol_name}.{context_block}"
-                    f"Include their current pose, expression, and immediate scenery with their appearance tags. Output only the tool call:\n"
-                    f"`[generate_follower_portrait(prompt=\"solo, [pose/action], {fol_name}{tag_hint}, [scenery]\")]`."
-                )
+            instructions += (
+                f"\n\n# Scene Capture Directive\n"
+                f"Generate an image depicting the current scene.{context_block}{comp_context}"
+                f"Organize your comma-separated visual tags in clean order:\n"
+                f"1. Characters Present: Name each companion present (e.g. '[Name]'), followed immediately by their full character appearance tags and their scene pose or action. Do not describe any viewer, player POV, or camera perspective.\n"
+                f"2. Environment & Setting: architecture, room/dungeon geometry, terrain.\n"
+                f"3. Lighting & Atmosphere: torchlight, shadows, mood.\n"
+                f"Output only the tool call:\n"
+                f"`[generate_local_image(prompt=\"[ordered visual tags: characters with appearance tags -> environment -> lighting]\")]`."
+            )
 
         return replace_placeholders(instructions, follower_id=speaker_id, party_followers=party)
 

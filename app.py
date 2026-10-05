@@ -24,6 +24,7 @@ from flask import Flask, render_template, request, jsonify, send_file, send_from
 import asyncio
 from functools import wraps
 from runners.runners import OpenSourceRunner
+import adapters.shutdown  # closes every app-started process on exit
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -147,7 +148,7 @@ def prewarm_caches():
 
 def _trigger_early_prewarm():
     # Only auto-start in the active Werkzeug child worker, not the parent process.
-    # The parent's _atexit_clean may kill llama-server on reload, causing races.
+    # The parent's exit hook (adapters/shutdown.py) may kill llama-server on reload, causing races.
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         global _prewarm_started
         with _prewarm_lock:
@@ -1828,42 +1829,20 @@ def api_generate_portrait():
         from core.follower_config import get_follower_name, get_follower_image_details
 
         party = get_active_followers(session_id)
-
-        # Resolve subject
-        if image_type == 'player':
-            fol_id = target_follower or (party[0] if party else (get_active_follower() or "game"))
-            subject_type = "player"
-        elif image_type == 'environment':
-            fol_id = "game"
-            subject_type = "environment"
-        else:
-            fol_id = target_follower
-            if not fol_id and party:
-                try:
-                    chat_history = asyncio.run(runner.get_history(session_id))
-                    for msg in reversed(chat_history):
-                        if msg.get("sender_id") in party:
-                            fol_id = msg["sender_id"]
-                            break
-                except Exception:
-                    pass
-            if not fol_id:
-                fol_id = party[0] if party else (get_active_follower() or "game")
-            subject_type = "follower"
-
-        fol_name = get_follower_name(fol_id) if fol_id != "game" else "The Game"
+        fol_id = target_follower or (party[0] if party else (get_active_follower() or "game"))
+        fol_name = get_follower_name(fol_id) if fol_id not in ("game", "the_game") else "The Game"
 
         # Build context-aware prompt via lightweight LLM call if no custom prompt provided
         if not custom_prompt.strip():
-            custom_prompt = _generate_portrait_tags(session_id, fol_id, fol_name, subject_type, party)
+            custom_prompt = _generate_portrait_tags(session_id, party)
 
         if session_id in cancelled_sessions:
-            return jsonify({'error': 'Portrait generation cancelled by user.'}), 400
+            return jsonify({'error': 'Scene capture cancelled by user.'}), 400
 
-        new_markdown = tools.generate_local_image(custom_prompt, subject_type=subject_type, target_follower=fol_id)
+        new_markdown = tools.generate_local_image(custom_prompt)
 
         if session_id in cancelled_sessions:
-            return jsonify({'error': 'Portrait generation cancelled by user.'}), 400
+            return jsonify({'error': 'Scene capture cancelled by user.'}), 400
 
         if new_markdown.startswith("Error"):
             return jsonify({'error': new_markdown}), 500
@@ -1932,9 +1911,8 @@ def api_generate_portrait():
         _image_mutex.release()
 
 
-def _generate_portrait_tags(session_id, fol_id, fol_name, subject_type, party):
-    """Ask the LLM for contextual SD tags based on the last few chat messages."""
-    # Grab recent scene context
+def _generate_portrait_tags(session_id, party):
+    """Ask the LLM for contextual SD tags for a first-person POV scene capture."""
     recent_lines = []
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
@@ -1954,45 +1932,50 @@ def _generate_portrait_tags(session_id, fol_id, fol_name, subject_type, party):
 
     scene_block = "\n".join(recent_lines) if recent_lines else "(no recent context)"
 
-    if subject_type == "environment":
-        loc_info = ""
-        try:
-            from core.world_engine import load_world_state
-            ws = load_world_state(session_id)
-            loc = ws.get("current_location", "")
-            prov = ws.get("current_province", "")
-            if loc or prov:
-                loc_info = f"Setting/Location: {loc}, {prov}\n"
-        except Exception:
-            pass
+    loc_info = ""
+    try:
+        from core.world_engine import load_world_state
+        ws = load_world_state(session_id)
+        loc = ws.get("current_location", "")
+        prov = ws.get("current_province", "")
+        if loc or prov:
+            loc_info = f"Setting/Location: {loc}, {prov}\n"
+    except Exception:
+        pass
 
-        prompt = (
-            f"{loc_info}Recent Scene Narrative:\n{scene_block}\n\n"
-            f"Write a Stable Diffusion visual tag prompt depicting the physical environment, architecture, lighting, and atmosphere of this scene. "
-            f"Output ONLY comma-separated visual tags (e.g. scenery, dungeon corridor, iron bars, stone masonry, dripping water, moss, guttering torchlight, atmospheric lighting, volumetric light, dark fantasy, empty scenery, no humans, no people). "
-            f"Do not include dates, numbers, lore names, character names, or text. Output ONLY comma-separated visual tags."
-        )
-    elif subject_type == "player":
-        subject_desc = "the player character"
-        prompt = (
-            f"Recent scene:\n{scene_block}\n\n"
-            f"Write a Stable Diffusion tag prompt for a portrait of {subject_desc} in the scene above. "
-            f"Output ONLY comma-separated visual tags describing pose, expression, action, clothing, and scenery. "
-            f"No prose, no explanation, no tool calls. Just the tags."
-        )
-    else:
-        subject_desc = fol_name
-        prompt = (
-            f"Recent scene:\n{scene_block}\n\n"
-            f"Write a Stable Diffusion tag prompt for a portrait of {subject_desc} in the scene above. "
-            f"Output ONLY comma-separated visual tags describing pose, expression, action, clothing, and scenery. "
-            f"No prose, no explanation, no tool calls. Just the tags."
-        )
+    party_info = []
+    if party:
+        from core.follower_config import get_follower_name, get_follower_image_details
+        for fid in party:
+            if fid not in ("game", "the_game"):
+                fol_name = get_follower_name(fid)
+                pos_tags, _ = get_follower_image_details(fid)
+                if pos_tags:
+                    party_info.append(f"{fol_name} (Character Appearance Tags: {pos_tags})")
+                else:
+                    party_info.append(fol_name)
+    party_str = ("Companions Present in Scene:\n" + "\n".join(f"- {p}" for p in party_info) + "\n") if party_info else ""
+
+    prompt = (
+        f"{loc_info}{party_str}Recent Scene Narrative:\n{scene_block}\n\n"
+        f"Synthesize a Stable Diffusion visual prompt for this scene.\n"
+        f"Structure the comma-separated visual tags in this exact 3-part order:\n"
+        f"1. Characters Present: If companions are present, name them (e.g. '[Name]'), followed immediately by their full character appearance tags and their scene pose or action. Do not describe any viewer, player POV, or camera perspective.\n"
+        f"2. Setting & Environment: Succinct architectural and spatial features of the immediate location (dungeon, room, walls, floor, terrain).\n"
+        f"3. Lighting & Atmosphere: Succinct light sources and atmospheric mood (torchlight, shadows, ambient light).\n\n"
+        f"Keep the prompt clear and direct. Output ONLY the comma-separated visual tags in one continuous line (no prose, no explanation, no markdown)."
+    )
 
     try:
         tags = asyncio.run(runner._run_llm_summary_task(prompt, os.getenv("LOCAL_MODEL_NAME", ""), ""))
-        # Strip any markdown formatting the LLM might add
         tags = tags.strip().strip('`').strip()
+        if tags.startswith('"') and tags.endswith('"'):
+            tags = tags[1:-1].strip()
+        if tags.startswith("'") and tags.endswith("'"):
+            tags = tags[1:-1].strip()
+        m = re.search(r'\[generate_local_image\(prompt=["\'](.*?)["\']\)', tags)
+        if m:
+            tags = m.group(1).strip()
         if tags:
             return tags
     except Exception as e:
@@ -4864,26 +4847,19 @@ def comfy_resolve_workflow():
             
             combined_workflow = {}
             
-            # Read ImageWorkflow.json
-            image_path = os.path.normpath(os.path.join(
-                FOLLOWERS_DIR, active_follower, "portraits", "ImageWorkflow.json"
-            ))
-            if not os.path.exists(image_path):
-                image_path = os.path.normpath(os.path.join(
-                    base_dir, "core", "skills", "portrait_generation", "ImageWorkflow.json"
-                ))
-                
-            if os.path.exists(image_path):
-                with open(image_path, "r", encoding="utf-8") as f:
-                    try:
-                        image_wf = json.load(f)
-                        resolved_checkpoint = os.getenv("COMFYUI_CHECKPOINT", COMFYUI_CHECKPOINT)
-                        image_str = json.dumps(image_wf).replace("%model%", resolved_checkpoint)
-                        image_wf = json.loads(image_str)
-                        for k, v in image_wf.items():
-                            combined_workflow[f"image_{k}"] = v
-                    except Exception as je1:
-                        print(f"Error parsing ImageWorkflow.json for resolution: {je1}")
+            # Read the image workflow this follower's portraits use
+            from core import engine_diffusion
+            image_path = engine_diffusion.resolve_image_workflow_path(follower_id=active_follower)
+            with open(image_path, "r", encoding="utf-8") as f:
+                try:
+                    image_wf = json.load(f)
+                    resolved_checkpoint = engine_diffusion.get_active_checkpoint() or os.getenv("COMFYUI_CHECKPOINT", COMFYUI_CHECKPOINT)
+                    image_str = json.dumps(image_wf).replace("%model%", resolved_checkpoint)
+                    image_wf = json.loads(image_str)
+                    for k, v in image_wf.items():
+                        combined_workflow[f"image_{k}"] = v
+                except Exception as je1:
+                    print(f"Error parsing ImageWorkflow.json for resolution: {je1}")
             
             # Read VideoWorkflow.json
             video_path = os.path.normpath(os.path.join(
@@ -4921,9 +4897,10 @@ def comfy_resolve_workflow():
 @requires_auth
 def comfy_checkpoints():
     try:
+        from core import engine_diffusion
         from adapters.comfy_manager import list_local_checkpoints
         checkpoints = list_local_checkpoints()
-        active = os.getenv("COMFYUI_CHECKPOINT", "sd_xl_base_1.0.safetensors")
+        active = engine_diffusion.get_active_checkpoint()
         return jsonify({
             "checkpoints": checkpoints,
             "active": active
@@ -4939,25 +4916,9 @@ def comfy_select_checkpoint():
         if not checkpoint:
             return jsonify({"error": "Missing checkpoint parameter"}), 400
             
-        os.environ["COMFYUI_CHECKPOINT"] = checkpoint
-        
-        # Persist to .env
-        env_path = os.path.join(base_dir, '.env')
-        if os.path.exists(env_path):
-            with open(env_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            updated = False
-            for i, line in enumerate(lines):
-                if line.strip().startswith('COMFYUI_CHECKPOINT='):
-                    lines[i] = f"COMFYUI_CHECKPOINT={checkpoint}\n"
-                    updated = True
-                    break
-            if not updated:
-                lines.append(f"\nCOMFYUI_CHECKPOINT={checkpoint}\n")
-            with open(env_path, 'w', encoding='utf-8') as f:
-                f.writelines(lines)
-                
-        return jsonify({"status": "success", "active": checkpoint})
+        from core import engine_diffusion
+        success = engine_diffusion.set_active_checkpoint(checkpoint)
+        return jsonify({"status": "success" if success else "failed", "active": engine_diffusion.get_active_checkpoint()})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
