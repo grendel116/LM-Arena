@@ -3843,6 +3843,62 @@ def delete_existing_save():
         return jsonify({"error": str(e)}), 500
 
 
+def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id: str = None):
+    """Synchronize updated inventory, vitals, spells, and sheet state to active history snapshots."""
+    try:
+        import copy
+        from core.save_manager import get_active_save_id
+
+        global runner
+        if 'runner' not in globals() or runner is None:
+            init_runner()
+
+        save_id = get_active_save_id()
+        target_session_ids = {sid for sid in (session_id, 'default', save_id) if sid}
+
+        def _update_snapshot(snapshot: dict):
+            if not isinstance(snapshot, dict):
+                return
+            snapshot["inventory"] = copy.deepcopy(character_sheet.get("inventory", []))
+            if "derived" in character_sheet:
+                derived = character_sheet["derived"]
+                vitals = snapshot.setdefault("vitals", {})
+                vitals["hp"] = derived.get("hp_current", vitals.get("hp", 30))
+                vitals["hp_max"] = derived.get("hp_max", vitals.get("hp_max", 30))
+                vitals["mp"] = derived.get("mp_current", vitals.get("mp_current", 162))
+                vitals["mp_max"] = derived.get("mp_max", vitals.get("mp_max", 162))
+                vitals["stamina"] = derived.get("stamina_current", vitals.get("stamina", 60))
+                vitals["stamina_max"] = derived.get("stamina_max", vitals.get("stamina_max", 60))
+                vitals["gold"] = character_sheet.get("gold", vitals.get("gold", 0))
+            if "spells" in character_sheet:
+                snapshot["spells"] = copy.deepcopy(character_sheet.get("spells", []))
+            if "conditions" in character_sheet:
+                snapshot["conditions"] = copy.deepcopy(character_sheet.get("conditions", []))
+            if "active_effects" in character_sheet:
+                snapshot["active_effects"] = copy.deepcopy(character_sheet.get("active_effects", []))
+            if "level" in character_sheet:
+                snapshot["level"] = character_sheet.get("level", 1)
+            if "experience" in character_sheet:
+                snapshot["experience"] = character_sheet.get("experience", 0)
+
+        for sid in target_session_ids:
+            if hasattr(runner, 'sessions_history'):
+                if sid not in runner.sessions_history and hasattr(runner, '_load_session_from_disk'):
+                    runner._load_session_from_disk(sid)
+
+                if sid in runner.sessions_history and runner.sessions_history[sid]:
+                    history = runner.sessions_history[sid]
+                    for msg in reversed(history):
+                        if msg.get("state_snapshot"):
+                            _update_snapshot(msg["state_snapshot"])
+                            if msg.get("role") == "user":
+                                break
+
+                    if hasattr(runner, '_save_session_to_disk'):
+                        runner._save_session_to_disk(sid)
+    except Exception as e:
+        print(f"[Snapshot Sync Warning] {e}", flush=True)
+
 
 @app.route('/api/character/equip', methods=['POST'])
 @requires_auth
