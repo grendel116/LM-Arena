@@ -411,7 +411,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     top_k=2,
                 )
                 if skills:
-                    auxiliary_blocks.append(skills)
+                    from core.follower_config import replace_placeholders
+                    auxiliary_blocks.append(replace_placeholders(skills))
             except Exception as se:
                 print(f"[skills] Retrieval error: {se}")
 
@@ -520,7 +521,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     f"# REFEREE DIRECTIVES\n"
                     f"- Party Autonomy: {player_hero_name} and followers ({fol_names_str}) act on their own turns. Never generate dialogue, actions, or [arena_actor] calls for them.\n"
                     f"- World Dialogue: World NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]. Never write spoken dialogue in narrative prose.\n"
-                    f"- Action Checks: When {player_hero_name} attempts an action with an uncertain outcome, call [arena_request_skill_check] and wait for the roll. Resolve outcomes and spend resources only after the roll resolves."
+                    f"- Action Checks: When {player_hero_name} attempts an action with an uncertain outcome, call [arena_request_skill_check] and wait for the roll. Resolve outcomes and spend resources only after the roll resolves.\n"
+                    f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_hero_name} using [arena_roll_combat(attacker_name=\"...\", weapon_name=\"...\")]. Attacks that connect automatically apply damage."
                 )
 
             full_post_injection = "\n\n".join(post_blocks)

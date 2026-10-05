@@ -993,6 +993,10 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
                 return "game"
             break
 
+    # Explicit @mention of game / referee
+    if any(f"@{g}" in user_msg_lower for g in ("game", "narrator", "referee", "dm")):
+        return "game"
+
     from core.follower_config import get_follower_name
     import re
 
@@ -1005,19 +1009,51 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
             or f"@{fol_id.lower()}" in user_msg_lower):
             return fol_id
 
-    # 2. Check the most recent narrative assistant/follower speaker
+    # 2. Combat actions, spells, and offensive maneuvers: The Game must adjudicate first
+    combat_pattern = re.compile(
+        r"\b(attack|attacks|striking|strikes?|slashing|slash(es)?|stabbing|stabs?|"
+        r"casting|casts?|shooting|shoots?|firing|fires?|swings?|swinging|"
+        r"parrying|parr(y|ies)|dodging|dodg(es)?|spells?|sparks?|channeling|channels?|"
+        r"blasts?|thrusting|thrusts?|cleaving|cleav(e|es)|bludgeoning|bludgeons?|"
+        r"smashing|smash(es)?|killing|kills?|fighting|combats?|magicka)\b",
+        re.IGNORECASE
+    )
+    narrative_actions = re.findall(r"\*([^*]+)\*", user_msg_clean)
+    has_combat_action = False
+    if narrative_actions:
+        action_text = " ".join(narrative_actions)
+        if combat_pattern.search(action_text):
+            has_combat_action = True
+    elif '"' not in user_msg_clean and '“' not in user_msg_clean:
+        if combat_pattern.search(user_msg_clean):
+            has_combat_action = True
+
+    if has_combat_action:
+        return "game"
+
+    # 3. Check the most recent narrative assistant/follower speaker
     last_assistant_speaker = None
     for m in reversed(chain_prior_history):
         if m.get("role") in ("follower", "assistant"):
             last_assistant_speaker = m.get("sender_id") or ("game" if m.get("role") == "follower" else None)
             break
 
-    # If the user was in an ongoing exchange with a follower, that follower speaks first!
-    # Follower responds to user; then if user included *narration*, Game chains after.
-    if last_assistant_speaker and last_assistant_speaker in active_followers:
-        return last_assistant_speaker
+    # If the user was in an ongoing conversation with a follower, that follower speaks first:
+    # Requires dialogue quotes or direct address to the follower. Pure world actions route to The Game.
+    has_dialogue = any(q in user_msg_clean for q in ('"', '“', '”', '「', '」'))
 
-    # 3. Follower name mentioned in user message
+    if last_assistant_speaker and last_assistant_speaker in active_followers:
+        fname = get_follower_name(last_assistant_speaker).lower()
+        first_name = fname.split()[0]
+        follower_addressed = bool(
+            re.search(rf"\b{re.escape(fname)}\b", user_msg_lower)
+            or re.search(rf"\b{re.escape(first_name)}\b", user_msg_lower)
+            or re.search(rf"\b{re.escape(last_assistant_speaker.lower())}\b", user_msg_lower)
+        )
+        if has_dialogue or follower_addressed:
+            return last_assistant_speaker
+
+    # 4. Follower name mentioned in user message
     for fol_id in active_followers:
         fname = get_follower_name(fol_id).lower()
         first_name = fname.split()[0]

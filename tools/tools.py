@@ -919,7 +919,16 @@ def arena_roll_combat(
         "attribute": weapon_attribute,
         "attribute_used": weapon_attribute
     }
-    return roll_combat(attacker, weapon, target)
+    res = roll_combat(attacker, weapon, target)
+    if is_target_player and res.get("hit") and not res.get("immune") and res.get("damage_dealt", 0) > 0:
+        sheet = take_damage(sheet, res["damage_dealt"])
+        _commit_and_sync(save_id, sheet, kwargs)
+        d = sheet.get("derived", {})
+        res["target_hp_current"] = d.get("hp_current", res["target_hp_current"])
+        res["target_hp_max"] = d.get("hp_max", res["target_hp_max"])
+        res["dead"] = is_dead(sheet)
+        res["defeated"] = res["dead"]
+    return res
 
 @track_tool_activity
 def arena_roll_initiative(combatants_json):

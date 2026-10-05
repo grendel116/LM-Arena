@@ -13,7 +13,7 @@
     "quest_stage": 12,
     "tamrielic_date": "1 Hearthfire, 3E 389",
     "created_at": "2026-09-28T01:48:21.121310",
-    "updated_at": "2026-10-05T01:49:10.032210",
+    "updated_at": "2026-10-05T04:09:04.293993",
     "active_follower": "breamaccius",
     "active_followers": [
       "breamaccius"
@@ -39,7 +39,7 @@
     "derived": {
       "hp_current": 32,
       "hp_max": 32,
-      "mp_current": 158,
+      "mp_current": 154,
       "mp_max": 162,
       "stamina_current": 72,
       "stamina_max": 72,
@@ -850,6 +850,601 @@
       "timestamp": 1791190150.0322106,
       "sender_id": "breamaccius",
       "sender_name": "Brea Maccius"
+    },
+    {
+      "id": "usr_543xfqk6fmuv4jlan",
+      "role": "user",
+      "text": "*I raise my hands, channeling sparks of lightning toward the leaping insect while keeping my eyes locked on the others closing in.*",
+      "image_url": null,
+      "timestamp": 1791197164.191662,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 158,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
+    },
+    {
+      "id": "game_9eecc7252a",
+      "role": "follower",
+      "text": "*The leaping Tunneler's segmented body arches through the air, its mandibles wide and dripping with acidic saliva as it descends toward you. Arcane energy surges through Eternal Champion's outstretched arms, lightning beginning to coil around your fingertips like living serpents.*\n\n*The creature's compound eyes track the building spell even as its momentum carries it closer, while the swarm below continues its relentless advance, filling the narrow corridor with a cacophony of skittering legs and hungry clicks.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Destruction Magic",
+            "attribute_name": "Intelligence",
+            "dc": 14,
+            "reason": "You must accurately target and unleash the Spark spell to incinerate the leaping Tunneler before its razor-legs can pierce your chest."
+          },
+          "id": "call_1791197188_0_348c"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Destruction Magic', 'attribute_name': 'Intelligence', 'dc': 14, 'reason': 'You must accurately target and unleash the Spark spell to incinerate the leaping Tunneler before its razor-legs can pierce your chest.'}",
+          "id": "call_1791197188_0_348c"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791197188.9553142,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 158,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
+    },
+    {
+      "id": "usr_yd2jfpzgwmuv4kn39",
+      "role": "user",
+      "text": "*I thrust my hand forward, launching a bolt of lightning that strikes the Tunneler mid-air, scorching its carapace but failing to kill it instantly.* <!-- check: Destruction Magic DC 14 -> PARTIAL (rolled 16) -->",
+      "image_url": null,
+      "timestamp": 1791197213.173344,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 158,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
+    },
+    {
+      "id": "game_164c279923",
+      "role": "follower",
+      "text": "*The bolt of lightning erupts from Eternal Champion's palm in a searing arc, striking the Tunneler squarely in its armored chest as it descends. The creature shrieks as superheated electricity burns through its chitinous carapace, sending acrid smoke billowing from the impact site, but the force only serves to knock it sideways rather than incinerate it.*\n\n*The wounded insect crashes into the stone wall with a wet thud, its legs scrabbling frantically for purchase as it recovers from the shock. Below, the remaining swarm continues its relentless advance, mandibles snapping and clicking as they surge over the corpse of their fallen kin to reach you.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_spend_magicka",
+          "args": {
+            "amount": 4
+          },
+          "id": "call_1791197237_0_2a37"
+        },
+        {
+          "type": "response",
+          "name": "arena_spend_magicka",
+          "response": "{'success': True, 'mp_current': 154, 'mp_max': 162}",
+          "id": "call_1791197237_0_2a37"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791197237.8812866,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 154,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
+    },
+    {
+      "id": "fol_breamaccius_7930a6894a",
+      "role": "follower",
+      "text": "*I twist mid-stride to drive my dagger through the throat of a scuttling insect, pale fluid spraying across my thigh as I kick another away from my legs.*\n\nKeep them back! If they swarm us in this tunnel, we're dead!",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791197259.076025,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 154,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
+    },
+    {
+      "id": "usr_6mhm56wwumuv4vmee",
+      "role": "user",
+      "text": "*I plant my feet firmly against the stone floor, calling upon more magicka to charge another burst of lightning while scanning the tunnel for any weak points in the insect horde.*",
+      "image_url": null,
+      "timestamp": 1791197725.4938076,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 154,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
+    },
+    {
+      "id": "fol_breamaccius_f9d7db90ae",
+      "role": "follower",
+      "text": "*I carve through another segmented body, my blade slicing through chitin and guts as I shove you back toward the tunnel entrance.*\n\nFocus on the big ones leading the pack! If we take out their coordination, the rest will scatter like frightened roaches!",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791197746.5438879,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 154,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
+    },
+    {
+      "id": "game_dfe46bb0d8",
+      "role": "follower",
+      "text": "*Eternal Champion's boots scrape against the wet stone as Brea shoves you back, the narrow corridor amplifying the screeching chorus of the insect horde. Your eyes lock onto a particularly large Tunneler near the front—its carapace stained with darker markings and its mandibles pulsing in a rhythmic, commanding pattern that seems to direct the swarm's advance.*\n\n*The creature's compound eyes fix on you with alien intelligence, its legs clicking against the stone as it rears up, preparing to launch itself into the air. Around it, the smaller Tunnelers press closer, their pale forms undulating like a living carpet of chitin and hunger.*\n\n*Arcane energy begins to coil around your fingertips once more as you center your focus on the lead creature, the smell of ichor and burnt carapace filling the air.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791197772.3388867,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 12,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 154,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          },
+          {
+            "name": "Prison Key",
+            "type": "misc",
+            "weight": 0.1,
+            "quantity": 1,
+            "equipped": false,
+            "description": ""
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 40
+      }
     }
   ],
   "memory_state": {

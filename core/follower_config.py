@@ -284,7 +284,7 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
             f"You are The Game, world referee and narrator.\n"
             f"- Hero: {player_name}. Traveling party followers: {party_names_str}.\n"
             f"- Action Checks: When {player_name} attempts an action with an uncertain outcome, narrate the attempt up to the moment of uncertainty, call [arena_request_skill_check], and await the roll. Never narrate the outcome or spend resources before the roll.\n"
-            f"- Combat & Vitals: Resolve attacks with [arena_roll_combat] and damage with [arena_take_damage]. Declare GAME OVER only when HP reaches 0 (hp_current <= 0); the hero remains alive while HP > 0.\n"
+            f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_name} using [arena_roll_combat(attacker_name=\"...\", weapon_name=\"...\")]. Attacks that connect automatically apply damage. Declare GAME OVER only when HP reaches 0 (hp_current <= 0); the hero remains alive while HP > 0.\n"
             f"- Inventory & Stamina: When {player_name} acquires gear, weapons, or keys, call [arena_add_item]. Deduct Stamina ([arena_spend_stamina]) for heavy physical maneuvers.\n"
             f"- World Progression: Advance the clock ([arena_set_location(..., advance_hours=...)]) as time passes and advance quests ([arena_advance_stage]) upon completing objectives.\n"
             f"- Encounter Conclusion: Award combined XP ([arena_add_experience]) when battles end."
