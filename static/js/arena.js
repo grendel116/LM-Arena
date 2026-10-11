@@ -652,7 +652,7 @@ function reloadApp(skipSave = false, forceHardReload = false) {
 async function softReloadApp() {
     try {
         const [historyRes, _] = await Promise.all([
-            fetch(`/history?session_id=${sessionId}&t=${Date.now()}`),
+            fetch(`/history?save_id=${saveId}&t=${Date.now()}`),
             loadServerImages()
         ]);
         const data = await historyRes.json();
@@ -2826,7 +2826,7 @@ async function toggleItemEquip(itemName, currentEquipped) {
         const res = await fetch('/api/character/equip', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_name: itemName, equip: !currentEquipped, session_id: sessionId })
+            body: JSON.stringify({ item_name: itemName, equip: !currentEquipped, save_id: saveId })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -2852,7 +2852,7 @@ async function executeRemoveItem(itemName) {
         const res = await fetch('/api/character/remove', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_name: itemName, quantity: 1, session_id: sessionId })
+            body: JSON.stringify({ item_name: itemName, quantity: 1, save_id: saveId })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -2870,7 +2870,7 @@ async function removeSpellFromCharacter(spellName) {
         const res = await fetch('/api/character/spell/remove', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ spell_name: spellName, session_id: sessionId })
+            body: JSON.stringify({ spell_name: spellName, save_id: saveId })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -2888,7 +2888,7 @@ async function modifyCharacterGold(amount, action = 'remove') {
         const res = await fetch('/api/character/gold/modify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amount, action: action, session_id: sessionId })
+            body: JSON.stringify({ amount: amount, action: action, save_id: saveId })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -3010,7 +3010,7 @@ async function submitNewItemModal() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 description: desc,
-                session_id: sessionId,
+                save_id: saveId,
                 model: activeModel
             })
         });
@@ -3593,7 +3593,7 @@ async function saveActiveGameSlot() {
         const response = await fetch('/api/saves/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
+            body: JSON.stringify({ save_id: saveId })
         });
         const data = await response.json();
         if (data.status === 'success') {
@@ -3633,13 +3633,28 @@ function closeUserProfileEditor() {
 
 // --- populateProfileEditor ---
 function populateProfileEditor() {
-    const prof = userProfiles.find(p => p.id === selectedEditingProfileId);
     const nameInput = document.getElementById('user-profile-name-input');
     const contentTextarea = document.getElementById('user-profile-content');
     const activeBadge = document.getElementById('active-profile-badge');
     const statusText = document.getElementById('profile-status-text');
     const deleteBtn = document.getElementById('delete-profile-btn');
 
+    if (selectedEditingProfileId === '__new__') {
+        if (nameInput) nameInput.value = "";
+        if (contentTextarea) contentTextarea.value = "A valiant hero exploring Tamriel.";
+        const genderSelect = document.getElementById('user-profile-gender-select');
+        if (genderSelect) genderSelect.value = "Male";
+        const raceSelect = document.getElementById('user-profile-race-select');
+        if (raceSelect) raceSelect.value = "Nord";
+        const classSelect = document.getElementById('user-profile-class-select');
+        if (classSelect) classSelect.value = "Warrior";
+        if (activeBadge) activeBadge.style.display = 'none';
+        if (statusText) statusText.textContent = "New Character";
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        return;
+    }
+
+    const prof = userProfiles.find(p => p.id === selectedEditingProfileId);
     if (!prof) return;
 
     if (nameInput) nameInput.value = prof.character_name || prof.name;
@@ -3682,8 +3697,11 @@ async function activateUserProfile(profileId) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
 
+        saveId = profileId;
         sessionId = profileId;
-        safeLocalStorage.setItem('follower_session_id', profileId);
+        safeLocalStorage.setItem('active_save_id', profileId);
+        safeLocalStorage.removeItem('arena_active_save_id');
+        safeLocalStorage.removeItem('follower_session_id');
         closeAssistantModal();
         window.location.reload();
     } catch (e) {
@@ -3715,6 +3733,45 @@ async function saveActiveUserProfile() {
     }
 
     try {
+        const genderSelect = document.getElementById('user-profile-gender-select');
+        const raceSelect = document.getElementById('user-profile-race-select');
+        const classSelect = document.getElementById('user-profile-class-select');
+        const charGender = genderSelect ? genderSelect.value : 'Male';
+        const charRace = raceSelect ? raceSelect.value : 'Nord';
+        const charClass = classSelect ? classSelect.value : 'Mage';
+
+        if (profileId === '__new__') {
+            const res = await fetch('/api/saves/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    character_name: newName,
+                    name: newName,
+                    race: charRace,
+                    gender: charGender,
+                    class: charClass,
+                    content: content
+                })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            const newId = data.save ? data.save.id : 'eternal_champion';
+            selectedEditingProfileId = newId;
+            activeUserProfile = newId;
+            saveId = newId;
+            sessionId = newId;
+            safeLocalStorage.setItem('active_save_id', newId);
+            safeLocalStorage.removeItem('arena_active_save_id');
+            safeLocalStorage.removeItem('follower_session_id');
+
+            showCustomAlert("Success", "Character profile created!");
+            await loadUserProfiles();
+            await loadHistory();
+            closeUserProfileEditor();
+            return;
+        }
+
         const prof = userProfiles.find(p => p.id === profileId);
 
         // If the user changed the name, call rename API first
@@ -3731,13 +3788,6 @@ async function saveActiveUserProfile() {
                 selectedEditingProfileId = profileId;
             }
         }
-
-        const genderSelect = document.getElementById('user-profile-gender-select');
-        const raceSelect = document.getElementById('user-profile-race-select');
-        const classSelect = document.getElementById('user-profile-class-select');
-        const charGender = genderSelect ? genderSelect.value : 'Male';
-        const charRace = raceSelect ? raceSelect.value : 'Nord';
-        const charClass = classSelect ? classSelect.value : 'Mage';
 
         const saveRes = await fetch('/api/user_profiles/save', {
             method: 'POST',
@@ -3763,14 +3813,17 @@ async function saveActiveUserProfile() {
             });
             const selData = await selRes.json();
             if (selData.error) throw new Error(selData.error);
+            saveId = profileId;
             sessionId = profileId;
-            safeLocalStorage.setItem('follower_session_id', profileId);
+            safeLocalStorage.setItem('active_save_id', profileId);
+            safeLocalStorage.removeItem('arena_active_save_id');
+            safeLocalStorage.removeItem('follower_session_id');
         } else {
             // Already active profile, sync the display attributes
             await fetchCharacterStatus();
         }
 
-        showCustomAlert("Success", `Character profile saved and updated!`);
+        showCustomAlert("Success", "Character profile saved and updated!");
 
         await loadUserProfiles();
         await loadHistory();
@@ -3786,33 +3839,8 @@ async function saveActiveUserProfile() {
 }
 
 // --- createNewUserProfile ---
-async function createNewUserProfile() {
-    try {
-        const res = await fetch('/api/saves/new', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ character_name: "Eternal Champion", race: "Nord", class: "Mage", gender: "Male" })
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        const newId = data.save ? data.save.id : 'eternal_champion_001';
-        selectedEditingProfileId = newId;
-        activeUserProfile = newId;
-        sessionId = newId;
-        safeLocalStorage.setItem('follower_session_id', newId);
-
-        const messagesList = document.getElementById('messages-list');
-        if (messagesList) {
-            messagesList.innerHTML = "";
-            showWelcomeMessage();
-        }
-
-        await loadUserProfiles();
-        openUserProfileEditor(newId);
-    } catch (e) {
-        showCustomAlert("Error", e.message || "Failed to create character.");
-    }
+function createNewUserProfile() {
+    openUserProfileEditor('__new__');
 }
 
 // --- deleteUserProfileById / deleteSelectedUserProfile ---
@@ -3840,8 +3868,11 @@ async function deleteUserProfileById(targetProfileId) {
 
             if (data.status === 'success') {
                 if (profileId === activeUserProfile || isEternal) {
+                    saveId = 'eternal_champion';
                     sessionId = 'eternal_champion';
-                    safeLocalStorage.setItem('follower_session_id', 'eternal_champion');
+                    safeLocalStorage.setItem('active_save_id', 'eternal_champion');
+                    safeLocalStorage.removeItem('arena_active_save_id');
+                    safeLocalStorage.removeItem('follower_session_id');
                     window.location.reload();
                 } else {
                     const successTitle = "Character Deleted";
@@ -4774,7 +4805,7 @@ async function deletefollowerJournalEntry(entryId) {
     );
 }
 
-async function deleteConsolidatedMemory(session_id, timestamp) {
+async function deleteConsolidatedMemory(targetSaveId, timestamp) {
     showCustomConfirm(
         "Delete Consolidated Memory",
         "Are you sure you want to permanently delete this compacted chat history block? Your follower will lose this memory immediately.",
@@ -4784,7 +4815,7 @@ async function deleteConsolidatedMemory(session_id, timestamp) {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        session_id: session_id || sessionId,
+                        save_id: targetSaveId || saveId,
                         timestamp: timestamp
                     })
                 });
@@ -5026,32 +5057,29 @@ async function loadHistory() {
             container.classList.remove('smooth-scroll');
         }
 
-        if (!sessionFromUrl && sessionId !== 'eternal_champion') {
+        if (!saveFromUrl && saveId !== 'eternal_champion') {
             try {
-                const res = await fetch('/api/sessions');
+                const res = await fetch('/api/saves');
                 const data = await res.json();
+                const availableSaves = (data.saves || []).map(s => typeof s === 'string' ? s : (s && s.id ? s.id : '')).filter(Boolean);
+                let fallbackId = data.active_save_id || (availableSaves.length > 0 ? availableSaves[0] : 'eternal_champion');
                 
-                let fallbackId = (data.sessions && data.sessions.length > 0) ? data.sessions[0] : 'eternal_champion';
-                
-                if (data.sessions && !data.sessions.includes(sessionId)) {
-                    console.warn(`Last opened session "${sessionId}" is missing on the server. Falling back to "${fallbackId}".`);
-                    sessionId = fallbackId;
-                    safeLocalStorage.setItem('follower_session_id', sessionId);
-                    
-                    const sessionDisplay = document.getElementById('session-id-display');
-                    if (sessionDisplay) {
-                        sessionDisplay.textContent = `• ID: ${sessionId.slice(-4)}`;
-                        sessionDisplay.title = `Full Session ID: ${sessionId}`;
-                    }
+                if (availableSaves.length > 0 && !availableSaves.includes(saveId)) {
+                    console.warn(`Last opened save "${saveId}" is missing on the server. Falling back to "${fallbackId}".`);
+                    saveId = fallbackId;
+                    sessionId = saveId;
+                    safeLocalStorage.setItem('active_save_id', saveId);
+                    safeLocalStorage.removeItem('arena_active_save_id');
+                    safeLocalStorage.removeItem('follower_session_id');
                 }
             } catch (err) {
-                console.error("Error verifying last opened session:", err);
+                console.error("Error verifying last opened save:", err);
             }
         }
 
         // Trigger server images in background without blocking history load
         loadServerImages();
-        const historyRes = await fetch(`/history?session_id=${sessionId}&t=${Date.now()}`);
+        const historyRes = await fetch(`/history?save_id=${saveId}&t=${Date.now()}`);
         const data = await historyRes.json();
         if (data.welcome_message) {
             followerWelcomeMessage = data.welcome_message;
@@ -5215,16 +5243,18 @@ function hideLoadingOverlay() {
 
 // --- resetSession ---
 async function resetSession() {
-    showCustomConfirm("Reset Session", "Are you sure you want to reset the chat session and clear the context window?", async () => {
+    showCustomConfirm("Reset Save", "Are you sure you want to reset this save and clear the context window?", async () => {
         try {
             await fetch('/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: sessionId })
+                body: JSON.stringify({ save_id: saveId })
             });
         } catch (e) {
-            console.error("Failed to reset session on server:", e);
+            console.error("Failed to reset save on server:", e);
         }
+        localStorage.removeItem('active_save_id');
+        localStorage.removeItem('arena_active_save_id');
         localStorage.removeItem('follower_session_id');
         localStorage.removeItem('follower_selected_model');
         reloadApp(true, true);
@@ -5430,7 +5460,9 @@ const hiddenPassiveTools = new Set([
     'generate_imagen',
     'generate_general_image',
     'apply_comfy_workflow',
-    'generate_video_from_image'
+    'generate_video_from_image',
+    'arena_actor',
+    'actor'
 ]);
 
 function formatToolOutcomeSummary(toolName, args = {}, response = null) {
@@ -6756,7 +6788,14 @@ async function sendMessage() {
         return;
     }
 
-    const text = userInput.value.trim();
+    const rawInput = userInput.value.trim();
+    let userImageUrl = null;
+    if (attachedMediaPath) {
+        userImageUrl = attachedMediaPath;
+    } else if (attachedBase64) {
+        userImageUrl = `data:${attachedMime};base64,${attachedBase64}`;
+    }
+    const text = rawInput || (userImageUrl ? "" : "*I wait and observe.*");
 
     hasApprovedToolThisTurn = false;
     hasStagedRollMessage = false;
@@ -6771,12 +6810,6 @@ async function sendMessage() {
     userInput.placeholder = "";
     updateInputGlow();
 
-    let userImageUrl = null;
-    if (attachedMediaPath) {
-        userImageUrl = attachedMediaPath;
-    } else if (attachedBase64) {
-        userImageUrl = `data:${attachedMime};base64,${attachedBase64}`;
-    }
     const stagedText = text;
     const stagedBase64 = attachedBase64;
     const stagedMime = attachedMime;
@@ -6813,7 +6846,7 @@ async function sendMessage() {
         image_data: attachedBase64,
         image_mime: attachedMime,
         media_path: attachedMediaPath,
-        session_id: sessionId,
+        save_id: saveId,
         model: selectedModel,
         orientation: getWindowOrientation()
     };
@@ -6955,7 +6988,7 @@ async function executeGroupChainTurn(targetSpeaker) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 model: selectedModel,
                 speaker_id: targetSpeaker,
                 orientation: getWindowOrientation()
@@ -7182,7 +7215,7 @@ async function saveMessageEdit(bubble, newText) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 msg_id: msgId,
                 new_text: finalText
             })
@@ -7293,7 +7326,7 @@ async function resendUserMessage(bubble) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 msg_id: msgId,
                 new_text: bubble.dataset.rawText || '',
                 model: selectedModel,
@@ -7402,7 +7435,7 @@ async function rerollUserMessage(button) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 model: selectedModel,
                 msg_id: msgId,
                 original_text: origRawText,
@@ -7436,7 +7469,7 @@ async function rerollUserMessage(button) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 msg_id: msgId,
                 new_text: newText
             })
@@ -7510,7 +7543,7 @@ async function rerollFromMessage(button) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 msg_id: msgId,
                 model: selectedModel,
                 orientation: getWindowOrientation()
@@ -7623,7 +7656,7 @@ async function deleteTurnFromMessage(button) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    session_id: sessionId,
+                    save_id: saveId,
                     msg_id: msgId
                 })
             });
@@ -7763,7 +7796,8 @@ let currentGalleryIndex = -1;
 // --- loadServerImages ---
 async function loadServerImages() {
     try {
-        const response = await fetch(`/list_images?t=${Date.now()}`);
+        const sid = (typeof saveId !== 'undefined' && saveId) ? encodeURIComponent(saveId) : '';
+        const response = await fetch(`/list_images?save_id=${sid}&t=${Date.now()}`);
         const data = await response.json();
         if (data.images) {
             serverImages = data.images;
@@ -7995,7 +8029,7 @@ async function deleteCurrentImage(event) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    session_id: sessionId,
+                    save_id: saveId,
                     image_url: currentSrc
                 })
             });
@@ -8054,7 +8088,7 @@ async function deleteSpecificImage(imageSrc, bubbleElement) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    session_id: sessionId,
+                    save_id: saveId,
                     image_url: imageSrc
                 })
             });
@@ -8327,7 +8361,7 @@ async function captureSceneImage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 target_follower: targetFollowerId,
                 orientation: getWindowOrientation()
             })
@@ -8423,7 +8457,7 @@ async function autoGenerateUserMessage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 model: selectedModel,
                 current_input: currentInput
             })
@@ -8688,11 +8722,11 @@ async function resolvePlayerSkillCheck() {
 
     try {
         const payload = isFlat ? {
-            session_id: sessionId,
+            save_id: saveId,
             model: selectedModel,
             is_flat_roll: true
         } : {
-            session_id: sessionId,
+            save_id: saveId,
             skill_name: checkData.skill_name || 'Agility',
             attribute_name: checkData.attribute_name || 'Agility',
             dc: checkData.dc || 15,
@@ -8769,7 +8803,7 @@ async function regenerateImage(buttonElement, oldImageUrl, prompt, subjectType =
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 old_image_url: getRelativePath(oldImageUrl),
                 prompt: prompt,
                 subject_type: subjectType,
@@ -9053,7 +9087,7 @@ async function animateImage(buttonElement, oldImageUrl, motionPrompt) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 image_url: getRelativePath(oldImageUrl),
                 prompt: motionPrompt
             })
@@ -9148,7 +9182,7 @@ function startToolPolling() {
                 const bubble = typingIndicator.closest('.message.follower');
                 if (bubble) {
                     try {
-                        const logRes = await fetch(`/api/session_tool_calls?session_id=${sessionId}`);
+                        const logRes = await fetch(`/api/save_tool_calls?save_id=${saveId}`);
                         const logData = await logRes.json();
                         if (logData.tool_calls && logData.tool_calls.length > 0) {
                             updateLiveLogs(bubble, logData.tool_calls);
@@ -9239,7 +9273,7 @@ async function openDataBank() {
     loadDataBankFiles();
     if (!currentEditingfollowerId) {
         try {
-            const res = await fetch(`/history?session_id=${sessionId}&t=${Date.now()}`);
+            const res = await fetch(`/history?save_id=${saveId}&t=${Date.now()}`);
             const data = await res.json();
             if (data.active_follower) {
                 currentEditingfollowerId = data.active_follower;
@@ -9669,7 +9703,7 @@ async function abandonQuest(questId) {
                 const response = await fetch(`/api/quests/${questId}/abandon`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: sessionId })
+                    body: JSON.stringify({ save_id: saveId })
                 });
                 const data = await response.json();
                 if (data.error) throw new Error(data.error);
@@ -10501,7 +10535,7 @@ async function cancelGeneration() {
         await fetch('/api/cancel_chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
+            body: JSON.stringify({ save_id: saveId })
         });
     } catch (e) {
         console.error("Error cancelling chat:", e);
@@ -10542,27 +10576,20 @@ let hasApprovedToolThisTurn = false;
 
 let profileCacheBuster = Date.now();
 
-// Initialize session ID, reading from URL parameter if present for device syncing
+// Initialize save ID, reading from URL parameter if present for device syncing
 const urlParams = new URLSearchParams(window.location.search);
-const sessionFromUrl = !!urlParams.get('session_id');
-let sessionId = urlParams.get('session_id');
-if (sessionId) {
-    safeLocalStorage.setItem('follower_session_id', sessionId);
-    // Clean up the URL query parameter so page reloads don't force it later
+const saveFromUrl = !!(urlParams.get('save_id') || urlParams.get('session_id'));
+let saveId = urlParams.get('save_id') || urlParams.get('session_id') || safeLocalStorage.getItem('active_save_id') || safeLocalStorage.getItem('arena_active_save_id') || safeLocalStorage.getItem('follower_session_id') || 'eternal_champion';
+safeLocalStorage.setItem('active_save_id', saveId);
+safeLocalStorage.removeItem('arena_active_save_id');
+safeLocalStorage.removeItem('follower_session_id');
+if (urlParams.get('save_id') || urlParams.get('session_id')) {
     try {
         window.history.replaceState({}, document.title, window.location.pathname);
     } catch (e) {}
-} else {
-    sessionId = safeLocalStorage.getItem('follower_session_id') || 'eternal_champion';
-    safeLocalStorage.setItem('follower_session_id', sessionId);
 }
-
-// Display session ID signature in header for easy verification
-const sessionDisplay = document.getElementById('session-id-display');
-if (sessionDisplay && sessionId) {
-    sessionDisplay.textContent = `• ID: ${sessionId.slice(-4)}`;
-    sessionDisplay.title = `Full Session ID: ${sessionId}`;
-}
+let sessionId = saveId;
+const sessionFromUrl = saveFromUrl;
 
 // Retrieve selected model from localStorage or use default
 let selectedModel = safeLocalStorage.getItem('follower_selected_model') || 'local-llm';
@@ -10794,7 +10821,7 @@ async function triggerProactiveAction() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                session_id: sessionId,
+                save_id: saveId,
                 model: selectedModel,
                 orientation: getWindowOrientation()
             }),
@@ -11006,681 +11033,6 @@ setInterval(() => {
         }
     });
 }, 250);
-
-// --- Voice Call Orchestrator ---
-let isVoiceCallActive = false;
-let voiceCallRecognition = null;
-let voiceCallStartTime = 0;
-let voiceCallTranscript = [];
-let voiceCallMuted = false;
-let voiceCallSpeakerMuted = false;
-let voiceCallAnalyser = null;
-let voiceCallUserAnalyser = null;
-let voiceCallUserSource = null;
-let consecutiveShortSessions = 0;
-let lastRecognitionStartTime = 0;
-let visualizerTime = 0;
-let silenceTimer = null;
-let currentSpeechText = "";
-let lastUserSpeechTime = 0;
-
-function playCallStartSound() {
-    try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContextClass();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(260, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.3);
-    } catch(e) {
-        console.error("Failed to play call start sound:", e);
-    }
-}
-
-function playHangupSound() {
-    try {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContextClass();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.25);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.25);
-    } catch(e) {
-        console.error("Failed to play hangup sound:", e);
-    }
-}
-
-function startVoiceCall() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showCustomAlert("Secure Context Required", "Microphone access is only available over HTTPS or localhost. Please access the Arena using HTTPS or localhost to enable voice calls.");
-        return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        showCustomAlert("Speech Recognition Not Supported", "Your browser does not support Speech Recognition. Please try Chrome, Edge, or Safari.");
-        return;
-    }
-    
-    const overlay = document.getElementById('voice-call-overlay');
-    overlay.style.display = 'flex';
-    
-    document.getElementById('voice-call-follower-name').textContent = activefollowerName || "follower";
-    const voiceAvatar = document.getElementById('voice-call-follower-avatar');
-    if (voiceAvatar) {
-        updateAvatarElement(voiceAvatar, getProfileUrl());
-    }
-    
-    updateVoiceCallStatus("Connecting...");
-    document.getElementById('voice-call-transcript-turns').innerHTML = "";
-    const transcriptWrapper = document.getElementById('voice-call-transcript');
-    if (transcriptWrapper) {
-        transcriptWrapper.style.display = 'none';
-    }
-    
-    // Initialize separate voice call session on the backend
-    fetch('/api/voice_call/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId })
-    }).catch(e => console.error("Error starting voice session:", e));
-
-    isVoiceCallActive = true;
-    voiceCallStartTime = Date.now();
-    voiceCallTranscript = [];
-    voiceCallMuted = false;
-    voiceCallSpeakerMuted = false;
-    isfollowerSpeaking = false;
-    isfollowerThinking = false;
-    consecutiveShortSessions = 0;
-    visualizerTime = 0;
-    currentSpeechText = "";
-    lastUserSpeechTime = 0;
-    if (silenceTimer) {
-        clearTimeout(silenceTimer);
-        silenceTimer = null;
-    }
-    
-    // Capture user mic for dynamic audio-reactive visualization
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        voiceCallMicStream = stream;
-        try {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!voiceCallAudioContext) {
-                voiceCallAudioContext = new AudioContextClass();
-            }
-            if (!voiceCallUserAnalyser) {
-                voiceCallUserAnalyser = voiceCallAudioContext.createAnalyser();
-                voiceCallUserAnalyser.fftSize = 64;
-            }
-            voiceCallUserSource = voiceCallAudioContext.createMediaStreamSource(stream);
-            voiceCallUserSource.connect(voiceCallUserAnalyser);
-        } catch(e) {
-            console.warn("Could not setup user microphone visualizer node:", e);
-        }
-    }).catch(err => {
-        console.warn("Could not capture user mic stream for visualization:", err);
-    });
-    
-    document.getElementById('voice-call-mute-btn').classList.remove('disabled');
-    document.getElementById('voice-call-speaker-btn').classList.remove('disabled');
-    document.getElementById('voice-call-mute-btn').title = "Mute Microphone";
-    document.getElementById('voice-call-speaker-btn').title = "Mute Speaker";
-    
-    // Mic access is managed directly by the SpeechRecognition engine below
-    
-    drawVisualizer();
-    
-    voiceCallRecognition = new SpeechRecognition();
-    voiceCallRecognition.continuous = true;
-    voiceCallRecognition.interimResults = true;
-    voiceCallRecognition.lang = 'en-US';
-    
-    voiceCallRecognition.onstart = () => {
-        updateVoiceCallStatus("Listening...");
-        lastRecognitionStartTime = Date.now();
-        currentSpeechText = "";
-        playCallStartSound();
-    };
-    
-    voiceCallRecognition.onresult = (event) => {
-        if (!isVoiceCallActive || isfollowerSpeaking || isfollowerThinking || voiceCallMuted) return;
-        
-        let interimTranscript = "";
-        let finalTranscript = "";
-        
-        for (let i = 0; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript + " ";
-            } else {
-                interimTranscript += event.results[i][0].transcript;
-            }
-        }
-        
-        const text = (finalTranscript + interimTranscript).trim();
-        if (text) {
-            currentSpeechText = text;
-            updateVoiceCallStatus("Listening...");
-            lastUserSpeechTime = Date.now(); // Track speech activity for visualizer ripple
-            
-            if (silenceTimer) clearTimeout(silenceTimer);
-            silenceTimer = setTimeout(() => {
-                if (currentSpeechText && isVoiceCallActive && !isfollowerSpeaking && !isfollowerThinking) {
-                    const speechToProcess = currentSpeechText;
-                    currentSpeechText = "";
-                    processUserSpeech(speechToProcess);
-                }
-            }, 1300); // 1.3 seconds of silence -> send turn (prevents cut-off)
-        }
-    };
-    
-    let restartTimeout = null;
-    voiceCallRecognition.onend = () => {
-        const sessionDuration = Date.now() - lastRecognitionStartTime;
-        console.log("Speech recognition session ended. Duration:", sessionDuration, "ms");
-        
-        // If session was shorter than 4 seconds, count as a failure
-        if (sessionDuration < 4000) {
-            consecutiveShortSessions++;
-        } else {
-            consecutiveShortSessions = 0;
-        }
-        
-        if (consecutiveShortSessions >= 3) {
-            console.error("Speech recognition session ended too quickly 3 times. Stopping call loop.");
-            showCustomAlert("Speech Service Unavailable", "Your browser's speech recognition closed immediately. This usually happens if the speech service is not supported on this browser, blocked by settings, or lacks internet connection. Please try using Google Chrome on a secure connection (HTTPS/localhost).");
-            endVoiceCall();
-            return;
-        }
-        
-        if (isVoiceCallActive && !isfollowerSpeaking && !isfollowerThinking && !voiceCallMuted) {
-            updateVoiceCallStatus("Paused...");
-            if (restartTimeout) clearTimeout(restartTimeout);
-            restartTimeout = setTimeout(() => {
-                if (isVoiceCallActive && !isfollowerSpeaking && !isfollowerThinking && !voiceCallMuted) {
-                    try {
-                        updateVoiceCallStatus("Listening...");
-                        voiceCallRecognition.start();
-                    } catch(e) {
-                        console.error("Error restarting speech recognition:", e);
-                    }
-                }
-            }, 1500); // 1.5-second cooldown
-        }
-    };
-    
-    voiceCallRecognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        
-        // network is now treated as a fatal/critical error for transcription
-        const fatalErrors = ['audio-capture', 'not-allowed', 'service-not-allowed', 'language-not-supported', 'bad-grammar', 'network'];
-        if (fatalErrors.includes(event.error)) {
-            let errMsg = "Speech recognition error: " + event.error;
-            if (event.error === 'not-allowed') {
-                errMsg = "Microphone access blocked. Please grant microphone permissions in your browser settings.";
-            } else if (event.error === 'audio-capture') {
-                errMsg = "No microphone detected. Please connect a microphone and try again.";
-            } else if (event.error === 'service-not-allowed') {
-                errMsg = "Speech recognition service is not allowed or supported by your browser.";
-            } else if (event.error === 'language-not-supported') {
-                errMsg = "Language not supported by the browser speech recognition service.";
-            } else if (event.error === 'network') {
-                errMsg = "Speech recognition network error. This browser requires an active internet connection to transcribe speech.";
-            }
-            showCustomAlert("Voice Call Error", errMsg);
-            endVoiceCall();
-        }
-    };
-    
-    try {
-        voiceCallRecognition.start();
-    } catch(e) {
-        console.error("Error starting recognition:", e);
-    }
-}
-
-function updateVoiceCallStatus(text) {
-    const statusEl = document.getElementById('voice-call-status');
-    if (statusEl) {
-        statusEl.textContent = text;
-    }
-}
-
-function addVoiceCallTurn(speaker, text) {
-    voiceCallTranscript.push({ speaker: speaker, text: text });
-    
-    const turnsContainer = document.getElementById('voice-call-transcript-turns');
-    if (!turnsContainer) return;
-    
-    const turnDiv = document.createElement('div');
-    turnDiv.className = 'voice-call-transcript-turn';
-    
-    const speakerSpan = document.createElement('span');
-    speakerSpan.className = `turn-speaker ${speaker}`;
-    speakerSpan.textContent = speaker === 'user' ? `${getUserDisplayName()}: ` : `${activefollowerName || 'follower'}: `;
-    
-    const textSpan = document.createElement('span');
-    textSpan.textContent = text;
-    
-    turnDiv.appendChild(speakerSpan);
-    turnDiv.appendChild(textSpan);
-    turnsContainer.appendChild(turnDiv);
-    
-    const transcriptWrapper = document.getElementById('voice-call-transcript');
-    if (transcriptWrapper) {
-        transcriptWrapper.style.display = 'block';
-        transcriptWrapper.scrollTop = transcriptWrapper.scrollHeight;
-    }
-}
-
-async function processUserSpeech(text) {
-    if (!isVoiceCallActive) return;
-    
-    if (silenceTimer) {
-        clearTimeout(silenceTimer);
-        silenceTimer = null;
-    }
-    currentSpeechText = "";
-    
-    addVoiceCallTurn('user', text);
-    
-    isfollowerThinking = true;
-    updateVoiceCallStatus(`${activefollowerName || 'follower'} is thinking...`);
-    
-    let shouldResume = false;
-    try {
-        if (voiceCallRecognition) {
-            voiceCallRecognition.stop();
-        }
-        
-        let voiceModel = selectedModel;
-        if (connectionStatus && (connectionStatus.remote_configured ) && connectionStatus.remote_model) {
-            voiceModel = connectionStatus.remote_model;
-        }
-        
-        const payload = {
-            message: text,
-            session_id: sessionId + "_voice",
-            model: voiceModel,
-            is_voice_call: true
-        };
-        
-        const response = await fetch('/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) throw new Error("Chat request failed");
-        const data = await response.json();
-        
-        if (!isVoiceCallActive) return;
-        
-        let replyText = data.response || "";
-        if (replyText) {
-            addVoiceCallTurn('follower', replyText);
-            updateVoiceCallStatus(`${activefollowerName || 'follower'} is speaking...`);
-            await playfollowerSpeech(replyText);
-        } else {
-            updateVoiceCallStatus("Listening...");
-            shouldResume = true;
-        }
-    } catch(e) {
-        console.error("Error in voice call turn processing:", e);
-        updateVoiceCallStatus("Error. Listening...");
-        shouldResume = true;
-    } finally {
-        isfollowerThinking = false;
-        if (shouldResume) {
-            resumeVoiceRecognition();
-        }
-    }
-}
-
-async function playfollowerSpeech(text) {
-    if (voiceCallSpeakerMuted) {
-        updateVoiceCallStatus("Listening...");
-        resumeVoiceRecognition();
-        return;
-    }
-    
-    isfollowerSpeaking = true;
-    const tempMsgId = "voice-" + Date.now();
-    
-    try {
-        const response = await fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message_id: tempMsgId, text: text })
-        });
-        
-        const data = await response.json();
-        if (!response.ok || !data.success) {
-            throw new Error(data.error || 'TTS failed');
-        }
-        
-        if (!isVoiceCallActive) return;
-        
-        if (voiceCallActiveAudio) {
-            voiceCallActiveAudio.pause();
-        }
-        
-        voiceCallActiveAudio = new Audio(data.audio_url);
-        voiceCallActiveAudio.volume = isSpeechMuted ? 0 : speechVolume;
-        
-        try {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!voiceCallAudioContext) {
-                voiceCallAudioContext = new AudioContextClass();
-            }
-            if (!voiceCallAnalyser) {
-                voiceCallAnalyser = voiceCallAudioContext.createAnalyser();
-                voiceCallAnalyser.fftSize = 64;
-            }
-            const source = voiceCallAudioContext.createMediaElementSource(voiceCallActiveAudio);
-            source.connect(voiceCallAnalyser);
-            voiceCallAnalyser.connect(voiceCallAudioContext.destination);
-        } catch(ae) {
-            console.warn("Could not setup follower audio visualizer node:", ae);
-        }
-        
-        voiceCallActiveAudio.onended = () => {
-            isfollowerSpeaking = false;
-            updateVoiceCallStatus("Listening...");
-            resumeVoiceRecognition();
-        };
-        
-        voiceCallActiveAudio.onerror = () => {
-            console.error("Audio playback error");
-            isfollowerSpeaking = false;
-            updateVoiceCallStatus("Listening...");
-            resumeVoiceRecognition();
-        };
-        
-        await voiceCallActiveAudio.play();
-    } catch (err) {
-        console.error("TTS generation or playback error:", err);
-        isfollowerSpeaking = false;
-        updateVoiceCallStatus("Listening...");
-        resumeVoiceRecognition();
-    }
-}
-
-function resumeVoiceRecognition() {
-    if (!isVoiceCallActive || isfollowerSpeaking || isfollowerThinking || voiceCallMuted) return;
-    try {
-        if (voiceCallRecognition) {
-            voiceCallRecognition.start();
-        }
-    } catch(e) {}
-}
-
-function toggleCallMute() {
-    voiceCallMuted = !voiceCallMuted;
-    const btn = document.getElementById('voice-call-mute-btn');
-    if (voiceCallMuted) {
-        btn.classList.add('disabled');
-        btn.title = "Unmute Microphone";
-        updateVoiceCallStatus("Muted");
-        if (voiceCallRecognition) {
-            try { voiceCallRecognition.stop(); } catch(e) {}
-        }
-    } else {
-        btn.classList.remove('disabled');
-        btn.title = "Mute Microphone";
-        updateVoiceCallStatus("Listening...");
-        resumeVoiceRecognition();
-    }
-}
-
-function toggleCallSpeaker() {
-    voiceCallSpeakerMuted = !voiceCallSpeakerMuted;
-    const btn = document.getElementById('voice-call-speaker-btn');
-    if (voiceCallSpeakerMuted) {
-        btn.classList.add('disabled');
-        btn.title = "Unmute Speaker";
-        if (voiceCallActiveAudio) {
-            try { voiceCallActiveAudio.pause(); } catch(e) {}
-        }
-    } else {
-        btn.classList.remove('disabled');
-        btn.title = "Mute Speaker";
-        if (voiceCallActiveAudio && isfollowerSpeaking) {
-            try { voiceCallActiveAudio.play(); } catch(e) {}
-        }
-    }
-}
-
-function endVoiceCall() {
-    isVoiceCallActive = false;
-    playHangupSound(); // Play telephone-like disconnect tone
-    
-    if (silenceTimer) {
-        clearTimeout(silenceTimer);
-        silenceTimer = null;
-    }
-    currentSpeechText = "";
-    
-    if (voiceCallVisualizerAnimation) {
-        cancelAnimationFrame(voiceCallVisualizerAnimation);
-        voiceCallVisualizerAnimation = null;
-    }
-    
-    if (voiceCallMicStream) {
-        voiceCallMicStream.getTracks().forEach(track => track.stop());
-        voiceCallMicStream = null;
-    }
-    if (voiceCallUserSource) {
-        try { voiceCallUserSource.disconnect(); } catch(e) {}
-        voiceCallUserSource = null;
-    }
-    voiceCallUserAnalyser = null;
-    
-    if (voiceCallActiveAudio) {
-        voiceCallActiveAudio.pause();
-        voiceCallActiveAudio = null;
-    }
-    
-    if (voiceCallAudioContext) {
-        try { voiceCallAudioContext.close(); } catch(e) {}
-        voiceCallAudioContext = null;
-    }
-    voiceCallAnalyser = null;
-    
-    if (voiceCallRecognition) {
-        try { voiceCallRecognition.stop(); } catch(e) {}
-        voiceCallRecognition = null;
-    }
-    
-    const overlay = document.getElementById('voice-call-overlay');
-    if (overlay) {
-        overlay.style.display = 'none';
-    }
-    
-    if (voiceCallTranscript.length > 0) {
-        const durationSec = Math.round((Date.now() - voiceCallStartTime) / 1000);
-        let durationText = "";
-        if (durationSec < 60) {
-            durationText = `${durationSec}s`;
-        } else {
-            const mins = Math.floor(durationSec / 60);
-            const secs = durationSec % 60;
-            durationText = `${mins}m ${secs}s`;
-        }
-        
-        const payload = {
-            duration: durationText,
-            turns: voiceCallTranscript
-        };
-        
-        fetch('/api/voice_call/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                session_id: sessionId,
-                transcript: JSON.stringify(payload)
-            })
-        }).then(res => res.json()).then(data => {
-            if (data.success) {
-                appendMessage('voice-call', JSON.stringify(payload), null, null, true, Date.now() / 1000);
-            }
-        }).catch(err => {
-            console.error("Error saving voice call transcript:", err);
-        });
-    }
-}
-
-let visualizerAmplitude = 5;
-function drawVisualizer() {
-    if (!isVoiceCallActive) return;
-    voiceCallVisualizerAnimation = requestAnimationFrame(drawVisualizer);
-    
-    let targetAmp = 2;
-    let speed = 0.05;
-    
-    const statusEl = document.getElementById('voice-call-status');
-    const currentStatus = statusEl ? statusEl.textContent : "";
-    
-    if (isfollowerSpeaking && !voiceCallSpeakerMuted && voiceCallAnalyser) {
-        const bufferLength = voiceCallAnalyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        voiceCallAnalyser.getByteFrequencyData(dataArray);
-        
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-            sum += dataArray[i];
-        }
-        const avgVolume = sum / bufferLength; // 0 to 255
-        targetAmp = Math.max(3, (avgVolume / 255) * 45);
-        speed = 0.05 + (avgVolume / 255) * 0.25;
-    } else if (isfollowerThinking) {
-        targetAmp = 4;
-        speed = 0.03;
-    } else if (isVoiceCallActive && !voiceCallMuted && currentStatus === "Listening...") {
-        let userVolume = 0;
-        if (voiceCallUserAnalyser) {
-            const bufferLength = voiceCallUserAnalyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            voiceCallUserAnalyser.getByteFrequencyData(dataArray);
-            
-            let sum = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                sum += dataArray[i];
-            }
-            userVolume = sum / bufferLength; // 0 to 255
-        }
-        
-        if (userVolume > 15) { // User is actively speaking
-            targetAmp = Math.max(5, (userVolume / 120) * 25);
-            speed = 0.06 + (userVolume / 120) * 0.12;
-            lastUserSpeechTime = Date.now();
-        } else if (Date.now() - lastUserSpeechTime < 800) {
-            targetAmp = 3;
-            speed = 0.04;
-        } else {
-            targetAmp = 1;
-            speed = 0.02;
-        }
-    } else {
-        targetAmp = 1;
-        speed = 0.01;
-    }
-    
-    visualizerAmplitude += (targetAmp - visualizerAmplitude) * 0.15;
-    
-    const ring1 = document.querySelector('.voice-call-pulse-ring.ring1');
-    const ring2 = document.querySelector('.voice-call-pulse-ring.ring2');
-    const avatar = document.getElementById('voice-call-follower-avatar');
-    
-    if (ring1 && ring2) {
-        let scaleVal1 = 1.0;
-        let opacityVal1 = 0.0;
-        let scaleVal2 = 1.0;
-        let opacityVal2 = 0.0;
-        
-        if (isfollowerSpeaking) {
-            // Audio reactive ring pulses + avatar pulsing size (slightly tighter scale)
-            const scaleFactor = 1.0 + (visualizerAmplitude / 45) * 0.45;
-            const timeScale1 = (Date.now() / 800) % 2.0; // cycle 0 to 2
-            const timeScale2 = ((Date.now() + 800) / 800) % 2.0;
-            
-            scaleVal1 = 1.0 + timeScale1 * 0.26 * scaleFactor;
-            opacityVal1 = Math.max(0, 0.85 - timeScale1 * 0.45);
-            
-            scaleVal2 = 1.0 + timeScale2 * 0.26 * scaleFactor;
-            opacityVal2 = Math.max(0, 0.85 - timeScale2 * 0.45);
-            
-            if (avatar) {
-                avatar.style.transform = `scale(${1.0 + (visualizerAmplitude / 45) * 0.07})`;
-            }
-        } else if (isfollowerThinking) {
-            // Rapid circular breath wave for thinking
-            const timeVal = Date.now() / 200;
-            scaleVal1 = 1.04 + Math.sin(timeVal) * 0.08;
-            opacityVal1 = 0.6 + Math.sin(timeVal) * 0.15;
-            
-            scaleVal2 = 1.04 + Math.cos(timeVal) * 0.08;
-            opacityVal2 = 0.4 + Math.cos(timeVal) * 0.15;
-            
-            if (avatar) {
-                avatar.style.transform = 'scale(1)';
-            }
-        } else if (currentStatus === "Listening...") {
-            if (Date.now() - lastUserSpeechTime < 800) {
-                // Dynamic reactive visualizer scaling when user actively talks (based on mic volume!)
-                const pulseScale = 1.05 + (visualizerAmplitude / 25) * 0.22;
-                scaleVal1 = pulseScale;
-                opacityVal1 = 0.75;
-                scaleVal2 = pulseScale * 1.15;
-                opacityVal2 = 0.35;
-                
-                if (avatar) {
-                    avatar.style.transform = `scale(${1.0 + (visualizerAmplitude / 25) * 0.05})`;
-                }
-            } else {
-                // Gentle resting breath pattern (kept inside the frame bounds)
-                const timeVal = Date.now() / 1500;
-                scaleVal1 = 1.0 + (Math.sin(timeVal) + 1.0) * 0.08;
-                opacityVal1 = 0.25 + (Math.sin(timeVal) + 1.0) * 0.08;
-                
-                scaleVal2 = 1.0 + (Math.cos(timeVal) + 1.0) * 0.08;
-                opacityVal2 = 0.15 + (Math.cos(timeVal) + 1.0) * 0.08;
-                
-                if (avatar) {
-                    avatar.style.transform = 'scale(1)';
-                }
-            }
-        } else {
-            if (avatar) {
-                avatar.style.transform = 'scale(1)';
-            }
-        }
-        
-        // Override default CSS animations with dynamic JS calculations
-        ring1.style.animation = 'none';
-        ring2.style.animation = 'none';
-        
-        ring1.style.transform = `scale(${scaleVal1})`;
-        ring1.style.opacity = opacityVal1;
-        
-        ring2.style.transform = `scale(${scaleVal2})`;
-        ring2.style.opacity = opacityVal2;
-    }
-}
 
 // Global error handler: remove deleted or missing portrait messages from chat
 document.addEventListener('error', function (event) {

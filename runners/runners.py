@@ -22,7 +22,6 @@ from utils.utils import (
     _normalize_tool_name,
     _parse_emulated_tool_call,
     is_real_user_msg,
-    strip_story,
 )
 from variables.settings import (
     FOLLOWERS_DIR,
@@ -33,8 +32,8 @@ from variables.settings import (
 )
 
 # Global State
-cancelled_sessions: set[str] = set()
-voice_call_sessions: set[str] = set()
+cancelled_saves: set[str] = set()
+cancelled_sessions = cancelled_saves
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 TOOL_TAG_RE = re.compile(r"\[(\w+)\(([\s\S]*?)\)\]")
@@ -166,25 +165,31 @@ def _trim_context_messages(messages: list[dict], max_chars: int = 26000) -> list
 class BaseRunner:
     def __init__(self, app_name: str = "Arena"):
         self.app_name = app_name
-        self.sessions_history: dict = {}
-        self.sessions_memory_state: dict = {}
+        self.save_history: dict = {}
+        self.save_memory_state: dict = {}
+        self.sessions_history = self.save_history
+        self.sessions_memory_state = self.save_memory_state
 
-    def _get_memory_meta(self, session_id: str) -> dict:
-        """Helper to ensure session memory state exists and is synchronized across active saves."""
-        if session_id not in self.sessions_memory_state:
+    def _normalize_save_id(self, save_id: str = None) -> str:
+        from core.save_manager import get_active_save_id, _get_clean_name
+        if not save_id or save_id == "default":
+            return get_active_save_id()
+        return _get_clean_name(save_id)
+
+    def _get_memory_meta(self, save_id: str) -> dict:
+        """Helper to ensure save memory state exists and is synchronized across active saves."""
+        target_save_id = self._normalize_save_id(save_id)
+        if target_save_id not in self.save_memory_state:
             try:
-                from core.save_manager import get_active_save_id, read_save
-                target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
-                bundle = read_save(target_id)
+                from core.save_manager import read_save
+                bundle = read_save(target_save_id)
                 if "memory_state" in bundle and isinstance(bundle["memory_state"], dict):
-                    self.sessions_memory_state[session_id] = bundle["memory_state"]
-                    if target_id != session_id:
-                        self.sessions_memory_state[target_id] = bundle["memory_state"]
+                    self.save_memory_state[target_save_id] = bundle["memory_state"]
             except Exception:
                 pass
 
-        meta = self.sessions_memory_state.setdefault(
-            session_id,
+        meta = self.save_memory_state.setdefault(
+            target_save_id,
             {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0}
         )
         meta.setdefault("last_summarized_turn", 0)
@@ -198,18 +203,20 @@ class BaseRunner:
         payload: dict,
         headers: dict,
         timeout: float = 60.0,
+        save_id: str | None = None,
         session_id: str | None = None,
     ) -> httpx.Response:
         """Send a request to the selected LLM endpoint with cancellation support."""
         is_local = "127.0.0.1:1234" in url or "localhost:1234" in url
         start_time = time.time()
         max_retry_time, retry_interval = 180.0, 2.0
+        target_save_id = save_id or session_id
 
         def _check_cancellation():
-            if session_id and session_id in cancelled_sessions:
-                cancelled_sessions.discard(session_id)
-                print(f"[CANCEL] Aborting HTTP request for session {session_id}", flush=True)
-                raise asyncio.CancelledError("Session cancelled by user request.")
+            if target_save_id and target_save_id in cancelled_saves:
+                cancelled_saves.discard(target_save_id)
+                print(f"[CANCEL] Aborting HTTP request for save {target_save_id}", flush=True)
+                raise asyncio.CancelledError("Save run cancelled by user request.")
 
         # Pre-flight check: ensure local LLM server is booted and ready before making requests
         if is_local:
@@ -225,7 +232,7 @@ class BaseRunner:
             try:
 
                 client = get_http_client()
-                if session_id:
+                if target_save_id:
                     req_payload = {**payload, "stream": True}
                     req_headers = {**headers, "Accept-Encoding": "identity"}
 
@@ -312,10 +319,10 @@ class BaseRunner:
         return err_msg
 
     async def _generate_local_summary(self, text_to_summarize: str, active_model: str, prior_memories: list | None = None) -> str:
-        from runners.follower import get_active_user
+        from runners.follower import get_player_name
         from core.follower_config import get_follower_name
 
-        user_name = get_active_user().capitalize()
+        user_name = get_player_name()
         try:
             follower_name = get_follower_name()
         except Exception:
@@ -341,10 +348,10 @@ class BaseRunner:
         )
 
     async def _distill_epic_chronicle(self, text_to_distill: str, active_model: str, prior_epic: str = "") -> str:
-        from runners.follower import get_active_user
+        from runners.follower import get_player_name
         from core.follower_config import get_follower_name
 
-        user_name = get_active_user().capitalize()
+        user_name = get_player_name()
         try:
             follower_name = get_follower_name()
         except Exception:
@@ -371,10 +378,11 @@ class BaseRunner:
             err_msg="Distillation failed due to connection error.",
         )
 
-    async def _process_memory_pipeline(self, session_id: str, active_model: str, user_text: str, assistant_text: str):
+    async def _process_memory_pipeline(self, save_id: str, active_model: str, user_text: str, assistant_text: str):
         """Asynchronous post-turn worker handling Step 2 (Chapters) and Step 3 (Epic & RAG)."""
-        meta = self._get_memory_meta(session_id)
-        history = self.sessions_history.get(session_id, [])
+        target_save_id = self._normalize_save_id(save_id)
+        meta = self._get_memory_meta(target_save_id)
+        history = self.save_history.get(target_save_id, [])
 
         # Filter to genuine dialogue only — exclude tool events, system injections, and quest/item notifications
         hidden_prefixes = ("tool_", "port_", "quest_", "sys_", "itm_")
@@ -441,7 +449,7 @@ class BaseRunner:
             if epic_summary and not epic_summary.startswith("Distillation failed"):
                 meta["epic_chronicle"] = epic_summary
 
-        self._save_session_to_disk(session_id)
+        self._save_to_disk(target_save_id)
 
 
     def _load_temperature_setting(self, default_temp: float = 0.75) -> float:
@@ -459,17 +467,19 @@ class BaseRunner:
 
     async def _execute_local_llm_loop(
         self,
-        session_id: str,
-        adapter: LocalHistoryAdapter,
-        model: str,
-        rag_context: str,
-        new_message_text: str,
-        invocation_id: str,
+        save_id: str = None,
+        adapter: LocalHistoryAdapter = None,
+        model: str = None,
+        rag_context: str = "",
+        new_message_text: str = None,
+        invocation_id: str = "",
         existing_tool_calls: list = None,
         speaker_id: str = "game",
+        session_id: str = None,
     ) -> tuple[str, list]:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         from core.save_manager import get_active_follower
-        follower_id = get_active_follower(session_id)
+        follower_id = get_active_follower(target_save_id)
         max_iterations = 5
         iteration = 0
         all_tool_calls = list(existing_tool_calls) if existing_tool_calls else []
@@ -480,7 +490,7 @@ class BaseRunner:
             iteration += 1
 
             # --- STAGE 1: LOCAL PREPROCESSING ---
-            sys_instructions = self._get_system_instructions(session_id, user_message=new_message_text, speaker_id=speaker_id)
+            sys_instructions = self._get_system_instructions(target_save_id, user_message=new_message_text, speaker_id=speaker_id)
             messages = adapter.get_openai_messages(sys_instructions, rag_context, speaker_id=speaker_id)
             messages = _trim_context_messages(messages, max_chars=26000)
 
@@ -508,7 +518,7 @@ class BaseRunner:
 
             bot_response_text = ""
             try:
-                response = await self._post_llm_request(url, payload, headers, timeout=120.0, session_id=session_id)
+                response = await self._post_llm_request(url, payload, headers, timeout=120.0, save_id=target_save_id)
                 if response.status_code == 200:
                     bot_response_text = response.json()["choices"][0]["message"]["content"]
                 else:
@@ -556,8 +566,8 @@ class BaseRunner:
             new_matches = [m for m in matches if _normalize_tool_name(m.group(1)) not in existing_tool_names]
 
             if matches:
-                if session_id in cancelled_sessions:
-                    raise asyncio.CancelledError("Session cancelled by user request.")
+                if target_save_id in cancelled_saves:
+                    raise asyncio.CancelledError("Save run cancelled by user request.")
 
                 if new_matches:
                     raw_results = []
@@ -584,17 +594,13 @@ class BaseRunner:
                             if output_dict.get("success"):
                                 spk = str(t_args.get("speaker") or t_args.get("name") or "NPC").strip()
                                 dlg = str(t_args.get("dialogue") or t_args.get("speech") or t_args.get("text") or "").strip()
-                                act = str(t_args.get("action") or "").strip()
 
-                                parts = []
-                                if act:
-                                    parts.append(f"*{act}*")
-                                if dlg:
-                                    clean_dlg = dlg.strip(' "\'')
-                                    if clean_dlg:
-                                        parts.append(clean_dlg)
-                                if parts:
-                                    replacement = "\n\n" + "\n\n".join(parts)
+                                clean_dlg = dlg.strip(' "\'')
+                                preceding_text = bot_response_text[:m.start()]
+                                already_in_text = bool(clean_dlg and clean_dlg in preceding_text)
+
+                                if not already_in_text and clean_dlg:
+                                    replacement = f"\n\n{clean_dlg}\n\n"
                                 results.append((t_name, t_args, output))
 
                             bot_response_text = bot_response_text.replace(m.group(0), replacement, 1)
@@ -610,6 +616,7 @@ class BaseRunner:
                     tool_calls = []
 
                 clean_text = TOOL_TAG_STRIP_RE.sub("", bot_response_text).strip()
+                clean_text = re.sub(r'\n{3,}', '\n\n', clean_text)
 
                 player_is_dead = False
                 for t_name, _, t_output in results:
@@ -622,9 +629,7 @@ class BaseRunner:
                 if not player_is_dead:
                     try:
                         from core.character import load_character
-                        from core.save_manager import get_active_save_id
-                        active_save = get_active_save_id() if (not session_id or session_id == "default") else session_id
-                        sheet = load_character(active_save)
+                        sheet = load_character(target_save_id)
                         if sheet and sheet.get("derived", {}).get("hp_current", 1) <= 0:
                             player_is_dead = True
                     except Exception:
@@ -694,12 +699,9 @@ class BaseRunner:
         final_response_text = clean_speaker_response(final_response_text, speaker_id=speaker_id, follower_id=follower_id)
         final_response_text = self._ensure_images_are_embedded(final_response_text)
 
-        if isinstance(session_id, str) and session_id.endswith("_voice"):
-            final_response_text = strip_story(final_response_text)
-
         # Process Memory Pipeline
         await self._process_memory_pipeline(
-            session_id=session_id,
+            save_id=target_save_id,
             active_model=target_model or "",
             user_text=new_message_text,
             assistant_text=final_response_text
@@ -708,33 +710,60 @@ class BaseRunner:
         return final_response_text, all_tool_calls
     
     @property
-    def sessions_dir(self) -> str:
+    def saves_dir(self) -> str:
         from core.save_manager import SAVES_DIR
         os.makedirs(SAVES_DIR, exist_ok=True)
         return str(SAVES_DIR)
 
-    async def get_history(self, session_id: str) -> list:
+    @property
+    def sessions_dir(self) -> str:
+        return self.saves_dir
+
+    async def get_history(self, save_id: str) -> list:
         raise NotImplementedError()
 
-    async def run_async(self, session_id: str, new_message_text: str, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None, existing_tool_calls: list = None) -> tuple:
+    async def run_async(self, save_id: str, new_message_text: str = None, image_data: str = None, image_mime: str = None, model: str = None, media_path: str = None, msg_id: str = None, existing_tool_calls: list = None, speaker_id: str = "game") -> tuple:
         raise NotImplementedError()
 
-    async def edit_turn(self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False, speaker_id: str = None) -> tuple:
+    async def edit_turn(self, save_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False, speaker_id: str = None) -> tuple:
+        raise NotImplementedError()
+
+    async def reset_save(self, save_id: str):
         raise NotImplementedError()
 
     async def reset_session(self, session_id: str):
+        return await self.reset_save(session_id)
+
+    async def delete_turn(self, save_id: str, msg_id: str) -> bool:
         raise NotImplementedError()
 
-    async def delete_turn(self, session_id: str, msg_id: str) -> bool:
+    async def delete_image_from_save(self, save_id: str, image_url: str) -> bool:
         raise NotImplementedError()
 
     async def delete_image_from_session(self, session_id: str, image_url: str) -> bool:
+        return await self.delete_image_from_save(session_id, image_url)
+
+    async def replace_image_in_save(self, save_id: str, old_image_url: str, new_image_url: str) -> bool:
         raise NotImplementedError()
 
     async def replace_image_in_session(self, session_id: str, old_image_url: str, new_image_url: str) -> bool:
+        return await self.replace_image_in_save(session_id, old_image_url, new_image_url)
+
+    async def replace_image_with_video_in_save(self, save_id: str, old_image_url: str, new_video_url: str) -> bool:
         raise NotImplementedError()
 
     async def replace_image_with_video_in_session(self, session_id: str, old_image_url: str, new_video_url: str) -> bool:
+        return await self.replace_image_with_video_in_save(session_id, old_image_url, new_video_url)
+
+    async def append_message_to_save(
+        self,
+        save_id: str,
+        role: str,
+        text: str,
+        sender_id: str | None = None,
+        sender_name: str | None = None,
+        tool_calls: list | None = None,
+    ) -> dict:
         raise NotImplementedError()
 
     async def append_message_to_session(
@@ -746,21 +775,22 @@ class BaseRunner:
         sender_name: str | None = None,
         tool_calls: list | None = None,
     ) -> dict:
+        return await self.append_message_to_save(
+            save_id=session_id,
+            role=role,
+            text=text,
+            sender_id=sender_id,
+            sender_name=sender_name,
+            tool_calls=tool_calls,
+        )
+
+    async def delete_system_memory(self, save_id: str, timestamp: float) -> bool:
         raise NotImplementedError()
 
-    async def append_voice_call(self, session_id: str, transcript: str, timestamp: float = None, start_time: float = None) -> bool:
+    async def update_message_text(self, save_id: str, msg_id: str, new_text: str) -> bool:
         raise NotImplementedError()
 
-    async def clone_history(self, src_id: str, dest_id: str, messages: list) -> bool:
-        raise NotImplementedError()
-
-    async def delete_system_memory(self, session_id: str, timestamp: float) -> bool:
-        raise NotImplementedError()
-
-    async def update_message_text(self, session_id: str, msg_id: str, new_text: str) -> bool:
-        raise NotImplementedError()
-
-    async def delete_message_at(self, session_id: str, msg_id: str) -> bool:
+    async def delete_message_at(self, save_id: str, msg_id: str) -> bool:
         raise NotImplementedError()
 
     def _delete_local_image(self, image_url: str) -> bool:
@@ -789,83 +819,6 @@ class BaseRunner:
         raw_path_pattern = r'(?<![\([/])(/images/(?:portraits|media)/[a-zA-Z0-9_\-\.]+\.(?:png|jpg|jpeg|webp|gif|mp4))'
         return re.sub(raw_path_pattern, r'![Portrait](\1)', text)
 
-    def _load_profile_json(self, active_prog: str) -> dict:
-        json_path = os.path.join(FOLLOWERS_DIR, active_prog, f"{active_prog}.json")
-        if os.path.exists(json_path):
-            try:
-                with open(json_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return {}
-
-    def _clean_transcript_text(self, text: str) -> str:
-        think_pattern = (
-            r"(?:<think>|\[think\]|<thought>|\[thought\]|<\|thought\|>|<\|channel\|>thought|<channel\|>thought)"
-            r"[\s\S]*?"
-            r"(?:</think>|\[/think\]|</thought>|\[/thought\]|<\|thought\|>|<\|channel\|>|<channel\|>|<\/\s*think>|\[\s*/\s*think\s*\]|$)"
-        )
-        cleaned = re.sub(think_pattern, "", text, flags=re.IGNORECASE)
-        cleaned = re.sub(r"<\|channel\|>|<channel\|>", "", cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r"\*.*?\*", "", cleaned)
-        return re.sub(r" +", " ", cleaned).strip()
-
-    def _extract_recent_turns(self, src_session_id: str, follower_name: str, limit: int = 6) -> list[str]:
-        history = self.sessions_history.get(src_session_id, [])
-        if not history:
-            safe_id = "".join(c for c in src_session_id if c.isalnum() or c in "-_")
-            path = os.path.join(self.sessions_dir, f"{safe_id}.json")
-            if os.path.exists(path):
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    history = data.get("messages", data) if isinstance(data, dict) else data
-                except Exception:
-                    pass
-
-        turns = []
-        for msg in history:
-            if msg.get("role") != "voice-call":
-                role = "User" if msg.get("role") == "user" else follower_name
-                if text := msg.get("text", "").strip():
-                    turns.append((role, text))
-
-        journal_lines = []
-        for role, text in turns[-limit:]:
-            if cleaned := self._clean_transcript_text(text):
-                journal_lines.append(f"  {role}: {cleaned}")
-
-        return journal_lines
-
-    def _build_voice_prompt(self, session_id: str, follower_name: str) -> str:
-        from core.follower_config import compile_instructions_from_json
-
-        active_prog = get_active_follower()
-        profile_data = self._load_profile_json(active_prog)
-
-        if profile_data:
-            profile_data.setdefault("operation", {})
-            profile_data["operation"].update({
-                "response_directive": "Super short and succinct messages. Conversational. No narration.",
-                "example_message": "",
-                "scenario": f"{follower_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time.",
-            })
-            instructions = compile_instructions_from_json(profile_data)
-        else:
-            instructions = (
-                f"# IDENTITY: {follower_name}\n\n"
-                "## SCENARIO / CONTEXT\n"
-                f"{follower_name} is on a live voice call with the user. They are speaking to each other over the phone in real-time.\n\n"
-                "## RESPONSE DIRECTIVES (MANDATORY GUIDELINES)\n"
-                "Super short and succinct messages. Conversational. No narration."
-            )
-
-        journal_lines = self._extract_recent_turns(session_id[:-6], follower_name)
-        if journal_lines:
-            instructions += "\n\n# RECALLED JOURNALS / MEMORIES\n- Recent conversation context:\n" + "\n".join(journal_lines)
-
-        return instructions
-
     def _inject_journals(self, instructions: str, user_message: str) -> str:
         if not user_message:
             return instructions
@@ -884,8 +837,9 @@ class BaseRunner:
 
         return instructions
 
-    def _inject_system_memories(self, instructions: str, session_id: str) -> str:
-        meta = self._get_memory_meta(session_id)
+    def _inject_system_memories(self, instructions: str, save_id: str) -> str:
+        target_save_id = self._normalize_save_id(save_id)
+        meta = self._get_memory_meta(target_save_id)
         epic = meta.get("epic_chronicle", "")
         chapters = meta.get("recent_chapters", [])
 
@@ -902,22 +856,23 @@ class BaseRunner:
 
         return instructions
 
-    def _get_system_instructions(self, session_id: str, user_message: str = None, speaker_id: str = "game") -> str:
+    def _get_system_instructions(self, save_id: str, user_message: str = None, speaker_id: str = "game") -> str:
         from core.follower_config import compile_speaker_instructions, replace_placeholders, get_follower_name
         from core.save_manager import get_active_followers
         import re
 
-        party = get_active_followers(session_id)
+        target_save_id = self._normalize_save_id(save_id)
+        party = get_active_followers(target_save_id)
         instructions = compile_speaker_instructions(speaker_id=speaker_id, party_followers=party)
 
         try:
             from core.world_engine import load_world_state
             from core.character import load_character
-            ws = load_world_state(session_id)
+            ws = load_world_state(target_save_id)
             loc = ws.get("current_location", "Imperial Dungeon")
             prov = ws.get("current_province", "Cyrodiil")
             q_stage = ws.get("quest_stage", 1)
-            sheet = load_character(session_id)
+            sheet = load_character(target_save_id)
             d = sheet.get("derived", {})
             hp_cur, hp_max = d.get("hp_current", 25), d.get("hp_max", 25)
             mp_cur, mp_max = d.get("mp_current", d.get("sp_current", 40)), d.get("mp_max", d.get("sp_max", 40))
@@ -967,7 +922,7 @@ class BaseRunner:
         except Exception as se:
             print(f"Error compiling scene state header: {se}")
 
-        instructions = self._inject_system_memories(instructions, session_id)
+        instructions = self._inject_system_memories(instructions, target_save_id)
         instructions = self._inject_journals(instructions, user_message)
 
         # Image and portrait generation directives
@@ -977,7 +932,7 @@ class BaseRunner:
             # Retrieve recent scene narrative for contextual pose & scenery inference
             recent_scene_snippet = ""
             try:
-                history = self.sessions_history.get(session_id, [])
+                history = self.save_history.get(target_save_id, [])
                 narrative_msgs = [
                     m for m in history
                     if m.get("role") in ("follower", "assistant", "user")
@@ -1077,35 +1032,45 @@ class OpenSourceRunner(BaseRunner):
 
         raise Exception(f"HTTP Server returned status code {r.status_code}: {r.text}")
 
-    def _get_session_path(self, session_id: str) -> str:
-        safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
-        return os.path.join(self.sessions_dir, f"{safe_id}.json")
+    def _get_save_path(self, save_id: str) -> str:
+        from core.save_manager import get_save_path
+        return str(get_save_path(self._normalize_save_id(save_id)))
 
-    def _save_session_to_disk(self, session_id: str):
+    _get_session_path = _get_save_path
+
+    def _save_to_disk(self, save_id: str):
+        target_save_id = self._normalize_save_id(save_id)
         with self._lock:
             try:
-                from core.save_manager import get_active_save_id, read_save, write_save
-                target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
-                bundle = read_save(target_id)
-                bundle["messages"] = self.sessions_history.get(session_id, [])
-                bundle["memory_state"] = self.sessions_memory_state.get(session_id, {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0})
-                write_save(target_id, bundle)
+                from core.save_manager import read_save, write_save
+                bundle = read_save(target_save_id)
+                bundle["messages"] = self.save_history.get(target_save_id, [])
+                bundle["memory_state"] = self.save_memory_state.get(
+                    target_save_id,
+                    {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0}
+                )
+                write_save(target_save_id, bundle)
             except Exception as e:
-                print(f"Error saving OS session {session_id} to disk: {e}")
+                print(f"Error saving save {target_save_id} to disk: {e}")
 
-    def _load_session_from_disk(self, session_id: str) -> bool:
+    _save_session_to_disk = _save_to_disk
+
+    def _load_from_disk(self, save_id: str) -> bool:
+        target_save_id = self._normalize_save_id(save_id)
         with self._lock:
             try:
-                from core.save_manager import get_active_save_id, read_save
-                target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
-                bundle = read_save(target_id)
-                self.sessions_history[session_id] = bundle.get("messages", [])
-                memory_state = bundle.get("memory_state", {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0})
+                from core.save_manager import read_save
+                bundle = read_save(target_save_id)
+                self.save_history[target_save_id] = bundle.get("messages", [])
+                memory_state = bundle.get(
+                    "memory_state",
+                    {"unsummarized_buffer": [], "recent_chapters": [], "epic_chronicle": "", "last_summarized_turn": 0}
+                )
 
                 # For saves created before the watermark was added, default to current turn count
                 # so the pipeline doesn't re-summarize already-seen history
                 if "last_summarized_turn" not in memory_state:
-                    history = self.sessions_history.get(session_id, [])
+                    history = self.save_history.get(target_save_id, [])
                     dialogue_count = sum(1 for m in history if m.get("role") in ("user", "assistant", "follower"))
                     memory_state["last_summarized_turn"] = dialogue_count // 2
 
@@ -1113,15 +1078,18 @@ class OpenSourceRunner(BaseRunner):
                 if len(memory_state.get("recent_chapters", [])) > 2:
                     memory_state["recent_chapters"] = memory_state["recent_chapters"][-2:]
 
-                self.sessions_memory_state[session_id] = memory_state
-                self._ensure_first_message(session_id)
+                self.save_memory_state[target_save_id] = memory_state
+                self._ensure_first_message(target_save_id)
                 return True
             except Exception as e:
-                print(f"Error loading OS session {session_id} from disk: {e}")
+                print(f"Error loading save {target_save_id} from disk: {e}")
                 return False
 
-    def _ensure_first_message(self, session_id: str):
-        history = self.sessions_history.setdefault(session_id, [])
+    _load_session_from_disk = _load_from_disk
+
+    def _ensure_first_message(self, save_id: str):
+        target_save_id = self._normalize_save_id(save_id)
+        history = self.save_history.setdefault(target_save_id, [])
 
         has_first_mes = any(
             msg.get("id", "").startswith("first_mes") or (msg.get("role") == "follower" and msg == history[0])
@@ -1131,8 +1099,10 @@ class OpenSourceRunner(BaseRunner):
         if not has_first_mes:
             try:
                 from core.follower_config import get_follower_greeting, replace_placeholders
+                from runners.follower import get_player_name
+                user_name = get_player_name()
 
-                if greeting := replace_placeholders(get_follower_greeting("game")).strip():
+                if greeting := replace_placeholders(get_follower_greeting("game"), user_name=user_name).strip():
                     starting_msg = {
                         "id": f"first_mes_{uuid.uuid4().hex}",
                         "role": "follower",
@@ -1143,7 +1113,7 @@ class OpenSourceRunner(BaseRunner):
                         "timestamp": time.time(),
                     }
                     history.insert(0, starting_msg)
-                    self._save_session_to_disk(session_id)
+                    self._save_session_to_disk(save_id)
             except Exception as e:
                 print(f"[runner] Could not seed first_mes: {e}")
 
@@ -1156,7 +1126,9 @@ class OpenSourceRunner(BaseRunner):
                     updated = True
                 if not msg.get("text") or "I am Ria Silmane" in msg.get("text", ""):
                     from core.follower_config import get_follower_greeting, replace_placeholders
-                    msg["text"] = replace_placeholders(get_follower_greeting("game")).strip()
+                    from runners.follower import get_player_name
+                    user_name = get_player_name()
+                    msg["text"] = replace_placeholders(get_follower_greeting("game"), user_name=user_name).strip()
                     msg["sender_id"] = "game"
                     msg["sender_name"] = "The Game"
                     updated = True
@@ -1170,7 +1142,7 @@ class OpenSourceRunner(BaseRunner):
                 updated = True
 
         if updated:
-            self._save_session_to_disk(session_id)
+            self._save_session_to_disk(save_id)
 
     def _consolidate_tools(self, tool_calls: list) -> list:
         if not tool_calls:
@@ -1284,17 +1256,18 @@ class OpenSourceRunner(BaseRunner):
             "deletable": True,
         }
 
-    async def get_history(self, session_id: str) -> list:
+    async def get_history(self, save_id: str = None, session_id: str = None) -> list:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            self._load_session_from_disk(session_id)
-            self._ensure_first_message(session_id)
+            self._load_from_disk(target_save_id)
+            self._ensure_first_message(target_save_id)
 
-            raw_history = self.sessions_history.get(session_id, [])
+            raw_history = self.save_history.get(target_save_id, [])
             updated_any = False
 
             for msg in raw_history:
               if updated_any:
-                self._save_session_to_disk(session_id)
+                self._save_to_disk(target_save_id)
 
             hidden_prefixes = ("tool_", "port_", "quest_", "sys_", "itm_")
             chat_history = []
@@ -1311,7 +1284,7 @@ class OpenSourceRunner(BaseRunner):
 
     async def run_async(
         self,
-        session_id: str,
+        save_id: str = None,
         new_message_text: str = None,
         image_data: str = None,
         image_mime: str = None,
@@ -1320,14 +1293,16 @@ class OpenSourceRunner(BaseRunner):
         msg_id: str = None,
         existing_tool_calls: list = None,
         speaker_id: str = "game",
+        session_id: str = None,
     ) -> tuple:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            self._load_session_from_disk(session_id)
-            self.sessions_history.setdefault(session_id, [])
+            self._load_from_disk(target_save_id)
+            self.save_history.setdefault(target_save_id, [])
 
             try:
                 return await self._run_async_internal(
-                    session_id=session_id,
+                    save_id=target_save_id,
                     new_message_text=new_message_text,
                     image_data=image_data,
                     image_mime=image_mime,
@@ -1338,11 +1313,11 @@ class OpenSourceRunner(BaseRunner):
                     speaker_id=speaker_id,
                 )
             finally:
-                self._save_session_to_disk(session_id)
+                self._save_to_disk(target_save_id)
 
     async def _run_async_internal(
         self,
-        session_id: str,
+        save_id: str = None,
         new_message_text: str = None,
         image_data: str = None,
         image_mime: str = None,
@@ -1351,11 +1326,13 @@ class OpenSourceRunner(BaseRunner):
         msg_id: str = None,
         existing_tool_calls: list = None,
         speaker_id: str = "game",
+        session_id: str = None,
     ) -> tuple:
-        if session_id not in self.sessions_history:
-            self._load_session_from_disk(session_id)
+        target_save_id = self._normalize_save_id(save_id or session_id)
+        if target_save_id not in self.save_history:
+            self._load_from_disk(target_save_id)
 
-        self._ensure_first_message(session_id)
+        self._ensure_first_message(target_save_id)
 
         file_path_resolved = None
         if media_path and media_path.startswith("/images/"):
@@ -1387,11 +1364,9 @@ class OpenSourceRunner(BaseRunner):
             else:
                 user_msg_id = msg_id
 
-            from runners.follower import get_active_user
             from core.world_engine import load_world_state, create_state_snapshot
             from core.character import load_character
-            active_u = get_active_user()
-            user_snapshot = create_state_snapshot(load_world_state(active_u), load_character(active_u))
+            user_snapshot = create_state_snapshot(load_world_state(target_save_id), load_character(target_save_id))
 
             user_msg = {
                 "id": user_msg_id,
@@ -1401,18 +1376,18 @@ class OpenSourceRunner(BaseRunner):
                 "timestamp": time.time(),
                 "state_snapshot": user_snapshot,
             }
-            self.sessions_history[session_id].append(user_msg)
+            self.save_history[target_save_id].append(user_msg)
 
-        history = self.sessions_history.get(session_id, [])
+        history = self.save_history.get(target_save_id, [])
         vector_query = _build_vector_query(history)
         rag_context, query_vector_embedding = _get_databank_contexts(vector_query)
 
         adapter = OsHistoryAdapter(
-            self, session_id, file_path_resolved, image_data, image_mime, query_vector=query_vector_embedding
+            self, target_save_id, file_path_resolved, image_data, image_mime, query_vector=query_vector_embedding
         )
 
         res = await self._execute_local_llm_loop(
-            session_id=session_id,
+            save_id=target_save_id,
             adapter=adapter,
             model=model,
             rag_context=rag_context,
@@ -1423,28 +1398,12 @@ class OpenSourceRunner(BaseRunner):
         )
 
         bot_response_text, tool_calls = res
-        follower_msg_id = None
-        follower_texts = []
 
-        history = self.sessions_history.get(session_id, [])
-        user_idx = next((i for i, m in enumerate(history) if m.get("id") == user_msg_id), -1)
-        if user_idx == -1 and user_msg_id is None:
-            for i in range(len(history) - 1, -1, -1):
-                if history[i].get("role") == "user":
-                    user_idx = i
-                    break
-
+        history = self.save_history.get(target_save_id, [])
         target_speaker = speaker_id or "game"
-        if user_idx != -1:
-            for msg in history[user_idx + 1 :]:
-                if msg.get("role") == "follower" and msg.get("sender_id", "game") == target_speaker:
-                    if msg.get("text"):
-                        follower_texts.append(msg["text"])
-                    if msg.get("id"):
-                        follower_msg_id = msg["id"]
-
-        if follower_texts:
-            bot_response_text = "\n\n".join(follower_texts)
+        follower_msg_id = None
+        if history and history[-1].get("role") == "follower" and history[-1].get("sender_id", "game") == target_speaker:
+            follower_msg_id = history[-1].get("id")
         else:
             follower_msg_id = next(
                 (m.get("id") for m in reversed(history) if m.get("role") == "follower" and m.get("sender_id", "game") == target_speaker),
@@ -1454,14 +1413,15 @@ class OpenSourceRunner(BaseRunner):
         return bot_response_text, tool_calls, user_msg_id, follower_msg_id
 
     async def edit_turn(
-        self, session_id: str, msg_id: str, new_text: str = None, model: str = None, force_offload: bool = False, speaker_id: str = None
+        self, save_id: str = None, msg_id: str = None, new_text: str = None, model: str = None, force_offload: bool = False, speaker_id: str = None, session_id: str = None
     ) -> tuple:
-        if session_id not in self.sessions_history:
-            self._load_session_from_disk(session_id)
+        target_save_id = self._normalize_save_id(save_id or session_id)
+        if target_save_id not in self.save_history:
+            self._load_from_disk(target_save_id)
 
-        history = self.sessions_history.get(session_id)
+        history = self.save_history.get(target_save_id)
         if not history:
-            raise ValueError("Session not found")
+            raise ValueError("Save not found")
 
         user_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
         if user_idx == -1:
@@ -1489,14 +1449,10 @@ class OpenSourceRunner(BaseRunner):
                 media_path = url_str
 
         # Roll back game state and tool effects for all discarded subsequent messages
-        from runners.follower import get_active_user
-        from core.save_manager import get_active_save_id
-        active_user = get_active_save_id() if (not session_id or session_id == "default") else session_id
-
         prior_snapshot = orig_msg.get("state_snapshot")
         if prior_snapshot:
             from core.world_engine import apply_state_snapshot
-            apply_state_snapshot(active_user, prior_snapshot)
+            apply_state_snapshot(target_save_id, prior_snapshot)
         else:
             discarded_tools = []
             for subsequent_msg in history[user_idx + 1:]:
@@ -1504,20 +1460,20 @@ class OpenSourceRunner(BaseRunner):
                     discarded_tools.extend(subsequent_msg["tool_calls"])
             if discarded_tools:
                 from core.character import rollback_tool_effects
-                rollback_tool_effects(active_user, discarded_tools)
+                rollback_tool_effects(target_save_id, discarded_tools)
 
-        self.sessions_history[session_id] = history[:user_idx]
-        self._save_session_to_disk(session_id)
+        self.save_history[target_save_id] = history[:user_idx]
+        self._save_to_disk(target_save_id)
 
         new_input = new_text if new_text is not None else orig_msg.get("text", "")
         if not speaker_id:
             from core.save_manager import get_active_followers
             from app import determine_first_speaker
-            active_fols = get_active_followers(session_id)
+            active_fols = get_active_followers(target_save_id)
             speaker_id = determine_first_speaker(new_input, history[:user_idx], active_fols)
         res = await self.run_async(
-            session_id,
-            new_input,
+            save_id=target_save_id,
+            new_message_text=new_input,
             image_data=img_data,
             image_mime=img_mime,
             model=model,
@@ -1527,18 +1483,19 @@ class OpenSourceRunner(BaseRunner):
             speaker_id=speaker_id,
         )
 
-        self._save_session_to_disk(session_id)
+        self._save_to_disk(target_save_id)
         return res
 
     async def reroll_message(
-        self, session_id: str, msg_id: str, model: str = None
+        self, save_id: str = None, msg_id: str = None, model: str = None, session_id: str = None
     ) -> tuple:
-        if session_id not in self.sessions_history:
-            self._load_session_from_disk(session_id)
+        target_save_id = self._normalize_save_id(save_id or session_id)
+        if target_save_id not in self.save_history:
+            self._load_from_disk(target_save_id)
 
-        history = self.sessions_history.get(session_id)
+        history = self.save_history.get(target_save_id)
         if not history:
-            raise ValueError("Session not found")
+            raise ValueError("Save not found")
 
         msg_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
         if msg_idx == -1:
@@ -1582,15 +1539,11 @@ class OpenSourceRunner(BaseRunner):
         discarded_messages = list(history[turn_start_idx:msg_idx + 1])
 
         # Roll back game state and character mutations from the turn being rerolled
-        from runners.follower import get_active_user
-        from core.save_manager import get_active_save_id
-        active_user = get_active_save_id() if (not session_id or session_id == "default") else session_id
-
         prior_msg = history[turn_start_idx - 1] if turn_start_idx > 0 else None
         prior_snapshot = prior_msg.get("state_snapshot") if prior_msg else None
         if prior_snapshot:
             from core.world_engine import apply_state_snapshot
-            apply_state_snapshot(active_user, prior_snapshot)
+            apply_state_snapshot(target_save_id, prior_snapshot)
         else:
             discarded_tools = []
             for dm in discarded_messages:
@@ -1598,14 +1551,14 @@ class OpenSourceRunner(BaseRunner):
                     discarded_tools.extend(dm["tool_calls"])
             if discarded_tools:
                 from core.character import rollback_tool_effects
-                rollback_tool_effects(active_user, discarded_tools)
+                rollback_tool_effects(target_save_id, discarded_tools)
 
         # Truncate history to the point right before this assistant turn started
-        self.sessions_history[session_id] = history[:turn_start_idx]
-        self._save_session_to_disk(session_id)
+        self.save_history[target_save_id] = history[:turn_start_idx]
+        self._save_to_disk(target_save_id)
 
         res = await self.run_async(
-            session_id=session_id,
+            save_id=target_save_id,
             new_message_text=None,
             model=model,
             speaker_id=speaker_id,
@@ -1613,57 +1566,61 @@ class OpenSourceRunner(BaseRunner):
 
         # Restore subsequent messages in place if any
         if subsequent_messages:
-            self.sessions_history[session_id].extend(subsequent_messages)
-            self._save_session_to_disk(session_id)
+            self.save_history[target_save_id].extend(subsequent_messages)
+            self._save_to_disk(target_save_id)
 
         return res
 
-    async def reset_session(self, session_id: str):
+    async def reset_save(self, save_id: str):
+        target_save_id = self._normalize_save_id(save_id)
         with self._lock:
-            if session_id in self.sessions_history:
-                del self.sessions_history[session_id]
-            if session_id in self.sessions_memory_state:
-                del self.sessions_memory_state[session_id]
+            self.save_history.pop(target_save_id, None)
+            self.save_memory_state.pop(target_save_id, None)
 
-            path = self._get_session_path(session_id)
-            if os.path.exists(path):
-                try:
-                    os.remove(path)
-                except Exception as e:
-                    print(f"Error deleting OS session file {path}: {e}")
+            try:
+                from core.save_manager import create_fresh_save_bundle, write_save
+                fresh_bundle = create_fresh_save_bundle(target_save_id)
+                write_save(target_save_id, fresh_bundle)
+                self._load_from_disk(target_save_id)
+            except Exception as e:
+                print(f"Error resetting save {target_save_id} to fresh state: {e}")
 
             try:
                 from core.skills.vectorized_databank.databank import DataBankManager
-
-                DataBankManager().delete_chat_history(session_id)
+                DataBankManager(save_id=target_save_id).delete_chat_history(target_save_id)
             except Exception as e:
-                print(f"Error cleaning up databank history on session reset: {e}")
+                print(f"Error cleaning up databank history on save reset: {e}")
 
-    async def delete_system_memory(self, session_id: str, timestamp: float) -> bool:
+    async def reset_session(self, session_id: str):
+        return await self.reset_save(session_id)
+
+    async def delete_system_memory(self, save_id: str = None, timestamp: float = 0.0, session_id: str = None) -> bool:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
 
             marked_compacted = False
-            for msg in self.sessions_history.get(session_id, []):
+            for msg in self.save_history.get(target_save_id, []):
                 if msg.get("role") == "system-memory" and abs(msg.get("timestamp", 0) - timestamp) < 1.0:
                     msg["compacted"] = True
                     marked_compacted = True
                     print("[MEMORY DELETE] Marked OS message as compacted.", flush=True)
 
             if marked_compacted:
-                self._save_session_to_disk(session_id)
+                self._save_to_disk(target_save_id)
 
             return marked_compacted
 
-    async def delete_turn(self, session_id: str, msg_id: str) -> bool:
+    async def delete_turn(self, save_id: str = None, msg_id: str = None, session_id: str = None) -> bool:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
 
-            history = self.sessions_history.get(session_id)
+            history = self.save_history.get(target_save_id)
             if history is None:
-                raise ValueError("Session not found")
+                raise ValueError("Save not found")
 
             user_idx = next((i for i, ev in enumerate(history) if ev.get("id") == msg_id), -1)
             if user_idx == -1:
@@ -1671,35 +1628,34 @@ class OpenSourceRunner(BaseRunner):
 
             next_user_idx = next((i for i in range(user_idx + 1, len(history)) if is_real_user_msg(history[i])), -1)
 
-            self.sessions_history[session_id] = history[:user_idx] + (history[next_user_idx:] if next_user_idx != -1 else [])
-            self._save_session_to_disk(session_id)
+            self.save_history[target_save_id] = history[:user_idx] + (history[next_user_idx:] if next_user_idx != -1 else [])
+            self._save_to_disk(target_save_id)
             return True
 
-    async def delete_message_at(self, session_id: str, msg_id: str) -> bool:
+    async def delete_message_at(self, save_id: str = None, msg_id: str = None, session_id: str = None) -> bool:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
 
-            history = self.sessions_history.get(session_id, [])
+            history = self.save_history.get(target_save_id, [])
             for i, msg in enumerate(history):
                 if msg.get("id") == msg_id:
                     if msg.get("tool_calls"):
-                        from runners.follower import get_active_user
-                        from core.save_manager import get_active_save_id
                         from core.character import rollback_tool_effects
-                        active_user = get_active_save_id() if (not session_id or session_id == "default") else session_id
-                        rollback_tool_effects(active_user, msg["tool_calls"])
+                        rollback_tool_effects(target_save_id, msg["tool_calls"])
                     del history[i]
-                    self._save_session_to_disk(session_id)
+                    self._save_to_disk(target_save_id)
                     return True
             return False
 
-    async def delete_image_from_session(self, session_id: str, image_url: str) -> bool:
+    async def delete_image_from_save(self, save_id: str = None, image_url: str = None, session_id: str = None) -> bool:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
 
-            history = self.sessions_history.get(session_id)
+            history = self.save_history.get(target_save_id)
             if history is None:
                 return self._delete_local_image(image_url)
 
@@ -1763,18 +1719,22 @@ class OpenSourceRunner(BaseRunner):
 
             file_deleted = self._delete_local_image(image_url)
             if modified:
-                self._save_session_to_disk(session_id)
+                self._save_to_disk(target_save_id)
 
             return modified or file_deleted
 
-    async def replace_image_in_session(
-        self, session_id: str, old_image_url: str, new_image_url: str, new_prompt: str = None
-    ) -> bool:
-        with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
+    async def delete_image_from_session(self, session_id: str, image_url: str) -> bool:
+        return await self.delete_image_from_save(save_id=session_id, image_url=image_url)
 
-            history = self.sessions_history.get(session_id)
+    async def replace_image_in_save(
+        self, save_id: str = None, old_image_url: str = None, new_image_url: str = None, new_prompt: str = None, session_id: str = None
+    ) -> bool:
+        target_save_id = self._normalize_save_id(save_id or session_id)
+        with self._lock:
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
+
+            history = self.save_history.get(target_save_id)
             if history is None:
                 return False
 
@@ -1804,18 +1764,24 @@ class OpenSourceRunner(BaseRunner):
                                 modified = True
 
             if modified:
-                self._save_session_to_disk(session_id)
+                self._save_to_disk(target_save_id)
 
             return modified
 
-    async def replace_image_with_video_in_session(self, session_id: str, old_image_url: str, new_video_url: str) -> bool:
+    async def replace_image_in_session(
+        self, session_id: str, old_image_url: str, new_image_url: str, new_prompt: str = None
+    ) -> bool:
+        return await self.replace_image_in_save(save_id=session_id, old_image_url=old_image_url, new_image_url=new_image_url, new_prompt=new_prompt)
+
+    async def replace_image_with_video_in_save(self, save_id: str = None, old_image_url: str = None, new_video_url: str = None, session_id: str = None) -> bool:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
-            if session_id not in self.sessions_history:
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
+            if target_save_id not in self.save_history:
                 return False
                 
-            history = self.sessions_history[session_id]
+            history = self.save_history[target_save_id]
             modified = False
             
             for msg in history:
@@ -1832,24 +1798,29 @@ class OpenSourceRunner(BaseRunner):
                             modified = True
                             
             if modified:
-                self._save_session_to_disk(session_id)
+                self._save_to_disk(target_save_id)
                 return True
             return False
 
-    async def append_message_to_session(
+    async def replace_image_with_video_in_session(self, session_id: str, old_image_url: str, new_video_url: str) -> bool:
+        return await self.replace_image_with_video_in_save(save_id=session_id, old_image_url=old_image_url, new_video_url=new_video_url)
+
+    async def append_message_to_save(
         self,
-        session_id: str,
-        role: str,
-        text: str,
+        save_id: str = None,
+        role: str = None,
+        text: str = None,
         sender_id: str | None = None,
         sender_name: str | None = None,
         tool_calls: list | None = None,
+        session_id: str = None,
     ) -> dict:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
-            if session_id not in self.sessions_history:
-                self.sessions_history[session_id] = []
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
+            if target_save_id not in self.save_history:
+                self.save_history[target_save_id] = []
                 
             prefix = 'usr_' if role == 'user' else 'prgm_'
             if role == 'user':
@@ -1865,11 +1836,10 @@ class OpenSourceRunner(BaseRunner):
                 if text.strip().startswith("![") and text.strip().endswith(")"):
                     prefix = "img_"
             
-            from runners.follower import get_active_user, get_active_follower
+            from runners.follower import get_active_follower
             from core.follower_config import get_follower_name
             from core.world_engine import load_world_state
-            active_user = get_active_user()
-            world = load_world_state(active_user)
+            world = load_world_state(target_save_id)
             t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
 
             if role != 'user':
@@ -1879,7 +1849,7 @@ class OpenSourceRunner(BaseRunner):
                 resolved_sender_id = sender_id
                 resolved_sender_name = sender_name
 
-            history = self.sessions_history[session_id]
+            history = self.save_history[target_save_id]
             new_msg = {
                 'id': f"{prefix}{uuid.uuid4().hex}",
                 'role': 'user' if role == 'user' else 'follower',
@@ -1893,64 +1863,36 @@ class OpenSourceRunner(BaseRunner):
                 new_msg['sender_name'] = resolved_sender_name
 
             history.append(new_msg)
-            self._save_session_to_disk(session_id)
+            self._save_to_disk(target_save_id)
             return new_msg
 
-    async def append_voice_call(self, session_id: str, transcript: str, timestamp: float = None, start_time: float = None) -> bool:
-        with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
-            if session_id not in self.sessions_history:
-                self.sessions_history[session_id] = []
-                
-            if timestamp is None:
-                timestamp = time.time()
-                
-            # Remove individual user/follower messages that were part of this voice call
-            if start_time is not None:
-                self.sessions_history[session_id] = [
-                    msg for msg in self.sessions_history[session_id]
-                    if not (msg.get('role') in ('user', 'follower') and msg.get('timestamp', 0) >= start_time)
-                ]
-                
-            new_msg = {
-                'id': f"vc_{uuid.uuid4().hex}",
-                'role': 'voice-call',
-                'text': transcript,
-                'timestamp': timestamp
-            }
-            self.sessions_history[session_id].append(new_msg)
-            self._save_session_to_disk(session_id)
-            return True
+    async def append_message_to_session(
+        self,
+        session_id: str,
+        role: str,
+        text: str,
+        sender_id: str | None = None,
+        sender_name: str | None = None,
+        tool_calls: list | None = None,
+    ) -> dict:
+        return await self.append_message_to_save(
+            save_id=session_id,
+            role=role,
+            text=text,
+            sender_id=sender_id,
+            sender_name=sender_name,
+            tool_calls=tool_calls,
+        )
 
-    async def clone_history(self, src_id: str, dest_id: str, messages: list) -> bool:
+    async def update_message_text(self, save_id: str = None, msg_id: str = None, new_text: str = None, session_id: str = None) -> bool:
+        target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
-            if dest_id.endswith('_voice'):
-                self.sessions_history[dest_id] = []
-                self._save_session_to_disk(dest_id)
-                return True
-                
-            if src_id not in self.sessions_history:
-                self._load_session_from_disk(src_id)
-                
-            src_hist = self.sessions_history.get(src_id, [])
-            filtered_msgs = [msg for msg in src_hist if msg.get('role') != 'voice-call']
-            limit = 6
-            seed_msgs = filtered_msgs[-limit:] if len(filtered_msgs) > limit else filtered_msgs
-            
-            cloned_msgs = copy.deepcopy(seed_msgs)
-            self.sessions_history[dest_id] = cloned_msgs
-            self._save_session_to_disk(dest_id)
-            return True
-
-    async def update_message_text(self, session_id: str, msg_id: str, new_text: str) -> bool:
-        with self._lock:
-            if session_id not in self.sessions_history:
-                self._load_session_from_disk(session_id)
-            if session_id not in self.sessions_history:
+            if target_save_id not in self.save_history:
+                self._load_from_disk(target_save_id)
+            if target_save_id not in self.save_history:
                 return False
                 
-            real_history = self.sessions_history[session_id]
+            real_history = self.save_history[target_save_id]
             found_idx = -1
             for i, msg in enumerate(real_history):
                 if msg.get('id') == msg_id:
@@ -1981,6 +1923,6 @@ class OpenSourceRunner(BaseRunner):
                             if m.get('role') in ('follower', 'model'):
                                 m['text'] = ""
                                 
-                self._save_session_to_disk(session_id)
+                self._save_to_disk(target_save_id)
                 return True
             return False

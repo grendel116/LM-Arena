@@ -269,6 +269,16 @@ def read_save(save_id: str = None) -> dict:
         return bundle
 
     # 3. Default fresh bundle if missing
+    active_id = get_active_save_id()
+    if clean_id in (active_id, "eternal_champion") or not any(SAVES_DIR.glob("*.json")):
+        bundle = create_fresh_save_bundle(clean_id)
+        write_save(clean_id, bundle)
+        return bundle
+
+    active_path = SAVES_DIR / f"{active_id}.json"
+    if active_path.exists():
+        return read_save(active_id)
+
     bundle = create_fresh_save_bundle(clean_id)
     write_save(clean_id, bundle)
     return bundle
@@ -469,31 +479,12 @@ def save_game(character_name: str = None, save_id: str = None) -> dict:
 
 
 def create_save(name: str = None, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage", user_profile_id: str = None, save_id: str = None) -> dict:
-    """Create a new character save, writing playername.json or appending numbers if existing."""
+    """Create a new character save slot."""
     SAVES_DIR.mkdir(parents=True, exist_ok=True)
-    clean_prefix = _get_clean_name(character_name)
-    
-    if not save_id:
-        base_file = SAVES_DIR / f"{clean_prefix}.json"
-        if not base_file.exists():
-            save_id = clean_prefix
-        else:
-            max_idx = 1
-            pattern = re.compile(rf"^{re.escape(clean_prefix)}_(\d+)$", re.IGNORECASE)
-            for item in SAVES_DIR.glob("*.json"):
-                match = pattern.match(item.stem)
-                if match:
-                    try:
-                        idx = int(match.group(1))
-                        if idx > max_idx:
-                            max_idx = idx
-                    except ValueError:
-                        pass
-            next_idx = max_idx + 1
-            save_id = f"{clean_prefix}_{next_idx}"
+    target_id = _get_clean_name(save_id or character_name)
         
     bundle = create_fresh_save_bundle(
-        save_id=save_id,
+        save_id=target_id,
         character_name=character_name,
         race=race,
         gender=gender,
@@ -503,11 +494,11 @@ def create_save(name: str = None, character_name: str = "Eternal Champion", race
     if name:
         bundle["meta"]["name"] = name
 
-    write_save(save_id, bundle)
-    set_active_save_id(save_id)
+    write_save(target_id, bundle)
+    set_active_save_id(target_id)
     
     from runners.follower import set_active_user
-    set_active_user(save_id)
+    set_active_user(target_id)
     
     meta = bundle["meta"]
     meta["is_active"] = True

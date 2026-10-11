@@ -3,17 +3,19 @@ name: arena_checks
 description: "Resolves D20 attribute checks, skill tests, Sorcerer spell absorption, and custom spellmaking."
 summary: "Narrate the attempt and physical tension up to the moment of uncertainty, then prompt player checks with [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")]. Await the roll before resolving outcomes."
 retrieval: always
-triggers: check, roll, dc, attempt, climb, jump, lockpick, pick lock, lock, inspect, investigate, disarm, spell, cast, magic, attack, strike, shoot, sparks, shock, blast, heal, fight, swing, dodge, flee, run, sneak, hide
+triggers: check, roll, dc, attempt, climb, jump, lockpick, pick lock, lock, inspect, investigate, disarm, spell, cast, magic, attack, strike, shoot, sparks, shock, blast, heal, fight, swing, dodge, flee, run, sneak, hide, snatch, grab, steal, take, pickpocket, distract, lunge, reach, swipe
 ---
 
 # ATTRIBUTE & SKILL CHECK PROTOCOLS
 
 ## 1. Player Checks & Resolution Sequence
 - **Sequence**: Request (DM) -> Check (User) -> Spend & Narrate (DM).
+- **Mandatory Checks**: Any physical feat, stealth, theft, distraction, combat maneuver, or spellcasting with opposition requires a check. Never auto-resolve success or failure in narrative prose.
 - **Phase 1: Request (DM)**:
   - When {{user}} casts a spell, attacks, or attempts an action with an uncertain outcome:
-    Narrate the physical action, sensory environment, and tension leading up to the crux of difficulty, then call:
+    Narrate the physical action, sensory environment, and tension leading up to the crux of difficulty, call:
     `[arena_request_skill_check(skill_name="...", attribute_name="...", dc=..., reason="...")]`
+    and STOP your turn immediately.
   - Await the roll. Never resolve the outcome or spend resources until {{user}} rolls.
 - **Phase 2: Check (User)**:
   - {{user}} rolls the D20 via the game interface.

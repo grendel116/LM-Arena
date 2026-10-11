@@ -521,12 +521,13 @@ def serve_image(filename):
         return send_from_directory(static_img_dir, filename)
 
     from variables.settings import FOLLOWERS_DIR
-    from core.save_manager import get_active_follower
-    active_follower = get_active_follower()
+    from core.save_manager import get_active_followers
+    save_id = get_requested_save_id()
+    party = get_active_followers(save_id)
     
-    # 1. Check active follower directory
-    if active_follower:
-        fdir = os.path.join(FOLLOWERS_DIR, active_follower)
+    # 1. Check active party follower directories
+    for fol in party:
+        fdir = os.path.join(FOLLOWERS_DIR, fol)
         if os.path.exists(os.path.join(fdir, filename)):
             return send_from_directory(fdir, filename)
 
@@ -769,10 +770,29 @@ You must return a valid JSON object matching the following schema:
         print(f"Error in proactive_action route: {e}")
         return jsonify({'error': str(e)}), 500
 
+def get_requested_save_id(data: dict = None) -> str:
+    """Extract and normalize the requested save/session ID, defaulting to the active save."""
+    from core.save_manager import get_active_save_id, _get_clean_name
+    req_id = None
+    if isinstance(data, dict):
+        req_id = data.get("save_id") or data.get("session_id")
+    elif request:
+        try:
+            if request.is_json and request.json:
+                req_id = request.json.get("save_id") or request.json.get("session_id")
+            if not req_id:
+                req_id = request.args.get("save_id") or request.args.get("session_id")
+        except Exception:
+            pass
+    if not req_id or req_id == "default":
+        return get_active_save_id()
+    return _get_clean_name(req_id)
+
+
 @app.route('/history', methods=['GET'])
 @requires_auth
 def history():
-    session_id = request.args.get('session_id', 'default')
+    session_id = get_requested_save_id()
     try:
         chat_history = asyncio.run(runner.get_history(session_id))
         
@@ -1069,10 +1089,12 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
 @requires_auth
 def chat():
     user_message = request.json.get('message')
+    if not user_message or not str(user_message).strip():
+        user_message = "*I wait and observe.*"
     image_data = request.json.get('image_data')
     image_mime = request.json.get('image_mime')
     media_path = request.json.get('media_path')
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     selected_model = request.json.get('model')
     import tools.tools as tools
     tools.current_session_id.set(session_id)
@@ -1158,7 +1180,7 @@ def chat():
 @app.route('/continue', methods=['POST'])
 @requires_auth
 def continue_turn():
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     selected_model = request.json.get('model')
     speaker_id = request.json.get('speaker_id')
     from core.save_manager import get_active_followers
@@ -1227,7 +1249,7 @@ def continue_turn():
 @app.route('/edit', methods=['POST'])
 @requires_auth
 def edit():
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     msg_id = request.json.get('msg_id')
     new_text = request.json.get('new_text') # None means reroll (use original text)
     selected_model = request.json.get('model')
@@ -1307,7 +1329,7 @@ def edit():
 @app.route('/reroll_message', methods=['POST'])
 @requires_auth
 def reroll_message_route():
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     msg_id = request.json.get('msg_id')
     selected_model = request.json.get('model')
 
@@ -1509,7 +1531,7 @@ def generate_impersonated_message(session_id, user_profile, model, user_input=""
 @app.route('/api/generate_user_message', methods=['POST'])
 @requires_auth
 def generate_user_message():
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     model = request.json.get('model')
     user_profile = request.json.get('user_profile', '').strip()
     user_input = request.json.get('current_input', request.json.get('user_input', '')).strip()
@@ -1536,12 +1558,10 @@ def generate_user_message():
 
 def generate_player_skill_check_action(session_id, skill_name, attribute_name, dc, reason, model, is_flat_roll=False):
     import random
-    from runners.follower import get_active_user
     from core.character import load_character, get_character_context
     from core.mechanics import roll_check
 
-    active_user = get_active_user()
-    sheet = load_character(active_user)
+    sheet = load_character(session_id)
     attributes = sheet.get("attributes", {})
 
     if is_flat_roll:
@@ -1659,7 +1679,7 @@ def generate_player_skill_check_action(session_id, skill_name, attribute_name, d
 @app.route('/api/execute_player_skill_check', methods=['POST'])
 @requires_auth
 def execute_player_skill_check():
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     skill_name = request.json.get('skill_name', 'Agility')
     attribute_name = request.json.get('attribute_name', 'Agility')
     dc = request.json.get('dc', 15)
@@ -1684,7 +1704,7 @@ def execute_player_skill_check():
 @app.route('/update_message', methods=['POST'])
 @requires_auth
 def update_message():
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     msg_id = request.json.get('msg_id')
     new_text = request.json.get('new_text')
     
@@ -1704,7 +1724,7 @@ def update_message():
 @app.route('/delete', methods=['POST'])
 @requires_auth
 def delete_message():
-    session_id = request.json.get('session_id', 'default')
+    session_id = get_requested_save_id()
     msg_id = request.json.get('msg_id')
 
     if not msg_id:
@@ -1727,40 +1747,46 @@ def delete_message():
 @app.route('/reset', methods=['POST'])
 @requires_auth
 def reset():
-    session_id = request.json.get('session_id', 'default')
+    save_id = get_requested_save_id()
     try:
-        asyncio.run(runner.reset_session(session_id))
+        if hasattr(runner, 'reset_save'):
+            asyncio.run(runner.reset_save(save_id))
+        else:
+            asyncio.run(runner.reset_session(save_id))
         return jsonify({'status': 'success'})
     except Exception as e:
-        print(f"Error resetting session {session_id}: {e}")
+        print(f"Error resetting save {save_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/delete_image', methods=['POST'])
 @requires_auth
 def delete_image():
-    session_id = request.json.get('session_id', 'default')
+    save_id = get_requested_save_id()
     image_url = request.json.get('image_url')
     if not image_url:
         return jsonify({'error': 'Missing image_url'}), 400
         
     try:
-        # Detach from session log - delete the image and remove it from history
-        success = asyncio.run(runner.delete_image_from_session(session_id, image_url))
+        # Detach from save log - delete the image and remove it from history
+        if hasattr(runner, 'delete_image_from_save'):
+            success = asyncio.run(runner.delete_image_from_save(save_id, image_url))
+        else:
+            success = asyncio.run(runner.delete_image_from_session(save_id, image_url))
         if success:
             return jsonify({'status': 'success'})
         else:
-            return jsonify({'error': 'Image file not found in session or disk'}), 404
+            return jsonify({'error': 'Image file not found in save or disk'}), 404
     except Exception as e:
-        print(f"Error deleting image file {image_url} from session {session_id}: {e}")
+        print(f"Error deleting image file {image_url} from save {save_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/regenerate_image', methods=['POST'])
 @requires_auth
 def regenerate_image():
-    session_id = request.json.get('session_id', 'default')
-    from runners.runners import cancelled_sessions
-    cancelled_sessions.discard(session_id)
+    save_id = get_requested_save_id()
+    from runners.runners import cancelled_saves
+    cancelled_saves.discard(save_id)
     
     old_image_url = request.json.get('old_image_url')
     prompt = request.json.get('prompt')
@@ -1799,10 +1825,10 @@ def regenerate_image():
         except Exception as je:
             print(f"Error reading sidecar JSON: {je}")
 
-        # 2. Check session history for prompt and subject_type
+        # 2. Check save history for prompt and subject_type
         if not prompt or not subject_type:
             try:
-                chat_history = asyncio.run(runner.get_history(session_id))
+                chat_history = asyncio.run(runner.get_history(save_id))
                 for msg in chat_history:
                     tool_calls = msg.get('tool_calls', [])
                     if not tool_calls:
@@ -1834,23 +1860,23 @@ def regenerate_image():
                                     prompt = p_found
                                 if not subject_type and st_found:
                                     subject_type = st_found
-                                print(f"[DEBUG REROLL] Found in session history: prompt={prompt}, subject_type={subject_type}")
+                                print(f"[DEBUG REROLL] Found in save history: prompt={prompt}, subject_type={subject_type}")
                                 break
                     if prompt and subject_type:
                         break
             except Exception as he:
-                print(f"Error scanning session history for prompt/type: {he}")
+                print(f"Error scanning save history for prompt/type: {he}")
 
         if not prompt:
             return jsonify({'error': 'Original prompt not found. Unable to regenerate image.'}), 400
 
-        if session_id in cancelled_sessions:
+        if save_id in cancelled_saves:
             return jsonify({'error': 'Image regeneration cancelled by user.'}), 400
 
         import tools.tools as tools
-        tools.current_session_id.set(session_id)
-        with tools.session_tool_calls_lock:
-            tools.session_tool_calls[session_id] = []
+        tools.current_save_id.set(save_id)
+        with tools.save_tool_calls_lock:
+            tools.save_tool_calls[save_id] = []
         use_imagen = request.json.get('use_imagen', False)
         # Generate new portrait preserving image subject type (player, follower, environment)
         if use_imagen and hasattr(tools, 'generate_imagen'):
@@ -1875,17 +1901,20 @@ def regenerate_image():
         if not new_image_url:
             return jsonify({'error': f'Failed to parse generated image markdown: {new_markdown}'}), 500
             
-        # Replace in session history
-        success = asyncio.run(runner.replace_image_in_session(session_id, old_image_url, new_image_url, new_prompt=prompt))
+        # Replace in save history
+        if hasattr(runner, 'replace_image_in_save'):
+            success = asyncio.run(runner.replace_image_in_save(save_id, old_image_url, new_image_url, new_prompt=prompt))
+        else:
+            success = asyncio.run(runner.replace_image_in_session(save_id, old_image_url, new_image_url, new_prompt=prompt))
         if success:
             return jsonify({
                 'status': 'success',
                 'new_image_url': new_image_url
             })
         else:
-            return jsonify({'error': 'Original image not found in session'}), 404
+            return jsonify({'error': 'Original image not found in save'}), 404
     except Exception as e:
-        print(f"Error regenerating image in session {session_id}: {e}")
+        print(f"Error regenerating image in save {save_id}: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         _image_mutex.release()
@@ -1895,39 +1924,39 @@ _image_mutex = threading.Lock()
 @app.route('/api/portrait/generate', methods=['POST'])
 @requires_auth
 def api_generate_portrait():
-    session_id = request.json.get('session_id', 'default')
+    save_id = get_requested_save_id()
     custom_prompt = request.json.get('prompt', '')
     target_follower = request.json.get('target_follower') or request.json.get('follower_id')
     image_type = request.json.get('type') or 'follower'
 
-    from runners.runners import cancelled_sessions
-    cancelled_sessions.discard(session_id)
+    from runners.runners import cancelled_saves
+    cancelled_saves.discard(save_id)
 
     if not _image_mutex.acquire(blocking=True, timeout=120.0):
         return jsonify({'error': 'Image generation engine is currently busy. Please retry in a moment.'}), 429
 
     try:
-        if session_id in cancelled_sessions:
+        if save_id in cancelled_saves:
             return jsonify({'error': 'Portrait generation cancelled by user.'}), 400
 
         import tools.tools as tools
-        tools.current_session_id.set(session_id)
-        with tools.session_tool_calls_lock:
-            tools.session_tool_calls[session_id] = []
+        tools.current_save_id.set(save_id)
+        with tools.save_tool_calls_lock:
+            tools.save_tool_calls[save_id] = []
 
         from core.save_manager import get_active_followers
         from runners.follower import get_active_follower
         from core.follower_config import get_follower_name, get_follower_image_details
 
-        party = get_active_followers(session_id)
+        party = get_active_followers(save_id)
         fol_id = target_follower or (party[0] if party else (get_active_follower() or "game"))
         fol_name = get_follower_name(fol_id) if fol_id not in ("game", "the_game") else "The Game"
 
         # Build context-aware prompt via lightweight LLM call if no custom prompt provided
         if not custom_prompt.strip():
-            custom_prompt = _generate_portrait_tags(session_id, party)
+            custom_prompt = _generate_portrait_tags(save_id, party)
 
-        if session_id in cancelled_sessions:
+        if save_id in cancelled_saves:
             return jsonify({'error': 'Scene capture cancelled by user.'}), 400
 
         new_markdown = tools.generate_local_image(
@@ -1937,7 +1966,7 @@ def api_generate_portrait():
             height=request.json.get('height')
         )
 
-        if session_id in cancelled_sessions:
+        if save_id in cancelled_saves:
             return jsonify({'error': 'Scene capture cancelled by user.'}), 400
 
         if new_markdown.startswith("Error"):
@@ -1975,14 +2004,24 @@ def api_generate_portrait():
             }
         ]
 
-        new_msg = asyncio.run(runner.append_message_to_session(
-            session_id,
-            "follower",
-            new_markdown,
-            sender_id=fol_id,
-            sender_name=fol_name,
-            tool_calls=recorded_tool_calls
-        ))
+        if hasattr(runner, 'append_message_to_save'):
+            new_msg = asyncio.run(runner.append_message_to_save(
+                save_id,
+                "follower",
+                new_markdown,
+                sender_id=fol_id,
+                sender_name=fol_name,
+                tool_calls=recorded_tool_calls
+            ))
+        else:
+            new_msg = asyncio.run(runner.append_message_to_session(
+                save_id,
+                "follower",
+                new_markdown,
+                sender_id=fol_id,
+                sender_name=fol_name,
+                tool_calls=recorded_tool_calls
+            ))
 
         msg_id = new_msg.get('id') if isinstance(new_msg, dict) else None
         msg_timestamp = new_msg.get('timestamp') if isinstance(new_msg, dict) else time.time()
@@ -2007,11 +2046,11 @@ def api_generate_portrait():
         _image_mutex.release()
 
 
-def _generate_portrait_tags(session_id, party):
+def _generate_portrait_tags(save_id, party):
     """Ask the LLM for contextual SD tags for a first-person POV scene capture."""
     recent_lines = []
     try:
-        chat_history = asyncio.run(runner.get_history(session_id))
+        chat_history = asyncio.run(runner.get_history(save_id))
         narrative = [
             m for m in chat_history
             if m.get("role") in ("follower", "assistant", "user")
@@ -2031,7 +2070,7 @@ def _generate_portrait_tags(session_id, party):
     loc_info = ""
     try:
         from core.world_engine import load_world_state
-        ws = load_world_state(session_id)
+        ws = load_world_state(save_id)
         loc = ws.get("current_location", "")
         prov = ws.get("current_province", "")
         if loc or prov:
@@ -2085,7 +2124,7 @@ import uuid
 active_generations = {}
 active_generations_lock = threading.Lock()
 
-def run_background_video_gen(task_id, session_id, image_url, local_path, prompt):
+def run_background_video_gen(task_id, save_id, image_url, local_path, prompt):
     import tools.tools as tools
     import asyncio
     
@@ -2098,8 +2137,11 @@ def run_background_video_gen(task_id, session_id, image_url, local_path, prompt)
         # Call video generation
         new_video_url = tools.generate_video_from_image(local_path, prompt)
         
-        # Replace the image in session history
-        success = asyncio.run(runner.replace_image_with_video_in_session(session_id, image_url, new_video_url))
+        # Replace the image in save history
+        if hasattr(runner, 'replace_image_with_video_in_save'):
+            success = asyncio.run(runner.replace_image_with_video_in_save(save_id, image_url, new_video_url))
+        else:
+            success = asyncio.run(runner.replace_image_with_video_in_session(save_id, image_url, new_video_url))
         
         with active_generations_lock:
             if task_id in active_generations:
@@ -2123,7 +2165,7 @@ def run_background_video_gen(task_id, session_id, image_url, local_path, prompt)
 @app.route('/api/animate_image', methods=['POST'])
 @requires_auth
 def animate_image():
-    session_id = request.json.get('session_id', 'default')
+    save_id = get_requested_save_id()
     image_url = request.json.get('image_url')
     prompt = request.json.get('prompt')
     
@@ -2149,7 +2191,7 @@ def animate_image():
                 'progress': 0,
                 'prompt': prompt,
                 'source_image': image_url,
-                'session_id': session_id,
+                'save_id': save_id,
                 'timestamp': time.time(),
                 'result_url': None,
                 'error': None
@@ -2158,7 +2200,7 @@ def animate_image():
         # Spawn background thread
         t = threading.Thread(
             target=run_background_video_gen,
-            args=(task_id, session_id, image_url, local_path, prompt),
+            args=(task_id, save_id, image_url, local_path, prompt),
             daemon=True
         )
         t.start()
@@ -2188,23 +2230,24 @@ def list_generations():
 def list_images():
     try:
         from variables.settings import FOLLOWERS_DIR
-        from core.save_manager import get_active_follower
+        from core.save_manager import get_active_followers
         
-        active_follower = get_active_follower() or os.getenv("ACTIVE_FOLLOWER", "riasilmane")
+        save_id = get_requested_save_id()
+        party = get_active_followers(save_id)
         image_urls = []
         seen_filenames = set()
         
         folders_to_scan = []
         if os.path.exists(FOLLOWERS_DIR):
-            for entry in os.listdir(FOLLOWERS_DIR):
-                full_path = os.path.join(FOLLOWERS_DIR, entry)
-                if os.path.isdir(full_path):
-                    if entry == active_follower:
-                        folders_to_scan.insert(0, (entry, full_path))
-                    elif entry == 'game':
-                        folders_to_scan.append((entry, full_path))
-                    else:
-                        folders_to_scan.append((entry, full_path))
+            for fol in party:
+                if fol and fol not in ('none', 'solo', 'game'):
+                    fpath = os.path.join(FOLLOWERS_DIR, fol)
+                    if os.path.isdir(fpath):
+                        folders_to_scan.append((fol, fpath))
+            
+            game_path = os.path.join(FOLLOWERS_DIR, 'game')
+            if os.path.isdir(game_path):
+                folders_to_scan.append(('game', game_path))
         
         for f_name, f_dir in folders_to_scan:
             for subdir, url_prefix in [('portraits', '/images/portraits'), ('media', '/images/media')]:
@@ -2253,10 +2296,10 @@ def get_pending_tool_call():
 @app.route('/api/cancel_chat', methods=['POST'])
 @requires_auth
 def cancel_chat():
-    session_id = request.json.get('session_id', 'default')
-    from runners.runners import cancelled_sessions
-    cancelled_sessions.add(session_id)
-    print(f"[CANCEL] Session cancellation requested: {session_id}", flush=True)
+    save_id = get_requested_save_id()
+    from runners.runners import cancelled_saves
+    cancelled_saves.add(save_id)
+    print(f"[CANCEL] Save cancellation requested: {save_id}", flush=True)
     
     # Immediately interrupt active ComfyUI rendering job if running
     try:
@@ -2268,13 +2311,14 @@ def cancel_chat():
         
     return jsonify({'status': 'success'})
 
+@app.route('/api/save_tool_calls', methods=['GET'])
 @app.route('/api/session_tool_calls', methods=['GET'])
 @requires_auth
-def get_session_tool_calls():
-    session_id = request.args.get('session_id', 'default')
+def get_save_tool_calls():
+    save_id = get_requested_save_id()
     import tools.tools as tools
-    with tools.session_tool_calls_lock:
-        calls = tools.session_tool_calls.get(session_id, [])
+    with tools.save_tool_calls_lock:
+        calls = tools.save_tool_calls.get(save_id, [])
         return jsonify({'tool_calls': list(calls)})
 
 @app.route('/approve_tool', methods=['POST'])
@@ -2907,7 +2951,7 @@ get_follower_memories = get_follower_memories
 @requires_auth
 def delete_memory():
     data = request.json or {}
-    session_id = data.get("session_id", "default")
+    save_id = get_requested_save_id(data)
     timestamp = data.get("timestamp")
     if timestamp is None:
         return jsonify({"error": "Missing timestamp"}), 400
@@ -2916,10 +2960,10 @@ def delete_memory():
     except ValueError:
         return jsonify({"error": "Invalid timestamp"}), 400
     try:
-        success = asyncio.run(runner.delete_system_memory(session_id, timestamp))
+        success = asyncio.run(runner.delete_system_memory(save_id, timestamp))
         return jsonify({"status": "success", "deleted": success})
     except Exception as e:
-        print(f"Error deleting memory for session {session_id} at {timestamp}: {e}")
+        print(f"Error deleting memory for save {save_id} at {timestamp}: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/quests', methods=['GET'])
@@ -3017,14 +3061,15 @@ def abandon_quest(quest_id):
         with open(history_path, 'w', encoding='utf-8') as f:
             json.dump(history, f, indent=2, ensure_ascii=False)
             
-        session_id = 'default'
-        if request.is_json:
-            session_id = request.json.get('session_id', 'default')
+        save_id = get_requested_save_id()
             
         title = quest_data.get("title", "")
         system_message = f"[SYSTEM: Player has abandoned and failed the side quest: \"{title}\"]"
         
-        asyncio.run(runner.append_message_to_session(session_id, "user", system_message))
+        if hasattr(runner, 'append_message_to_save'):
+            asyncio.run(runner.append_message_to_save(save_id, "user", system_message))
+        else:
+            asyncio.run(runner.append_message_to_session(save_id, "user", system_message))
         
         return jsonify({
             "status": "success",
@@ -3111,29 +3156,16 @@ END:VCALENDAR"""
 @requires_auth
 def list_sessions():
     try:
-        active_follower = os.environ.get("ACTIVE_follower", "riasilmane")
-        sessions_dir = os.path.join(base_dir, "core", "followers", active_follower, "sessions")
-        
-        sessions = []
-        if os.path.exists(sessions_dir):
-            for file in os.listdir(sessions_dir):
-                if file.endswith('.json') and not file.endswith('_voice.json'):
-                    session_name = file[:-5]
-                    sessions.append(session_name)
-        
-        # Ensure 'default' is always in the list
-        if 'default' not in sessions:
-            sessions.insert(0, 'default')
-        else:
-            sessions.remove('default')
-            sessions.insert(0, 'default')
-            
+        from core.save_manager import list_saves
+        raw_saves = list_saves()
+        save_ids = [s["id"] if isinstance(s, dict) and "id" in s else str(s) for s in raw_saves]
         return jsonify({
             'status': 'success',
-            'sessions': sessions
+            'saves': save_ids,
+            'sessions': save_ids
         })
     except Exception as e:
-        print(f"Error listing sessions: {e}")
+        print(f"Error listing saves: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -3561,19 +3593,19 @@ def get_follower_journals():
         from core.save_manager import get_active_save_id, read_save
         
         follower_id = request.args.get('follower_id') or get_active_follower()
-        session_id = request.args.get('session_id', 'default')
+        save_id = get_requested_save_id()
         entries = get_journal_entries(follower_id)
 
-        target_id = get_active_save_id() if (not session_id or session_id == "default") else session_id
-        bundle = read_save(target_id)
+        bundle = read_save(save_id)
         memory_meta = bundle.get("memory_state") or {}
 
         if not memory_meta or (not memory_meta.get("epic_chronicle") and not memory_meta.get("recent_chapters")):
             try:
                 import app as main_app
                 active_r = getattr(main_app, 'active_runner', None)
-                if active_r and hasattr(active_r, 'sessions_memory_state'):
-                    live_meta = active_r.sessions_memory_state.get(target_id) or active_r.sessions_memory_state.get('default')
+                if active_r:
+                    save_memory = getattr(active_r, 'save_memory_state', None) or getattr(active_r, 'sessions_memory_state', {})
+                    live_meta = save_memory.get(save_id) or save_memory.get('default')
                     if live_meta:
                         memory_meta = live_meta
             except Exception:
@@ -3762,7 +3794,9 @@ def save_active_game():
         save_id = data.get("save_id")
         from core.save_manager import save_game
         meta = save_game(save_id=save_id)
-        if hasattr(runner, 'sessions_history'):
+        if hasattr(runner, 'save_history'):
+            runner.save_history.clear()
+        elif hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
         reload_follower_state()
         return jsonify({
@@ -3784,9 +3818,17 @@ def create_new_save():
             character_name=data.get("character_name", "Eternal Champion"),
             race=data.get("race", "Nord"),
             gender=data.get("gender", "Male"),
-            character_class=data.get("class", "Mage")
+            character_class=data.get("class", "Mage"),
+            save_id=data.get("save_id")
         )
-        if hasattr(runner, 'sessions_history'):
+        if data.get("content"):
+            from core.save_manager import read_save, write_save
+            bundle = read_save(meta["id"])
+            bundle["profile"] = data.get("content")
+            write_save(meta["id"], bundle)
+        if hasattr(runner, 'save_history'):
+            runner.save_history.clear()
+        elif hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
         reload_follower_state()
         return jsonify({
@@ -3809,7 +3851,9 @@ def load_existing_save():
         from core.save_manager import load_save
         meta = load_save(save_id)
         
-        if hasattr(runner, 'sessions_history'):
+        if hasattr(runner, 'save_history'):
+            runner.save_history.clear()
+        elif hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
         reload_follower_state()
             
@@ -3833,7 +3877,9 @@ def delete_existing_save():
         from core.save_manager import delete_save
         success = delete_save(save_id)
         
-        if hasattr(runner, 'sessions_history'):
+        if hasattr(runner, 'save_history'):
+            runner.save_history.clear()
+        elif hasattr(runner, 'sessions_history'):
             runner.sessions_history.clear()
         reload_follower_state()
             
@@ -3845,18 +3891,16 @@ def delete_existing_save():
         return jsonify({"error": str(e)}), 500
 
 
-def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id: str = None):
+def _sync_active_character_snapshot_to_history(character_sheet: dict, save_id: str = None):
     """Synchronize updated inventory, vitals, spells, and sheet state to active history snapshots."""
     try:
         import copy
-        from core.save_manager import get_active_save_id
 
         global runner
         if 'runner' not in globals() or runner is None:
             init_runner()
 
-        save_id = get_active_save_id()
-        target_session_ids = {sid for sid in (session_id, 'default', save_id) if sid}
+        target_id = get_requested_save_id({"save_id": save_id})
 
         def _update_snapshot(snapshot: dict):
             if not isinstance(snapshot, dict):
@@ -3883,21 +3927,25 @@ def _sync_active_character_snapshot_to_history(character_sheet: dict, session_id
             if "experience" in character_sheet:
                 snapshot["experience"] = character_sheet.get("experience", 0)
 
-        for sid in target_session_ids:
-            if hasattr(runner, 'sessions_history'):
-                if sid not in runner.sessions_history and hasattr(runner, '_load_session_from_disk'):
-                    runner._load_session_from_disk(sid)
+        save_histories = getattr(runner, 'save_history', None) or getattr(runner, 'sessions_history', {})
+        if target_id not in save_histories:
+            if hasattr(runner, '_load_from_disk'):
+                runner._load_from_disk(target_id)
+            elif hasattr(runner, '_load_session_from_disk'):
+                runner._load_session_from_disk(target_id)
 
-                if sid in runner.sessions_history and runner.sessions_history[sid]:
-                    history = runner.sessions_history[sid]
-                    for msg in reversed(history):
-                        if msg.get("state_snapshot"):
-                            _update_snapshot(msg["state_snapshot"])
-                            if msg.get("role") == "user":
-                                break
+        if target_id in save_histories and save_histories[target_id]:
+            history = save_histories[target_id]
+            for msg in reversed(history):
+                if msg.get("state_snapshot"):
+                    _update_snapshot(msg["state_snapshot"])
+                    if msg.get("role") == "user":
+                        break
 
-                    if hasattr(runner, '_save_session_to_disk'):
-                        runner._save_session_to_disk(sid)
+            if hasattr(runner, '_save_to_disk'):
+                runner._save_to_disk(target_id)
+            elif hasattr(runner, '_save_session_to_disk'):
+                runner._save_session_to_disk(target_id)
     except Exception as e:
         print(f"[Snapshot Sync Warning] {e}", flush=True)
 
@@ -3909,16 +3957,14 @@ def toggle_equip_item():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         should_equip = data.get("equip", True)
-        req_session_id = data.get("session_id", "default")
+        req_save_id = get_requested_save_id(data)
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
             
-        from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, equip_item, unequip_item
         
-        save_id = get_active_save_id()
-        sheet = load_character(save_id)
+        sheet = load_character(req_save_id)
         
         if should_equip:
             sheet, success = equip_item(sheet, item_name)
@@ -3926,8 +3972,8 @@ def toggle_equip_item():
             sheet, success = unequip_item(sheet, item_name)
             
         if success:
-            save_character(save_id, sheet)
-            _sync_active_character_snapshot_to_history(sheet, req_session_id)
+            save_character(req_save_id, sheet)
+            _sync_active_character_snapshot_to_history(sheet, req_save_id)
             
         return jsonify({
             "status": "success",
@@ -4028,7 +4074,7 @@ def create_character_item_route():
     try:
         data = request.get_json(silent=True) or {}
         description = data.get("description", "").strip()
-        req_session_id = data.get("session_id", "default")
+        req_save_id = get_requested_save_id(data)
         model = data.get("model")
 
         from core.character import normalize_item
@@ -4043,15 +4089,13 @@ def create_character_item_route():
         else:
             return jsonify({"error": "Missing item name or description"}), 400
 
-        from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, add_item
 
-        save_id = get_active_save_id()
-        sheet = load_character(save_id)
+        sheet = load_character(req_save_id)
 
         sheet = add_item(sheet, item)
-        save_character(save_id, sheet)
-        _sync_active_character_snapshot_to_history(sheet, req_session_id)
+        save_character(req_save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_save_id)
 
         return jsonify({
             "status": "success",
@@ -4071,23 +4115,21 @@ def remove_character_item_route():
         data = request.get_json(silent=True) or {}
         item_name = data.get("item_name")
         quantity = int(data.get("quantity", 1))
-        req_session_id = data.get("session_id", "default")
+        req_save_id = get_requested_save_id(data)
         
         if not item_name:
             return jsonify({"error": "Missing item_name"}), 400
             
-        from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, remove_item
         
-        save_id = get_active_save_id()
-        sheet = load_character(save_id)
+        sheet = load_character(req_save_id)
         
         sheet, success = remove_item(sheet, item_name, quantity)
         if not success:
             return jsonify({"error": f"Item '{item_name}' not found in inventory."}), 404
             
-        save_character(save_id, sheet)
-        _sync_active_character_snapshot_to_history(sheet, req_session_id)
+        save_character(req_save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_save_id)
         
         return jsonify({
             "status": "success",
@@ -4107,20 +4149,18 @@ def remove_character_spell_route():
     try:
         data = request.get_json(silent=True) or {}
         spell_name = data.get("spell_name")
-        req_session_id = data.get("session_id", "default")
+        req_save_id = get_requested_save_id(data)
         
         if not spell_name:
             return jsonify({"error": "Missing spell_name"}), 400
             
-        from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, forget_spell
         
-        save_id = get_active_save_id()
-        sheet = load_character(save_id)
+        sheet = load_character(req_save_id)
         
         sheet = forget_spell(sheet, spell_name)
-        save_character(save_id, sheet)
-        _sync_active_character_snapshot_to_history(sheet, req_session_id)
+        save_character(req_save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_save_id)
         
         return jsonify({
             "status": "success",
@@ -4140,13 +4180,11 @@ def modify_character_gold_route():
         data = request.get_json(silent=True) or {}
         amount = int(data.get("amount", 0))
         action = data.get("action", "remove")
-        req_session_id = data.get("session_id", "default")
+        req_save_id = get_requested_save_id(data)
         
-        from core.save_manager import get_active_save_id
         from core.character import load_character, save_character, spend_gold, add_gold
         
-        save_id = get_active_save_id()
-        sheet = load_character(save_id)
+        sheet = load_character(req_save_id)
         
         if action == "set":
             sheet["gold"] = max(0, amount)
@@ -4155,8 +4193,8 @@ def modify_character_gold_route():
         else:
             sheet = spend_gold(sheet, amount)
             
-        save_character(save_id, sheet)
-        _sync_active_character_snapshot_to_history(sheet, req_session_id)
+        save_character(req_save_id, sheet)
+        _sync_active_character_snapshot_to_history(sheet, req_save_id)
         
         return jsonify({
             "status": "success",
@@ -4334,12 +4372,20 @@ def delete_user_profile():
         # If the deleted profile was active, switch active profile and save back to "eternal_champion"
         active_user = get_active_user()
                 
-        # Always clear in-memory session data for the deleted profile
-        if hasattr(runner, 'sessions_history'):
+        # Always clear in-memory save data for the deleted profile
+        if hasattr(runner, 'save_history'):
+            runner.save_history.pop(profile_id, None)
+            if profile_id == active_user:
+                runner.save_history.pop('default', None)
+        elif hasattr(runner, 'sessions_history'):
             runner.sessions_history.pop(profile_id, None)
             if profile_id == active_user:
                 runner.sessions_history.pop('default', None)
-        if hasattr(runner, 'sessions_memory_state'):
+        if hasattr(runner, 'save_memory_state'):
+            runner.save_memory_state.pop(profile_id, None)
+            if profile_id == active_user:
+                runner.save_memory_state.pop('default', None)
+        elif hasattr(runner, 'sessions_memory_state'):
             runner.sessions_memory_state.pop(profile_id, None)
             if profile_id == active_user:
                 runner.sessions_memory_state.pop('default', None)

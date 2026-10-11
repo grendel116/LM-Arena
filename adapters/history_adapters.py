@@ -50,9 +50,11 @@ def _get_base64_image_url(image_source: str | None) -> str | None:
 
 
 class LocalHistoryAdapter(ABC):
-    def __init__(self, runner_obj, session_id: str):
+    def __init__(self, runner_obj, save_id: str):
+        from core.save_manager import get_active_save_id, _get_clean_name
         self.runner_obj = runner_obj
-        self.session_id = session_id
+        self.save_id = _get_clean_name(save_id) if save_id and save_id != "default" else get_active_save_id()
+        self.session_id = self.save_id
 
     @abstractmethod
     def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str | None = None, response_only: bool = False, speaker_id: str = "game") -> list[dict]:
@@ -84,13 +86,14 @@ class LocalHistoryAdapter(ABC):
 
 
 class OsHistoryAdapter(LocalHistoryAdapter):
-    def __init__(self, runner_obj, session_id: str, file_path_resolved, image_data, image_mime, query_vector=None):
-        super().__init__(runner_obj, session_id)
+    def __init__(self, runner_obj, save_id: str, file_path_resolved, image_data, image_mime, query_vector=None):
+        super().__init__(runner_obj, save_id)
         self.file_path_resolved = file_path_resolved
         self.image_data = image_data
         self.image_mime = image_mime
         self.query_vector = query_vector
-        self.initial_history_len = len(runner_obj.sessions_history.get(session_id, []))
+        raw_history = getattr(runner_obj, "save_history", None) or getattr(runner_obj, "sessions_history", {})
+        self.initial_history_len = len(raw_history.get(self.save_id, []))
         self._calculate_context_threshold()
 
     def _calculate_context_threshold(self):
@@ -103,7 +106,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
     async def compact_history(self, active_model: str, force: bool = False):
         """Compacts older history turns into vectorized memory chunks."""
-        history = self.runner_obj.sessions_history.get(self.session_id, [])
+        raw_history = getattr(self.runner_obj, "save_history", None) or getattr(self.runner_obj, "sessions_history", {})
+        history = raw_history.get(self.save_id, [])
         uncompacted_length = sum(len(msg.get("text") or "") for msg in history if not msg.get("compacted"))
 
         if not force and uncompacted_length <= self.max_context_chars:
@@ -133,7 +137,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         prior_texts = []
         try:
             db = DataBankManager()
-            priors = db.get_prior_chat_histories(self.session_id, limit=2)
+            priors = db.get_prior_chat_histories(self.save_id, limit=2)
             prior_texts = [f"--- PRIOR MEMORY ARCHIVE ({p['name']}) ---\n{p['text']}" for p in priors]
         except Exception as e:
             print(f"[COMPACTION OS] Error fetching prior chat histories: {e}", flush=True)
@@ -149,12 +153,12 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             db = DataBankManager()
             db.ingest_text(
                 text=summary,
-                name=f"chat_history_archive_{self.session_id}_{int(time.time())}",
+                name=f"chat_history_archive_{self.save_id}_{int(time.time())}",
                 source_type="chat_history",
             )
-            db.prune_chat_histories(self.session_id, keep_limit=3)
+            db.prune_chat_histories(self.save_id, keep_limit=3)
 
-            priors = db.get_prior_chat_histories(self.session_id, limit=3)
+            priors = db.get_prior_chat_histories(self.save_id, limit=3)
             if len(priors) == 3 and len(priors[-1].get("text", "")) > 1200:
                 asyncio.create_task(self._background_distill(priors[-1], active_model, db))
         except Exception as e:
@@ -168,7 +172,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         }
 
         with self.runner_obj._lock:
-            live_history = self.runner_obj.sessions_history.get(self.session_id, [])
+            save_histories = getattr(self.runner_obj, "save_history", None) or getattr(self.runner_obj, "sessions_history", {})
+            live_history = save_histories.get(self.save_id, [])
             last_id = historical_turns[-1].get("id") if historical_turns else None
 
             if last_id:
@@ -178,7 +183,10 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                         msg["compacted"] = True
                     live_history.insert(idx + 1, summary_msg)
 
-            self.runner_obj._save_session_to_disk(self.session_id)
+            if hasattr(self.runner_obj, "_save_to_disk"):
+                self.runner_obj._save_to_disk(self.save_id)
+            else:
+                self.runner_obj._save_session_to_disk(self.save_id)
 
     async def _background_distill(self, oldest_doc: dict, active_model: str, db):
         try:
@@ -259,7 +267,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         from runners.follower import get_active_follower
         from variables.settings import FOLLOWERS_DIR
 
-        history = self.runner_obj.sessions_history.get(self.session_id, [])
+        save_histories = getattr(self.runner_obj, "save_history", None) or getattr(self.runner_obj, "sessions_history", {})
+        history = save_histories.get(self.save_id, [])
         filtered_history = [
             msg for msg in history
             if msg.get("role") not in ("voice-call", "system-memory") and not msg.get("compacted")
@@ -336,11 +345,14 @@ class OsHistoryAdapter(LocalHistoryAdapter):
             if msg.get("tool_calls"):
                 for tc in msg["tool_calls"]:
                     if tc.get("type") == "call":
+                        tc_name = tc.get("name")
+                        if tc_name in ("arena_actor", "actor"):
+                            continue
                         args_list = [
                             f'{k}="{v.replace('"', '\\"')}"' if isinstance(v, str) else f"{k}={v}"
                             for k, v in tc.get("args", {}).items()
                         ]
-                        content_text += f"\n[{tc.get('name')}({', '.join(args_list)})]"
+                        content_text += f"\n[{tc_name}({', '.join(args_list)})]"
 
             if idx == latest_img_idx:
                 img_src = (
@@ -451,17 +463,14 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         # Gather Post-History System Context (Character Sheet, World Engine State & Quests)
         full_post_injection = ""
         try:
-            from runners.follower import get_active_user
-            from core.save_manager import get_active_save_id
             from core.world_engine import load_world_state
             from core.character import load_character, get_character_context
 
-            active_user = get_active_user()
-            active_save_id = get_active_save_id()
+            active_save_id = self.save_id
             sheet = load_character(active_save_id)
             char_ctx = get_character_context(sheet) if sheet else ""
 
-            world = load_world_state(active_user)
+            world = load_world_state(active_save_id)
             t_date = world.get("date") or world.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
             hour = t_date.get("hour", 6)
             
@@ -513,15 +522,15 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 from core.follower_config import get_follower_name
 
                 player_hero_name = get_player_name()
-                active_fols = get_active_followers(self.session_id)
+                active_fols = get_active_followers(self.save_id)
                 fol_names = [get_follower_name(fid) for fid in active_fols] if active_fols else []
                 fol_names_str = ", ".join(fol_names) if fol_names else "none"
 
                 post_blocks.append(
                     f"# REFEREE DIRECTIVES\n"
                     f"- Party Autonomy: {player_hero_name} and followers ({fol_names_str}) act on their own turns. Never generate dialogue, actions, or [arena_actor] calls for them.\n"
-                    f"- World Dialogue: World NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]. Never write spoken dialogue in narrative prose.\n"
-                    f"- Action Checks: When {player_hero_name} attempts an action with an uncertain outcome, call [arena_request_skill_check] and wait for the roll. Resolve outcomes and spend resources only after the roll resolves.\n"
+                    f"- World Dialogue: World NPCs, guards, merchants, and creatures speak using [arena_actor(speaker=\"...\", dialogue=\"...\")]. Physical actions are narrated directly in prose in *asterisks*; output spoken dialogue in plain text without quotes.\n"
+                    f"- Action Checks (Mandatory): Whenever {player_hero_name} attempts ANY risky, contested, physical, stealth, theft, distraction, attack, or spell action (e.g., snatching keys, picking locks, sneaking, climbing, jumping, attacking, casting spells): DO NOT resolve the outcome in prose. You MUST narrate the attempt up to the moment of uncertainty, call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")], and STOP your turn immediately to await the roll.\n"
                     f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_hero_name} using [arena_roll_combat(attacker_name=\"...\", weapon_name=\"...\")]. Attacks that connect automatically apply damage."
                 )
 
@@ -540,7 +549,6 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         )
 
     def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str, intermediate: bool = False, speaker_id: str = "game", speaker_name: str | None = None):
-        from runners.follower import get_active_user
         from core.world_engine import (
             load_world_state,
             create_state_snapshot,
@@ -549,17 +557,18 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         )
         from core.character import load_character
 
-        active_user = get_active_user()
-        world_state = load_world_state(active_user)
-        character_sheet = load_character(active_user)
+        active_save_id = self.save_id
+        world_state = load_world_state(active_save_id)
+        character_sheet = load_character(active_save_id)
         current_snapshot = create_state_snapshot(world_state, character_sheet)
 
         cleaned_text, updated_snapshot = extract_hidden_state_footer(text, current_snapshot)
-        apply_state_snapshot(active_user, updated_snapshot)
+        apply_state_snapshot(active_save_id, updated_snapshot)
 
         t_date = (updated_snapshot.get("date") if updated_snapshot else None) or world_state.get("date") or world_state.get("tamrielic_date") or {"day": 1, "month": "Hearthfire", "year": 389, "hour": 6}
 
-        history = self.runner_obj.sessions_history[self.session_id]
+        save_histories = getattr(self.runner_obj, "save_history", None) or getattr(self.runner_obj, "sessions_history", {})
+        history = save_histories[self.save_id]
 
         sender_id = speaker_id or "game"
         sender_name = speaker_name
@@ -571,7 +580,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 sender_name = get_follower_name(sender_id)
 
         follower_id = sender_id if sender_id not in ("game", "user") else None
-        if history and history[-1]["role"] == "follower" and history[-1].get("sender_id", "game") == sender_id:
+        if history and history[-1]["role"] == "follower" and history[-1].get("sender_id", "game") == sender_id and history[-1].get("id", "").startswith("itm_"):
             history[-1].update({
                 "text": cleaned_text,
                 "tool_calls": tool_calls_data,
@@ -608,8 +617,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         return bot_msg
 
     def append_tool_events(self, results: list, invocation_id: str):
+        save_histories = getattr(self.runner_obj, "save_history", None) or getattr(self.runner_obj, "sessions_history", {})
         for t_name, _, t_output in results:
-            self.runner_obj.sessions_history[self.session_id].append({
+            save_histories[self.save_id].append({
                 "id": f"tool_{uuid.uuid4().hex}",
                 "role": "user",
                 "text": f"[Tool Response from {t_name}]:\n{t_output}",
@@ -624,4 +634,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
         pass
 
     def save(self):
-        self.runner_obj._save_session_to_disk(self.session_id)
+        if hasattr(self.runner_obj, "_save_to_disk"):
+            self.runner_obj._save_to_disk(self.save_id)
+        else:
+            self.runner_obj._save_session_to_disk(self.save_id)

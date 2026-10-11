@@ -98,15 +98,9 @@ def set_active_follower(follower_id: str):
         set_active_followers([follower_id])
 
 def get_active_user() -> str:
-    settings = _load_settings()
-    active_usr = settings.get("active_user") or os.getenv("ACTIVE_USER") or "eternal_champion"
-
+    from core.save_manager import get_active_save_id
+    active_usr = get_active_save_id()
     os.environ["ACTIVE_USER"] = active_usr
-
-    if settings.get("active_user") != active_usr:
-        settings["active_user"] = active_usr
-        _save_settings(settings)
-
     return active_usr
 
 def get_player_name() -> str:
@@ -118,8 +112,9 @@ def get_player_name() -> str:
         return "Eternal Champion"
 
 def set_active_user(username: str):
-    from core.save_manager import _get_clean_name
+    from core.save_manager import set_active_save_id, _get_clean_name
     clean_name = _get_clean_name(username)
+    set_active_save_id(clean_name)
     os.environ["ACTIVE_USER"] = clean_name
     settings = _load_settings()
     settings["active_user"] = clean_name

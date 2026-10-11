@@ -12,11 +12,11 @@
     "current_location": "Imperial Dungeon",
     "quest_stage": 10,
     "tamrielic_date": "1 Hearthfire, 3E 389",
-    "created_at": "2026-10-05T06:46:03.377746",
-    "updated_at": "2026-10-05T06:46:03.377746",
-    "active_follower": "riasilmane",
+    "created_at": "2026-10-11T15:28:17.928565",
+    "updated_at": "2026-10-11T15:55:29.529765",
+    "active_follower": "breamaccius",
     "active_followers": [
-      "riasilmane"
+      "breamaccius"
     ]
   },
   "character": {
@@ -97,7 +97,9 @@
     "provinces_visited": [
       "Cyrodiil"
     ],
-    "cities_discovered": [],
+    "cities_discovered": [
+      "Imperial Dungeon"
+    ],
     "dungeons_cleared": [],
     "followers": [],
     "world_flags": {
@@ -128,28 +130,1286 @@
       "temple_of_dibella": 0,
       "temple_of_stendarr": 0,
       "noble_courts": 0
+    },
+    "date": {
+      "day": 1,
+      "month": "Hearthfire",
+      "year": 389,
+      "hour": 6,
+      "era": "Third Era"
     }
   },
   "history": [
     {
-      "id": "first_mes_ecc82c037a0d",
+      "id": "first_mes_bbae0d6da1f3",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1791207963.3777466
+      "timestamp": 1791757697.9285655
     }
   ],
   "messages": [
     {
-      "id": "first_mes_ecc82c037a0d",
+      "id": "first_mes_bbae0d6da1f3",
       "role": "follower",
       "sender_id": "game",
       "sender_name": "The Game",
       "text": "**1st of Hearthfire, 3E 389**\n\n---\n\n*Eternal Champion wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. As far as anyone in the world above knows, you have been forgotten.*\n\n*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*",
       "tool_calls": [],
-      "timestamp": 1791207963.3777466
+      "timestamp": 1791757697.9285655
+    },
+    {
+      "id": "usr_832mxuxl4mv4eg4k9",
+      "role": "user",
+      "text": "*I grab the key.*",
+      "image_url": null,
+      "timestamp": 1791757994.2816558,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "game_688d79212c",
+      "role": "follower",
+      "text": "*The Eternal Champion stretches upward, fingertips brushing against the rough stone of the cell wall. The brass key rests on a ledge just beyond easy reach, its metal surface cool and slightly grimy to the touch. To secure it, the Nord Mage must extend fully or find a way to balance against the damp masonry.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_request_skill_check",
+          "args": {
+            "skill_name": "Acrobatics",
+            "attribute_name": "Agility",
+            "dc": 10,
+            "reason": "Attempting to reach and retrieve the key from a high ledge in a cramped cell."
+          },
+          "id": "call_1791758015_0_e692"
+        },
+        {
+          "type": "response",
+          "name": "arena_request_skill_check",
+          "response": "{'status': 'skill_check_required', 'skill_name': 'Acrobatics', 'attribute_name': 'Agility', 'dc': 10, 'reason': 'Attempting to reach and retrieve the key from a high ledge in a cramped cell.'}",
+          "id": "call_1791758015_0_e692"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791758015.500213,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "usr_2d8cp02zbmv4egsgr",
+      "role": "user",
+      "text": "*I lunge upward for the key but slip on the damp floor, crashing awkwardly into the wall and knocking the prize farther out of reach.* <!-- check: Acrobatics DC 10 -> FUMBLE (rolled 1) -->",
+      "image_url": null,
+      "timestamp": 1791758025.2582057,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "game_2204d9c1aa",
+      "role": "follower",
+      "text": "*The Eternal Champion's foot slides on the wet stone as momentum carries them forward. A sharp crack echoes through the cell as shoulders slam against the granite wall, breath escaping in a ragged gasp. The lunge sends the brass key skittering further along the ledge, now resting precariously near the edge where the torchlight cannot reach.*\n\n*Pain radiates from the impact, and the key sits tauntingly out of reach in the shadows. From the corridor beyond, the skittering of claws on stone grows louder, drawn by the sudden commotion.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791758035.8648262,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "fol_breamaccius_88ab0375e1",
+      "role": "follower",
+      "text": "*I shift my weight against the iron bars, the metal cold against my palms as I watch you flail. A low, mocking chuckle vibrates in my throat while my green eyes track the key's new position.*\n\nThat was pathetic. Try not to break your neck before we even get out of here.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791758048.2817793,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "usr_d6bd4h8inmv4ekg09",
+      "role": "user",
+      "text": "*I press my back against the cold wall and glare up at the distant key, ignoring the throb in my shoulder.* Damn it.",
+      "image_url": null,
+      "timestamp": 1791758195.7386718,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "game_adc731abdc",
+      "role": "follower",
+      "text": "*The Eternal Champion's gaze remains locked on the brass key now half-hidden in the ledge's shadow, while Brea's mocking laughter echoes off the damp cell walls. The Nord Mage's breathing comes in ragged bursts, mixing with the distant drip of water. Something small and brown darts across the corridor floor just beyond the bars, drawn by the disturbance.*\n\n*The guard's voice booms from the corridor, followed by the heavy thud of armored boots approaching the cell.*\n\nQuiet in there! One more word and you'll get a meal of rats and gruel for a week!\n\n*The key remains tantalizingly out of reach, glinting faintly where it rests near the stone's edge. The approaching footsteps grow louder, accompanied by the metallic clink of a key ring and the scrape of leather boots on grit.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_actor",
+          "args": {
+            "speaker": "Prison Guard",
+            "dialogue": "Quiet in there! One more word and you'll get a meal of rats and gruel for a week!"
+          },
+          "id": "call_1791758210_0_a4bb"
+        },
+        {
+          "type": "response",
+          "name": "arena_actor",
+          "response": "{'success': True, 'speaker': 'Prison Guard', 'dialogue': \"Quiet in there! One more word and you'll get a meal of rats and gruel for a week!\"}",
+          "id": "call_1791758210_0_a4bb"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791758210.976974,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "fol_breamaccius_bddc9471dc",
+      "role": "follower",
+      "text": "*I press my face close to the bars, watching the guard's silhouette grow larger in the torchlight. My lips pull back in a sharp, hungry smile as I study the heavy ring of keys at his belt.*\n\nThe pig is coming to us. Keep your mouth shut and let me work this out.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791758225.0574985,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "usr_299lyj5rnmv4eutlf",
+      "role": "user",
+      "text": "*I track the guard's movement through the bars.*",
+      "image_url": null,
+      "timestamp": 1791758679.909023,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "game_231862f6fe",
+      "role": "follower",
+      "text": "*The guard's shadow stretches long across the corridor floor as he approaches, the torchlight catching the edge of his worn chainmail. A thick leather belt sags under the weight of a massive iron key ring, each key clinking softly with his measured pace. His face is lined with the fatigue of a long shift, eyes scanning the cells with bored indifference.*\n\n*The guard stops in front of the cell, resting a hand on his sword pommel.*\n\nStill kicking, are we? Thought the rats would have finished you by now.\n\n*Through the bars, the Eternal Champion can see the guard's key ring within reach of Brea's extended hand. The man leans closer, his breath smelling of sour ale and onions, unaware that his keys hang precariously close to the iron bars separating him from the prisoners.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_actor",
+          "args": {
+            "speaker": "Imperial Guard",
+            "dialogue": "Still kicking, are we? Thought the rats would have finished you by now."
+          },
+          "id": "call_1791758701_0_dd42"
+        },
+        {
+          "type": "response",
+          "name": "arena_actor",
+          "response": "{'success': True, 'speaker': 'Imperial Guard', 'dialogue': 'Still kicking, are we? Thought the rats would have finished you by now.'}",
+          "id": "call_1791758701_0_dd42"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791758701.1629546,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "fol_breamaccius_34c14ba72f",
+      "role": "follower",
+      "text": "*I lean my cheek against the cold iron, widening my eyes and letting a tremor run through my shoulders. My voice drops to a soft, breathy whisper that barely carries past the bars.*\n\nPlease... I can't bear the hunger anymore. Just one bite of bread, and I'll tell you where the other cell-rats hid their scraps.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791758717.3767233,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "usr_9v3ulv01nmv4f4pp6",
+      "role": "user",
+      "text": "I didn't hide any scraps!",
+      "image_url": null,
+      "timestamp": 1791759141.4189143,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "game_18a4f1b794",
+      "role": "follower",
+      "text": "*The guard's brow furrows as Brea's whispered plea drifts through the bars, his interest piqued by the promise of information. He leans in closer, the keys at his hip swaying within inches of Brea's outstretched fingers as he lowers his voice to a conspiratorial growl.*\n\nScraps, eh? Talk fast, girl, before I change my mind about being generous.\n\n*The guard's attention shifts momentarily to the Eternal Champion at the outburst, his hand tightening on his sword pommel as suspicion flickers across his face. The key ring dangles tantalizingly close to the iron bars, the metal cool and heavy as it sways with the guard's slight shift in weight.*",
+      "tool_calls": [
+        {
+          "type": "call",
+          "name": "arena_actor",
+          "args": {
+            "speaker": "Guard",
+            "dialogue": "Scraps, eh? Talk fast, girl, before I change my mind about being generous.",
+            "action": "leans closer to the bars"
+          },
+          "id": "call_1791759168_0_5e7d"
+        },
+        {
+          "type": "response",
+          "name": "arena_actor",
+          "response": "{'success': True, 'speaker': 'Guard', 'dialogue': 'Scraps, eh? Talk fast, girl, before I change my mind about being generous.'}",
+          "id": "call_1791759168_0_5e7d"
+        }
+      ],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791759168.4847867,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "fol_breamaccius_d8d11f02ef",
+      "role": "follower",
+      "text": "*I press my body flush against the bars, angling my hip just right so my thigh-high boot braces against the stone. My fingers snake through the iron gap toward those keys.*\n\nThey're right under the loose stone in the next cell over. You'll have to unlock it for me to show you.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791759186.0511332,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "usr_7atswfroamv4f6osy",
+      "role": "user",
+      "text": "*I shift my weight silently, making a funny face to distract the guard while Brea inches closer to the keys.*",
+      "image_url": null,
+      "timestamp": 1791759233.5749185,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "fol_breamaccius_12a907399f",
+      "role": "follower",
+      "text": "*I keep my eyes locked on the guard's face while my fingers dance just inches from the key ring, timing my reach with his blink. The metal jingles softly as I brush against the leather strap.*\n\nAlmost... just a little closer, you fat pig.",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791759249.0844822,
+      "sender_id": "breamaccius",
+      "follower_id": "breamaccius",
+      "sender_name": "Brea Maccius",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "game_12b6dc006c",
+      "role": "follower",
+      "text": "*The guard's eyes narrow as he processes Brea's claim, his greed momentarily overriding caution. He leans further through the bars, the key ring now hanging directly before the gap where Brea's fingers probe. The Eternal Champion's exaggerated expressions draw the guard's attention for a split second, providing the perfect distraction as the leather strap gives way under Brea's deft touch.*\n\n*With a sudden, sharp tug, the key ring slides free from the guard's belt, clattering softly against the stone floor. The guard's face transforms from avarice to raw panic as he realizes he has been played.*\n\nYou thieving little—!\n\n*He scrambles backward, hand flying to his sword hilt as he recovers from the shock. The keys now lie just inside the cell, within reach of the prisoners, as the guard's face flushes crimson with rage and embarrassment.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791759272.9325492,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "usr_d882u3ubgmv4f87p8",
+      "role": "user",
+      "text": "*I lunge forward and snatch the keys from the stone floor before the guard can react.*",
+      "image_url": null,
+      "timestamp": 1791759304.7165573,
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
+    },
+    {
+      "id": "game_ce0fa4d263",
+      "role": "follower",
+      "text": "*The Eternal Champion's hand shoots forward, fingers closing around the cold iron of the key ring just as the guard's sword clears its scabbard. The heavy metal clatters against the cell floor, but the Nord Mage's grip is swift and sure, pulling the prize back toward the bars.*\n\n*The guard's eyes widen as he realizes he has been outplayed, his sword tip wavering between indignation and hesitation. He takes a stumbling step backward, the torchlight casting his shadow in jagged motion against the damp walls.*\n\nYou're dead! You'll rot in the deepest pit for this!\n\n*The keys feel heavy and solid in the Eternal Champion's palm, their jagged edges biting into skin. The lock on the cell door is just inches away, its rusted iron mechanism waiting for the right key to turn.*",
+      "tool_calls": [],
+      "tamrielic_date": {
+        "day": 1,
+        "month": "Hearthfire",
+        "year": 389,
+        "hour": 6,
+        "era": "Third Era"
+      },
+      "timestamp": 1791759319.8439603,
+      "sender_id": "game",
+      "follower_id": null,
+      "sender_name": "The Game",
+      "state_snapshot": {
+        "province": "Cyrodiil",
+        "location": "Imperial Dungeon",
+        "date": {
+          "day": 1,
+          "month": "Hearthfire",
+          "year": 389,
+          "hour": 6,
+          "era": "Third Era"
+        },
+        "quest_stage": 10,
+        "world_flags": {
+          "shift_gate_answered": false,
+          "ria_vision_1_seen": false,
+          "province_travel_unlocked": false,
+          "staff_assembled": false
+        },
+        "vitals": {
+          "hp": 32,
+          "hp_max": 32,
+          "mp": 162,
+          "mp_max": 162,
+          "stamina": 72,
+          "stamina_max": 72,
+          "gold": 0
+        },
+        "inventory": [
+          {
+            "name": "Prison Rags",
+            "type": "armor",
+            "equipped": true,
+            "equipped_slot": "body",
+            "weight": 1.0,
+            "quantity": 1
+          }
+        ],
+        "spells": [
+          {
+            "name": "Spark",
+            "school": "Destruction",
+            "tier": 1,
+            "mp_cost": 4
+          }
+        ],
+        "conditions": [],
+        "active_effects": [],
+        "level": 1,
+        "experience": 0
+      }
     }
   ],
   "memories": {

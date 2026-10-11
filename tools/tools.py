@@ -14,9 +14,22 @@ from variables.settings import COMFYUI_SERVER_URL, COMFYUI_CHECKPOINT, COMFYUI_V
 active_running_tools = {}
 _active_tools_lock = threading.Lock()
 
-current_session_id = contextvars.ContextVar('current_session_id', default='eternal_champion')
-session_tool_calls_lock = threading.Lock()
-session_tool_calls = {}
+current_save_id = contextvars.ContextVar('current_save_id', default='eternal_champion')
+save_tool_calls_lock = threading.Lock()
+save_tool_calls = {}
+
+# Backward-compatibility references
+current_session_id = current_save_id
+session_tool_calls_lock = save_tool_calls_lock
+session_tool_calls = save_tool_calls
+
+def get_current_save_id() -> str:
+    from core.save_manager import get_active_save_id, _get_clean_name
+    sid = current_save_id.get(None)
+    if not sid or sid == "default":
+        return get_active_save_id()
+    return _get_clean_name(sid)
+
 import inspect
 
 DEFAULT_PARAMETER_ALIASES = {
@@ -94,7 +107,7 @@ def allow_aliases(**custom_aliases):
 def track_tool_activity(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        sess_id = current_session_id.get()
+        save_id = get_current_save_id()
         call_id = f"call_{int(time.time()*1000)}_{uuid.uuid4().hex[:4]}"
         
         # Build argument representation for display
@@ -115,10 +128,10 @@ def track_tool_activity(func):
             'duration': 0.0
         }
         
-        with session_tool_calls_lock:
-            if sess_id not in session_tool_calls:
-                session_tool_calls[sess_id] = []
-            session_tool_calls[sess_id].append(tool_call_info)
+        with save_tool_calls_lock:
+            if save_id not in save_tool_calls:
+                save_tool_calls[save_id] = []
+            save_tool_calls[save_id].append(tool_call_info)
 
         with _active_tools_lock:
             active_running_tools[func.__name__] = active_running_tools.get(func.__name__, 0) + 1
@@ -127,9 +140,9 @@ def track_tool_activity(func):
         try:
             res = func(*args, **kwargs)
             duration = round(time.time() - start_time, 2)
-            with session_tool_calls_lock:
-                if sess_id in session_tool_calls:
-                    for tc in session_tool_calls[sess_id]:
+            with save_tool_calls_lock:
+                if save_id in save_tool_calls:
+                    for tc in save_tool_calls[save_id]:
                         if tc['id'] == call_id:
                             tc['status'] = 'completed'
                             tc['response'] = str(res)[:1000]
@@ -137,9 +150,9 @@ def track_tool_activity(func):
             return res
         except Exception as e:
             duration = round(time.time() - start_time, 2)
-            with session_tool_calls_lock:
-                if sess_id in session_tool_calls:
-                    for tc in session_tool_calls[sess_id]:
+            with save_tool_calls_lock:
+                if save_id in save_tool_calls:
+                    for tc in save_tool_calls[save_id]:
                         if tc['id'] == call_id:
                             tc['status'] = 'failed'
                             tc['response'] = f"Error: {e}"
@@ -220,14 +233,14 @@ def format_comfy_validation_error(error_json: dict) -> str:
 
 
 @track_tool_activity
-def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, session_id: str = None) -> str:
+def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, save_id: str = None, session_id: str = None) -> str:
     """Executes a specified ComfyUI workflow JSON template with custom parameter mappings and saves the output.
 
     Args:
         workflow_path: Path to the workflow JSON file.
         parameters: Dictionary of placeholder keys and their replacement values.
         save_path: Path where the generated image should be saved.
-        session_id: Optional session identifier used to honour cancellation requests.
+        save_id: Optional save identifier used to honour cancellation requests.
 
     Returns:
         The filesystem path of the saved image, or an error message.
@@ -306,10 +319,11 @@ def apply_comfy_workflow(workflow_path: str, parameters: dict, save_path: str, s
             raise Exception("Did not receive a prompt ID from ComfyUI")
 
         # Poll history endpoint for output
-        from runners.runners import cancelled_sessions
+        from runners.runners import cancelled_saves
+        target_id = save_id or session_id or get_current_save_id()
         for _ in range(300):
-            # Honour session cancellation — stop polling and kill the ComfyUI job
-            if session_id and session_id in cancelled_sessions:
+            # Honour cancellation — stop polling and kill the ComfyUI job
+            if target_id and target_id in cancelled_saves:
                 _cancel_comfy_job(prompt_id)
                 return "Error: Image generation cancelled by user."
 
@@ -1173,14 +1187,15 @@ def arena_add_gold(amount: int = 0, **kwargs):
     return {"gold": sheet["gold"]}
 
 @track_tool_activity
-def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, name: str = None, speech: str = None, text: str = None, **kwargs) -> dict:
-    """Portrays a non-party NPC, monster, merchant, or questgiver through spoken dialogue and physical action.
+def arena_actor(speaker: str = "NPC", dialogue: str = "", name: str = None, speech: str = None, text: str = None, **kwargs) -> dict:
+    """Portrays a non-party NPC, monster, merchant, or questgiver through spoken dialogue.
     
-    Party followers and the hero ({{user}}) are strictly autonomous and cannot be voiced or acted by this tool.
+    Narration and physical actions are written directly in narrative prose by The Game.
+    This tool is strictly for spoken dialogue.
+    Party followers and the hero ({{user}}) are strictly autonomous and cannot be voiced by this tool.
     """
     actual_speaker = str(name if name is not None else (speaker or "NPC")).strip()
-    actual_dialogue = str(speech if speech is not None else (text if text is not None else (dialogue or ""))).strip()
-    actual_action = str(action).strip() if action else None
+    actual_dialogue = str(speech if speech is not None else (text if text is not None else (dialogue or ""))).strip().strip(' "\'')
 
     # Autonomy guard: prevent puppeting player or party followers
     try:
@@ -1189,9 +1204,9 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, na
         from core.save_manager import get_active_followers as sm_get_active_followers, get_active_save_id
 
         player_name = get_player_name().strip().lower()
-        session_id = current_session_id.get(None) or get_active_save_id()
+        save_id = get_current_save_id()
         try:
-            active_fids = sm_get_active_followers(session_id) if session_id else get_active_followers()
+            active_fids = sm_get_active_followers(save_id) if save_id else get_active_followers()
         except Exception:
             active_fids = get_active_followers()
 
@@ -1235,8 +1250,7 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", action: str = None, na
     return {
         "success": True,
         "speaker": actual_speaker,
-        "dialogue": actual_dialogue,
-        "action": actual_action
+        "dialogue": actual_dialogue
     }
 
 @track_tool_activity

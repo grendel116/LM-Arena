@@ -34,7 +34,7 @@ def atomic_save_json(path: str | Path, data: object, indent: int = 2):
 
 _ARENA_DIRECTIVE_PROMPT = (
     "\n\n# ARENA RPG MECHANICS\n"
-    "- Actor Tool Exclusive: All world NPCs, monsters, merchants, and questgivers speak and act exclusively through `[arena_actor(speaker=\"...\", dialogue=\"...\", action=\"...\")]`. Never write spoken dialogue in narrative prose. NEVER call `[arena_actor]` for party followers ({{followers}}) or {{user}}.\n"
+    "- Actor Tool Exclusive: All world NPCs, monsters, merchants, and questgivers speak exclusively through `[arena_actor(speaker=\"...\", dialogue=\"...\")]`. Narrate NPC physical actions directly in narrative prose wrapped in *asterisks*. [arena_actor] is strictly for spoken dialogue in plain text without quotation marks or asterisks. Never write spoken dialogue in narrative prose. NEVER call `[arena_actor]` for party followers ({{followers}}) or {{user}}.\n"
     "- Follower Autonomy: Party followers ({{followers}}) and {{user}} are autonomous characters who speak and act on their own turns. The Game never writes speech, actions, or dialogue for party followers or {{user}}.\n"
     "- Action Sequence: When {{user}} attempts an attack, spell, or risky action, narrate the initial attempt, sensory environment, and physical tension leading up to the moment of uncertainty, call `[arena_request_skill_check]`, and await the roll. Never narrate the outcome or spend resources until the check is resolved. When the roll resolves on the next turn, deduct Magicka (`[arena_spend_magicka]`) or Stamina (`[arena_spend_stamina]`), resolve counter-attacks (`[arena_roll_combat]`), and narrate consequences.\n"
     "- Magicka: Spells require sufficient MP. Depleted MP causes spells to fizzle and fail.\n"
@@ -58,7 +58,6 @@ TOOL_ALIASES = {
 }
 
 cancelled_sessions = set()
-voice_call_sessions = set()
 
 THINK_TAG_PATTERN = re.compile(
     r'(?:<think>|\[think\]|<thought>|\[thought\]|<\|thought\|>|<\|channel\|>thought|<channel\|>thought)'
@@ -269,14 +268,15 @@ def _get_safe_local_path(image_url: str) -> str | None:
     if not cleaned_parts:
         return None
 
-    from runners.follower import get_active_follower
+    from core.save_manager import get_active_followers
     from variables.settings import FOLLOWERS_DIR
-    active_follower = get_active_follower()
+    party = get_active_followers()
 
-    # Check active follower first
-    candidate = os.path.join(FOLLOWERS_DIR, active_follower, *cleaned_parts)
-    if os.path.exists(candidate):
-        return candidate
+    # Check active party followers first
+    for fol in party:
+        cand = os.path.join(FOLLOWERS_DIR, fol, *cleaned_parts)
+        if os.path.exists(cand):
+            return cand
 
     # Check game folder (environment / DM images)
     candidate_game = os.path.join(FOLLOWERS_DIR, "game", *cleaned_parts)
@@ -290,7 +290,8 @@ def _get_safe_local_path(image_url: str) -> str | None:
             if os.path.exists(cand):
                 return cand
 
-    return candidate
+    lead_fol = party[0] if party else "game"
+    return os.path.join(FOLLOWERS_DIR, lead_fol, *cleaned_parts)
 
 
 def _get_tool_dedup_keys(norm_name: str, kwargs: dict, pos_args: list = None) -> set:
@@ -443,57 +444,10 @@ def _execute_tool_matches(matches: list, seen_tool_calls: set, session_id: str =
     return results
 
 
-class LocalHistoryAdapter:
-    def __init__(self, runner_obj, session_id):
-        self.runner_obj = runner_obj
-        self.session_id = session_id
-
-    def get_openai_messages(
-        self,
-        sys_inst: str,
-        rag_context: str,
-        memory_context: str = None,
-        response_only: bool = False
-    ) -> list:
-        raise NotImplementedError()
-
-    def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str):
-        raise NotImplementedError()
-
-    def append_tool_events(self, results: list, invocation_id: str):
-        raise NotImplementedError()
-
-    def append_image_tool_events(self, tool_name: str, tool_args: dict, new_markdown: str, call_id: str, invocation_id: str):
-        raise NotImplementedError()
-
-    def post_process_thoughts(self, invocation_id: str):
-        raise NotImplementedError()
-
-
 class LocalOffloadTrigger(Exception):
     def __init__(self, reason, iteration):
         self.reason = reason
         self.iteration = iteration
-
-
-def _get_safe_local_path(image_url: str) -> str:
-    """Converts an image URL into a local path relative to the workspace,
-    supporting subdirectories like 'portraits'.
-    """
-    if "/images/" not in image_url:
-        return None
-    filename = image_url.split("/images/")[-1]
-    filename = filename.replace("\\", "/").strip("/")
-    parts = filename.split("/")
-    safe_parts = []
-    for p in parts:
-        safe_p = "".join(c for c in p if c.isalnum() or c in "._-")
-        if safe_p:
-            safe_parts.append(safe_p)
-    if not safe_parts:
-        return None
-    active_follower = get_active_follower()
-    return os.path.normpath(os.path.join("core", "followers", active_follower, *safe_parts))
 
 
 def _extract_media(text: str, image_url: str = None, tool_calls: list = None) -> tuple[list, str]:
