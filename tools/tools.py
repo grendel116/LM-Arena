@@ -1239,10 +1239,19 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", name: str = None, spee
 
         spk_lower = actual_speaker.lower()
         spk_tokens = set(re.findall(r'\w+', spk_lower))
+        matched_fol_id = None
+        for fid in active_fids:
+            fname = get_follower_name(fid).strip().lower()
+            fname_tokens = set(re.findall(r'\w+', fname))
+            if spk_lower == fid.lower() or spk_lower == fname or bool(spk_tokens & fname_tokens and len(fname_tokens) > 0):
+                matched_fol_id = fid
+                break
+
         if spk_lower in forbidden_names or bool(spk_tokens & forbidden_names):
             return {
                 "success": False,
-                "error": f"Forbidden: '{actual_speaker}' is an autonomous party member or hero. Party followers and the hero speak on their own turns. The Actor tool is exclusively for world NPCs, monsters, merchants, and questgivers."
+                "error": f"Forbidden: '{actual_speaker}' is an autonomous party member or hero. Party followers and the hero speak on their own turns. The Actor tool is exclusively for world NPCs, monsters, merchants, and questgivers.",
+                "pass_to_follower": matched_fol_id
             }
     except Exception as e:
         print(f"Error in arena_actor autonomy guard: {e}")

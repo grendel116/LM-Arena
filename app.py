@@ -932,6 +932,25 @@ def compute_chain_speaker(chat_history: list, active_followers: list, tool_calls
     if tool_calls and any((tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "")) in image_tool_names for tc in tool_calls):
         return False, None
 
+    # Check if an Actor tool call requested passing directly to a party follower
+    for tc in (tool_calls or []):
+        if not isinstance(tc, dict):
+            continue
+        if tc.get("name") == "arena_actor":
+            resp = tc.get("response") or tc.get("output") or ""
+            parsed_resp = {}
+            if isinstance(resp, dict):
+                parsed_resp = resp
+            elif isinstance(resp, str):
+                try:
+                    import ast
+                    parsed_resp = ast.literal_eval(resp)
+                except Exception:
+                    pass
+            target_fol = parsed_resp.get("pass_to_follower")
+            if target_fol and target_fol in active_followers:
+                return True, target_fol
+
     # Filter out image messages so they are functionally invisible to the chain
     chain_history = [m for m in chat_history if not is_image_message(m)]
 
@@ -1059,8 +1078,14 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
             break
 
     # If the user was in an ongoing conversation with a follower, that follower speaks first:
-    # Requires dialogue quotes or direct address to the follower. Pure world actions route to The Game.
-    has_dialogue = any(q in user_msg_clean for q in ('"', '“', '”', '「', '」'))
+    # Requires dialogue quotes, question marks, direct speech without asterisks, or direct address to the follower.
+    # Pure world actions (wrapped entirely in asterisks) route to The Game.
+    is_pure_narration = user_msg_clean.startswith("*") and user_msg_clean.endswith("*") and user_msg_clean.count("*") == 2
+    has_dialogue = (
+        any(q in user_msg_clean for q in ('"', '“', '”', '「', '」'))
+        or "?" in user_msg_clean
+        or not is_pure_narration
+    )
 
     if last_assistant_speaker and last_assistant_speaker in active_followers:
         fname = get_follower_name(last_assistant_speaker).lower()
@@ -1070,7 +1095,7 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
             or re.search(rf"\b{re.escape(first_name)}\b", user_msg_lower)
             or re.search(rf"\b{re.escape(last_assistant_speaker.lower())}\b", user_msg_lower)
         )
-        if has_dialogue or follower_addressed:
+        if (has_dialogue and not is_pure_narration) or follower_addressed:
             return last_assistant_speaker
 
     # 4. Follower name mentioned in user message
@@ -1085,12 +1110,11 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
     return "game"
 
 
-@app.route('/chat', methods=['POST'])
-@requires_auth
-def chat():
     user_message = request.json.get('message')
-    if not user_message or not str(user_message).strip():
-        user_message = "*I wait and observe.*"
+    if user_message is not None:
+        user_message = str(user_message).strip()
+        if not user_message:
+            user_message = None
     image_data = request.json.get('image_data')
     image_mime = request.json.get('image_mime')
     media_path = request.json.get('media_path')
@@ -1185,8 +1209,7 @@ def continue_turn():
     speaker_id = request.json.get('speaker_id')
     from core.save_manager import get_active_followers
     active_followers = get_active_followers(session_id)
-    if not speaker_id:
-        speaker_id = active_followers[0] if active_followers else "game"
+    speaker_id = speaker_id or "game"
 
     import tools.tools as tools
     tools.current_session_id.set(session_id)

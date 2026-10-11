@@ -36,8 +36,8 @@ cancelled_saves: set[str] = set()
 cancelled_sessions = cancelled_saves
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-TOOL_TAG_RE = re.compile(r"\[(\w+)\(([\s\S]*?)\)\]")
-TOOL_TAG_STRIP_RE = re.compile(r"\[\w+\([\s\S]*?\n?\)\]", flags=re.DOTALL)
+TOOL_TAG_RE = re.compile(r"\[(\w+)\(([\s\S]*?)\)\s*\]")
+TOOL_TAG_STRIP_RE = re.compile(r"\[\w+\([\s\S]*?\n?\)\s*\]", flags=re.DOTALL)
 
 # Tools that provide dice/lookup or resolve mechanics requiring follow-up narrative generation
 QUERY_TOOLS = {
@@ -602,8 +602,14 @@ class BaseRunner:
                                 if not already_in_text and clean_dlg:
                                     replacement = f"\n\n{clean_dlg}\n\n"
                                 results.append((t_name, t_args, output))
-
-                            bot_response_text = bot_response_text.replace(m.group(0), replacement, 1)
+                                bot_response_text = bot_response_text.replace(m.group(0), replacement, 1)
+                            elif output_dict.get("pass_to_follower"):
+                                results.append((t_name, t_args, output))
+                                # Stop and hand off to the follower: drop any following narrative from The Game
+                                bot_response_text = bot_response_text[:m.start()].strip()
+                                break
+                            else:
+                                bot_response_text = bot_response_text.replace(m.group(0), replacement, 1)
                         else:
                             results.append((t_name, t_args, output))
 

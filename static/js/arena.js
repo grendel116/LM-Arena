@@ -6795,7 +6795,8 @@ async function sendMessage() {
     } else if (attachedBase64) {
         userImageUrl = `data:${attachedMime};base64,${attachedBase64}`;
     }
-    const text = rawInput || (userImageUrl ? "" : "*I wait and observe.*");
+    const isContinue = !rawInput && !userImageUrl;
+    const text = rawInput;
 
     hasApprovedToolThisTurn = false;
     hasStagedRollMessage = false;
@@ -6810,29 +6811,28 @@ async function sendMessage() {
     userInput.placeholder = "";
     updateInputGlow();
 
-    const stagedText = text;
-    const stagedBase64 = attachedBase64;
-    const stagedMime = attachedMime;
-    const stagedMediaPath = attachedMediaPath;
-
-    let prefix = 'usr_';
-    if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:") || text.includes("[GENERATE_IMAGEN:"))) {
-        prefix = 'port_';
-    } else if (text && text.startsWith("[SYSTEM: User has completed")) {
-        prefix = 'quest_';
-    } else if (text && text.startsWith("[Tool Response from")) {
-        prefix = 'tool_';
+    let userMsgId = null;
+    let snapshotVitals = null;
+    if (!isContinue) {
+        let prefix = 'usr_';
+        if (text && (text.includes("Send me a portrait of yourself") || text.includes("[GENERATE_IMAGE:") || text.includes("[GENERATE_IMAGEN:"))) {
+            prefix = 'port_';
+        } else if (text && text.startsWith("[SYSTEM: User has completed")) {
+            prefix = 'quest_';
+        } else if (text && text.startsWith("[Tool Response from")) {
+            prefix = 'tool_';
+        }
+        userMsgId = prefix + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+        snapshotVitals = _lastTrackedVitals.hp !== null ? {
+            hp: _lastTrackedVitals.hp,
+            hpMax: _lastTrackedVitals.hpMax,
+            mp: _lastTrackedVitals.mp,
+            mpMax: _lastTrackedVitals.mpMax,
+            stamina: _lastTrackedVitals.stamina,
+            staminaMax: _lastTrackedVitals.staminaMax
+        } : null;
+        appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals);
     }
-    const userMsgId = prefix + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    const snapshotVitals = _lastTrackedVitals.hp !== null ? {
-        hp: _lastTrackedVitals.hp,
-        hpMax: _lastTrackedVitals.hpMax,
-        mp: _lastTrackedVitals.mp,
-        mpMax: _lastTrackedVitals.mpMax,
-        stamina: _lastTrackedVitals.stamina,
-        staminaMax: _lastTrackedVitals.staminaMax
-    } : null;
-    const userMsgRow = (text || userImageUrl) ? appendMessage('user', text, userImageUrl, null, false, Date.now() / 1000, null, false, userMsgId, snapshotVitals) : null;
 
     // Trigger heart jiggle on high user interaction or when follower is generating/responding
     const heartElement = document.querySelector('.heart-pulse');
@@ -6841,7 +6841,7 @@ async function sendMessage() {
     }
 
     const payload = {
-        message: text || "",
+        message: isContinue ? null : text,
         msg_id: userMsgId,
         image_data: attachedBase64,
         image_mime: attachedMime,
