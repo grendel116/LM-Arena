@@ -5460,9 +5460,7 @@ const hiddenPassiveTools = new Set([
     'generate_imagen',
     'generate_general_image',
     'apply_comfy_workflow',
-    'generate_video_from_image',
-    'arena_actor',
-    'actor'
+    'generate_video_from_image'
 ]);
 
 function formatToolOutcomeSummary(toolName, args = {}, response = null) {

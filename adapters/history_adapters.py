@@ -347,6 +347,14 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     if tc.get("type") == "call":
                         tc_name = tc.get("name")
                         if tc_name in ("arena_actor", "actor"):
+                            tc_args = tc.get("args", {})
+                            spk = str(tc_args.get("speaker") or tc_args.get("name") or "NPC").strip()
+                            dlg = str(tc_args.get("dialogue") or tc_args.get("speech") or tc_args.get("text") or "").strip().strip(' "\'')
+                            actor_tag = f'[arena_actor(speaker="{spk}", dialogue="{dlg}")]'
+                            if dlg and dlg in content_text:
+                                content_text = content_text.replace(dlg, actor_tag, 1)
+                            elif actor_tag not in content_text:
+                                content_text += f"\n{actor_tag}"
                             continue
                         args_list = [
                             f'{k}="{v.replace('"', '\\"')}"' if isinstance(v, str) else f"{k}={v}"
@@ -529,7 +537,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 post_blocks.append(
                     f"# REFEREE DIRECTIVES\n"
                     f"- Party Autonomy: {player_hero_name} and followers ({fol_names_str}) act on their own turns. Never generate dialogue, actions, or [arena_actor] calls for them.\n"
-                    f"- World Dialogue: World NPCs, guards, merchants, and creatures speak using [arena_actor(speaker=\"...\", dialogue=\"...\")]. Physical actions are narrated directly in prose in *asterisks*; output spoken dialogue in plain text without quotes.\n"
+                    f"- World Dialogue (Zero Dialogue in Prose): World NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\")]. Never write spoken dialogue in narrative prose. Physical actions are narrated directly in prose wrapped in *asterisks*; spoken speech belongs entirely inside the dialogue parameter of [arena_actor] in plain text without quotation marks or asterisks.\n"
                     f"- Action Checks (Mandatory): Whenever {player_hero_name} attempts ANY risky, contested, physical, stealth, theft, distraction, attack, or spell action (e.g., snatching keys, picking locks, sneaking, climbing, jumping, attacking, casting spells): DO NOT resolve the outcome in prose. You MUST narrate the attempt up to the moment of uncertainty, call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")], and STOP your turn immediately to await the roll.\n"
                     f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_hero_name} using [arena_roll_combat(attacker_name=\"...\", weapon_name=\"...\")]. Attacks that connect automatically apply damage."
                 )
