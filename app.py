@@ -1110,6 +1110,9 @@ def determine_first_speaker(user_message: str, prior_history: list, active_follo
     return "game"
 
 
+@app.route('/chat', methods=['POST'])
+@requires_auth
+def chat():
     user_message = request.json.get('message')
     if user_message is not None:
         user_message = str(user_message).strip()
