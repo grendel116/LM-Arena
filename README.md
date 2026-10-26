@@ -82,3 +82,11 @@ Place model files in the `models/` directory:
    python desktop.py
    # Or browser mode: python app.py -> http://localhost:5000
    ```
+
+---
+
+## LICENSE & DISCLAIMER
+
+* **License**: LM-Arena's software engine and code are released under the [GNU Affero General Public License v3.0](LICENSE).
+* **Trademark & Fan Content**: *The Elder Scrolls*, *Arena*, and all associated names, places, and lore are registered trademarks or copyright of ZeniMax Media Inc. / Bethesda Softworks LLC. This is an unofficial, non-commercial fan tribute and is not affiliated with or endorsed by Bethesda Softworks or ZeniMax Media.
+
