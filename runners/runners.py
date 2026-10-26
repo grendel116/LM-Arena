@@ -1517,13 +1517,9 @@ class OpenSourceRunner(BaseRunner):
         if msg_idx == -1:
             raise ValueError(f"Message {msg_id} not found")
 
-        hidden_prefixes = ("tool_", "port_", "quest_", "sys_", "itm_")
-        visible_indices = [
-            i for i, ev in enumerate(history)
-            if not ev.get("id", "").startswith(hidden_prefixes) and ev.get("role") != "system-memory"
-        ]
-        if visible_indices and msg_idx != visible_indices[-1]:
-            raise ValueError("Only the last message in chat can be rerolled.")
+        # Any message in the latest turn (after the last real player message) can be rephrased
+        if any(is_real_user_msg(ev) for ev in history[msg_idx + 1:]):
+            raise ValueError("Only messages in the latest turn can be rephrased.")
 
         target_msg = history[msg_idx]
         speaker_id = target_msg.get("sender_id")
@@ -1554,9 +1550,11 @@ class OpenSourceRunner(BaseRunner):
         subsequent_messages = list(history[msg_idx + 1:])
         discarded_messages = list(history[turn_start_idx:msg_idx + 1])
 
-        # Roll back game state and character mutations from the turn being rerolled
+        # Roll back game state and character mutations from the message being rephrased.
+        # The snapshot restores state to before this message, so it applies only when no later messages
+        # in the turn carry their own effects; otherwise only this message's tool effects are reversed.
         prior_msg = history[turn_start_idx - 1] if turn_start_idx > 0 else None
-        prior_snapshot = prior_msg.get("state_snapshot") if prior_msg else None
+        prior_snapshot = prior_msg.get("state_snapshot") if prior_msg and not subsequent_messages else None
         if prior_snapshot:
             from core.world_engine import apply_state_snapshot
             apply_state_snapshot(target_save_id, prior_snapshot)

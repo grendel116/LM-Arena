@@ -560,7 +560,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                     f"- Party Autonomy: {player_hero_name} and followers ({fol_names_str}) act on their own turns. Never generate dialogue, actions, or [arena_actor] calls for them.\n"
                     f"- World Dialogue (Zero Dialogue in Prose): World NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\")]. Never write spoken dialogue in narrative prose. Physical actions are narrated directly in prose wrapped in *asterisks*; spoken speech belongs entirely inside the dialogue parameter of [arena_actor] in plain text without quotation marks or asterisks.\n"
                     f"- Action Checks (Mandatory): Whenever {player_hero_name} attempts ANY risky, contested, physical, stealth, theft, distraction, attack, or spell action (e.g., snatching keys, picking locks, sneaking, climbing, jumping, attacking, casting spells): DO NOT resolve the outcome in prose. You MUST narrate the attempt up to the moment of uncertainty, call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")], and STOP your turn immediately to await the roll.\n"
-                    f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_hero_name} using [arena_roll_combat(attacker_name=\"...\", weapon_name=\"...\")]. Attacks that connect automatically apply damage."
+                    f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_hero_name} using [arena_roll_combat(attacker_name=\"...\", attack_name=\"...\")]. Attacks that connect automatically apply damage.\n"
+                    f"- Perspective: Address {player_hero_name} as \"you\" in second person present tense."
                 )
 
             full_post_injection = "\n\n".join(post_blocks)

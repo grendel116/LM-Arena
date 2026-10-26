@@ -872,12 +872,12 @@ def arena_roll_check(attribute_name, attribute_value, dc, advantage=False, disad
 def arena_roll_combat(
     attacker_name="Attacker",
     target_name="{{user}}",
-    weapon_name="Attack",
+    attack_name="Attack",
     attacker_strength=None,
     attacker_agility=None,
     attacker_class_archetype="Warrior",
-    weapon_damage_tier=1,
-    weapon_attribute="strength",
+    damage_tier=1,
+    attack_attribute="strength",
     target_agility=None,
     **kwargs
 ):
@@ -928,10 +928,10 @@ def arena_roll_combat(
         "hp_current": derived.get("hp_current", 28) if is_target_player else None,
     }
     weapon = {
-        "name": weapon_name,
-        "damage_tier": int(weapon_damage_tier or 1),
-        "attribute": weapon_attribute,
-        "attribute_used": weapon_attribute
+        "name": attack_name,
+        "damage_tier": int(damage_tier or 1),
+        "attribute": attack_attribute,
+        "attribute_used": attack_attribute
     }
     res = roll_combat(attacker, weapon, target)
     if is_target_player and res.get("hit") and not res.get("immune") and res.get("damage_dealt", 0) > 0:

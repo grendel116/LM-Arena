@@ -781,7 +781,7 @@ async function softReloadApp() {
         
         // Maintain scroll posture
         if (domUpdated) {
-            updateRerollVisibility();
+            updateRephraseVisibility();
             if (isAtBottom) {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             } else {
@@ -5126,7 +5126,7 @@ async function loadHistory() {
             (data.history || []).forEach(msg => {
                 renderMessage(msg);
             });
-            updateRerollVisibility();
+            updateRephraseVisibility();
 
             // Check if latest message is a pending player skill check
             evaluateLatestMessageForSkillCheck();
@@ -5533,7 +5533,7 @@ function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
                 const dmg = resObj.damage_dealt !== undefined ? resObj.damage_dealt : (resObj.damage || 0);
                 return `${dmg} DMG vs ${target}`;
             }
-            return `vs ${a.target_name || 'Enemy'}${a.weapon_name ? ` with ${a.weapon_name}` : ''}`;
+            return `vs ${a.target_name || 'Enemy'}${a.attack_name ? ` with ${a.attack_name}` : ''}`;
         case 'arena_roll_initiative':
             return `Initiative Roll`;
         case 'arena_travel':
@@ -6162,29 +6162,29 @@ function renderMessage(msg, isLive = false) {
             if (role === 'user') {
                 const isCheckMessage = typeof text === 'string' && text.includes('<!-- check:');
                 if (!isMsgTransient && !isImageOnly && item.type === 'text' && !isCheckMessage) {
-                    const rerollBtn = document.createElement('button');
-                    rerollBtn.className = 'action-icon-btn reroll-btn';
-                    rerollBtn.title = 'Reroll Message';
-                    rerollBtn.innerHTML = `
+                    const rephraseBtn = document.createElement('button');
+                    rephraseBtn.className = 'action-icon-btn rephrase-btn';
+                    rephraseBtn.title = 'Rephrase';
+                    rephraseBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
                         </svg>
                     `;
-                    rerollBtn.onclick = () => rerollUserMessage(rerollBtn);
-                    actions.appendChild(rerollBtn);
+                    rephraseBtn.onclick = () => rephraseUserMessage(rephraseBtn);
+                    actions.appendChild(rephraseBtn);
                 }
             } else if (role === 'follower' && !text.startsWith("Hello, " + getUserDisplayName())) {
                 if (!isMsgTransient && !isImageOnly && item.type === 'text') {
-                    const rerollBtn = document.createElement('button');
-                    rerollBtn.className = 'action-icon-btn reroll-btn';
-                    rerollBtn.title = 'Reroll response';
-                    rerollBtn.innerHTML = `
+                    const rephraseBtn = document.createElement('button');
+                    rephraseBtn.className = 'action-icon-btn rephrase-btn';
+                    rephraseBtn.title = 'Rephrase';
+                    rephraseBtn.innerHTML = `
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
                         </svg>
                     `;
-                    rerollBtn.onclick = () => rerollFromMessage(rerollBtn);
-                    actions.appendChild(rerollBtn);
+                    rephraseBtn.onclick = () => rephraseFromMessage(rephraseBtn);
+                    actions.appendChild(rephraseBtn);
 
                     const speakBtn = document.createElement('button');
                     speakBtn.className = 'action-icon-btn speak-btn';
@@ -6399,7 +6399,7 @@ function renderMessage(msg, isLive = false) {
     row.appendChild(bubblesContainer);
     chatContainer.appendChild(row);
     chatContainer.scrollTop = chatContainer.scrollHeight;
-    updateRerollVisibility();
+    updateRephraseVisibility();
     evaluateLatestMessageForSkillCheck();
 
     if (role === 'follower' && isLive && ttsAutoSpeak) {
@@ -7036,7 +7036,7 @@ function truncateChatAfter(row) {
         next = next.nextElementSibling;
         toRemove.remove();
     }
-    updateRerollVisibility();
+    updateRephraseVisibility();
     evaluateLatestMessageForSkillCheck();
 }
 
@@ -7375,35 +7375,33 @@ async function resendUserMessage(bubble) {
     }
 }
 
-// --- updateRerollVisibility ---
-function updateRerollVisibility() {
-    if (!chatContainer) return;
+// --- getLatestTurnRows ---
+// The latest turn spans the last player message and every message after it.
+function getLatestTurnRows() {
+    if (!chatContainer) return [];
     const messageRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container):not(#active-thought-bubble)'))
         .filter(row => !row.querySelector('.typing-indicator') && !row.querySelector('[data-is-transient="true"]') && row.dataset.isTransient !== "true");
-    
-    const lastRow = messageRows[messageRows.length - 1];
+    const lastUserIdx = messageRows.findLastIndex(row => row.classList.contains('user-row'));
+    return lastUserIdx === -1 ? messageRows.slice(-1) : messageRows.slice(lastUserIdx);
+}
 
-    messageRows.forEach(row => {
-        const isLast = (row === lastRow);
-        const rerollBtns = row.querySelectorAll('.reroll-btn');
-        rerollBtns.forEach(btn => {
-            btn.style.display = isLast ? 'flex' : 'none';
-        });
+// --- updateRephraseVisibility ---
+function updateRephraseVisibility() {
+    if (!chatContainer) return;
+    const latestTurnRows = new Set(getLatestTurnRows());
+    chatContainer.querySelectorAll('.rephrase-btn').forEach(btn => {
+        btn.style.display = latestTurnRows.has(btn.closest('.message-row')) ? 'flex' : 'none';
     });
 }
 
-// --- rerollUserMessage ---
-async function rerollUserMessage(button) {
+// --- rephraseUserMessage ---
+async function rephraseUserMessage(button) {
     const bubble = button.closest('.message');
     const row = bubble ? bubble.closest('.message-row.user-row') : null;
     if (!row || !bubble) return;
 
-    const messageRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container):not(#active-thought-bubble)'))
-        .filter(r => !r.querySelector('.typing-indicator') && !r.querySelector('[data-is-transient="true"]') && r.dataset.isTransient !== "true");
-    const lastRow = messageRows[messageRows.length - 1];
-
-    if (row !== lastRow) {
-        showCustomAlert("Reroll Restricted", "Only the last message in chat can be rerolled.");
+    if (!getLatestTurnRows().includes(row)) {
+        showCustomAlert("Rephrase Restricted", "Only messages in the latest turn can be rephrased.");
         return;
     }
     
@@ -7448,7 +7446,7 @@ async function rerollUserMessage(button) {
             button.innerHTML = origBtnHtml;
             button.disabled = false;
             if (genData.error) {
-                showCustomAlert("Reroll Failed", genData.error);
+                showCustomAlert("Rephrase Failed", genData.error);
             }
             return;
         }
@@ -7477,7 +7475,7 @@ async function rerollUserMessage(button) {
         // Restore original text on error
         if (textElement) textElement.innerHTML = origTextHtml;
         if (error.name !== 'AbortError') {
-            showCustomAlert("Reroll Failed", `Connection error: ${error.message || 'The model was unreachable'}. Please try again.`);
+            showCustomAlert("Rephrase Failed", `Connection error: ${error.message || 'The model was unreachable'}. Please try again.`);
         }
     } finally {
         button.innerHTML = origBtnHtml;
@@ -7485,24 +7483,20 @@ async function rerollUserMessage(button) {
     }
 }
 
-// --- rerollFromMessage ---
-async function rerollFromMessage(button) {
+// --- rephraseFromMessage ---
+async function rephraseFromMessage(button) {
     const bubble = button.closest('.message');
     const row = bubble ? bubble.closest('.message-row.follower-row') : null;
     if (!row || !bubble) return;
 
-    const messageRows = Array.from(chatContainer.querySelectorAll('.message-row:not(#welcome-message):not(#onboarding-container):not(#active-thought-bubble)'))
-        .filter(r => !r.querySelector('.typing-indicator') && !r.querySelector('[data-is-transient="true"]') && r.dataset.isTransient !== "true");
-    const lastRow = messageRows[messageRows.length - 1];
-
-    if (row !== lastRow) {
-        showCustomAlert("Reroll Restricted", "Only the last message in chat can be rerolled.");
+    if (!getLatestTurnRows().includes(row)) {
+        showCustomAlert("Rephrase Restricted", "Only messages in the latest turn can be rephrased.");
         return;
     }
     
     const msgId = bubble.dataset.msgId || row.dataset.msgId;
     if (!msgId) {
-        showCustomAlert("Reroll Error", "Cannot find message ID to reroll.");
+        showCustomAlert("Rephrase Error", "Cannot find message ID to rephrase.");
         return;
     }
     
@@ -7601,14 +7595,14 @@ async function rerollFromMessage(button) {
             if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
                 errMsg = "The Arena is momentarily overwhelmed (Gemini Rate Limit 429: Resource Exhausted). Let us pause, take a slow breath, and try our chavruta again in 15 seconds.";
             }
-            showCustomAlert("Reroll Failed", errMsg);
+            showCustomAlert("Rephrase Failed", errMsg);
         }
         fetchCharacterStatus();
         handleSuccessReload(data);
     } catch (error) {
         if (textDiv) textDiv.innerHTML = origHtml;
         if (error.name !== 'AbortError') {
-            showCustomAlert("Reroll Failed", `Connection error: ${error.message || 'The model was unreachable'}. Please try again.`);
+            showCustomAlert("Rephrase Failed", `Connection error: ${error.message || 'The model was unreachable'}. Please try again.`);
             handleToolReloadOrRecovery();
         }
     } finally {
@@ -7639,7 +7633,7 @@ async function deleteTurnFromMessage(button) {
             const row = bubble.closest('.message-row');
             if (row) {
                 row.remove();
-                updateRerollVisibility();
+                updateRephraseVisibility();
             }
             return;
         }
@@ -7669,7 +7663,7 @@ async function deleteTurnFromMessage(button) {
                         toRemove.remove();
                     }
                     row.remove();
-                    updateRerollVisibility();
+                    updateRephraseVisibility();
                 }
                 evaluateLatestMessageForSkillCheck();
                 if (typeof fetchCharacterStatus === 'function') {
@@ -8401,7 +8395,7 @@ async function captureSceneImage() {
         setGenerating(false);
         stopToolPolling();
         updateInputGlow();
-        updateRerollVisibility();
+        updateRephraseVisibility();
         evaluateLatestMessageForSkillCheck();
     }
 }
@@ -10428,7 +10422,7 @@ function purgeDataBank() {
 
 // --- resendUserMessage ---
 
-// --- rerollFromMessage ---
+// --- rephraseFromMessage ---
 
 // --- deleteTurnFromMessage ---
 
