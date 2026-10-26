@@ -1,0 +1,146 @@
+[
+  {
+    "id": 0,
+    "name": "Staff",
+    "type": "melee",
+    "damage_min": 2,
+    "damage_max": 8,
+    "damage_label": "2-8"
+  },
+  {
+    "id": 1,
+    "name": "Dagger",
+    "type": "melee",
+    "damage_min": 1,
+    "damage_max": 6,
+    "damage_label": "1-6"
+  },
+  {
+    "id": 2,
+    "name": "Shortsword",
+    "type": "melee",
+    "damage_min": 2,
+    "damage_max": 8,
+    "damage_label": "2-8"
+  },
+  {
+    "id": 3,
+    "name": "Broadsword",
+    "type": "melee",
+    "damage_min": 3,
+    "damage_max": 12,
+    "damage_label": "3-12"
+  },
+  {
+    "id": 4,
+    "name": "Saber",
+    "type": "melee",
+    "damage_min": 2,
+    "damage_max": 12,
+    "damage_label": "2-12"
+  },
+  {
+    "id": 5,
+    "name": "Longsword",
+    "type": "melee",
+    "damage_min": 3,
+    "damage_max": 12,
+    "damage_label": "3-12"
+  },
+  {
+    "id": 6,
+    "name": "Claymore",
+    "type": "melee",
+    "damage_min": 3,
+    "damage_max": 16,
+    "damage_label": "3-16"
+  },
+  {
+    "id": 7,
+    "name": "Tanto",
+    "type": "melee",
+    "damage_min": 1,
+    "damage_max": 8,
+    "damage_label": "1-8"
+  },
+  {
+    "id": 8,
+    "name": "Wakizashi",
+    "type": "melee",
+    "damage_min": 2,
+    "damage_max": 10,
+    "damage_label": "2-10"
+  },
+  {
+    "id": 9,
+    "name": "Katana",
+    "type": "melee",
+    "damage_min": 3,
+    "damage_max": 12,
+    "damage_label": "3-12"
+  },
+  {
+    "id": 10,
+    "name": "Dai-katana",
+    "type": "melee",
+    "damage_min": 4,
+    "damage_max": 16,
+    "damage_label": "4-16"
+  },
+  {
+    "id": 11,
+    "name": "Mace",
+    "type": "melee",
+    "damage_min": 3,
+    "damage_max": 10,
+    "damage_label": "3-10"
+  },
+  {
+    "id": 12,
+    "name": "Flail",
+    "type": "melee",
+    "damage_min": 2,
+    "damage_max": 12,
+    "damage_label": "2-12"
+  },
+  {
+    "id": 13,
+    "name": "War hammer",
+    "type": "melee",
+    "damage_min": 3,
+    "damage_max": 16,
+    "damage_label": "3-16"
+  },
+  {
+    "id": 14,
+    "name": "War axe",
+    "type": "melee",
+    "damage_min": 2,
+    "damage_max": 12,
+    "damage_label": "2-12"
+  },
+  {
+    "id": 15,
+    "name": "Battle axe",
+    "type": "melee",
+    "damage_min": 3,
+    "damage_max": 16,
+    "damage_label": "3-16"
+  },
+  {
+    "id": 16,
+    "name": "Short bow",
+    "type": "ranged",
+    "damage_min": 2,
+    "damage_max": 8,
+    "damage_label": "2-8"
+  },
+  {
+    "id": 17,
+    "name": "Long bow",
+    "type": "ranged",
+    "damage_min": 3,
+    "damage_max": 10,
+    "damage_label": "3-10"
+  }
+]

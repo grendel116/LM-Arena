@@ -1,0 +1,78 @@
+{
+  "name": "Materials",
+  "description": "The metallurgical lore, craftsmanship, and properties of the eight metals and materials in Tamriel",
+  "entries": [
+    {
+      "uid": 5100,
+      "key": ["iron", "iron weapon", "iron armor"],
+      "secondary_key": ["material", "metal"],
+      "content": "Iron: The foundational metal of Tamrielic smithing. Readily mined and worked in almost every province, iron equipment is heavy and functional, serving as the standard gear of common levies and fledgling adventurers.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5101,
+      "key": ["steel", "steel weapon", "steel armor"],
+      "secondary_key": ["material", "metal"],
+      "content": "Steel: Smelted by blending refined iron with charcoal, steel yields weapons that hold a sharp, durable edge and armor capable of deflecting repeated heavy blows without buckling. The standard issue metal of the Imperial Legion.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5102,
+      "key": ["silver", "silver weapon", "silver armor"],
+      "secondary_key": ["material", "metal"],
+      "content": "Silver: A precious, shining metal inherently repellent to dark sorcery, unholy curses, and the undead. Where ordinary steel passes through ghosts and wraiths like mist, silver strikes them solid as mortal flesh.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5103,
+      "key": ["elven", "elven weapon", "elven armor", "moonstone"],
+      "secondary_key": ["material", "metal"],
+      "content": "Elven: Masterfully forged from refined moonstone and golden alloys by Altmeri artisans. Elven equipment is remarkably lightweight and flexible yet resilient, enabling fluid acrobatic maneuvers in battle.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5104,
+      "key": ["dwarven", "dwemer", "dwarven metal"],
+      "secondary_key": ["material", "metal"],
+      "content": "Dwarven: An ancient, brass-hued alloy produced by the lost Dwemer. Immune to rust and corrosion even after millennia in flooded ruins, Dwarven weapons and armor are heavy, uncompromising, and exceptionally robust.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5105,
+      "key": ["mithril", "mithril weapon", "mithril armor"],
+      "secondary_key": ["material", "metal"],
+      "content": "Mithril: A rare, radiant cyan-silver ore found deep within mountain veins. Possessing extraordinary tensile strength with almost weightless mass, mithril armor turns heavy blades while allowing complete silence of movement.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5106,
+      "key": ["adamantium", "adamant", "adamantine"],
+      "secondary_key": ["material", "metal"],
+      "content": "Adamantium: An ultra-dense, dark slate metal harvested from subterranean volcanic deposits. Incredibly difficult to smelt and forge, adamantium yields weapons that crush defenses and plate armor that withstands the fury of dragons.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5107,
+      "key": ["ebony", "ebony weapon", "ebony armor"],
+      "secondary_key": ["material", "metal", "volcanic glass"],
+      "content": "Ebony: The legendary petrified black blood of the god Lorkhan. Pitch-black, glass-smooth, and virtually unbreakable, ebony represents the pinnacle of mortal craftsmanship. It absorbs kinetic shock and holds an eternal razor edge.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

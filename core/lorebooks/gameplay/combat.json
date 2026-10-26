@@ -1,0 +1,123 @@
+{
+  "name": "Combat",
+  "description": "Combat rules and mechanics",
+  "entries": [
+    {
+      "uid": 4001,
+      "key": ["d20 roll", "skill check", "attribute check"],
+      "secondary_key": [],
+      "content": "Action checks use a d20: roll + attribute modifier vs DC. The modifier is (Attribute - 50) / 10.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4002,
+      "key": ["difficulty class", "target dc"],
+      "secondary_key": [],
+      "content": "Task difficulty DCs: Trivial (5), Easy (10), Standard (15), Hard (20), Legendary (25).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4003,
+      "key": ["melee attack", "ranged attack"],
+      "secondary_key": [],
+      "content": "Melee attacks add STR or AGI modifier; ranged attacks use AGI modifier vs target Defense DC (10 + AGI modifier).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4004,
+      "key": ["defense dc", "dodge attack"],
+      "secondary_key": [],
+      "content": "Defense DC represents evasion (10 + Agility modifier). Armor reduces incoming physical damage based on material and coverage.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4005,
+      "key": ["graze damage", "devastating blow"],
+      "secondary_key": [],
+      "content": "Hit outcomes scale by margin: graze deals partial damage; solid hit deals weapon damage + STR bonus; devastating blow adds bonus damage.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4006,
+      "key": ["critical hit", "critical fumble", "natural twenty", "natural one"],
+      "secondary_key": [],
+      "content": "A natural 20 deals double base damage + bonus. A natural 1 triggers a catastrophic fumble complication.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4007,
+      "key": ["combat initiative", "roll initiative"],
+      "secondary_key": [],
+      "content": "Initiative: roll d20 + Speed modifier. Highest total acts first.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4008,
+      "key": ["weapon damage", "base weapon damage"],
+      "secondary_key": [],
+      "content": "Weapon damage ranges: Dagger (1-6), Shortsword/Staff/Shortbow (2-8), Broadsword/Longsword/Katana (3-12), Longbow (3-10), Claymore/Battleaxe/Warhammer (3-16), Dai-katana (4-16).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4009,
+      "key": ["mithril", "adamantium", "ebony weapon", "silver weapon"],
+      "secondary_key": [],
+      "content": "Materials: Iron/Steel (1.0x), Silver (1.0x, strikes spirits), Elven (1.25x), Dwarven/Mithril (1.5x), Adamantium/Ebony (2.0x).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4010,
+      "key": ["poisoned", "poison"],
+      "secondary_key": [],
+      "content": "Poison inflicts ongoing narrative damage. The victim suffers debilitating pain and health loss each turn until treated or cured.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4011,
+      "key": ["paralysed", "paralysis"],
+      "secondary_key": [],
+      "content": "Paralysis freezes the victim completely. They must skip their turn entirely and become highly vulnerable to incoming attacks.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4012,
+      "key": ["diseased", "disease"],
+      "secondary_key": [],
+      "content": "Diseases apply lingering penalties, deteriorating primary attributes (Strength, Agility, Speed, Endurance) each round. Temple healers and cure spells are required.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 4013,
+      "key": ["death", "defeat", "zero health", "dead"],
+      "secondary_key": [],
+      "content": "Reaching zero health causes character death and triggers a GAME OVER state. As long as the hero has health remaining (HP > 0), they remain alive. Never declare GAME OVER while the hero still has health.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

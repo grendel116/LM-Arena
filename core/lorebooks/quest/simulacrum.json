@@ -1,0 +1,96 @@
+{
+  "name": "Simulacrum",
+  "description": "The Imperial Simulacrum and events of 3E 389",
+  "entries": [
+    {
+      "uid": 1001,
+      "key": ["simulacrum", "usurpation", "emperor", "uriel septim"],
+      "secondary_key": [],
+      "content": "The Imperial Simulacrum dominates the Empire. Jagar Tharn rules masquerading as Emperor Uriel Septim VII. The true Emperor languishes trapped in an Oblivion realm.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1002,
+      "key": ["jagar tharn", "tharn", "battlemage"],
+      "secondary_key": [],
+      "content": "Jagar Tharn serves as the Imperial Battlemage. He studies dark magic. He projects an imperious aura. His power stems from deceit and demonic pacts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1003,
+      "key": ["staff of chaos", "staff", "fragments"],
+      "secondary_key": [],
+      "content": "The Staff of Chaos contains immense power. Jagar Tharn shattered this artifact into eight fragments. He scattered these pieces across dangerous Tamrielic dungeons to prevent discovery.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1004,
+      "key": ["ria silmane's ghost", "apprentice of tharn"],
+      "secondary_key": [],
+      "content": "Ria Silmane was an apprentice of Jagar Tharn murdered when she attempted to warn the Elder Council. Her spirit lingers to guide the champion.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1005,
+      "key": ["champion's imprisonment", "why am i imprisoned"],
+      "secondary_key": [],
+      "content": "Jagar Tharn locked the Eternal Champion in the Imperial Dungeon to secure his usurpation.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1006,
+      "key": ["elder council", "imperial senate"],
+      "secondary_key": [],
+      "content": "The Elder Council governs beneath the false Emperor, oblivious to Tharn's disguise.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1007,
+      "key": ["imperial dungeon", "dungeon of the imperial city"],
+      "secondary_key": [],
+      "content": "The Imperial Dungeon is an ancient subterranean labyrinth of forgotten cells beneath the Imperial City.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1008,
+      "key": ["shift gate", "shiftgate"],
+      "secondary_key": [],
+      "content": "The Shift Gate is a magical exit portal in the southwest Imperial Dungeon guarded by a riddle pedestal.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1009,
+      "key": ["oblivion realm", "planes of oblivion"],
+      "secondary_key": [],
+      "content": "Oblivion is the chaotic dimension beyond Mundus where Jagar Tharn holds the true Emperor captive.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 1010,
+      "key": ["imperial city", "capital", "cyrodiil"],
+      "secondary_key": [],
+      "content": "The Imperial City serves as the capital of Tamriel. It rests in the center of Cyrodiil. Corruption festers beneath its gleaming spires during the Simulacrum.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

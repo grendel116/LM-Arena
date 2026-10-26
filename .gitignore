@@ -1,0 +1,90 @@
+# Python env and cache
+.venv*
+ComfyUI/
+ComfyUI_windows_portable*/
+__pycache__/
+*.pyc
+
+# Local Config (contains credentials and settings)
+.env
+.arena_install_stamp
+variables/project_settings.json
+
+# Temporary files & logs
+backups/
+scratch/
+reports/
+certs/
+logs/
+*.log
+comfy_server.log
+temp/
+**/temp/
+temp_uploads/
+
+# In-process engine artifacts
+core/comfy_engine/temp/
+core/comfy_engine/output/
+core/comfy_engine/input/
+core/comfy_engine/custom_nodes/
+core/comfy_engine/**/*.png
+core/comfy_engine/**/*.jpg
+core/comfy_engine/**/*.jpeg
+core/comfy_engine/**/*.webp
+core/comfy_engine/**/*.gif
+core/comfy_engine/**/*.bmp
+
+# Model weights & binaries
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.onnx
+models/*
+!models/__init__.py
+!models/models.py
+!models/**/
+!models/**/.gitkeep
+utils/llama-bin/
+
+# Ignore all runtime and user variables except code dependencies, template examples, and default profile
+variables/*
+!variables/__init__.py
+!variables/settings.py
+!variables/banned_words.json
+!variables/saves/
+variables/saves/*
+!variables/saves/.gitkeep
+
+# Ignore all follower profiles under core/followers except default Arena guide and Host Game
+core/followers/*
+!core/followers/riasilmane/
+!core/followers/game/
+
+# Ignore user-generated dynamic program sessions, databases, custom generated portraits, media, and memories
+core/followers/*/sessions/
+core/followers/*/portraits/*
+!core/followers/*/portraits/profile.png
+core/followers/*/media/
+core/followers/*/uploads/
+core/followers/*/databank.db
+core/followers/*/databank.json
+core/followers/*/journals.json
+core/followers/*/memories.json
+core/followers/*/quest_log.json
+core/followers/*/lorebooks/
+core/embeddings.pkl
+static/uploads/
+static/media/
+static/generated/
+uploads/
+media/
+
+# TTS Speech synthesized audio cache
+core/skills/speech_generation/speech_cache/
+
+# Workflow Configs
+ImageWorkflow.json
+VideoWorkflow.json

@@ -1,0 +1,427 @@
+[
+  {
+    "id": 0,
+    "template": "%0%% chance to inflict disease. Deterioration is %2 pts of STR, AGI, SPD, and END, every round. +%1%% every %4 level(s). Duration is %5 rnd(s) per level.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 1,
+    "template": "%0%% chance to inflict poison. Damage is %2 pts per %3 rnd(s). +%1%% every %4 level(s). Spell duration is %5 rnd(s) per level.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 2,
+    "template": "%0%% chance to cause fear. +%1%% every %4 level(s). Duration is %5 rnd(s) per %2 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 3,
+    "template": "%0%% chance to paralyze. +%1%% every %4 level(s). Duration is %5 rnd(s) per %2 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 4,
+    "template": "%0%% chance to curse target(s). Deterioration is %2 pts of INT, WIL, PER, and LUC every round. +%1%% every %4 level(s). Duration is %5 rnd(s) per level.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 5,
+    "template": "%0%% chance to cause death. +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 6,
+    "template": "Cause %0 to %1 pts of damage to health every %a rnd(s). Duration is %5 rnd(s). Damage is + %2 to %3 pts every %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4",
+      "%5",
+      "%a"
+    ]
+  },
+  {
+    "id": 7,
+    "template": "Cause %0 to %1 pts of damage to fatigue every %a rnd(s). Duration is %5 rnd(s). Damage is + %2 to %3 pts every %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4",
+      "%5",
+      "%a"
+    ]
+  },
+  {
+    "id": 8,
+    "template": "Cause %0 to %1 pts of damage to spell points every %a rnd(s). Duration is %5 rnd(s).+ %2 to %3 pts damage every %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4",
+      "%5",
+      "%a"
+    ]
+  },
+  {
+    "id": 9,
+    "template": "%0 hit pts shield created. +%1 pts every %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 10,
+    "template": "%0 wall(s) permanently created.",
+    "parameters": [
+      "%0"
+    ]
+  },
+  {
+    "id": 11,
+    "template": "%0 floor(s) permanently created.",
+    "parameters": [
+      "%0"
+    ]
+  },
+  {
+    "id": 12,
+    "template": "%0%% chance to cure a disease of equal level to the caster. +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 13,
+    "template": "%0%% chance to cure poison of equal level to caster. +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 14,
+    "template": "%0%% chance to remove fear of equal level to caster. +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 15,
+    "template": "%0%% chance to cure paralyzation of equal level to caster. +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 16,
+    "template": "%0%% chance to remove a curse of equal level to caster. +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 17,
+    "template": "%0%% chance to resurrect a person of equal level to caster. +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 18,
+    "template": "%0 to %1 pts damage to health +%2 to %3 pts per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4"
+    ]
+  },
+  {
+    "id": 19,
+    "template": "%0 to %1 pts damage to fatigue +%2 to %3 pts per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4"
+    ]
+  },
+  {
+    "id": 20,
+    "template": "%0 to %1 pts damage to spell pts +%2 to %3 pts per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4"
+    ]
+  },
+  {
+    "id": 21,
+    "template": "%0%% chance caster is ignored +%1%% per %4 level(s). %5 rnd(s) per %2 level(s). You may %b cast other spells.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 22,
+    "template": "%0 wall(s) permenantly negated.",
+    "parameters": [
+      "%0"
+    ]
+  },
+  {
+    "id": 23,
+    "template": "%0 floor(s) permenantly negated.",
+    "parameters": [
+      "%0"
+    ]
+  },
+  {
+    "id": 24,
+    "template": "%0 to %1 pts of damage to health +%2 to %3 pts per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4"
+    ]
+  },
+  {
+    "id": 25,
+    "template": "%0%% chance to disintegrate target(s) equal to caster's level. +%1%% every %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 26,
+    "template": "%0%% chance to dispel spells equal to caster's level. +%1%% per %4 level(s). Area is a %5 meter radius.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 27,
+    "template": "%0 pts of %c drained from target(s) for %5 rnd(s) per level. Target(s) recover %c at %1 pts per %4 rnd(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 28,
+    "template": "Resistance to %c +%0%% for %5 rnd(s) per %2 level(s) of caster. +%1%% per %4 level(s) of caster.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 29,
+    "template": "+%0 pts of %c to caster for a %5 rnd(s) per level. %c loss will occur at a rate of %1 pts per %4 rnd(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 30,
+    "template": "+%0 to %1 pts to %c + %2 to %3 pts per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%3",
+      "%4"
+    ]
+  },
+  {
+    "id": 31,
+    "template": "Transfers %0 pts of %c from target(s) to caster.",
+    "parameters": [
+      "%0"
+    ]
+  },
+  {
+    "id": 32,
+    "template": "%0 hit point cage created around target(s). +%1 pts per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 33,
+    "template": "Caster invisible for %0 rnd(s) +%1 rnd(s) per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 34,
+    "template": "Caster can float for %0 rnd(s). +%1 rnd(s) per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 35,
+    "template": "Creates a globe of light for %5 rnd(s) per level. The light %f.",
+    "parameters": [
+      "%5"
+    ]
+  },
+  {
+    "id": 36,
+    "template": "%0%% chance of magically locking a door. Duration is %5 rnd(s) per %2 level(s). Lock strength +%1%% per %4 lev.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 37,
+    "template": "%0%% chance of magically opening a locked door. Chance increases +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 38,
+    "template": "Regenerate %0 health points every %1 rnd(s) for %4 rnd(s) per level.",
+    "parameters": [
+      "%0",
+      "%1",
+      "%4"
+    ]
+  },
+  {
+    "id": 39,
+    "template": "%0%% chance of silencing target(s) for %5 rnd(s) per %2 level(s), +%1%% per %4 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 40,
+    "template": "%0%% chance to absorb spell points of an incoming spell. +%1%% per %4 level(s). Duration is %5 rnd(s) per %2 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 41,
+    "template": "%0%% chance to reflect a spell back at opposing caster. +%1%% per %4 level(s). Duration is %5 rnd(s) per %2 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  },
+  {
+    "id": 42,
+    "template": "%0%% chance to resist a incoming spell. +%1%% per %4 level(s). Duration is %5 rnd(s) per %2 level(s).",
+    "parameters": [
+      "%0",
+      "%1",
+      "%2",
+      "%4",
+      "%5"
+    ]
+  }
+]

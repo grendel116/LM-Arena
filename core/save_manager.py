@@ -1,0 +1,616 @@
+import json
+import os
+import re
+import shutil
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent.parent
+SAVES_DIR = BASE_DIR / "variables" / "saves"
+ACTIVE_SAVE_FILE = BASE_DIR / "variables" / "active_save.json"
+
+_save_lock = threading.Lock()
+
+DEFAULT_GREETING = (
+    "A spectral vision coalesces before your eyes in the damp dark of your cell. "
+    "The shimmering, ethereal form of Ria Silmane appears, reaching out with gentle urgency.\n\n"
+    "\"Can you hear me? Jagar Tharn has betrayed us all. He has imprisoned Emperor Uriel Septim in Oblivion "
+    "and usurped the Imperial throne with powerful illusion. He murdered me when I discovered his treachery, "
+    "but my spirit endures to guide you. You must escape this dungeon! In the southwest corner lies a magical Shift Gate. "
+    "I have broken the lock on your cell door. Move swiftly, and may the Divines watch over you!\""
+)
+
+
+def _get_clean_name(name: str) -> str:
+    name_str = (name or "hero").lower().strip().replace(" ", "_").replace("-", "_")
+    clean = "".join(c for c in name_str if c.isalnum() or c == "_")
+    clean = re.sub(r'_+', '_', clean).strip('_')
+    return clean or "hero"
+
+
+def get_active_save_id() -> str:
+    """Return the active save ID."""
+    SAVES_DIR.mkdir(parents=True, exist_ok=True)
+    if ACTIVE_SAVE_FILE.exists():
+        try:
+            with open(ACTIVE_SAVE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                save_id = data.get("active_save_id")
+                if save_id:
+                    clean_id = _get_clean_name(save_id)
+                    json_path = SAVES_DIR / f"{clean_id}.json"
+                    dir_path = SAVES_DIR / clean_id
+                    if json_path.exists() or dir_path.exists():
+                        return clean_id
+                    if (SAVES_DIR / f"{save_id}.json").exists():
+                        return clean_id
+        except Exception:
+            pass
+
+    # Quick scan without calling list_saves to avoid recursion
+    for item in sorted(SAVES_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        if not item.name.startswith("."):
+            return _get_clean_name(item.stem)
+
+    for item in sorted(SAVES_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        if item.is_dir():
+            return _get_clean_name(item.name)
+
+    return "eternal_champion"
+
+
+def set_active_save_id(save_id: str) -> None:
+    """Set the active save ID."""
+    clean_id = _get_clean_name(save_id)
+    ACTIVE_SAVE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ACTIVE_SAVE_FILE.with_suffix(".json.tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump({"active_save_id": clean_id}, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    tmp_path.replace(ACTIVE_SAVE_FILE)
+
+
+def get_active_followers(save_id: str = None) -> list[str]:
+    """Return the active party follower IDs (up to 3) for the save slot."""
+    try:
+        bundle = read_save(save_id)
+        meta = bundle.get("meta", {})
+        if "active_followers" in meta and isinstance(meta["active_followers"], list):
+            return [f for f in meta["active_followers"] if f and f not in ("game", "none", "solo")][:3]
+        val = meta.get("active_follower")
+        if val and val not in (None, "none", "solo", ""):
+            return [val]
+        return ["riasilmane"]
+    except Exception:
+        return ["riasilmane"]
+
+
+def set_active_followers(follower_ids: list[str] | str | None, save_id: str = None) -> None:
+    """Sets the active party followers (up to 3) for the given save slot."""
+    active_id = save_id or get_active_save_id()
+    bundle = read_save(active_id)
+    if isinstance(follower_ids, str):
+        follower_ids = [follower_ids] if follower_ids not in (None, "none", "solo", "") else []
+    elif not follower_ids:
+        follower_ids = []
+    
+    clean_ids = [f for f in follower_ids if f and f not in ("game", "none", "solo")][:3]
+    meta = bundle.setdefault("meta", {})
+    meta["active_followers"] = clean_ids
+    meta["active_follower"] = clean_ids[0] if clean_ids else None
+    write_save(active_id, bundle)
+
+
+def get_active_follower(save_id: str = None) -> str | None:
+    followers = get_active_followers(save_id)
+    return followers[0] if followers else None
+
+
+def set_active_follower(follower_id: str | None, save_id: str = None) -> None:
+    if not follower_id or follower_id in ("game", "none", "solo"):
+        set_active_followers([], save_id)
+    else:
+        set_active_followers([follower_id], save_id)
+
+
+def sync_save_meta(save_id: str) -> dict:
+    """Read save bundle and update metadata in single-file JSON."""
+    bundle = read_save(save_id)
+    char = bundle.get("character", {})
+    world = bundle.get("world", {})
+    
+    meta = bundle.setdefault("meta", {})
+    meta["id"] = save_id
+    if char:
+        meta["character_name"] = char.get("name", meta.get("character_name", "Hero"))
+        meta["name"] = meta.get("name") or meta["character_name"]
+        meta["race"] = char.get("race", "Nord")
+        meta["gender"] = char.get("gender", "Male")
+        meta["class"] = char.get("class", "Mage")
+        meta["level"] = char.get("level", 1)
+        meta["gold"] = char.get("gold", 0)
+    if world:
+        meta["current_province"] = world.get("current_province", "Cyrodiil")
+        meta["current_location"] = world.get("current_location", "Imperial Dungeon")
+        meta["quest_stage"] = world.get("quest_stage", 10)
+        t_date = world.get("tamrielic_date", {})
+        if t_date:
+            meta["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Hearthfire')}, 3E {t_date.get('year', 389)}"
+    meta["updated_at"] = datetime.now().isoformat()
+    write_save(save_id, bundle)
+    return meta
+
+
+def get_save_path(save_id: str = None) -> Path:
+    """Return path to save file or legacy directory."""
+    if not save_id or save_id == "default":
+        save_id = get_active_save_id()
+    clean_id = _get_clean_name(save_id)
+    
+    json_path = SAVES_DIR / f"{clean_id}.json"
+    if json_path.exists():
+        return json_path
+        
+    dir_path = SAVES_DIR / clean_id
+    if dir_path.is_dir():
+        return dir_path
+
+    if (SAVES_DIR / f"{save_id}.json").exists():
+        return SAVES_DIR / f"{save_id}.json"
+        
+    return json_path
+
+
+def read_save(save_id: str = None) -> dict:
+    """Read complete save bundle from single-file JSON or legacy directory."""
+    if not save_id or save_id == "default":
+        save_id = get_active_save_id()
+    
+    clean_id = _get_clean_name(save_id)
+    SAVES_DIR.mkdir(parents=True, exist_ok=True)
+    json_path = SAVES_DIR / f"{clean_id}.json"
+    if not json_path.exists() and (SAVES_DIR / f"{save_id}.json").exists():
+        json_path = SAVES_DIR / f"{save_id}.json"
+
+    dir_path = SAVES_DIR / clean_id
+    if not dir_path.is_dir() and (SAVES_DIR / save_id).is_dir():
+        dir_path = SAVES_DIR / save_id
+    
+    # 1. Single-file JSON save format. Read under the write lock so a concurrent
+    # write_save (which briefly removes the file) can never look like a missing save.
+    with _save_lock:
+        if not json_path.exists() and (SAVES_DIR / f"{save_id}.json").exists():
+            json_path = SAVES_DIR / f"{save_id}.json"
+        if json_path.exists():
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"[read_save] Error reading single-file save {json_path}: {e}")
+                raise
+
+    # 2. Legacy directory save format
+    if dir_path.is_dir():
+        bundle = {
+            "meta": {},
+            "character": {},
+            "world": {},
+            "history": [],
+            "memories": {"documents": [], "chunks": []},
+            "databank": {"documents": [], "chunks": []},
+            "journals": [],
+            "profile": ""
+        }
+        
+        char_f = dir_path / "character_sheet.json"
+        if char_f.exists():
+            try:
+                bundle["character"] = json.load(open(char_f, "r", encoding="utf-8"))
+            except Exception:
+                pass
+                
+        world_f = dir_path / "world_state.json"
+        if world_f.exists():
+            try:
+                bundle["world"] = json.load(open(world_f, "r", encoding="utf-8"))
+            except Exception:
+                pass
+                
+        hist_f = dir_path / "history.json"
+        if hist_f.exists():
+            try:
+                h_data = json.load(open(hist_f, "r", encoding="utf-8"))
+                bundle["history"] = h_data.get("messages", []) if isinstance(h_data, dict) else h_data
+            except Exception:
+                pass
+                
+        mem_f = dir_path / "memories.json"
+        if mem_f.exists():
+            try:
+                bundle["memories"] = json.load(open(mem_f, "r", encoding="utf-8"))
+            except Exception:
+                pass
+                
+        data_f = dir_path / "databank.json"
+        if data_f.exists():
+            try:
+                bundle["databank"] = json.load(open(data_f, "r", encoding="utf-8"))
+            except Exception:
+                pass
+                
+        prof_f = dir_path / "profile.md"
+        if prof_f.exists():
+            try:
+                bundle["profile"] = open(prof_f, "r", encoding="utf-8").read()
+            except Exception:
+                pass
+
+        meta_f = dir_path / "meta.json"
+        if meta_f.exists():
+            try:
+                bundle["meta"] = json.load(open(meta_f, "r", encoding="utf-8"))
+            except Exception:
+                pass
+                
+        char_name = bundle["character"].get("name") or bundle["meta"].get("character_name")
+        if not char_name:
+            clean_id_suffix = re.sub(r'[\s_]+\d+$', '', clean_id)
+            char_name = clean_id_suffix.replace("_", " ").title() if clean_id_suffix else "Hero"
+        bundle["meta"]["id"] = clean_id
+        bundle["meta"]["character_name"] = char_name
+        bundle["meta"]["name"] = bundle["meta"].get("name") or char_name
+
+        # Auto convert legacy directory to single-file json and delete directory
+        try:
+            write_save(clean_id, bundle)
+            shutil.rmtree(dir_path, ignore_errors=True)
+        except Exception as conv_err:
+            print(f"[read_save] Error migrating {dir_path} to single-file JSON: {conv_err}")
+
+        return bundle
+
+    # 3. Default fresh bundle if missing
+    active_id = get_active_save_id()
+    if clean_id in (active_id, "eternal_champion") or not any(SAVES_DIR.glob("*.json")):
+        bundle = create_fresh_save_bundle(clean_id)
+        write_save(clean_id, bundle)
+        return bundle
+
+    active_path = SAVES_DIR / f"{active_id}.json"
+    if active_path.exists():
+        return read_save(active_id)
+
+    bundle = create_fresh_save_bundle(clean_id)
+    write_save(clean_id, bundle)
+    return bundle
+
+
+import time
+
+def write_save(save_id: str, bundle: dict) -> None:
+    """Write complete save bundle atomically to single-file JSON."""
+    with _save_lock:
+        if not save_id or save_id == "default":
+            save_id = get_active_save_id()
+        clean_id = _get_clean_name(save_id)
+            
+        SAVES_DIR.mkdir(parents=True, exist_ok=True)
+        json_path = SAVES_DIR / f"{clean_id}.json"
+        
+        bundle.setdefault("meta", {})
+        bundle["meta"]["id"] = clean_id
+        bundle["meta"]["updated_at"] = datetime.now().isoformat()
+        
+        # Keep character info in meta in sync
+        char = bundle.get("character", {})
+        if char:
+            bundle["meta"]["character_name"] = char.get("name", bundle["meta"].get("character_name", "Hero"))
+            bundle["meta"]["race"] = char.get("race", "Nord")
+            bundle["meta"]["gender"] = char.get("gender", "Male")
+            bundle["meta"]["class"] = char.get("class", "Mage")
+            bundle["meta"]["level"] = char.get("level", 1)
+            bundle["meta"]["gold"] = char.get("gold", 0)
+            
+        world = bundle.get("world", {})
+        if world:
+            bundle["meta"]["current_province"] = world.get("current_province", "Cyrodiil")
+            bundle["meta"]["current_location"] = world.get("current_location", "Imperial Dungeon")
+            bundle["meta"]["quest_stage"] = world.get("quest_stage", 10)
+            t_date = world.get("tamrielic_date", {})
+            if t_date:
+                bundle["meta"]["tamrielic_date"] = f"{t_date.get('day', 1)} {t_date.get('month', 'Hearthfire')}, 3E {t_date.get('year', 389)}"
+
+        tmp_path = SAVES_DIR / f"{clean_id}.json.tmp"
+        
+        # Ensure file is completely written and closed inside the 'with' block
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(bundle, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+
+        # Windows-safe replacement with a retry buffer for active file handles
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                if json_path.exists():
+                    json_path.unlink() # Explicitly remove destination on Windows if locked
+                tmp_path.replace(json_path)
+                break
+            except (PermissionError, OSError) as e:
+                if attempt < max_retries - 1:
+                    time.sleep(0.05) # Wait 50ms for the OS to release the handle
+                else:
+                    raise e
+
+
+def create_fresh_save_bundle(save_id: str, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage") -> dict:
+    """Create a default bundle for a new character."""
+    import copy
+    import uuid
+    import time
+    from datetime import datetime
+    from core.character import DEFAULT_SHEET, update_character_identity
+    from core.world_engine import DEFAULT_WORLD_STATE
+
+    sheet = copy.deepcopy(DEFAULT_SHEET)
+    sheet = update_character_identity(sheet, name=character_name, race=race, gender=gender, character_class=character_class, reset_vitals=True)
+    world_state = copy.deepcopy(DEFAULT_WORLD_STATE)
+
+    first_msg_id = f"first_mes_{uuid.uuid4().hex[:12]}"
+    try:
+        from core.follower_config import get_follower_greeting, replace_placeholders
+        greeting = replace_placeholders(get_follower_greeting("game"), character_name=character_name).strip()
+    except Exception:
+        greeting = ""
+
+    if not greeting:
+        greeting = (
+            "**1st of Hearthfire, 3E 389**\n\n---\n\n"
+            f"*{character_name} wakes on the cold flagstones of a locked prison cell somewhere deep beneath the Imperial City. "
+            "A lone torch gutters in the corridor beyond rusted iron bars. Water drips rhythmically into the dark, and the air smells of moss, damp earth, and old stone. "
+            "As far as anyone in the world above knows, you have been forgotten.*\n\n"
+            "*High on the north wall of the cell, tucked behind a loosened stone near the ceiling, something glints faintly in the torchlight: "
+            "a carved brass key resting on a narrow ledge. Down the corridor, unseen vermin skitter across stone.*"
+        )
+
+    first_msg = {
+        "id": first_msg_id,
+        "role": "follower",
+        "sender_id": "game",
+        "sender_name": "The Game",
+        "text": greeting,
+        "tool_calls": [],
+        "timestamp": time.time()
+    }
+
+    RACE_HOMELANDS = {
+        "Nord": "Skyrim",
+        "Dark Elf": "Morrowind",
+        "Wood Elf": "Valenwood",
+        "High Elf": "Summerset Isle",
+        "Redguard": "Hammerfell",
+        "Breton": "High Rock",
+        "Khajiit": "Elsweyr",
+        "Argonian": "Black Marsh",
+        "Imperial": "Cyrodiil",
+        "Orc": "Orsinium"
+    }
+    homeland = RACE_HOMELANDS.get(race, "Skyrim")
+    profile_content = f"A {race} from {homeland}."
+
+    bundle = {
+        "meta": {
+            "id": save_id,
+            "name": character_name,
+            "character_name": character_name,
+            "race": race,
+            "gender": gender,
+            "class": character_class,
+            "level": 1,
+            "gold": sheet.get("gold", 0),
+            "current_province": world_state.get("current_province", "Cyrodiil"),
+            "current_location": world_state.get("current_location", "Imperial Dungeon"),
+            "quest_stage": world_state.get("quest_stage", 10),
+            "tamrielic_date": "1 Hearthfire, 3E 389",
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "active_follower": "riasilmane",
+            "active_followers": ["riasilmane"]
+        },
+        "character": sheet,
+        "world": world_state,
+        "history": [first_msg],
+        "messages": [first_msg],
+        "memories": {"documents": [], "chunks": []},
+        "databank": {"documents": [], "chunks": []},
+        "journals": [],
+        "side_quests": [],
+        "archived_side_quests": [],
+        "profile": profile_content,
+        "memory_state": {
+            "unsummarized_buffer": [],
+            "recent_chapters": [],
+            "epic_chronicle": "",
+            "last_summarized_turn": 0
+        }
+    }
+    return bundle
+
+
+def save_game(character_name: str = None, save_id: str = None) -> dict:
+    """Save the active state in place to the active save slot."""
+    SAVES_DIR.mkdir(parents=True, exist_ok=True)
+    target_id = _get_clean_name(save_id or get_active_save_id())
+    current_bundle = read_save(target_id)
+    
+    try:
+        from app import runner
+        if hasattr(runner, "sessions_history"):
+            active_history = runner.sessions_history.get(target_id) or runner.sessions_history.get("default")
+            if active_history:
+                current_bundle["history"] = active_history
+                current_bundle["messages"] = active_history
+    except Exception as e:
+        print(f"[save_game] Error syncing history into save bundle: {e}")
+
+    char = current_bundle.get("character", {})
+    raw_name = character_name or char.get("name") or current_bundle.get("meta", {}).get("character_name") or "Hero"
+    base_char_name = re.sub(r'[\s_]+\d+$', '', raw_name).strip() or "Hero"
+    display_name = current_bundle.get("meta", {}).get("name") or base_char_name
+
+    current_bundle.setdefault("meta", {})
+    current_bundle["meta"]["id"] = target_id
+    current_bundle["meta"]["name"] = display_name
+    current_bundle["meta"]["character_name"] = base_char_name
+    if char:
+        char["name"] = base_char_name
+    current_bundle["meta"]["updated_at"] = datetime.now().isoformat()
+    if "created_at" not in current_bundle["meta"]:
+        current_bundle["meta"]["created_at"] = datetime.now().isoformat()
+
+    write_save(target_id, current_bundle)
+    set_active_save_id(target_id)
+    
+    from runners.follower import set_active_user
+    set_active_user(target_id)
+    
+    meta = current_bundle["meta"]
+    meta["is_active"] = True
+    return meta
+
+
+def create_save(name: str = None, character_name: str = "Eternal Champion", race: str = "Nord", gender: str = "Male", character_class: str = "Mage", user_profile_id: str = None, save_id: str = None) -> dict:
+    """Create a new character save slot."""
+    SAVES_DIR.mkdir(parents=True, exist_ok=True)
+    target_id = _get_clean_name(save_id or character_name)
+        
+    bundle = create_fresh_save_bundle(
+        save_id=target_id,
+        character_name=character_name,
+        race=race,
+        gender=gender,
+        character_class=character_class
+    )
+    
+    if name:
+        bundle["meta"]["name"] = name
+
+    write_save(target_id, bundle)
+    set_active_save_id(target_id)
+    
+    from runners.follower import set_active_user
+    set_active_user(target_id)
+    
+    meta = bundle["meta"]
+    meta["is_active"] = True
+    return meta
+
+
+def load_save(save_id: str) -> dict:
+    """Activate a save state by ID."""
+    clean_id = _get_clean_name(save_id)
+    bundle = read_save(clean_id)
+    set_active_save_id(clean_id)
+    
+    from runners.follower import set_active_user
+    set_active_user(clean_id)
+    
+    meta = bundle.get("meta", {})
+    meta["is_active"] = True
+    return meta
+
+
+def list_saves() -> list:
+    """Return sorted list of all save metadata objects."""
+    SAVES_DIR.mkdir(parents=True, exist_ok=True)
+    active_id = get_active_save_id()
+    saves = []
+    seen_ids = set()
+
+    # 1. Inspect single-file JSON saves
+    for item in SAVES_DIR.glob("*.json"):
+        if item.name.startswith("."):
+            continue
+        save_id = item.stem
+        seen_ids.add(save_id)
+        try:
+            with open(item, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                meta = data.get("meta", {})
+                char = data.get("character", {})
+                char_name = char.get("name") or meta.get("character_name")
+                if not char_name:
+                    clean_id = re.sub(r'[\s_]+\d+$', '', save_id)
+                    char_name = clean_id.replace("_", " ").title() if clean_id else "Hero"
+                if not meta:
+                    meta = {
+                        "id": save_id,
+                        "name": char_name,
+                        "character_name": char_name,
+                        "race": char.get("race", "Nord"),
+                        "class": char.get("class", "Mage"),
+                        "level": char.get("level", 1),
+                        "updated_at": datetime.fromtimestamp(item.stat().st_mtime).isoformat()
+                    }
+                else:
+                    meta["character_name"] = char_name
+                meta["id"] = save_id
+                meta["is_active"] = (save_id == active_id)
+                saves.append(meta)
+        except Exception as e:
+            print(f"[list_saves] Error reading {item}: {e}")
+
+    # 2. Inspect legacy directory saves
+    for item in SAVES_DIR.iterdir():
+        if item.is_dir() and item.name not in seen_ids:
+            save_id = item.name
+            bundle = read_save(save_id)
+            meta = bundle.get("meta", {})
+            meta["id"] = save_id
+            meta["is_active"] = (save_id == active_id)
+            saves.append(meta)
+
+    # Sort with active save first, then latest updated
+    saves.sort(key=lambda s: (not s.get("is_active", False), s.get("updated_at", "")), reverse=False)
+    return saves
+
+
+def delete_save(save_id: str, force_delete: bool = True) -> bool:
+    """Delete a single save JSON file or directory."""
+    clean_id = _get_clean_name(save_id)
+    json_path = SAVES_DIR / f"{clean_id}.json"
+    dir_path = SAVES_DIR / clean_id
+
+    # Check if this is the active save BEFORE deleting the file
+    was_active = get_active_save_id() in (clean_id, save_id)
+
+    deleted = False
+    if json_path.exists():
+        json_path.unlink()
+        deleted = True
+    if (SAVES_DIR / f"{save_id}.json").exists():
+        (SAVES_DIR / f"{save_id}.json").unlink()
+        deleted = True
+        
+    if dir_path.is_dir():
+        shutil.rmtree(dir_path, ignore_errors=True)
+        deleted = True
+    if (SAVES_DIR / save_id).is_dir():
+        shutil.rmtree(SAVES_DIR / save_id, ignore_errors=True)
+        deleted = True
+
+    if not deleted:
+        return False
+
+    # If the active save was deleted, switch to the latest remaining save
+    if was_active:
+        remaining = list_saves()
+        if remaining:
+            set_active_save_id(remaining[0]["id"])
+        else:
+            create_save(save_id="eternal_champion")
+            
+    return True

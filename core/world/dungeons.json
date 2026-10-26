@@ -1,0 +1,156 @@
+{
+  "dungeons": [
+    {
+      "id": "imperial-dungeon",
+      "name": "Imperial Dungeon",
+      "province": "Cyrodiil",
+      "fragment_id": null,
+      "theme": "Dark subterranean prison complex",
+      "environmental_description": "Damp stone walls echo with distant water drips and shuffling footsteps. Iron bars rust under the flickering light of sparse torches.",
+      "guardian_entity": "Goblin",
+      "narrative_arc": "The player awakens in a sealed cell after the Emperor's betrayal. Guided by Ria Silmane, they must navigate the labyrinthine cell blocks to reach the Shift Gate.",
+      "lore_note": "This exact complex is later utilized during the Oblivion crisis for the Emperor's escape route.",
+      "quest_stage_enter": 10
+    },
+    {
+      "id": "fang-lair",
+      "name": "Fang Lair",
+      "province": "Hammerfell",
+      "fragment_id": 1,
+      "theme": "Abandoned dwarven subterranean ruins",
+      "environmental_description": "Massive bronze gears lie dormant beneath dust and cobwebs. The cavernous halls retain the oppressive atmosphere of the lost Dwemer architects.",
+      "guardian_entity": "Dragon",
+      "narrative_arc": "The player seeks the first Staff fragment hidden deep within the abandoned dwarven city. They must bypass ancient animunculi and claim the artifact from its draconic guardian.",
+      "lore_note": "Fang Lair appears in The Elder Scrolls Online as a dragon cult necromancy site.",
+      "quest_stage_enter": 30
+    },
+    {
+      "id": "labyrinthian",
+      "name": "Labyrinthian",
+      "province": "Skyrim",
+      "fragment_id": 2,
+      "theme": "Ancient frozen nordic ruins",
+      "environmental_description": "Frigid winds howl through crumbling stone corridors lined with ancient burial urns. Ice encrusts every surface, obscuring carved murals of dragons and men.",
+      "guardian_entity": "Lich",
+      "narrative_arc": "The player navigates the sprawling ruins of Shalidor's maze to find the second fragment. Undead guardians fiercely protect the inner sanctum.",
+      "lore_note": "Labyrinthian is heavily featured in Skyrim as the final trial for the College of Winterhold.",
+      "quest_stage_enter": 40
+    },
+    {
+      "id": "elden-grove",
+      "name": "Elden Grove",
+      "province": "Valenwood",
+      "fragment_id": 3,
+      "theme": "Overgrown mystical jungle grove",
+      "environmental_description": "Thick vines and glowing flora choke the natural pathways. The air is heavy with pollen and the chaotic magic of the deep forest.",
+      "guardian_entity": "Spriggan",
+      "narrative_arc": "The player delves into the sacred, untamed heart of Valenwood to locate the third fragment. They must overcome nature spirits that fiercely defend the pristine woodland.",
+      "lore_note": "Elden Grove represents the mythical birthplace of the First Tree, referenced throughout Valenwood lore.",
+      "quest_stage_enter": 50
+    },
+    {
+      "id": "halls-of-colossus",
+      "name": "Halls of Colossus",
+      "province": "Elsweyr",
+      "fragment_id": 4,
+      "theme": "Massive ancient desert temple",
+      "environmental_description": "Gigantic sandstone pillars support a roof lost in shadows. Sand drifts across worn ceremonial floors under the harsh desert heat.",
+      "guardian_entity": "Stone Golem",
+      "narrative_arc": "The player explores this monumental structure to claim the fourth fragment. The immense scale of the halls forces careful navigation past ancient magical constructs.",
+      "lore_note": "This site originally housed the Numidium during Tiber Septim's conquest of Tamriel.",
+      "quest_stage_enter": 60
+    },
+    {
+      "id": "crystal-tower",
+      "name": "Crystal Tower",
+      "province": "Summerset Isle",
+      "fragment_id": 5,
+      "theme": "Pristine magical crystalline spire",
+      "environmental_description": "Ethereal light refracts through flawless transparent walls. Magical energy thrums in the air, creating a sterile yet beautiful environment.",
+      "guardian_entity": "Ice Golem",
+      "narrative_arc": "The player ascends the legendary monument of the Altmer to secure the fifth fragment. They face magical wards and bound guardians on the upper floors.",
+      "lore_note": "The Crystal Tower is later destroyed during the Oblivion Crisis by Daedric forces.",
+      "quest_stage_enter": 70
+    },
+    {
+      "id": "crypt-of-hearts",
+      "name": "Crypt of Hearts",
+      "province": "High Rock",
+      "fragment_id": 6,
+      "theme": "Gloomy cursed subterranean crypt",
+      "environmental_description": "Thick mist clings to the cold stone floors among broken sarcophagi. Unnatural silence amplifies the sound of restless spirits roaming the dark.",
+      "guardian_entity": "Vampire",
+      "narrative_arc": "The player braves the accursed catacombs to obtain the sixth fragment. They must confront powerful undead lords that rule the subterranean depths.",
+      "lore_note": "The Crypt of Hearts becomes a prominent location in Shadowkey and The Elder Scrolls Online.",
+      "quest_stage_enter": 80
+    },
+    {
+      "id": "murkwood",
+      "name": "Murkwood",
+      "province": "Black Marsh",
+      "fragment_id": 7,
+      "theme": "Dark oppressive shifting swamp",
+      "environmental_description": "Noxious gas bubbles rise from stagnant black pools. Twisted roots constantly shift, altering paths in the perpetual gloom.",
+      "guardian_entity": "Fire Demon",
+      "narrative_arc": "The player navigates the treacherous, moving forest to retrieve the seventh fragment. They must survive environmental hazards and chaotic elemental beasts.",
+      "lore_note": "Murkwood remains a mysterious, shifting forest in Black Marsh, rarely encountered by outsiders.",
+      "quest_stage_enter": 90
+    },
+    {
+      "id": "dagoth-ur",
+      "name": "Dagoth Ur",
+      "province": "Morrowind",
+      "fragment_id": 8,
+      "theme": "Volcanic corrupted dwarven citadel",
+      "environmental_description": "Lava flows illuminate rusted metal structures and dark ash deposits. The air burns with intense heat and dark, ancient magic.",
+      "guardian_entity": "Iron Golem",
+      "narrative_arc": "The player infiltrates the perilous volcanic crater to acquire the final fragment. They navigate perilous lava bridges and overcome heavy animunculi defenses.",
+      "lore_note": "This becomes the central stronghold of the antagonist Dagoth Ur in The Elder Scrolls III: Morrowind.",
+      "quest_stage_enter": 100
+    },
+    {
+      "id": "imperial-palace",
+      "name": "Imperial Palace",
+      "province": "Cyrodiil",
+      "fragment_id": null,
+      "theme": "Grand fortified royal citadel",
+      "environmental_description": "Opulent marble halls are heavily guarded and warded with potent magic. Banners of the Empire hang above polished stone floors.",
+      "guardian_entity": "Jagar Tharn",
+      "narrative_arc": "The player breaches the heart of the Empire to confront the usurper. With the Staff of Chaos assembled, they face Jagar Tharn in the lowest dungeons to restore the Emperor.",
+      "lore_note": "The Imperial Palace serves as the central focal point of the Imperial City and the White-Gold Tower.",
+      "quest_stage_enter": 120
+    }
+  ],
+  "procedural_schema": {
+    "themes": [
+      "Abandoned mine",
+      "Ruined fort",
+      "Natural cave system",
+      "Desecrated tomb",
+      "Flooded ruins",
+      "Volcanic cavern",
+      "Bandit hideout",
+      "Magical anomaly zone"
+    ],
+    "guardian_types": [
+      "Bandit Warlord",
+      "Necromancer",
+      "Orc Chieftain",
+      "Giant Spider",
+      "Wraith",
+      "Minotaur",
+      "Troll",
+      "Vampire Patriarch"
+    ],
+    "reward_types": [
+      "Gold",
+      "Magic Weapon",
+      "Magic Armor",
+      "Spell Tome",
+      "Rare Gem",
+      "Enchanted Ring",
+      "Amulet",
+      "Artifact"
+    ]
+  }
+}

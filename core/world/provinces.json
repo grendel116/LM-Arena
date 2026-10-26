@@ -1,0 +1,221 @@
+[
+  {
+    "id": "cyrodiil",
+    "name": "Cyrodiil",
+    "climate": "temperate",
+    "dominant_race": "Imperial",
+    "culture_summary": "The cosmopolitan heartland of the Empire. Worship of the Nine Divines grounds society, while the Imperial City serves as the nexus of Tamrielic governance and trade.",
+    "cities": [
+      "Imperial City",
+      "Anvil",
+      "Bravil",
+      "Bruma",
+      "Cheydinhal",
+      "Chorrol",
+      "Leyawiin",
+      "Skingrad"
+    ],
+    "travel_adjacency": [
+      "Skyrim",
+      "Morrowind",
+      "Black Marsh",
+      "Elsweyr",
+      "Valenwood",
+      "Hammerfell",
+      "High Rock"
+    ],
+    "main_quest_dungeon": "Imperial Dungeon",
+    "regional_accent_color": "hsl(45, 80%, 40%)"
+  },
+  {
+    "id": "skyrim",
+    "name": "Skyrim",
+    "climate": "tundra",
+    "dominant_race": "Nord",
+    "culture_summary": "A harsh northern realm shaped by ancient traditions and martial prowess. Nords venerate Talos and the old pantheon, remaining fiercely independent despite imperial integration.",
+    "cities": [
+      "Solitude",
+      "Whiterun",
+      "Windhelm",
+      "Markarth",
+      "Riften",
+      "Dawnstar",
+      "Winterhold",
+      "Falkreath"
+    ],
+    "travel_adjacency": [
+      "High Rock",
+      "Hammerfell",
+      "Cyrodiil",
+      "Morrowind"
+    ],
+    "main_quest_dungeon": "Labyrinthian",
+    "regional_accent_color": "hsl(210, 60%, 80%)"
+  },
+  {
+    "id": "morrowind",
+    "name": "Morrowind",
+    "climate": "arid",
+    "dominant_race": "Dark Elf",
+    "culture_summary": "An alien land ruled by the godlike Tribunal and powerful Great Houses. Daedric worship persists among the Ashlanders while House politics dictate everyday life.",
+    "cities": [
+      "Mournhold",
+      "Ebonheart",
+      "Tear",
+      "Blacklight",
+      "Narsis",
+      "Necrom",
+      "Balmora",
+      "Ald'ruhn"
+    ],
+    "travel_adjacency": [
+      "Skyrim",
+      "Cyrodiil",
+      "Black Marsh"
+    ],
+    "main_quest_dungeon": "Dagoth Ur",
+    "regional_accent_color": "hsl(0, 70%, 40%)"
+  },
+  {
+    "id": "black-marsh",
+    "name": "Black Marsh",
+    "climate": "jungle",
+    "dominant_race": "Argonian",
+    "culture_summary": "An impenetrable swampland connected by the collective consciousness of the Hist. The environment remains hostile to outsiders, keeping the province largely unconquered.",
+    "cities": [
+      "Helstrom",
+      "Stormhold",
+      "Gideon",
+      "Soulrest",
+      "Blackrose",
+      "Thorn",
+      "Archon",
+      "Lilmoth"
+    ],
+    "travel_adjacency": [
+      "Morrowind",
+      "Cyrodiil",
+      "Elsweyr"
+    ],
+    "main_quest_dungeon": "Murkwood",
+    "regional_accent_color": "hsl(120, 50%, 30%)"
+  },
+  {
+    "id": "elsweyr",
+    "name": "Elsweyr",
+    "climate": "arid",
+    "dominant_race": "Khajiit",
+    "culture_summary": "A divided region of deserts and jungles united under the Mane. Moonsugar trade and lunar phases dictate social structures and physical forms of the populace.",
+    "cities": [
+      "Senchal",
+      "Torval",
+      "Rimmen",
+      "Corinthe",
+      "Riverhold",
+      "Dune",
+      "Orcrest",
+      "Alabaster"
+    ],
+    "travel_adjacency": [
+      "Valenwood",
+      "Cyrodiil",
+      "Black Marsh"
+    ],
+    "main_quest_dungeon": "Halls of Colossus",
+    "regional_accent_color": "hsl(35, 90%, 60%)"
+  },
+  {
+    "id": "valenwood",
+    "name": "Valenwood",
+    "climate": "jungle",
+    "dominant_race": "Wood Elf",
+    "culture_summary": "A dense forest domain strictly governed by the Green Pact. The inhabitants shape living trees into cities and consume only meat to honor their ancient covenant.",
+    "cities": [
+      "Falinesti",
+      "Silvenar",
+      "Haven",
+      "Woodhearth",
+      "Greenheart",
+      "Arenthia",
+      "Elden Root",
+      "Southpoint"
+    ],
+    "travel_adjacency": [
+      "Elsweyr",
+      "Cyrodiil"
+    ],
+    "main_quest_dungeon": "Elden Grove",
+    "regional_accent_color": "hsl(100, 60%, 40%)"
+  },
+  {
+    "id": "summerset-isle",
+    "name": "Summerset Isle",
+    "climate": "mediterranean",
+    "dominant_race": "High Elf",
+    "culture_summary": "An idyllic archipelago dedicated to magical mastery and ancestral perfection. Society operates on rigid hierarchies honoring Auri-El and the ancient Aldmeri ancestors.",
+    "cities": [
+      "Alinor",
+      "Firsthold",
+      "Lillandril",
+      "Skywatch",
+      "Shimmerene",
+      "Sunhold",
+      "Cloudrest",
+      "Dusk"
+    ],
+    "travel_adjacency": [
+      "Hammerfell",
+      "Valenwood"
+    ],
+    "main_quest_dungeon": "Crystal Tower",
+    "regional_accent_color": "hsl(55, 90%, 75%)"
+  },
+  {
+    "id": "hammerfell",
+    "name": "Hammerfell",
+    "climate": "arid",
+    "dominant_race": "Redguard",
+    "culture_summary": "A rugged desert province defined by martial honor and seafaring skill. The Crowns and Forebears maintain a tense political balance while honoring ancient Yokudan traditions.",
+    "cities": [
+      "Sentinel",
+      "Rihad",
+      "Hegathe",
+      "Dragonstar",
+      "Skaven",
+      "Elinhir",
+      "Gilane",
+      "Lainlyn"
+    ],
+    "travel_adjacency": [
+      "High Rock",
+      "Skyrim",
+      "Cyrodiil",
+      "Summerset Isle"
+    ],
+    "main_quest_dungeon": "Fang Lair",
+    "regional_accent_color": "hsl(15, 80%, 50%)"
+  },
+  {
+    "id": "high-rock",
+    "name": "High Rock",
+    "climate": "temperate",
+    "dominant_race": "Breton",
+    "culture_summary": "A fractured land of competing kingdoms and political intrigue. Knightly orders and magical academies flourish amid constant regional conflicts and alliances.",
+    "cities": [
+      "Daggerfall",
+      "Wayrest",
+      "Camlorn",
+      "Shornhelm",
+      "Northpoint",
+      "Evermore",
+      "Farrun",
+      "Jehanna"
+    ],
+    "travel_adjacency": [
+      "Hammerfell",
+      "Skyrim"
+    ],
+    "main_quest_dungeon": "Crypt of Hearts",
+    "regional_accent_color": "hsl(280, 40%, 60%)"
+  }
+]

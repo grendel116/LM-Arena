@@ -1,0 +1,96 @@
+{
+  "name": "Armor",
+  "description": "The armor styles, protective slots, and shield traditions of The Elder Scrolls: Arena",
+  "entries": [
+    {
+      "uid": 5200,
+      "key": ["cuirass", "chestplate", "breastplate", "body armor", "tunic"],
+      "secondary_key": ["armor", "slot", "body"],
+      "content": "Cuirass: The central piece of body armor shielding the torso, chest, and vital organs. Crafted as supple boiled leather, interlocking chain links, or solid plate harness fitted to the wearer.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5201,
+      "key": ["helm", "helmet", "coif", "cap"],
+      "secondary_key": ["armor", "slot", "head"],
+      "content": "Helm: Headwear providing critical defense against crushing blows, arrows, and glancing blades. Ranges from simple leather skullcaps and chain coifs to visored plate greathelms.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5202,
+      "key": ["pauldron", "pauldrons", "spaulders", "shoulder armor"],
+      "secondary_key": ["armor", "slot", "shoulders"],
+      "content": "Pauldrons: Articulated shoulder guards that protect the vulnerable shoulder joints, neck base, and clavicle from downward cleaves.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5203,
+      "key": ["gauntlets", "gloves", "bracers", "hand armor"],
+      "secondary_key": ["armor", "slot", "hands"],
+      "content": "Gauntlets: Armored handwear shielding fingers, knuckles, and wrists from disarming cuts and weapon impacts while retaining a firm grip on weapon hafts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5204,
+      "key": ["greaves", "leggings", "cuisses", "leg armor"],
+      "secondary_key": ["armor", "slot", "legs"],
+      "content": "Greaves: Leg armor protecting thighs, knees, and shins against low sweeping strikes and piercing arrows in melee skirmishes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5205,
+      "key": ["boots", "sabatons", "footwear", "shoes"],
+      "secondary_key": ["armor", "slot", "feet"],
+      "content": "Boots: Reinforced leather footwear or articulated metal sabatons designed for solid footing on treacherous terrain and defense against ground hazards.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5206,
+      "key": ["buckler", "small shield"],
+      "secondary_key": ["shield", "off_hand"],
+      "content": "Buckler: A small, highly maneuverable fist-held shield used in duelists' parries to deflect sword points and open opponents to immediate counter-thrusts.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5207,
+      "key": ["round shield"],
+      "secondary_key": ["shield", "off_hand"],
+      "content": "Round Shield: A traditional circular wooden shield reinforced with an iron rim and central boss. Versatile and dependable in shield walls and skirmishes.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5208,
+      "key": ["kite shield"],
+      "secondary_key": ["shield", "off_hand"],
+      "content": "Kite Shield: An elongated shield with a rounded top and tapered lower point. Designed to protect the mounted knight or foot soldier from shoulder to shin.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5209,
+      "key": ["tower shield", "pavise"],
+      "secondary_key": ["shield", "off_hand"],
+      "content": "Tower Shield: A massive, full-length rectangular pavise providing almost complete frontal coverage against volleys of arrows and crushing siege weapons.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

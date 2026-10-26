@@ -1,0 +1,791 @@
+{
+  "rat": {
+    "name": "Giant Rat",
+    "type": "creature",
+    "aliases": [
+      "rat",
+      "giant rat",
+      "sewer rat"
+    ],
+    "hp_min": 2,
+    "hp_max": 8,
+    "damage_min": 1,
+    "damage_max": 4,
+    "agility": 55,
+    "speed": 60,
+    "xp_reward": 15,
+    "disease_chance": 20,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "goblin": {
+    "name": "Goblin",
+    "type": "creature",
+    "aliases": [
+      "goblin",
+      "goblins"
+    ],
+    "hp_min": 6,
+    "hp_max": 18,
+    "damage_min": 2,
+    "damage_max": 6,
+    "agility": 50,
+    "speed": 50,
+    "xp_reward": 35,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "lizardman": {
+    "name": "Lizardman",
+    "type": "creature",
+    "aliases": [
+      "lizardman",
+      "lizardmen"
+    ],
+    "hp_min": 15,
+    "hp_max": 35,
+    "damage_min": 3,
+    "damage_max": 10,
+    "agility": 45,
+    "speed": 45,
+    "xp_reward": 80,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "wolf": {
+    "name": "Wolf",
+    "type": "creature",
+    "aliases": [
+      "wolf",
+      "wolves",
+      "dire wolf",
+      "snow wolf"
+    ],
+    "hp_min": 10,
+    "hp_max": 24,
+    "damage_min": 2,
+    "damage_max": 8,
+    "agility": 60,
+    "speed": 70,
+    "xp_reward": 45,
+    "disease_chance": 10,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "spider": {
+    "name": "Giant Spider",
+    "type": "creature",
+    "aliases": [
+      "spider",
+      "giant spider",
+      "spiders"
+    ],
+    "hp_min": 8,
+    "hp_max": 20,
+    "damage_min": 2,
+    "damage_max": 6,
+    "agility": 65,
+    "speed": 65,
+    "xp_reward": 40,
+    "disease_chance": 0,
+    "poison_chance": 25,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "skeleton": {
+    "name": "Skeleton",
+    "type": "undead",
+    "aliases": [
+      "skeleton",
+      "skeletons",
+      "skeletal warrior"
+    ],
+    "hp_min": 12,
+    "hp_max": 28,
+    "damage_min": 3,
+    "damage_max": 8,
+    "agility": 40,
+    "speed": 45,
+    "xp_reward": 60,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": true,
+    "immunities": [
+      "poison",
+      "paralysis"
+    ]
+  },
+  "zombie": {
+    "name": "Zombie",
+    "type": "undead",
+    "aliases": [
+      "zombie",
+      "zombies"
+    ],
+    "hp_min": 18,
+    "hp_max": 40,
+    "damage_min": 4,
+    "damage_max": 10,
+    "agility": 30,
+    "speed": 35,
+    "xp_reward": 75,
+    "disease_chance": 25,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": true,
+    "immunities": [
+      "poison",
+      "paralysis"
+    ]
+  },
+  "ghoul": {
+    "name": "Ghoul",
+    "type": "undead",
+    "aliases": [
+      "ghoul",
+      "ghouls"
+    ],
+    "hp_min": 20,
+    "hp_max": 45,
+    "damage_min": 4,
+    "damage_max": 12,
+    "agility": 45,
+    "speed": 50,
+    "xp_reward": 100,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 25,
+    "is_undead": true,
+    "immunities": [
+      "poison"
+    ]
+  },
+  "orc": {
+    "name": "Orc",
+    "type": "humanoid",
+    "aliases": [
+      "orc",
+      "orcs",
+      "orsimer"
+    ],
+    "hp_min": 25,
+    "hp_max": 55,
+    "damage_min": 5,
+    "damage_max": 14,
+    "agility": 50,
+    "speed": 45,
+    "xp_reward": 120,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "minotaur": {
+    "name": "Minotaur",
+    "type": "creature",
+    "aliases": [
+      "minotaur",
+      "minotaurs"
+    ],
+    "hp_min": 40,
+    "hp_max": 90,
+    "damage_min": 6,
+    "damage_max": 18,
+    "agility": 45,
+    "speed": 50,
+    "xp_reward": 250,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "hellhound": {
+    "name": "Hellhound",
+    "type": "daedra",
+    "aliases": [
+      "hellhound",
+      "hell hound",
+      "hellhounds"
+    ],
+    "hp_min": 30,
+    "hp_max": 65,
+    "damage_min": 5,
+    "damage_max": 15,
+    "agility": 60,
+    "speed": 65,
+    "xp_reward": 180,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [
+      "fire"
+    ]
+  },
+  "troll": {
+    "name": "Troll",
+    "type": "creature",
+    "aliases": [
+      "troll",
+      "trolls",
+      "frost troll"
+    ],
+    "hp_min": 45,
+    "hp_max": 100,
+    "damage_min": 6,
+    "damage_max": 18,
+    "agility": 40,
+    "speed": 40,
+    "xp_reward": 300,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "wraith": {
+    "name": "Wraith",
+    "type": "undead",
+    "aliases": [
+      "wraith",
+      "wraiths"
+    ],
+    "hp_min": 35,
+    "hp_max": 80,
+    "damage_min": 6,
+    "damage_max": 16,
+    "agility": 60,
+    "speed": 60,
+    "xp_reward": 350,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": true,
+    "immunities": [
+      "normal_weapons",
+      "poison",
+      "paralysis"
+    ]
+  },
+  "fire_atronach": {
+    "name": "Fire Atronach",
+    "type": "daedra",
+    "aliases": [
+      "fire atronach",
+      "flame atronach",
+      "fire golem"
+    ],
+    "hp_min": 40,
+    "hp_max": 85,
+    "damage_min": 6,
+    "damage_max": 16,
+    "agility": 55,
+    "speed": 55,
+    "xp_reward": 320,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [
+      "normal_weapons",
+      "fire",
+      "poison",
+      "paralysis"
+    ]
+  },
+  "frost_atronach": {
+    "name": "Frost Atronach",
+    "type": "daedra",
+    "aliases": [
+      "frost atronach",
+      "ice golem"
+    ],
+    "hp_min": 50,
+    "hp_max": 110,
+    "damage_min": 8,
+    "damage_max": 20,
+    "agility": 40,
+    "speed": 40,
+    "xp_reward": 400,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [
+      "normal_weapons",
+      "frost",
+      "poison",
+      "paralysis"
+    ]
+  },
+  "storm_atronach": {
+    "name": "Storm Atronach",
+    "type": "daedra",
+    "aliases": [
+      "storm atronach",
+      "iron golem",
+      "earth golem"
+    ],
+    "hp_min": 60,
+    "hp_max": 130,
+    "damage_min": 10,
+    "damage_max": 24,
+    "agility": 50,
+    "speed": 50,
+    "xp_reward": 500,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [
+      "normal_weapons",
+      "shock",
+      "poison",
+      "paralysis"
+    ]
+  },
+  "winged_twilight": {
+    "name": "Winged Twilight",
+    "type": "daedra",
+    "aliases": [
+      "winged twilight",
+      "homunculus"
+    ],
+    "hp_min": 35,
+    "hp_max": 75,
+    "damage_min": 5,
+    "damage_max": 14,
+    "agility": 70,
+    "speed": 75,
+    "xp_reward": 280,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [
+      "normal_weapons"
+    ]
+  },
+  "medusa": {
+    "name": "Medusa",
+    "type": "creature",
+    "aliases": [
+      "medusa",
+      "gorgon"
+    ],
+    "hp_min": 40,
+    "hp_max": 85,
+    "damage_min": 5,
+    "damage_max": 15,
+    "agility": 65,
+    "speed": 55,
+    "xp_reward": 350,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 30,
+    "is_undead": false,
+    "immunities": []
+  },
+  "vampire": {
+    "name": "Vampire",
+    "type": "undead",
+    "aliases": [
+      "vampire",
+      "vampires",
+      "vampire lord"
+    ],
+    "hp_min": 55,
+    "hp_max": 120,
+    "damage_min": 8,
+    "damage_max": 22,
+    "agility": 75,
+    "speed": 70,
+    "xp_reward": 600,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": true,
+    "immunities": [
+      "normal_weapons",
+      "poison",
+      "paralysis"
+    ]
+  },
+  "lich": {
+    "name": "Lich",
+    "type": "undead",
+    "aliases": [
+      "lich",
+      "liches",
+      "archlich"
+    ],
+    "hp_min": 80,
+    "hp_max": 180,
+    "damage_min": 12,
+    "damage_max": 30,
+    "agility": 70,
+    "speed": 60,
+    "xp_reward": 1000,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": true,
+    "immunities": [
+      "normal_weapons",
+      "poison",
+      "paralysis",
+      "frost"
+    ]
+  },
+  "clannfear": {
+    "name": "Clannfear",
+    "type": "daedra",
+    "aliases": [
+      "clannfear",
+      "clannfears"
+    ],
+    "hp_min": 30,
+    "hp_max": 70,
+    "damage_min": 5,
+    "damage_max": 14,
+    "agility": 60,
+    "speed": 65,
+    "xp_reward": 200,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "dreugh": {
+    "name": "Dreugh",
+    "type": "creature",
+    "aliases": [
+      "dreugh",
+      "land dreugh"
+    ],
+    "hp_min": 45,
+    "hp_max": 95,
+    "damage_min": 6,
+    "damage_max": 18,
+    "agility": 45,
+    "speed": 45,
+    "xp_reward": 280,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "draugr": {
+    "name": "Draugr",
+    "type": "undead",
+    "aliases": [
+      "draugr",
+      "draugr wight",
+      "ancient nord"
+    ],
+    "hp_min": 25,
+    "hp_max": 60,
+    "damage_min": 4,
+    "damage_max": 12,
+    "agility": 40,
+    "speed": 40,
+    "xp_reward": 120,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": true,
+    "immunities": [
+      "poison",
+      "paralysis",
+      "frost"
+    ]
+  },
+  "ayleid_wight": {
+    "name": "Ayleid Wight",
+    "type": "undead",
+    "aliases": [
+      "ayleid wight",
+      "wight",
+      "ayleid guardian"
+    ],
+    "hp_min": 30,
+    "hp_max": 70,
+    "damage_min": 5,
+    "damage_max": 14,
+    "agility": 50,
+    "speed": 50,
+    "xp_reward": 180,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": true,
+    "immunities": [
+      "poison",
+      "paralysis"
+    ]
+  },
+  "cliff_racer": {
+    "name": "Cliff Racer",
+    "type": "creature",
+    "aliases": [
+      "cliff racer",
+      "cliff racers"
+    ],
+    "hp_min": 10,
+    "hp_max": 25,
+    "damage_min": 2,
+    "damage_max": 7,
+    "agility": 70,
+    "speed": 75,
+    "xp_reward": 35,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "nix_hound": {
+    "name": "Nix Hound",
+    "type": "creature",
+    "aliases": [
+      "nix hound",
+      "nix hounds"
+    ],
+    "hp_min": 15,
+    "hp_max": 35,
+    "damage_min": 3,
+    "damage_max": 8,
+    "agility": 55,
+    "speed": 60,
+    "xp_reward": 50,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "dune_ripper": {
+    "name": "Dune Ripper",
+    "type": "creature",
+    "aliases": [
+      "dune ripper",
+      "dune rippers"
+    ],
+    "hp_min": 40,
+    "hp_max": 90,
+    "damage_min": 6,
+    "damage_max": 16,
+    "agility": 50,
+    "speed": 55,
+    "xp_reward": 260,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "senche_raht": {
+    "name": "Senche-Raht",
+    "type": "creature",
+    "aliases": [
+      "senche-raht",
+      "senche raht"
+    ],
+    "hp_min": 50,
+    "hp_max": 110,
+    "damage_min": 7,
+    "damage_max": 20,
+    "agility": 65,
+    "speed": 70,
+    "xp_reward": 380,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "spriggan": {
+    "name": "Spriggan",
+    "type": "creature",
+    "aliases": [
+      "spriggan",
+      "spriggans"
+    ],
+    "hp_min": 30,
+    "hp_max": 70,
+    "damage_min": 4,
+    "damage_max": 12,
+    "agility": 55,
+    "speed": 55,
+    "xp_reward": 220,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "harpy": {
+    "name": "Harpy",
+    "type": "creature",
+    "aliases": [
+      "harpy",
+      "harpies"
+    ],
+    "hp_min": 25,
+    "hp_max": 60,
+    "damage_min": 4,
+    "damage_max": 12,
+    "agility": 65,
+    "speed": 70,
+    "xp_reward": 150,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": []
+  },
+  "citizen": {
+    "name": "Town Citizen",
+    "type": "civilian",
+    "aliases": [
+      "citizen",
+      "townsperson",
+      "villager",
+      "commoner",
+      "peasant"
+    ],
+    "hp_min": 1,
+    "hp_max": 4,
+    "damage_min": 1,
+    "damage_max": 2,
+    "agility": 50,
+    "speed": 50,
+    "xp_reward": 5,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [],
+    "loot": {
+      "gold_min": 1,
+      "gold_max": 4
+    },
+    "crime_on_attack": true
+  },
+  "city_guard": {
+    "name": "City Guard",
+    "type": "humanoid",
+    "aliases": [
+      "guard",
+      "city guard",
+      "imperial guard",
+      "watchman",
+      "town guard"
+    ],
+    "hp_min": 30,
+    "hp_max": 50,
+    "damage_min": 3,
+    "damage_max": 12,
+    "agility": 55,
+    "speed": 50,
+    "xp_reward": 150,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [],
+    "armor": "chain_or_plate",
+    "weapon": "broadsword"
+  },
+  "bandit": {
+    "name": "Bandit",
+    "type": "humanoid",
+    "aliases": [
+      "bandit",
+      "outlaw",
+      "highwayman",
+      "brigand",
+      "raider"
+    ],
+    "hp_min": 15,
+    "hp_max": 30,
+    "damage_min": 2,
+    "damage_max": 8,
+    "agility": 55,
+    "speed": 55,
+    "xp_reward": 70,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [],
+    "armor": "leather",
+    "weapon": "shortsword"
+  },
+  "thief_npc": {
+    "name": "Rogue Footpad",
+    "type": "humanoid",
+    "aliases": [
+      "thief",
+      "cutpurse",
+      "footpad",
+      "pickpocket",
+      "assassin"
+    ],
+    "hp_min": 12,
+    "hp_max": 25,
+    "damage_min": 1,
+    "damage_max": 6,
+    "agility": 65,
+    "speed": 65,
+    "xp_reward": 60,
+    "disease_chance": 0,
+    "poison_chance": 15,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [],
+    "armor": "leather",
+    "weapon": "dagger"
+  },
+  "rogue_mage": {
+    "name": "Rogue Mage",
+    "type": "humanoid",
+    "aliases": [
+      "rogue mage",
+      "evil mage",
+      "hostile sorcerer",
+      "hedge wizard",
+      "necromancer"
+    ],
+    "hp_min": 14,
+    "hp_max": 28,
+    "damage_min": 2,
+    "damage_max": 8,
+    "agility": 50,
+    "speed": 50,
+    "xp_reward": 120,
+    "disease_chance": 0,
+    "poison_chance": 0,
+    "paralysis_chance": 0,
+    "is_undead": false,
+    "immunities": [],
+    "armor": "unarmored",
+    "weapon": "staff"
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "name": "Magic",
+  "description": "Magic system and spells",
+  "entries": [
+    {
+      "uid": 5001,
+      "key": ["schools of magic", "mysticism", "alteration", "thaumaturgy", "conjuration"],
+      "secondary_key": [],
+      "content": "Magic divides into eight schools (Destruction, Restoration, Illusion, Alteration, Thaumaturgy, Mysticism, Conjuration, Sorcery) that define spell effects.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5002,
+      "key": ["spell tier", "spell tiers"],
+      "secondary_key": [],
+      "content": "Spell casting DCs by tier: Minor (DC 8), Apprentice (DC 11), Journeyman (DC 14), Expert (DC 17), Master (DC 20).",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5003,
+      "key": ["cast spell", "casting spell", "spell roll"],
+      "secondary_key": [],
+      "content": "Casting requires rolling d20 + Intelligence modifier against the spell tier DC.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5004,
+      "key": ["spell absorption", "absorb spell"],
+      "secondary_key": [],
+      "content": "Sorcerer Spell Absorption chance equals (Intelligence + Willpower) / 2, capped at 75%. Nullifies incoming magic into Magicka.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5005,
+      "key": ["spellmaker", "custom spell"],
+      "secondary_key": [],
+      "content": "The Spellmaker allows custom spell crafting, automatically assigning school, MP cost, and tier based on desired effect.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5006,
+      "key": ["spell fumble", "magical backfire"],
+      "secondary_key": [],
+      "content": "A natural 1 on casting causes a dangerous backfire, twisting the spell into localized recoil or unintended effects.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5007,
+      "key": ["mage advantage", "mage casting"],
+      "secondary_key": [],
+      "content": "Mages gain advantage on spell casting checks.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5008,
+      "key": ["destruction spell", "fireball", "lightning bolt"],
+      "secondary_key": [],
+      "content": "Destruction magic unleashes direct elemental harm: fire, frost, or lightning.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5009,
+      "key": ["restoration spell", "healing spell"],
+      "secondary_key": [],
+      "content": "Restoration magic mends wounds, restores attributes, and purges disease.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5010,
+      "key": ["soul gem", "soul gems", "soul trap"],
+      "secondary_key": ["magic", "soul"],
+      "content": "Soul gems store spiritual animus captured via Soul Trap to power enchantments and recharge magic items. White souls come from beasts (Petty to Grand). Black souls come from sentient mortals and require Black Soul Gems.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    },
+    {
+      "uid": 5011,
+      "key": ["soul cairn", "ideal masters", "animus"],
+      "secondary_key": ["oblivion", "soul"],
+      "content": "Mortal souls (Anuic animus) journey to Aetherius upon death unless trapped. Daedric vestiges reform in Oblivion. The Ideal Masters rule the Soul Cairn, trading necromantic power for harvested mortal souls.",
+      "enabled": true,
+      "priority": 10,
+      "probability": 100
+    }
+  ]
+}

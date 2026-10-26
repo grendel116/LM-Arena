@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Iron",
+    "damage_mult": 1.0,
+    "weight_mult": 1.0,
+    "value_mult": 1.0
+  },
+  {
+    "name": "Steel",
+    "damage_mult": 1.0,
+    "weight_mult": 1.0,
+    "value_mult": 2.0
+  },
+  {
+    "name": "Silver",
+    "damage_mult": 1.0,
+    "weight_mult": 0.75,
+    "value_mult": 4.0
+  },
+  {
+    "name": "Elven",
+    "damage_mult": 1.25,
+    "weight_mult": 0.5,
+    "value_mult": 8.0
+  },
+  {
+    "name": "Dwarven",
+    "damage_mult": 1.5,
+    "weight_mult": 0.75,
+    "value_mult": 10.0
+  },
+  {
+    "name": "Mithril",
+    "damage_mult": 1.5,
+    "weight_mult": 0.5,
+    "value_mult": 20.0
+  },
+  {
+    "name": "Adamantium",
+    "damage_mult": 2.0,
+    "weight_mult": 0.75,
+    "value_mult": 40.0
+  },
+  {
+    "name": "Ebony",
+    "damage_mult": 2.0,
+    "weight_mult": 0.5,
+    "value_mult": 80.0
+  }
+]
