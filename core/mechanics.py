@@ -95,6 +95,52 @@ MATERIAL_MULTIPLIERS = {
     "glass": 1.5
 }
 
+TIER_DICE = {
+    1: (1, 6),   # Dagger / Fists / Spark
+    2: (2, 8),   # Shortsword / Mace
+    3: (3, 12),  # Broadsword / War Axe
+    4: (3, 16),  # Claymore / Battleaxe
+    5: (4, 20)   # Artifact / Masterwork
+}
+
+def foe_key(name: str) -> str:
+    """Stable key for a hostile's tracked state (bestiary name when known)."""
+    return (get_monster(name).get("name") or str(name or "")).strip().lower()
+
+def spawn_foe(name: str) -> dict:
+    """Creates fresh tracked state for a hostile, rolling HP within its bestiary range."""
+    monster = get_monster(name)
+    hp_max = int(monster.get("hp_max", 15))
+    hp_min = min(int(monster.get("hp_min", hp_max)), hp_max)
+    hp = random.randint(hp_min, hp_max)
+    return {"name": monster.get("name") or str(name), "hp_current": hp, "hp_max": hp}
+
+def damage_foe(foe: dict, damage_tier: int = 1, is_magic: bool = True, source: str = "") -> dict:
+    """Applies one resolved player attack/spell to a tracked foe and returns the outcome."""
+    monster = get_monster(foe.get("name", ""))
+    material = next((m for m in MATERIAL_MULTIPLIERS if m in (source or "").lower()), "iron")
+    immune = (
+        "normal_weapons" in monster.get("immunities", [])
+        and not is_magic
+        and material not in ("silver", "elven", "dwarven", "mithril", "ebony", "daedric", "glass")
+    )
+    dealt = 0
+    if not immune:
+        d_min, d_max = TIER_DICE.get(int(damage_tier), TIER_DICE[1])
+        dealt = max(1, int(round(random.randint(d_min, d_max) * OUTGOING_DAMAGE_MULTIPLIER)))
+    foe["hp_current"] = max(0, foe["hp_current"] - dealt)
+    defeated = foe["hp_current"] == 0
+    return {
+        "target_name": foe["name"],
+        "immune": immune,
+        "damage_dealt": dealt,
+        "target_hp_current": foe["hp_current"],
+        "target_hp_max": foe["hp_max"],
+        "defeated": defeated,
+        "xp_reward": monster.get("xp_reward", 20) if defeated else 0,
+        "loot": monster.get("loot", []) if defeated else [],
+    }
+
 def calculate_damage_bonus(strength: int) -> int:
     """Arena formula: calculateDamageBonus."""
     if strength <= 43:
@@ -238,14 +284,7 @@ def roll_combat(attacker: dict, weapon: dict, target: dict) -> dict:
             base_dmg = random.randint(w_min, w_max)
         else:
             # Fallback to tier dice if specific weapon name not recognized
-            tier_dice = {
-                1: (1, 6),   # Dagger / Fists
-                2: (2, 8),   # Shortsword / Mace
-                3: (3, 12),  # Broadsword / War Axe
-                4: (3, 16),  # Claymore / Battleaxe
-                5: (4, 20)   # Artifact / Masterwork
-            }
-            d_min, d_max = tier_dice.get(weapon_tier, (1, 6))
+            d_min, d_max = TIER_DICE.get(weapon_tier, (1, 6))
             base_dmg = random.randint(d_min, d_max)
 
         # 2. Apply Material Multiplier

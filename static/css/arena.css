@@ -1743,6 +1743,75 @@ body::-webkit-scrollbar-thumb:hover,
     transform: scale(1.05);
 }
 
+.message-bubbles-container:has(.portrait-grid),
+.message.image-message:has(.portrait-grid) {
+    inline-size: 100%;
+}
+
+.portrait-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    margin: 6px 0 2px 0;
+    box-sizing: border-box;
+}
+
+.portrait-grid .message-image-container {
+    inline-size: 100%;
+    min-inline-size: 0;
+    aspect-ratio: 2 / 3;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.18);
+    box-sizing: border-box;
+}
+
+.portrait-grid .message-image-container img {
+    inline-size: 100%;
+    block-size: 100%;
+    max-height: none;
+    object-fit: cover;
+}
+
+.message-image-container.is-deleted-slot {
+    border: 1px dashed hsla(var(--slate-h), 5%, 100%, 0.2);
+}
+
+.portrait-grid-toolbar {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.portrait-batch-reroll-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid hsla(var(--slate-h), 5%, 100%, 0.25);
+    background: hsla(var(--slate-h), var(--slate-s), 8%, 0.6);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.portrait-batch-reroll-btn:hover {
+    color: var(--text-main);
+    border-color: hsla(var(--slate-h), 5%, 100%, 0.5);
+}
+
+@media (max-width: 768px) {
+    .portrait-grid {
+        gap: 6px;
+    }
+}
+
 
 .image-loading-overlay {
     position: absolute;

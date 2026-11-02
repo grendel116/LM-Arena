@@ -478,20 +478,6 @@ def execute_workflow_graph(
 
         graph = _apply_replacements(graph)
 
-        target_w = replacements.get("%width%")
-        target_h = replacements.get("%height%")
-        if isinstance(target_w, int) and isinstance(target_h, int):
-            is_target_portrait = target_h > target_w
-            for node_data in graph.values():
-                if isinstance(node_data, dict) and node_data.get("class_type") == "EmptyLatentImage":
-                    inputs = node_data.get("inputs", {})
-                    nw = inputs.get("width")
-                    nh = inputs.get("height")
-                    if isinstance(nw, int) and isinstance(nh, int):
-                        if is_target_portrait and nw > nh:
-                            inputs["width"], inputs["height"] = nh, nw
-                        elif not is_target_portrait and nh > nw:
-                            inputs["width"], inputs["height"] = nh, nw
     executed_outputs: Dict[str, Any] = {}
 
     def get_input_val(val: Any) -> Any:
@@ -664,71 +650,24 @@ def execute_workflow_graph(
     return None, ""
 
 
-SHARED_IMAGE_WORKFLOW = os.path.join(root_dir, "core", "skills", "portrait_generation", "ImageWorkflow.json")
-_active_window_orientation: str = "landscape"
-
-
-def set_active_window_orientation(orientation: str):
-    """Sets the active window orientation preference (portrait or landscape)."""
-    global _active_window_orientation
-    if orientation and str(orientation).lower() in ("portrait", "landscape"):
-        _active_window_orientation = str(orientation).lower()
-
-
-def get_active_window_orientation() -> str:
-    """Detects active window orientation from Flask request context or active setting."""
-    try:
-        from flask import has_request_context, request
-        if has_request_context():
-            if request.is_json and request.json:
-                req_ori = request.json.get("orientation")
-                if req_ori in ("portrait", "landscape"):
-                    return req_ori
-            hdr_ori = request.headers.get("X-Window-Orientation")
-            if hdr_ori in ("portrait", "landscape"):
-                return hdr_ori
-            arg_ori = request.args.get("orientation")
-            if arg_ori in ("portrait", "landscape"):
-                return arg_ori
-            cookie_ori = request.cookies.get("viewport_orientation") or request.cookies.get("window_orientation")
-            if cookie_ori in ("portrait", "landscape"):
-                return cookie_ori
-            cw = request.cookies.get("window_width")
-            ch = request.cookies.get("window_height")
-            if cw and ch:
-                try:
-                    return "portrait" if int(ch) > int(cw) else "landscape"
-                except Exception:
-                    pass
-    except Exception:
-        pass
-    return _active_window_orientation
-
-
-def resolve_generation_dimensions(
-    width: Optional[int] = None,
-    height: Optional[int] = None,
-    orientation: Optional[str] = None
-) -> Tuple[int, int]:
-    """Resolves image generation width and height:
-    portrait returns (832, 1248), landscape returns (1248, 832)."""
-    if width and height and int(width) > 0 and int(height) > 0:
-        return int(width), int(height)
-    active_orientation = (orientation or get_active_window_orientation()).lower()
-    if active_orientation == "portrait":
-        return 832, 1248
-    return 1248, 832
+SHARED_IMAGE_WORKFLOW = os.path.join(root_dir, "models", "ImageWorkflow.json")
+DEFAULT_IMAGE_WORKFLOW = os.path.join(root_dir, "models", "ImageWorkflow.default.json")
+IMAGE_WIDTH = 832
+IMAGE_HEIGHT = 1248
 
 
 def resolve_image_workflow_path(follower_id: Optional[str] = None) -> str:
     """Returns the image workflow that defines how images are generated:
-    the follower's own core/followers/<follower_id>/ImageWorkflow.json, else the shared workflow."""
+    the follower's own core/followers/<follower_id>/ImageWorkflow.json, else models/ImageWorkflow.json,
+    else the bundled models/ImageWorkflow.default.json."""
     if follower_id:
         from variables.settings import FOLLOWERS_DIR
         follower_wf = os.path.join(FOLLOWERS_DIR, follower_id, "ImageWorkflow.json")
         if os.path.exists(follower_wf):
             return follower_wf
-    return SHARED_IMAGE_WORKFLOW
+    if os.path.exists(SHARED_IMAGE_WORKFLOW):
+        return SHARED_IMAGE_WORKFLOW
+    return DEFAULT_IMAGE_WORKFLOW
 
 
 def _generate_portrait_image_inprocess(
@@ -738,33 +677,38 @@ def _generate_portrait_image_inprocess(
     seed: Optional[int] = None,
     workflow_path: Optional[str] = None,
     save_path: Optional[str] = None,
-    width: Optional[int] = None,
-    height: Optional[int] = None,
-    orientation: Optional[str] = None,
+    save_paths: Optional[List[str]] = None,
     **kwargs: Any
-) -> str:
+) -> Any:
     """Runs the image workflow graph in-process. Every generation setting comes from the workflow;
-    this function fills its placeholders (%prompt%, %negative_prompt%, %seed%, %model%, %width%, %height%)."""
+    this function fills its placeholders (%prompt%, %negative_prompt%, %seed%, %model%, %width%, %height%).
+    With save_paths, one image is generated per path (seed offset per slot) and the list of saved paths is returned."""
     if seed is None or seed < 0:
         seed = random.randint(1, 2147483647)
 
-    res_w, res_h = resolve_generation_dimensions(width=width, height=height, orientation=orientation)
-    wf_file = workflow_path or SHARED_IMAGE_WORKFLOW
+    wf_file = workflow_path or resolve_image_workflow_path()
     if not os.path.exists(wf_file):
         raise FileNotFoundError(f"Image workflow not found: {wf_file}")
-    print(f"[engine_diffusion] Running workflow: {wf_file} ({res_w}x{res_h})")
-    replacements = {
-        "%prompt%": prompt,
-        "%negative_prompt%": negative_prompt,
-        "%seed%": seed,
-        "%model%": checkpoint or get_active_checkpoint() or resolve_checkpoint_name(),
-        "%width%": res_w,
-        "%height%": res_h,
-    }
-    _, out_path = execute_workflow_graph(wf_file, replacements=replacements, save_path=save_path)
-    if not out_path or not os.path.exists(out_path):
-        raise RuntimeError(f"Workflow produced no image: {wf_file}")
-    return out_path
+    print(f"[engine_diffusion] Running workflow: {wf_file} ({IMAGE_WIDTH}x{IMAGE_HEIGHT})")
+    model_name = checkpoint or get_active_checkpoint() or resolve_checkpoint_name()
+
+    def _run(target_path: str, slot_seed: int, last: bool) -> str:
+        replacements = {
+            "%prompt%": prompt,
+            "%negative_prompt%": negative_prompt,
+            "%seed%": slot_seed,
+            "%model%": model_name,
+            "%width%": IMAGE_WIDTH,
+            "%height%": IMAGE_HEIGHT,
+        }
+        _, out_path = execute_workflow_graph(wf_file, replacements=replacements, save_path=target_path, empty_cache_after=last)
+        if not out_path or not os.path.exists(out_path):
+            raise RuntimeError(f"Workflow produced no image: {wf_file}")
+        return out_path
+
+    if save_paths is not None:
+        return [_run(p, seed + idx, idx == len(save_paths) - 1) for idx, p in enumerate(save_paths)]
+    return _run(save_path, seed, True)
 
 
 def generate_portrait_image(
@@ -774,12 +718,10 @@ def generate_portrait_image(
     seed: Optional[int] = None,
     workflow_path: Optional[str] = None,
     save_path: Optional[str] = None,
-    width: Optional[int] = None,
-    height: Optional[int] = None,
-    orientation: Optional[str] = None,
+    save_paths: Optional[List[str]] = None,
     **kwargs: Any
-) -> str:
-    res_w, res_h = resolve_generation_dimensions(width=width, height=height, orientation=orientation)
+) -> Any:
+    """Generates one image (save_path) or one per entry of save_paths (returns the list of paths)."""
     payload = {
         "prompt": prompt,
         "negative_prompt": negative_prompt,
@@ -787,9 +729,7 @@ def generate_portrait_image(
         "seed": seed,
         "workflow_path": workflow_path,
         "save_path": save_path,
-        "width": res_w,
-        "height": res_h,
-        "orientation": "portrait" if res_h > res_w else "landscape"
+        "save_paths": save_paths,
     }
 
     if os.getenv("DIFFUSION_WORKER") == "1":
@@ -884,7 +824,11 @@ if __name__ == "__main__":
                             self.send_response(200)
                             self.send_header("Content-Type", "application/json")
                             self.end_headers()
-                            self.wfile.write(json.dumps({"status": "ok", "path": out_path}).encode("utf-8"))
+                            if isinstance(out_path, list):
+                                body_out = {"status": "ok", "paths": out_path}
+                            else:
+                                body_out = {"status": "ok", "path": out_path}
+                            self.wfile.write(json.dumps(body_out).encode("utf-8"))
                         except Exception as ex:
                             import traceback
                             traceback.print_exc()

@@ -378,7 +378,7 @@ def generate_local_image(prompt: str = "", **kwargs) -> str:
         prompt: Visual description of the current scene, characters present, actions, or atmosphere.
         
     Returns:
-        A markdown link to the generated image, or an error message.
+        Markdown links to the generated images (three by default), one per line, or an error message.
     """
     import os
     import time
@@ -460,10 +460,11 @@ def generate_local_image(prompt: str = "", **kwargs) -> str:
     final_negative = ", ".join(injected_negatives) if injected_negatives else ""
 
     save_fol_id = primary_workflow_fol or (party[0] if party else "game")
+    num_images = max(1, int(kwargs.get("count") or 3))
     timestamp = int(time.time())
-    local_filename = f"scene_{timestamp}.png"
+    local_filenames = [f"scene_{timestamp}_{n + 1}.png" for n in range(num_images)]
     portraits_dir = os.path.normpath(os.path.join(base_dir, "core", "followers", save_fol_id, "portraits"))
-    local_path = os.path.join(portraits_dir, local_filename)
+    local_paths = [os.path.join(portraits_dir, name) for name in local_filenames]
     os.makedirs(portraits_dir, exist_ok=True)
 
     try:
@@ -473,30 +474,37 @@ def generate_local_image(prompt: str = "", **kwargs) -> str:
         from core.engine_diffusion import generate_portrait_image, resolve_image_workflow_path
         workflow_to_use = resolve_image_workflow_path(follower_id=primary_workflow_fol)
 
-        generate_portrait_image(
-            prompt=final_prompt,
-            negative_prompt=final_negative,
-            workflow_path=workflow_to_use,
-            save_path=local_path,
-            width=kwargs.get("width"),
-            height=kwargs.get("height"),
-            orientation=kwargs.get("orientation")
-        )
+        if num_images > 1:
+            generate_portrait_image(
+                prompt=final_prompt,
+                negative_prompt=final_negative,
+                workflow_path=workflow_to_use,
+                save_paths=local_paths,
+            )
+        else:
+            generate_portrait_image(
+                prompt=final_prompt,
+                negative_prompt=final_negative,
+                workflow_path=workflow_to_use,
+                save_path=local_paths[0],
+            )
 
-        json_path = os.path.join(portraits_dir, f"scene_{timestamp}.json")
-        try:
-            with open(json_path, "w", encoding="utf-8") as jf:
-                json.dump({
-                    "prompt": prompt or final_prompt,
-                    "full_prompt": final_prompt,
-                    "mode": "first_person_pov",
-                    "follower_id": save_fol_id,
-                    "engine": "in_process_gpu"
-                }, jf, indent=4)
-        except Exception:
-            pass
+        for name in local_filenames:
+            json_path = os.path.join(portraits_dir, os.path.splitext(name)[0] + ".json")
+            try:
+                with open(json_path, "w", encoding="utf-8") as jf:
+                    json.dump({
+                        "prompt": prompt or final_prompt,
+                        "full_prompt": final_prompt,
+                        "negative_prompt": final_negative,
+                        "mode": "first_person_pov",
+                        "follower_id": save_fol_id,
+                        "engine": "in_process_gpu"
+                    }, jf, indent=4)
+            except Exception:
+                pass
 
-        return f"![Scene](/images/portraits/{local_filename})"
+        return "\n".join(f"![Scene](/images/portraits/{name})" for name in local_filenames)
     except Exception as e:
         print(f"[engine_diffusion] Error generating image: {e}")
         return f"Error generating scene: {e}"
@@ -504,16 +512,16 @@ def generate_local_image(prompt: str = "", **kwargs) -> str:
 
 # Backward-compatible aliases for legacy calls
 def generate_follower_portrait(prompt: str = "", **kwargs) -> str:
-    return generate_local_image(prompt=prompt)
+    return generate_local_image(prompt=prompt, count=kwargs.get("count"))
 
 def generate_player_portrait(prompt: str = "", **kwargs) -> str:
-    return generate_local_image(prompt=prompt)
+    return generate_local_image(prompt=prompt, count=kwargs.get("count"))
 
 def generate_environment_image(prompt: str = "", **kwargs) -> str:
-    return generate_local_image(prompt=prompt)
+    return generate_local_image(prompt=prompt, count=kwargs.get("count"))
 
 def generate_imagen(prompt: str = "", **kwargs) -> str:
-    return generate_local_image(prompt=prompt)
+    return generate_local_image(prompt=prompt, count=kwargs.get("count"))
 
 
 
@@ -852,6 +860,7 @@ def add_journal_entry(keyphrases: str, content: str) -> str:
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from core.tool_agent import tool_agent
 from core.mechanics import roll_check, roll_combat, roll_initiative, roll_skill, sorcerer_absorb, request_skill_check
 from core.world_engine import load_world_state, save_world_state, get_location_context, travel, advance_time, set_flag, discover_location, set_location
 from core.quest_tracker import load_quest_stages, get_stage_context_injection, check_stage_conditions, advance_stage, advance_quest_stage
@@ -869,6 +878,7 @@ def arena_roll_check(attribute_name, attribute_value, dc, advantage=False, disad
 
 
 @track_tool_activity
+@tool_agent("combat")
 def arena_roll_combat(
     attacker_name="Attacker",
     target_name="{{user}}",
@@ -882,8 +892,8 @@ def arena_roll_combat(
     **kwargs
 ):
     """Resolve a combat attack roll between an attacker and target."""
-    from core.mechanics import get_monster, roll_combat
-
+    import copy
+    from core.mechanics import get_monster, roll_combat, foe_key, spawn_foe
     save_id, sheet = _get_active_sheet(kwargs)
 
     # Resolve monster stats if attacker is in bestiary
@@ -907,6 +917,15 @@ def arena_roll_combat(
     resolved_target_name = player_name if is_target_player else target_name
     resolved_attacker_name = player_name if is_attacker_player else attacker_name
 
+    world = load_world_state(save_id)
+    foes = world.setdefault("foes", {})
+    foes_before = copy.deepcopy(foes)
+    foe_state = None
+    if not is_target_player:
+        foe_state = foes.get(foe_key(target_name)) or spawn_foe(target_name)
+    if not is_attacker_player and monster:
+        foes.setdefault(foe_key(attacker_name), spawn_foe(attacker_name))
+
     if is_attacker_player:
         str_val = attacker_strength if attacker_strength is not None else sheet.get("attributes", {}).get("strength", 50)
         agi_val = attacker_agility if attacker_agility is not None else sheet.get("attributes", {}).get("agility", 50)
@@ -924,8 +943,8 @@ def arena_roll_combat(
         "name": resolved_target_name,
         "agility": int(target_agility),
         "is_player": is_target_player,
-        "hp_max": derived.get("hp_max", 28) if is_target_player else None,
-        "hp_current": derived.get("hp_current", 28) if is_target_player else None,
+        "hp_max": derived.get("hp_max", 28) if is_target_player else foe_state["hp_max"],
+        "hp_current": derived.get("hp_current", 28) if is_target_player else foe_state["hp_current"],
     }
     weapon = {
         "name": attack_name,
@@ -934,6 +953,15 @@ def arena_roll_combat(
         "attribute_used": attack_attribute
     }
     res = roll_combat(attacker, weapon, target)
+    if foe_state is not None:
+        key = foe_key(target_name)
+        if res.get("defeated"):
+            foes.pop(key, None)
+        else:
+            foe_state["hp_current"] = res["target_hp_current"]
+            foes[key] = foe_state
+    if foes != foes_before:
+        save_world_state(world, save_id)
     if is_target_player and res.get("hit") and not res.get("immune") and res.get("damage_dealt", 0) > 0:
         sheet = take_damage(sheet, res["damage_dealt"])
         _commit_and_sync(save_id, sheet, kwargs)
@@ -943,6 +971,37 @@ def arena_roll_combat(
         res["dead"] = is_dead(sheet)
         res["defeated"] = res["dead"]
     return res
+
+@track_tool_activity
+@tool_agent("combat")
+def arena_damage_target(target_name: str = "", damage_tier: int = None, source: str = "", **kwargs):
+    """Apply damage from {{user}}'s resolved successful spell or attack to a hostile and track its HP. `source` is the spell/weapon name."""
+    from core.mechanics import damage_foe, foe_key, spawn_foe
+
+    if not target_name:
+        return {"error": "target_name is required"}
+    save_id, sheet = _get_active_sheet(kwargs)
+    spell = next((s for s in sheet.get("spells", []) if source and str(s.get("name", "")).lower() == source.lower()), None)
+    tier = int(damage_tier or (spell or {}).get("tier") or 1)
+
+    world = load_world_state(save_id)
+    foes = world.setdefault("foes", {})
+    key = foe_key(target_name)
+    foe = foes.get(key) or spawn_foe(target_name)
+    res = damage_foe(foe, tier, is_magic=spell is not None, source=source)
+    if res["defeated"]:
+        foes.pop(key, None)
+    else:
+        foes[key] = foe
+    save_world_state(world, save_id)
+    return res
+
+def _clear_foes():
+    """Drops tracked hostiles when the scene changes."""
+    save_id = get_current_save_id()
+    world = load_world_state(save_id)
+    if world.pop("foes", None):
+        save_world_state(world, save_id)
 
 @track_tool_activity
 def arena_roll_initiative(combatants_json):
@@ -976,19 +1035,24 @@ def arena_get_location(**kwargs):
     return get_location_context(world_state, provinces, [], dungeons)
 
 @track_tool_activity
+@tool_agent("state")
 def arena_set_location(province, location_name, advance_hours=0, **kwargs):
     """Directly sets the character's active location and province (e.g. exiting a shift gate, entering a dungeon or city)."""
-    return set_location(province, location_name, advance_hours)
+    result = set_location(province, location_name, advance_hours)
+    _clear_foes()
+    return result
 
 @track_tool_activity
 def arena_travel(destination_province, destination_city, **kwargs):
     """Travel to a new province and city. Updates world state and advances time."""
     world_state = load_world_state()
     world_state, travel_summary = travel(world_state, destination_province, destination_city)
+    world_state.pop("foes", None)
     save_world_state(world_state)
     return travel_summary
 
 @track_tool_activity
+@tool_agent("state")
 def arena_advance_stage(quest_id=None, *args, **kwargs):
     """Advances the main quest or a specified side quest to the next sequential stage."""
     qid = quest_id or kwargs.get("id") or (args[0] if args and isinstance(args[0], str) and (args[0].startswith("sq_") or args[0].startswith("quest_")) else None)
@@ -998,6 +1062,7 @@ def arena_advance_stage(quest_id=None, *args, **kwargs):
     return advance_quest_stage()
 
 @track_tool_activity
+@tool_agent("state")
 def arena_set_quest_stage(stage_number=None, *args, **kwargs):
     """Directly sets the main quest stage number for the character."""
     stage = stage_number or kwargs.get("stage") or kwargs.get("target_stage") or kwargs.get("next_stage") or kwargs.get("new_stage")
@@ -1071,6 +1136,7 @@ def _commit_and_sync(save_id: str, sheet: dict, kwargs: dict = None):
     save_character(sheet, save_id)
 
 @track_tool_activity
+@tool_agent("combat")
 def arena_take_damage(amount=0, damage_amount=None, damage=None, **kwargs):
     """Apply damage to the character. Updates HP on the character sheet."""
     actual_amount = amount if amount else (damage_amount if damage_amount is not None else (damage if damage is not None else 0))
@@ -1085,6 +1151,7 @@ def arena_take_damage(amount=0, damage_amount=None, damage=None, **kwargs):
     return {"hp_current": d["hp_current"], "hp_max": d["hp_max"], "dead": is_dead(sheet), "damage_inflicted": scaled_amount}
 
 @track_tool_activity
+@tool_agent("combat")
 def arena_heal(amount=0, heal_amount=None, healing=None, **kwargs):
     """Restore HP to the character up to their maximum."""
     actual_amount = amount if amount else (heal_amount if heal_amount is not None else (healing if healing is not None else 0))
@@ -1161,6 +1228,7 @@ def arena_rest(hours=8, safe=True, **kwargs):
     
     sheet, summary = rest(sheet, int(hours), bool(safe))
     _commit_and_sync(save_id, sheet, kwargs)
+    _clear_foes()
     
     d = sheet["derived"]
     return {
@@ -1178,6 +1246,7 @@ def arena_rest(hours=8, safe=True, **kwargs):
 
 @track_tool_activity
 @allow_aliases()
+@tool_agent("inventory")
 def arena_add_gold(amount: int = 0, **kwargs):
     """Add gold to the character (loot, reward, sale)."""
     save_id, sheet = _get_active_sheet(kwargs)
@@ -1264,6 +1333,7 @@ def arena_actor(speaker: str = "NPC", dialogue: str = "", name: str = None, spee
 
 @track_tool_activity
 @allow_aliases()
+@tool_agent("inventory")
 def arena_spend_gold(amount: int = 0, **kwargs):
     """Spend gold on a purchase. Returns success or failure if funds insufficient."""
     save_id, sheet = _get_active_sheet(kwargs)
@@ -1275,6 +1345,7 @@ def arena_spend_gold(amount: int = 0, **kwargs):
 
 @track_tool_activity
 @allow_aliases()
+@tool_agent("inventory")
 def arena_add_item(item_name: str = None, item_type: str = "Item", quantity: int = 1, weight: float = None, *args, **kwargs):
     """Add an item to the character's inventory (looted, purchased, found)."""
     resolved_name = item_name or (args[0] if args else None)
@@ -1309,6 +1380,7 @@ def arena_add_item(item_name: str = None, item_type: str = "Item", quantity: int
 
 @track_tool_activity
 @allow_aliases()
+@tool_agent("inventory")
 def arena_remove_item(item_name: str = None, quantity: int = 1, *args, **kwargs):
     """Remove an item from inventory (used, sold, consumed)."""
     resolved_name = item_name or (args[0] if args else None)
@@ -1387,6 +1459,7 @@ def arena_learn_spell(spell_name, school="Restoration", tier=1, sp_cost=5, **kwa
     return {"spells": [s["name"] for s in sheet["spells"]]}
 
 @track_tool_activity
+@tool_agent("state")
 def arena_add_effect(effect_name, duration_turns=1, source="", **kwargs):
     """Apply a status effect to the character (poisoned, paralysed, fortified, etc.)."""
     save_id, sheet = _get_active_sheet(kwargs)
@@ -1396,6 +1469,7 @@ def arena_add_effect(effect_name, duration_turns=1, source="", **kwargs):
     return {"active_effects": [e["name"] for e in sheet["active_effects"]]}
 
 @track_tool_activity
+@tool_agent("state")
 def arena_remove_effect(effect_name, **kwargs):
     """Remove a status effect (cured, expired, dispelled)."""
     save_id, sheet = _get_active_sheet(kwargs)
@@ -1405,6 +1479,7 @@ def arena_remove_effect(effect_name, **kwargs):
     return {"active_effects": [e["name"] for e in sheet["active_effects"]]}
 
 @track_tool_activity
+@tool_agent("state")
 def arena_add_experience(amount=0, xp_amount=None, **kwargs):
     """Award XP. Automatically handles level-up if threshold reached."""
     actual_amount = int(amount if amount else (xp_amount if xp_amount is not None else 0))

@@ -36,6 +36,28 @@ def get_local_server_headers() -> dict:
 def get_remote_server_headers() -> dict:
     return get_local_server_headers()
 
+def get_sampling_params() -> dict:
+    """Sampler settings for roleplay generation. Each is overridable via env (SAMPLER_MIN_P, ...);
+    set a value to 'off' to omit it from the request."""
+    defaults = {
+        "min_p": 0.05,
+        "top_p": 0.95,
+        "top_k": 40,
+        "repeat_penalty": 1.1,
+        "presence_penalty": 0.3,
+    }
+    params = {}
+    for key, default in defaults.items():
+        raw = os.getenv(f"SAMPLER_{key.upper()}")
+        if raw is not None and raw.strip().lower() in ("off", "none", ""):
+            continue
+        try:
+            value = float(raw) if raw is not None else default
+        except ValueError:
+            value = default
+        params[key] = int(value) if key == "top_k" else value
+    return params
+
 def is_thinking_enabled() -> bool:
     env_val = os.getenv("THINKING_ENABLED")
     if env_val is not None:

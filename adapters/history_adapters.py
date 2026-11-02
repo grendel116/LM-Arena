@@ -57,7 +57,7 @@ class LocalHistoryAdapter(ABC):
         self.session_id = self.save_id
 
     @abstractmethod
-    def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str | None = None, response_only: bool = False, speaker_id: str = "game") -> list[dict]:
+    def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str | None = None, response_only: bool = False, speaker_id: str = "game", volatile_context: str = "") -> list[dict]:
         pass
 
     @abstractmethod
@@ -98,9 +98,9 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
     def _get_max_input_tokens(self) -> int:
         local_context = os.getenv("LOCAL_CONTEXT", "16384")
-        if local_context and local_context.isdigit():
-            return max(4096, int(local_context) - 2048)
-        return 6500
+        if not (local_context and local_context.isdigit()):
+            local_context = "16384"
+        return max(4096, int(local_context) - 2048)
 
     def _calculate_context_threshold(self):
         """Derives local character threshold limit from environment configuration."""
@@ -267,7 +267,7 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
         return _merge_consecutive_messages(final_messages)
 
-    def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str | None = None, response_only: bool = False, speaker_id: str = "game") -> list[dict]:
+    def get_openai_messages(self, sys_inst: str, rag_context: str, memory_context: str | None = None, response_only: bool = False, speaker_id: str = "game", volatile_context: str = "") -> list[dict]:
         from core.follower_config import replace_placeholders
         from core.lorebook import get_active_lore
         from runners.follower import get_active_follower
@@ -352,9 +352,19 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                         content_text = f"{tag}: {content_text}"
 
             msg_id = msg.get("id", "")
-            if msg.get("tool_calls") and msg_id.startswith("itm_"):
+            # Tool calls are re-shown in history for hidden intermediate messages, and for the active speaker's own
+            # past turns so the model sees itself using tools (prose-only history teaches it to skip them).
+            if msg.get("tool_calls") and (msg_id.startswith("itm_") or role == "assistant"):
+                rejected_ids = set()
+                for tc in msg["tool_calls"]:
+                    if tc.get("type") == "response":
+                        resp_s = str(tc.get("response"))
+                        if "'verdict': 'rejected'" in resp_s or "pass_to_follower" in resp_s or "'success': False" in resp_s:
+                            rejected_ids.add(tc.get("id"))
                 for tc in msg["tool_calls"]:
                     if tc.get("type") == "call":
+                        if tc.get("id") in rejected_ids and not msg_id.startswith("itm_"):
+                            continue
                         tc_name = tc.get("name")
                         if tc_name in ("arena_actor", "actor"):
                             tc_args = tc.get("args", {})
@@ -491,6 +501,8 @@ class OsHistoryAdapter(LocalHistoryAdapter):
 
         # Gather Post-History System Context (Character Sheet, World Engine State & Quests)
         full_post_injection = ""
+        referee_block = ""
+        volatile_tail = (volatile_context or "").strip()
         try:
             from core.world_engine import load_world_state
             from core.character import load_character, get_character_context
@@ -555,28 +567,50 @@ class OsHistoryAdapter(LocalHistoryAdapter):
                 fol_names = [get_follower_name(fid) for fid in active_fols] if active_fols else []
                 fol_names_str = ", ".join(fol_names) if fol_names else "none"
 
-                post_blocks.append(
+                referee_block = (
                     f"# REFEREE DIRECTIVES\n"
                     f"- Party Autonomy: {player_hero_name} and followers ({fol_names_str}) act on their own turns. Never generate dialogue, actions, or [arena_actor] calls for them.\n"
-                    f"- World Dialogue (Zero Dialogue in Prose): World NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\")]. Never write spoken dialogue in narrative prose. Physical actions are narrated directly in prose wrapped in *asterisks*; spoken speech belongs entirely inside the dialogue parameter of [arena_actor] in plain text without quotation marks or asterisks.\n"
+                    f"- World Dialogue (Zero Dialogue in Prose): Non-party world NPCs, guards, merchants, and creatures (never {player_hero_name} or {fol_names_str}) speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\")]. Never write spoken dialogue in narrative prose. Physical actions are narrated directly in prose wrapped in *asterisks*; spoken speech belongs entirely inside the dialogue parameter of [arena_actor] in plain text without quotation marks or asterisks.\n"
                     f"- Action Checks (Mandatory): Whenever {player_hero_name} attempts ANY risky, contested, physical, stealth, theft, distraction, attack, or spell action (e.g., snatching keys, picking locks, sneaking, climbing, jumping, attacking, casting spells): DO NOT resolve the outcome in prose. You MUST narrate the attempt up to the moment of uncertainty, call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")], and STOP your turn immediately to await the roll.\n"
                     f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_hero_name} using [arena_roll_combat(attacker_name=\"...\", attack_name=\"...\")]. Attacks that connect automatically apply damage.\n"
                     f"- Perspective: Address {player_hero_name} as \"you\" in second person present tense."
                 )
 
-            full_post_injection = "\n\n".join(post_blocks)
+            full_post_injection = referee_block
+            volatile_blocks = ([volatile_context.strip()] if volatile_context and volatile_context.strip() else []) + post_blocks
+            volatile_tail = "\n\n".join(volatile_blocks)
 
         except Exception as e:
             print(f"Error compiling unified player status / world state in post history: {e}", flush=True)
 
+        # A continue request has no new player turn, so the history ends on this speaker's own reply
+        # and the model tends to restate it. Prompt for new content instead (not saved to history).
+        if raw_messages and raw_messages[-1]["role"] == "assistant" and not response_only:
+            raw_messages.append({
+                "role": "user",
+                "content": (
+                    "[SYSTEM: Continue. Do not repeat or rephrase your previous message. "
+                    "Advance the scene with new events, details, or reactions that follow from it.]"
+                ),
+            })
+
         # Build final array adhering to tiered budget limits
-        return self._build_tiered_messages(
+        final = self._build_tiered_messages(
             core_system_content=core_system,
             raw_messages=raw_messages,
             post_injection=full_post_injection,
             auxiliary_context=auxiliary_blocks,
             max_input_tokens=self._get_max_input_tokens()
         )
+
+        # Volatile state goes last so everything before it is an unchanging, cacheable prefix.
+        if volatile_tail:
+            tail = f"[CURRENT STATE - authoritative, reflects all changes so far]\n{volatile_tail}"
+            if final and final[-1]["role"] == "user" and isinstance(final[-1]["content"], str):
+                final[-1] = {**final[-1], "content": f"{final[-1]['content']}\n\n{tail}"}
+            else:
+                final.append({"role": "user", "content": tail})
+        return final
 
     def append_assistant_message(self, text: str, tool_calls_data: list, invocation_id: str, intermediate: bool = False, speaker_id: str = "game", speaker_name: str | None = None):
         from core.world_engine import (

@@ -45,6 +45,7 @@ core/comfy_engine/**/*.bmp
 models/*
 !models/__init__.py
 !models/models.py
+!models/ImageWorkflow.default.json
 !models/**/
 !models/**/.gitkeep
 utils/llama-bin/

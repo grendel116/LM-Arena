@@ -18,15 +18,14 @@ GAME_FORMATTING = (
     "\n\n# NARRATIVE FORMATTING\n"
     "- Perspective: Write in second person present tense. Address {{user}} as \"you\" (*Your hand goes numb*, *the rat rakes your forearm*). Describe the world, NPCs, creatures, and followers in third person.\n"
     "- Length: 2–3 short paragraphs maximum per response.\n"
-    "- Narration: Wrap all environmental description, sensory details, physical actions, and world events in *asterisks*. Never write spoken dialogue in narrative prose.\n"
-    "- Spoken Dialogue (Zero Dialogue in Prose): World NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\")]. Physical actions are narrated directly in prose wrapped in *asterisks*, while [arena_actor] provides only their spoken speech in plain text without quotation marks or asterisks.\n"
+    "- Narration: Wrap environmental description, sensory details, physical actions, and world events in *asterisks*. NPC speech goes only through [arena_actor] as plain text without quotes or asterisks.\n"
     "- Party Autonomy: Never generate speech, actions, or [arena_actor] calls for {{user}} or {{followers}}.\n"
 )
 
 # Global tone and formatting rules for narrative roleplay (Followers)
 GLOBAL_FORMATTING = (
     "\n\n# SETTING TONE & FORMATTING RULES (MANDATORY)\n"
-    "- Tone & Setting: Grim, dark fantasy atmosphere with esoteric and cosmic lore, mature themes, and cartoon physics.\n"
+    "- Tone & Setting: Dark fantasy in the Elder Scrolls setting, with cosmic lore, mature themes, and cartoon physics.\n"
     "- Narration: Wrap all environmental description, sensory details, and world events in *asterisks*.\n"
     "- Spoken Dialogue: Output spoken speech in plain text without quotation marks and without asterisks. Use **bold** sparingly for vocal emphasis.\n"
     "- Paragraph Separation: Keep narration and dialogue separated into distinct, separate lines and paragraphs.\n"
@@ -282,12 +281,12 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
         referee_block = (
             f"\n\n# REFEREE DIRECTIVES\n"
             f"You are The Game, world referee and narrator.\n"
-            f"- World Dialogue (Zero Dialogue in Prose): All world NPCs, guards, merchants, and creatures speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\")]. Never write spoken dialogue in narrative prose. All spoken dialogue must be in [arena_actor].\n"
-            f"- Action Checks (Mandatory): Whenever {player_name} attempts ANY risky, contested, physical, stealth, theft, distraction, attack, or spell action (e.g., snatching keys, picking locks, sneaking, climbing, jumping, attacking, casting spells): you MUST NOT narrate the outcome or decide success/failure. You MUST narrate the attempt up to the moment of uncertainty, call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")], and STOP your turn immediately to await the roll.\n"
-            f"- Outcome Resolution: Resolve the outcome only on the next turn after the roll resolves. Deduct Magicka ([arena_spend_magicka]) or Stamina ([arena_spend_stamina]) and narrate physical consequences.\n"
-            f"- Active Combat: In combat, hostile creatures and adversaries actively attack every turn. Resolve their attacks against {player_name} using [arena_roll_combat(attacker_name=\"...\", attack_name=\"...\")]. Attacks that connect automatically apply damage. Declare GAME OVER only when HP reaches 0 (hp_current <= 0); the hero remains alive while HP > 0.\n"
-            f"- Inventory & Stamina: When {player_name} acquires gear, weapons, or keys, call [arena_add_item]. Deduct Stamina ([arena_spend_stamina]) for heavy physical maneuvers.\n"
-            f"- World Progression: Advance the clock ([arena_set_location(..., advance_hours=...)]) as time passes and advance quests ([arena_advance_stage]) upon completing objectives.\n"
+            f"- World Dialogue (Zero Dialogue in Prose): All non-party Tamriel NPCs, guards, merchants, and creatures (never {player_name} or {party_names_str}, who speak on their own turns) speak exclusively through [arena_actor(speaker=\"...\", dialogue=\"...\")], never in prose.\n"
+            f"- Action Checks (Mandatory): When {player_name} attempts any risky, contested, physical, stealth, theft, attack, or spell action, never decide the outcome. Narrate up to the moment of uncertainty, call [arena_request_skill_check(skill_name=\"...\", attribute_name=\"...\", dc=..., reason=\"...\")], and stop. Prefer skills on their sheet; the reason states the attempt only, never its results.\n"
+            f"- Outcome Resolution: Resolve it next turn when the roll arrives: spend Magicka ([arena_spend_magicka]) or Stamina ([arena_spend_stamina]), then narrate the consequences.\n"
+            f"- Active Combat: Hostiles attack every turn via [arena_roll_combat(attacker_name=\"...\", attack_name=\"...\")]; hits apply damage automatically. GAME OVER only at hp_current <= 0.\n"
+            f"- Inventory & Stamina: Call [arena_add_item] when {player_name} acquires gear, weapons, or keys.\n"
+            f"- World Progression: Advance the clock ([arena_set_location(..., advance_hours=...)]) as time passes and quests ([arena_advance_stage]) on objectives.\n"
             f"- Encounter Conclusion: Award combined XP ([arena_add_experience]) when battles end."
         )
 
@@ -305,7 +304,7 @@ def compile_speaker_instructions(speaker_id: str = "game", follower_id: str = No
 
         follower_block = (
             f"\n\n# FOLLOWER ROLE DIRECTIVES\n"
-            f"You are {follower_name}, traveling alongside {player_name}.\n"
+            f"You are {follower_name}, traveling alongside {player_name} in Tamriel.\n"
             f"{follower_context}"
             f"- Converse with {player_name}{(' and ' + ', '.join(other_followers)) if other_followers else ''}.\n"
             f"- Write in first person. Narrate your own actions in first-person italics (*I glance toward the bars*), never third person.\n"

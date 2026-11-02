@@ -40,34 +40,6 @@ document.addEventListener('click', function (e) {
     }
 });
 
-// ── Viewport Orientation & Aspect Ratio Sync ──────────────────────────────
-let _viewportSyncTimer = null;
-function getWindowOrientation() {
-    return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
-}
-
-function syncWindowViewportDimensions() {
-    const orientation = getWindowOrientation();
-    document.cookie = `viewport_orientation=${orientation}; path=/; SameSite=Lax`;
-    document.cookie = `window_width=${window.innerWidth}; path=/; SameSite=Lax`;
-    document.cookie = `window_height=${window.innerHeight}; path=/; SameSite=Lax`;
-
-    clearTimeout(_viewportSyncTimer);
-    _viewportSyncTimer = setTimeout(() => {
-        fetch('/api/client_viewport', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                orientation: orientation,
-                window_width: window.innerWidth,
-                window_height: window.innerHeight
-            })
-        }).catch(() => {});
-    }, 250);
-}
-window.addEventListener('resize', syncWindowViewportDimensions);
-syncWindowViewportDimensions();
-
 // ── Arena: Tamriel Map Modal ──────────────────────────────────────────────
 let cachedProvincesData = null;
 let selectedProvinceName = null;
@@ -5464,8 +5436,36 @@ const hiddenPassiveTools = new Set([
 ]);
 
 function formatToolOutcomeSummary(toolName, args = {}, response = null) {
-    const res = _computeToolOutcomeSummary(toolName, args, response);
+    const res = _computeToolOutcomeSummary(toolName, mergeAdjustedArgs(args, response), response);
     return replacePlaceholders(res);
+}
+
+// An adjusted call ran with corrected arguments, so the pill should show those instead of the proposal
+function mergeAdjustedArgs(args, response) {
+    const s = typeof response === 'string' ? response : (response ? JSON.stringify(response) : '');
+    const block = s.match(/['"]applied_args['"]:\s*\{([^}]*)\}/);
+    if (!block) return args;
+    const merged = { ...(args || {}) };
+    const pairRe = /['"](\w+)['"]:\s*(?:"([^"]*)"|'([^']*)'|(-?\d+(?:\.\d+)?))/g;
+    let p;
+    while ((p = pairRe.exec(block[1])) !== null) {
+        merged[p[1]] = p[4] !== undefined ? Number(p[4]) : (p[2] !== undefined ? p[2] : p[3]);
+    }
+    return merged;
+}
+
+// Dice tools report success:false for a failed roll, which is a real outcome and must stay visible
+const DICE_RESULT_TOOLS = new Set([
+    'arena_roll_check', 'arena_roll_skill', 'arena_request_skill_check', 'arena_roll_combat',
+    'arena_roll_initiative', 'arena_sorcerer_absorb'
+]);
+
+// Tool responses are stored as Python-style dict strings, so match them textually rather than via JSON.parse
+function isToolCallRejected(toolName, response) {
+    if (!response) return false;
+    const s = typeof response === 'string' ? response : JSON.stringify(response);
+    if (/['"]verdict['"]:\s*['"]rejected['"]/.test(s)) return true;
+    return !DICE_RESULT_TOOLS.has(toolName) && /['"]success['"]:\s*(False|false)/.test(s);
 }
 
 function _computeToolOutcomeSummary(toolName, args = {}, response = null) {
@@ -5630,6 +5630,15 @@ function renderCompletedLogs(bubble, toolCalls, duration = null) {
             }
         }
     });
+
+    // A rejected actor call for a party member is only a hand-off signal, not something the Game posted
+    for (let i = pairedTools.length - 1; i >= 0; i--) {
+        const t = pairedTools[i];
+        if (isToolCallRejected(t.name, t.response)) { pairedTools.splice(i, 1); continue; }
+        if (t.name !== 'arena_actor' && t.name !== 'actor') continue;
+        const r = typeof t.response === 'string' ? t.response : JSON.stringify(t.response || '');
+        if (r.includes('pass_to_follower')) pairedTools.splice(i, 1);
+    }
 
     // Consolidate multiple experience awards in the same turn into a single unified pill
     const consolidatedTools = [];
@@ -6106,8 +6115,19 @@ function renderMessage(msg, isLive = false) {
         bubblesToCreate.push({ type: 'text', content: text });
     }
     if (msg.media) {
+        const imageMedia = msg.media.filter(m => m.type !== 'video');
+        const fromImageTool = (msg.tool_calls || []).some(tc => tc.type === 'response' && /^generate_(local_image|follower_portrait|player_portrait|environment_image|imagen)$/.test(tc.name || ''));
+        const useGrid = imageMedia.length > 1 || (fromImageTool && imageMedia.length >= 1);
+        let gridPushed = false;
         msg.media.forEach(m => {
-            bubblesToCreate.push({ type: 'media', content: m });
+            if (m.type !== 'video' && useGrid) {
+                if (!gridPushed) {
+                    bubblesToCreate.push({ type: 'media', content: m, group: imageMedia });
+                    gridPushed = true;
+                }
+            } else {
+                bubblesToCreate.push({ type: 'media', content: m });
+            }
         });
     }
     if (bubblesToCreate.length === 0) {
@@ -6278,7 +6298,11 @@ function renderMessage(msg, isLive = false) {
                 videoContainer.appendChild(video);
                 bubble.appendChild(videoContainer);
             } else {
+                // Builds one image slot (image + action overlay); shared with deleted-slot regeneration
+                const buildSlot = (mediaItem) => {
+                const imgUrl = mediaItem.url;
                 const imgContainer = document.createElement('div');
+                imgContainer.dataset.prompt = mediaItem.prompt || portraitPrompt || '';
                 imgContainer.className = 'message-image-container';
                 
                 const img = document.createElement('img');
@@ -6384,12 +6408,42 @@ function renderMessage(msg, isLive = false) {
                         );
                     };
                     overlay.appendChild(animateBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'image-action-btn image-delete-btn';
+                    deleteBtn.title = 'Delete this image';
+                    deleteBtn.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                            <path d="M10 11v6M14 11v6"></path>
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                        </svg>
+                    `;
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteImageSlot(imgContainer);
+                    };
+                    overlay.appendChild(deleteBtn);
                     
                     imgContainer.appendChild(overlay);
                 }
                 
                 imgContainer.appendChild(img);
-                bubble.appendChild(imgContainer);
+                return imgContainer;
+                };
+                window.buildImageSlot = buildSlot;
+
+                let mediaTarget = bubble;
+                if (item.group) {
+                    mediaTarget = document.createElement('div');
+                    mediaTarget.className = 'portrait-grid';
+                    mediaTarget.dataset.msgId = msgId || '';
+                    mediaTarget.dataset.prompt = mediaItem.prompt || portraitPrompt || '';
+                    bubble.appendChild(mediaTarget);
+                }
+                (item.group || [mediaItem]).forEach(m => mediaTarget.appendChild(buildSlot(m)));
+                if (item.group) updatePortraitGridToolbar(mediaTarget);
             }
         }
 
@@ -6845,8 +6899,7 @@ async function sendMessage() {
         image_mime: attachedMime,
         media_path: attachedMediaPath,
         save_id: saveId,
-        model: selectedModel,
-        orientation: getWindowOrientation()
+        model: selectedModel
     };
 
     userInput.value = '';
@@ -6988,8 +7041,7 @@ async function executeGroupChainTurn(targetSpeaker) {
             body: JSON.stringify({
                 save_id: saveId,
                 model: selectedModel,
-                speaker_id: targetSpeaker,
-                orientation: getWindowOrientation()
+                speaker_id: targetSpeaker
             }),
             signal: chatAbortController ? chatAbortController.signal : null
         });
@@ -7537,8 +7589,7 @@ async function rephraseFromMessage(button) {
             body: JSON.stringify({
                 save_id: saveId,
                 msg_id: msgId,
-                model: selectedModel,
-                orientation: getWindowOrientation()
+                model: selectedModel
             }),
             signal: chatAbortController.signal
         });
@@ -7964,6 +8015,15 @@ function nextGalleryImage(event) {
 // --- removeImageMessageFromChat ---
 function removeImageMessageFromChat(mediaElement) {
     if (!mediaElement) return;
+    const gridEl = mediaElement.closest ? mediaElement.closest('.portrait-grid') : null;
+    if (gridEl) {
+        const slotEl = mediaElement.closest('.message-image-container, .message-video-container');
+        const othersActive = Array.from(gridEl.querySelectorAll('.message-image-container:not(.is-deleted-slot)')).some(o => o !== slotEl);
+        if (slotEl && othersActive) {
+            slotEl.remove();
+            return;
+        }
+    }
     const bubble = mediaElement.closest ? mediaElement.closest('.message') : null;
     const row = mediaElement.closest ? mediaElement.closest('.message-row') : null;
 
@@ -8354,8 +8414,7 @@ async function captureSceneImage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 save_id: saveId,
-                target_follower: targetFollowerId,
-                orientation: getWindowOrientation()
+                target_follower: targetFollowerId
             })
         });
 
@@ -8799,8 +8858,7 @@ async function regenerateImage(buttonElement, oldImageUrl, prompt, subjectType =
                 old_image_url: getRelativePath(oldImageUrl),
                 prompt: prompt,
                 subject_type: subjectType,
-                use_imagen: useImagenMode,
-                orientation: getWindowOrientation()
+                use_imagen: useImagenMode
             })
         });
         
@@ -8839,6 +8897,185 @@ async function regenerateImage(buttonElement, oldImageUrl, prompt, subjectType =
 
 let activeQueueTasks = {};
 let queuePollInterval = null;
+
+// --- Three-image grid: per-image delete and regeneration of deleted slots ---
+const PORTRAIT_GRID_SIZE = 3;
+
+function getMissingSlotCount(grid) {
+    if (!grid) return 0;
+    const present = grid.querySelectorAll('.message-image-container:not(.is-deleted-slot)').length;
+    return Math.max(0, PORTRAIT_GRID_SIZE - present);
+}
+
+function updatePortraitGridToolbar(grid) {
+    const bubble = grid && grid.closest('.message');
+    if (!bubble) return;
+    let toolbar = bubble.querySelector('.portrait-grid-toolbar');
+    if (getMissingSlotCount(grid) === 0 && !grid.querySelector('.is-deleted-slot')) {
+        if (toolbar) toolbar.remove();
+        return;
+    }
+    if (!toolbar) {
+        toolbar = document.createElement('div');
+        toolbar.className = 'portrait-grid-toolbar';
+        grid.insertAdjacentElement('afterend', toolbar);
+    }
+    toolbar.innerHTML = `
+        <button type="button" class="portrait-batch-reroll-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>Regenerate</span>
+        </button>
+    `;
+    toolbar.querySelector('button').onclick = (e) => {
+        e.stopPropagation();
+        rerollDeletedSlotsInGrid(grid);
+    };
+}
+
+async function rerollDeletedSlotsInGrid(grid) {
+    if (!grid || grid.dataset.busy === '1') return;
+    const count = getMissingSlotCount(grid);
+    if (count <= 0) return;
+    grid.dataset.busy = '1';
+    const toolbarBtn = grid.closest('.message')?.querySelector('.portrait-batch-reroll-btn');
+    if (toolbarBtn) toolbarBtn.disabled = true;
+    try {
+        for (let i = 0; i < count; i++) {
+            if (!document.body.contains(grid)) break;
+            const slot = document.createElement('div');
+            slot.className = 'message-image-container is-deleted-slot';
+            slot.dataset.prompt = grid.dataset.prompt || '';
+            slot.dataset.msgId = grid.dataset.msgId || '';
+            grid.appendChild(slot);
+            const ok = await regenerateDeletedSlot(slot);
+            if (!ok) break;
+        }
+    } finally {
+        grid.dataset.busy = '';
+        updatePortraitGridToolbar(grid);
+    }
+}
+
+async function deleteImageSlot(container) {
+    if (!container) return;
+    const img = container.querySelector('img');
+    if (!img) return;
+    const currentSrc = getRelativePath(img.src);
+    if (!currentSrc || isProfileImage(currentSrc)) return;
+
+    const grid = container.closest('.portrait-grid');
+    const hasOtherActive = !!grid && Array.from(grid.querySelectorAll('.message-image-container:not(.is-deleted-slot)')).some(c => c !== container);
+
+    const performDelete = async () => {
+        let prompt = container.dataset.prompt || '';
+        if (!prompt) {
+            try {
+                const pr = await fetch(`/api/get_image_prompt?image_url=${encodeURIComponent(img.src)}`);
+                const pd = await pr.json();
+                if (pd.status === 'success' && pd.prompt) prompt = pd.prompt;
+            } catch (err) {}
+        }
+        try {
+            const response = await fetch('/delete_image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ save_id: saveId, image_url: currentSrc, keep_message: hasOtherActive })
+            });
+            if (!response.ok) {
+                let errMsg = "Unknown error";
+                try { errMsg = (await response.json()).error || errMsg; } catch (e) {}
+                showCustomAlert("Error Deleting Image", "Error deleting image: " + errMsg);
+                return;
+            }
+            const msgId = (grid && grid.dataset.msgId) || (container.closest('.message') || {}).dataset?.msgId || '';
+            if (hasOtherActive) {
+                if (!grid.dataset.prompt && prompt) grid.dataset.prompt = prompt;
+                container.remove();
+                updatePortraitGridToolbar(grid);
+            } else {
+                removeImageMessageFromChat(container);
+            }
+            if (Array.isArray(serverImages)) {
+                serverImages = serverImages.filter(u => getRelativePath(u) !== currentSrc);
+            }
+            if (Array.isArray(galleryImages)) {
+                galleryImages = galleryImages.filter(u => getRelativePath(u) !== currentSrc);
+            }
+        } catch (err) {
+            console.error("Failed to delete image slot:", err);
+            showCustomAlert("Error Deleting Image", "Failed to delete image due to network error.");
+        }
+    };
+
+    if (hasOtherActive) {
+        await performDelete();
+    } else {
+        showCustomConfirm("Delete Image", "Are you sure you want to permanently delete this image from this conversation and the server?", performDelete);
+    }
+}
+
+async function regenerateDeletedSlot(slot) {
+    if (!slot) return false;
+    const grid = slot.closest('.portrait-grid');
+    const bubble = slot.closest('.message');
+    const msgId = slot.dataset.msgId || (grid && grid.dataset.msgId) || (bubble && bubble.dataset.msgId) || '';
+    const prompt = slot.dataset.prompt || '';
+    if (!msgId) {
+        slot.remove();
+        showCustomAlert("Regeneration Failed", "Could not determine which message this image belongs to.");
+        return false;
+    }
+
+    const slotsInOrder = grid ? Array.from(grid.children).filter(c => c.classList.contains('message-image-container')) : [slot];
+    const slotIndex = slotsInOrder.slice(0, slotsInOrder.indexOf(slot)).filter(c => !c.classList.contains('is-deleted-slot')).length;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'image-loading-overlay';
+    overlay.innerHTML = `
+        <div class="typing-indicator" style="gap: 6px;">
+            <div class="typing-dot" style="background-color: var(--primary-accent);"></div>
+            <div class="typing-dot" style="background-color: var(--primary-accent); animation-delay: -0.16s;"></div>
+            <div class="typing-dot" style="background-color: var(--primary-accent); animation-delay: -0.32s;"></div>
+        </div>
+    `;
+    slot.appendChild(overlay);
+    startToolPolling();
+
+    try {
+        const response = await fetch('/regenerate_image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                save_id: saveId,
+                old_image_url: '',
+                msg_id: msgId,
+                slot_index: slotIndex,
+                prompt: prompt,
+                use_imagen: useImagenMode
+            })
+        });
+        const data = await response.json();
+        if (data.status === 'success' && typeof window.buildImageSlot === 'function') {
+            slot.replaceWith(window.buildImageSlot({ url: data.new_image_url, type: 'image', prompt: prompt }));
+            await loadServerImages();
+            return true;
+        }
+        slot.remove();
+        showCustomAlert("Image Regeneration Failed", data.error || 'Unknown error');
+        return false;
+    } catch (error) {
+        console.error("Error regenerating deleted slot:", error);
+        slot.remove();
+        showCustomAlert("Connection Error", "Failed to connect to the server for image regeneration: " + error.message);
+        return false;
+    } finally {
+        stopToolPolling();
+    }
+}
 
 function startQueuePolling() {
     if (queuePollInterval) return;
@@ -10814,8 +11051,7 @@ async function triggerProactiveAction() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 save_id: saveId,
-                model: selectedModel,
-                orientation: getWindowOrientation()
+                model: selectedModel
             }),
             signal
         });

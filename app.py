@@ -45,54 +45,6 @@ _prewarm_started = False
 _prewarm_lock = threading.Lock()
 
 @app.before_request
-def sync_client_viewport():
-    try:
-        from core import engine_diffusion
-        orientation = None
-        if request.is_json and request.json:
-            orientation = request.json.get("orientation")
-        if not orientation:
-            orientation = (
-                request.headers.get("X-Window-Orientation")
-                or request.cookies.get("viewport_orientation")
-                or request.cookies.get("window_orientation")
-            )
-        if not orientation:
-            w = request.cookies.get("window_width")
-            h = request.cookies.get("window_height")
-            if w and h:
-                try:
-                    orientation = "portrait" if int(h) > int(w) else "landscape"
-                except Exception:
-                    pass
-        if orientation in ("portrait", "landscape"):
-            engine_diffusion.set_active_window_orientation(orientation)
-    except Exception:
-        pass
-
-
-@app.route('/api/client_viewport', methods=['POST'])
-def api_client_viewport():
-    data = request.get_json(silent=True) or {}
-    orientation = data.get("orientation")
-    w = data.get("width") or data.get("window_width")
-    h = data.get("height") or data.get("window_height")
-    if not orientation and w and h:
-        try:
-            orientation = "portrait" if int(h) > int(w) else "landscape"
-        except Exception:
-            pass
-    if orientation in ("portrait", "landscape"):
-        from core import engine_diffusion
-        engine_diffusion.set_active_window_orientation(orientation)
-    from core import engine_diffusion
-    return jsonify({
-        "status": "ok",
-        "orientation": engine_diffusion.get_active_window_orientation()
-    })
-
-
-@app.before_request
 def start_prewarm_on_first_request():
     global _prewarm_started
     if not _prewarm_started:
@@ -1142,6 +1094,12 @@ def chat():
         prior_history = asyncio.run(runner.get_history(session_id))
         first_speaker = determine_first_speaker(user_message, prior_history, active_followers)
 
+        # A bare Continue has no player turn to route, so pass to the next speaker in the rotation
+        if user_message is None and not image_data and not media_path:
+            continue_chain, continue_speaker = compute_chain_speaker(prior_history, active_followers)
+            if continue_chain and continue_speaker:
+                first_speaker = continue_speaker
+
         msg_id = request.json.get('msg_id')
         response_text, tool_calls, user_msg_id, follower_msg_id = asyncio.run(
             runner.run_async(
@@ -1790,13 +1748,14 @@ def reset():
 def delete_image():
     save_id = get_requested_save_id()
     image_url = request.json.get('image_url')
+    keep_message = bool(request.json.get('keep_message'))
     if not image_url:
         return jsonify({'error': 'Missing image_url'}), 400
         
     try:
         # Detach from save log - delete the image and remove it from history
         if hasattr(runner, 'delete_image_from_save'):
-            success = asyncio.run(runner.delete_image_from_save(save_id, image_url))
+            success = asyncio.run(runner.delete_image_from_save(save_id, image_url, keep_message=keep_message))
         else:
             success = asyncio.run(runner.delete_image_from_session(save_id, image_url))
         if success:
@@ -1815,12 +1774,18 @@ def regenerate_image():
     from runners.runners import cancelled_saves
     cancelled_saves.discard(save_id)
     
-    old_image_url = request.json.get('old_image_url')
+    old_image_url = request.json.get('old_image_url') or ''
     prompt = request.json.get('prompt')
     subject_type = request.json.get('subject_type') or request.json.get('mode')
+    msg_id = request.json.get('msg_id')
+    slot_index = request.json.get('slot_index')
+    try:
+        slot_index = int(slot_index) if slot_index is not None else None
+    except (TypeError, ValueError):
+        slot_index = None
     
-    if not old_image_url:
-        return jsonify({'error': 'Missing old_image_url'}), 400
+    if not old_image_url and not msg_id:
+        return jsonify({'error': 'Missing old_image_url or msg_id'}), 400
         
     # Normalize old_image_url to pathname
     if "://" in old_image_url:
@@ -1838,7 +1803,7 @@ def regenerate_image():
         try:
             from runners.follower import get_active_follower
             active_follower = get_active_follower()
-            json_path = find_image_sidecar_json(filename, active_follower)
+            json_path = find_image_sidecar_json(filename, active_follower) if filename else None
 
             if json_path and os.path.exists(json_path):
                 with open(json_path, 'r', encoding='utf-8') as f:
@@ -1857,6 +1822,8 @@ def regenerate_image():
             try:
                 chat_history = asyncio.run(runner.get_history(save_id))
                 for msg in chat_history:
+                    if msg_id and not filename and msg.get('id') != msg_id:
+                        continue
                     tool_calls = msg.get('tool_calls', [])
                     if not tool_calls:
                         continue
@@ -1907,30 +1874,29 @@ def regenerate_image():
         use_imagen = request.json.get('use_imagen', False)
         # Generate new portrait preserving image subject type (player, follower, environment)
         if use_imagen and hasattr(tools, 'generate_imagen'):
-            new_markdown = tools.generate_imagen(prompt, subject_type=subject_type or "auto")
+            new_markdown = tools.generate_imagen(prompt, subject_type=subject_type or "auto", count=1)
         else:
             new_markdown = tools.generate_local_image(
                 prompt,
                 subject_type=subject_type or "auto",
                 target_follower=locals().get('sidecar_follower_id'),
-                orientation=request.json.get('orientation'),
-                width=request.json.get('width'),
-                height=request.json.get('height')
+                count=1
             )
         if new_markdown.startswith("Error"):
             return jsonify({'error': new_markdown}), 500
             
         # Parse the new image URL from Markdown link: ![...](/images/...)
-        new_image_url = None
-        if new_markdown.startswith("![") and new_markdown.endswith(")"):
-            new_image_url = new_markdown.split("(", 1)[1][:-1]
+        extracted_urls = re.findall(r'!\[[^\]]*\]\(([^)]+)\)', new_markdown)
+        new_image_url = extracted_urls[0] if extracted_urls else None
             
         if not new_image_url:
             return jsonify({'error': f'Failed to parse generated image markdown: {new_markdown}'}), 500
             
-        # Replace in save history
+        # Replace in save history, or insert into the slot if the old image was deleted
         if hasattr(runner, 'replace_image_in_save'):
-            success = asyncio.run(runner.replace_image_in_save(save_id, old_image_url, new_image_url, new_prompt=prompt))
+            success = asyncio.run(runner.replace_image_in_save(
+                save_id, old_image_url, new_image_url, new_prompt=prompt, msg_id=msg_id, slot_index=slot_index
+            ))
         else:
             success = asyncio.run(runner.replace_image_in_session(save_id, old_image_url, new_image_url, new_prompt=prompt))
         if success:
@@ -1986,12 +1952,7 @@ def api_generate_portrait():
         if save_id in cancelled_saves:
             return jsonify({'error': 'Scene capture cancelled by user.'}), 400
 
-        new_markdown = tools.generate_local_image(
-            custom_prompt,
-            orientation=request.json.get('orientation'),
-            width=request.json.get('width'),
-            height=request.json.get('height')
-        )
+        new_markdown = tools.generate_local_image(custom_prompt)
 
         if save_id in cancelled_saves:
             return jsonify({'error': 'Scene capture cancelled by user.'}), 400
@@ -1999,10 +1960,9 @@ def api_generate_portrait():
         if new_markdown.startswith("Error"):
             return jsonify({'error': new_markdown}), 500
 
-        # Extract image URL
-        new_image_url = None
-        if new_markdown.startswith("![") and new_markdown.endswith(")"):
-            new_image_url = new_markdown.split("(", 1)[1][:-1]
+        # Extract image URL (first of the generated set)
+        extracted_urls = re.findall(r'!\[[^\]]*\]\(([^)]+)\)', new_markdown)
+        new_image_url = extracted_urls[0] if extracted_urls else None
 
         # Read back full_prompt from sidecar for tool_calls record
         resolved_prompt = custom_prompt
@@ -4838,7 +4798,7 @@ def _get_current_status():
         remote_cloud_url and remote_cloud_url.strip() and remote_cloud_url != "your_remote_cloud_url_here"
     )
     
-    temperature = 0.75
+    temperature = 0.7
 
         
     comfy_running_state = comfy_manager.check_comfy_running(force_refresh=True)

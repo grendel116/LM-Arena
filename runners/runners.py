@@ -445,7 +445,7 @@ class BaseRunner:
         self._save_to_disk(target_save_id)
 
 
-    def _load_temperature_setting(self, default_temp: float = 0.75) -> float:
+    def _load_temperature_setting(self, default_temp: float = 0.7) -> float:
         return default_temp
 
 
@@ -497,15 +497,15 @@ class BaseRunner:
 
             # --- STAGE 1: LOCAL PREPROCESSING ---
             sys_instructions = self._get_system_instructions(target_save_id, user_message=new_message_text, speaker_id=speaker_id)
-            messages = adapter.get_openai_messages(sys_instructions, rag_context, speaker_id=speaker_id)
-            messages = _trim_context_messages(messages, max_chars=26000)
+            messages = adapter.get_openai_messages(sys_instructions, rag_context, speaker_id=speaker_id, volatile_context=self._get_scene_state(target_save_id))
+            messages = _trim_context_messages(messages, max_chars=adapter._get_max_input_tokens() * 4)
 
             # --- STAGE 2: LOCAL PROCESSING PASS ---
             temperature = self._load_temperature_setting()
             url = LOCAL_SERVER_URL
             headers = get_local_server_headers()
 
-            from variables.settings import is_thinking_enabled, DISABLED_THINKING
+            from variables.settings import is_thinking_enabled, DISABLED_THINKING, get_sampling_params
             from core.banned_words import get_logit_bias_dict
 
             payload = {
@@ -513,6 +513,7 @@ class BaseRunner:
                 "temperature": temperature,
                 "max_tokens": 1024,
             }
+            payload.update(get_sampling_params())
             if not is_thinking_enabled() and isinstance(DISABLED_THINKING, dict):
                 payload.update(DISABLED_THINKING)
             if target_model:
@@ -576,6 +577,17 @@ class BaseRunner:
                     raise asyncio.CancelledError("Save run cancelled by user request.")
 
                 if new_matches:
+                    try:
+                        from core.tool_agent import set_turn_context
+                        _hist_store = getattr(self, "save_history", None) or getattr(self, "sessions_history", {})
+                        set_turn_context(
+                            target_save_id,
+                            narration=TOOL_TAG_STRIP_RE.sub("", bot_response_text),
+                            user_message=new_message_text or "",
+                            recent_messages=list(_hist_store.get(target_save_id, []))[-8:],
+                        )
+                    except Exception as _tae:
+                        print(f"[tool_agent] Context setup failed: {_tae}", flush=True)
                     raw_results = []
                     for m in new_matches:
                         res = await asyncio.to_thread(_execute_emulated_tool, m.group(1), m.group(2))
@@ -753,17 +765,17 @@ class BaseRunner:
     async def delete_turn(self, save_id: str, msg_id: str) -> bool:
         raise NotImplementedError()
 
-    async def delete_image_from_save(self, save_id: str, image_url: str) -> bool:
+    async def delete_image_from_save(self, save_id: str, image_url: str, keep_message: bool = False) -> bool:
         raise NotImplementedError()
 
-    async def delete_image_from_session(self, session_id: str, image_url: str) -> bool:
-        return await self.delete_image_from_save(session_id, image_url)
+    async def delete_image_from_session(self, session_id: str, image_url: str, keep_message: bool = False) -> bool:
+        return await self.delete_image_from_save(session_id, image_url, keep_message=keep_message)
 
-    async def replace_image_in_save(self, save_id: str, old_image_url: str, new_image_url: str) -> bool:
+    async def replace_image_in_save(self, save_id: str, old_image_url: str, new_image_url: str, **kwargs) -> bool:
         raise NotImplementedError()
 
-    async def replace_image_in_session(self, session_id: str, old_image_url: str, new_image_url: str) -> bool:
-        return await self.replace_image_in_save(session_id, old_image_url, new_image_url)
+    async def replace_image_in_session(self, session_id: str, old_image_url: str, new_image_url: str, **kwargs) -> bool:
+        return await self.replace_image_in_save(session_id, old_image_url, new_image_url, **kwargs)
 
     async def replace_image_with_video_in_save(self, save_id: str, old_image_url: str, new_video_url: str) -> bool:
         raise NotImplementedError()
@@ -880,6 +892,19 @@ class BaseRunner:
         target_save_id = self._normalize_save_id(save_id)
         party = get_active_followers(target_save_id)
         instructions = compile_speaker_instructions(speaker_id=speaker_id, party_followers=party)
+        instructions = self._inject_system_memories(instructions, target_save_id)
+        instructions = self._inject_journals(instructions, user_message)
+        instructions = self._append_directives(instructions, target_save_id, user_message, party)
+        return replace_placeholders(instructions, follower_id=speaker_id, party_followers=party)
+
+    def _get_scene_state(self, save_id: str) -> str:
+        """Volatile scene header (HP/MP, location, objective). Sent at the end of the prompt so the static prefix stays cacheable."""
+        from core.follower_config import get_follower_name
+        from core.save_manager import get_active_followers
+
+        target_save_id = self._normalize_save_id(save_id)
+        party = get_active_followers(target_save_id)
+        instructions = ""
 
         try:
             from core.world_engine import load_world_state
@@ -938,8 +963,11 @@ class BaseRunner:
         except Exception as se:
             print(f"Error compiling scene state header: {se}")
 
-        instructions = self._inject_system_memories(instructions, target_save_id)
-        instructions = self._inject_journals(instructions, user_message)
+        return instructions.strip()
+
+    def _append_directives(self, instructions: str, target_save_id: str, user_message: str, party: list) -> str:
+        from core.follower_config import get_follower_name
+        import re
 
         # Image and portrait generation directives
         if user_message and any(k in user_message for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:", "[GENERATE_PLAYER_PORTRAIT:", "[GENERATE_ENVIRONMENT:", "[GENERATE_FOLLOWER_PORTRAIT:", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image")):
@@ -995,7 +1023,7 @@ class BaseRunner:
                 f"`[generate_local_image(prompt=\"[ordered visual tags: characters with appearance tags -> environment -> lighting]\")]`."
             )
 
-        return replace_placeholders(instructions, follower_id=speaker_id, party_followers=party)
+        return instructions
 
 
 BaseProgramRunner = BaseRunner
@@ -1029,6 +1057,8 @@ class OpenSourceRunner(BaseRunner):
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        from variables.settings import get_sampling_params
+        payload.update(get_sampling_params())
         if not is_thinking_enabled() and isinstance(DISABLED_THINKING, dict):
             payload.update(DISABLED_THINKING)
         if target_model:
@@ -1663,7 +1693,7 @@ class OpenSourceRunner(BaseRunner):
                     return True
             return False
 
-    async def delete_image_from_save(self, save_id: str = None, image_url: str = None, session_id: str = None) -> bool:
+    async def delete_image_from_save(self, save_id: str = None, image_url: str = None, session_id: str = None, keep_message: bool = False) -> bool:
         target_save_id = self._normalize_save_id(save_id or session_id)
         with self._lock:
             if target_save_id not in self.save_history:
@@ -1683,8 +1713,8 @@ class OpenSourceRunner(BaseRunner):
 
                 if msg.get("text") and base_url in msg["text"]:
                     has_image = True
-                    remaining_text = re.sub(pattern, "", msg["text"]).strip()
-                    if not re.sub(r"^[:\s\-\*]+|[:\s\-\*]+$", "", remaining_text):
+                    remaining_text = re.sub(r"\n{2,}", "\n", re.sub(pattern, "", msg["text"])).strip()
+                    if not keep_message and not re.sub(r"^[:\s\-\*]+|[:\s\-\*]+$", "", remaining_text):
                         indices_to_delete.add(i)
                     else:
                         msg["text"] = remaining_text
@@ -1693,7 +1723,7 @@ class OpenSourceRunner(BaseRunner):
                 if msg.get("image_url") and base_url in msg["image_url"]:
                     has_image = True
                     msg["image_url"] = None
-                    if not (msg.get("text") or "").strip():
+                    if not keep_message and not (msg.get("text") or "").strip():
                         indices_to_delete.add(i)
                     modified = True
 
@@ -1702,8 +1732,8 @@ class OpenSourceRunner(BaseRunner):
                     for tc in tool_calls:
                         if tc.get("type") == "response" and tc.get("response") and base_url in tc["response"]:
                             has_image = True
-                            tc["response"] = re.sub(pattern, "", tc["response"]).strip()
-                            if not tc["response"]:
+                            tc["response"] = re.sub(r"\n{2,}", "\n", re.sub(pattern, "", tc["response"])).strip()
+                            if not keep_message and not tc["response"]:
                                 cleared_call_ids.add(tc.get("id"))
                             modified = True
 
@@ -1717,11 +1747,11 @@ class OpenSourceRunner(BaseRunner):
                             )
                         ]
 
-                    if not any(tc.get("response", "").strip() for tc in msg["tool_calls"] if tc.get("type") == "response"):
+                    if not keep_message and not any(tc.get("response", "").strip() for tc in msg["tool_calls"] if tc.get("type") == "response"):
                         if not (msg.get("text") or "").strip():
                             indices_to_delete.add(i)
 
-                if has_image and i > 0:
+                if has_image and not keep_message and i > 0:
                     prev_msg = history[i - 1]
                     if prev_msg.get("role") == "user" and any(k in (prev_msg.get("text") or "") for k in ("Generate a portrait of yourself", "[GENERATE_IMAGE:", "[GENERATE_IMAGEN:")):
                         indices_to_delete.add(i - 1)
@@ -1737,13 +1767,33 @@ class OpenSourceRunner(BaseRunner):
 
             return modified or file_deleted
 
-    async def delete_image_from_session(self, session_id: str, image_url: str) -> bool:
-        return await self.delete_image_from_save(save_id=session_id, image_url=image_url)
+    async def delete_image_from_session(self, session_id: str, image_url: str, keep_message: bool = False) -> bool:
+        return await self.delete_image_from_save(save_id=session_id, image_url=image_url, keep_message=keep_message)
 
     async def replace_image_in_save(
-        self, save_id: str = None, old_image_url: str = None, new_image_url: str = None, new_prompt: str = None, session_id: str = None
+        self,
+        save_id: str = None,
+        old_image_url: str = None,
+        new_image_url: str = None,
+        new_prompt: str = None,
+        session_id: str = None,
+        msg_id: str = None,
+        slot_index: int = None,
     ) -> bool:
         target_save_id = self._normalize_save_id(save_id or session_id)
+        image_md_re = r"!\[[^\]]*\]\([^)]+\)"
+
+        def _insert_at_slot(text_str: str, new_md: str, idx: int = None) -> str:
+            text_str = text_str or ""
+            matches = list(re.finditer(image_md_re, text_str))
+            if not matches:
+                return f"{text_str.strip()}\n{new_md}".strip()
+            if idx is None or not (0 <= idx < len(matches)):
+                pos = matches[-1].end()
+                return text_str[:pos] + "\n" + new_md + text_str[pos:]
+            pos = matches[idx].start()
+            return text_str[:pos] + new_md + "\n" + text_str[pos:]
+
         with self._lock:
             if target_save_id not in self.save_history:
                 self._load_from_disk(target_save_id)
@@ -1753,7 +1803,7 @@ class OpenSourceRunner(BaseRunner):
                 return False
 
             modified = False
-            for msg in history:
+            for msg in (history if old_image_url else []):
                 if msg.get("text") and old_image_url in msg["text"]:
                     msg["text"] = msg["text"].replace(old_image_url, new_image_url)
                     modified = True
@@ -1777,15 +1827,38 @@ class OpenSourceRunner(BaseRunner):
                                 tc["args"]["prompt"] = new_prompt
                                 modified = True
 
+            # The old image was already deleted from the message: put the new one back into its slot
+            if not modified and msg_id:
+                target_msg = next((m for m in history if m.get("id") == msg_id), None)
+                if target_msg is None:
+                    return False
+                new_md = f"![Scene]({new_image_url})"
+                image_tools = ("generate_local_image", "generate_follower_portrait", "generate_player_portrait", "generate_environment_image", "generate_imagen")
+                inserted_in_tc = False
+                for tc in target_msg.get("tool_calls") or []:
+                    if tc.get("type") == "response" and tc.get("name") in image_tools:
+                        tc["response"] = _insert_at_slot(tc.get("response", ""), new_md, slot_index)
+                        inserted_in_tc = True
+                        break
+                if inserted_in_tc and new_prompt:
+                    for tc in target_msg["tool_calls"]:
+                        if tc.get("type") == "call" and tc.get("name") in image_tools and isinstance(tc.get("args"), dict):
+                            tc["args"]["prompt"] = new_prompt
+                if not inserted_in_tc or re.search(image_md_re, target_msg.get("text") or ""):
+                    target_msg["text"] = _insert_at_slot(target_msg.get("text", ""), new_md, slot_index)
+                modified = True
+
             if modified:
                 self._save_to_disk(target_save_id)
 
             return modified
 
     async def replace_image_in_session(
-        self, session_id: str, old_image_url: str, new_image_url: str, new_prompt: str = None
+        self, session_id: str, old_image_url: str, new_image_url: str, new_prompt: str = None, **kwargs
     ) -> bool:
-        return await self.replace_image_in_save(save_id=session_id, old_image_url=old_image_url, new_image_url=new_image_url, new_prompt=new_prompt)
+        return await self.replace_image_in_save(
+            save_id=session_id, old_image_url=old_image_url, new_image_url=new_image_url, new_prompt=new_prompt, **kwargs
+        )
 
     async def replace_image_with_video_in_save(self, save_id: str = None, old_image_url: str = None, new_video_url: str = None, session_id: str = None) -> bool:
         target_save_id = self._normalize_save_id(save_id or session_id)
